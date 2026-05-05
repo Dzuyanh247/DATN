@@ -3,12 +3,52 @@
     ViewData["Title"] = "Dashboard quản trị";
 }
 
-<h3 class="mb-3">Dashboard quản trị</h3>
+<h3 class="mb-3">Tổng quan quản trị</h3>
 <div class="row g-3 mb-4">
-    <div class="col-md-3"><div class="card border-0 shadow-sm"><div class="card-body"><div class="text-muted">Sản phẩm</div><div class="fs-3 fw-bold">@Model.ProductCount</div></div></div></div>
-    <div class="col-md-3"><div class="card border-0 shadow-sm"><div class="card-body"><div class="text-muted">Đơn hàng</div><div class="fs-3 fw-bold">@Model.OrderCount</div></div></div></div>
-    <div class="col-md-3"><div class="card border-0 shadow-sm"><div class="card-body"><div class="text-muted">Người dùng</div><div class="fs-3 fw-bold">@Model.UserCount</div></div></div></div>
-    <div class="col-md-3"><div class="card border-0 shadow-sm"><div class="card-body"><div class="text-muted">Yêu cầu bảo hành</div><div class="fs-3 fw-bold">@Model.WarrantyRequestCount</div></div></div></div>
+    <div class="col-md-6 col-xl-3">
+        <div class="admin-stat-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="admin-stat-label">Sản phẩm</div>
+                    <div class="admin-stat-value">@Model.ProductCount</div>
+                </div>
+                <div class="admin-stat-icon bg-primary-subtle text-primary"><i class="bi bi-box-seam"></i></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-xl-3">
+        <div class="admin-stat-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="admin-stat-label">Đơn hàng</div>
+                    <div class="admin-stat-value">@Model.OrderCount</div>
+                </div>
+                <div class="admin-stat-icon bg-success-subtle text-success"><i class="bi bi-receipt"></i></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-xl-3">
+        <div class="admin-stat-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="admin-stat-label">Người dùng</div>
+                    <div class="admin-stat-value">@Model.UserCount</div>
+                </div>
+                <div class="admin-stat-icon bg-warning-subtle text-warning"><i class="bi bi-people"></i></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-xl-3">
+        <div class="admin-stat-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="admin-stat-label">Yêu cầu bảo hành</div>
+                    <div class="admin-stat-value">@Model.WarrantyRequestCount</div>
+                </div>
+                <div class="admin-stat-icon bg-danger-subtle text-danger"><i class="bi bi-shield-check"></i></div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <div class="list-group">
