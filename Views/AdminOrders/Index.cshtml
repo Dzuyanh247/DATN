@@ -1,0 +1,44 @@
+@model List<Order>
+@{
+    string Label(OrderStatus status) => status switch
+    {
+        OrderStatus.Pending => "Chờ xác nhận",
+        OrderStatus.Processing => "Đang xử lý",
+        OrderStatus.Delivering => "Đang giao",
+        OrderStatus.Completed => "Hoàn thành",
+        OrderStatus.Cancelled => "Đã hủy",
+        _ => status.ToString()
+    };
+}
+<h3>Quản lý đơn hàng</h3>
+<table class="table table-striped align-middle">
+    <thead><tr><th>Mã</th><th>Khách</th><th>Tổng tiền</th><th>Trạng thái</th><th>Cập nhật</th><th></th></tr></thead>
+    <tbody>
+    @foreach (var o in Model)
+    {
+        <tr>
+            <td>#@o.Id</td><td>@o.ReceiverName</td><td>@o.TotalAmount.ToString("N0") đ</td><td>@Label(o.Status)</td>
+            <td>
+                <form method="post" asp-action="UpdateStatus" class="d-flex gap-2">
+                    <input type="hidden" name="id" value="@o.Id" />
+                    <select name="status" class="form-select form-select-sm">
+                        @foreach (var s in Enum.GetValues<OrderStatus>())
+                        {
+                            if (s == o.Status)
+                            {
+                                <option value="@s" selected>@Label(s)</option>
+                            }
+                            else
+                            {
+                                <option value="@s">@Label(s)</option>
+                            }
+                        }
+                    </select>
+                    <button class="btn btn-sm btn-primary">Lưu</button>
+                </form>
+            </td>
+            <td><a class="btn btn-sm btn-outline-secondary" asp-action="Detail" asp-route-id="@o.Id">Chi tiết</a></td>
+        </tr>
+    }
+    </tbody>
+</table>

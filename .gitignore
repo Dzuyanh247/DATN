@@ -1,0 +1,8 @@
+**/bin/
+**/obj/
+wwwroot/uploads/*
+!wwwroot/uploads/.gitkeep
+!wwwroot/uploads/banners/.gitkeep
+!wwwroot/uploads/products/.gitkeep
+!wwwroot/uploads/logo/
+!wwwroot/uploads/logo/.gitkeep

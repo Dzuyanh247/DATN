@@ -1,0 +1,43 @@
+@model Datn.PcStore.ViewModels.BuildPcVm
+<h3>Build PC</h3>
+@if (TempData["Err"] != null) { <div class="alert alert-danger">@TempData["Err"]</div> }
+@if (TempData["Ok"] != null) { <div class="alert alert-success">@TempData["Ok"]</div> }
+<form method="post" asp-action="Index" class="row g-3">
+    @foreach (var item in Model.Components)
+    {
+        <div class="col-md-6">
+            <label class="form-label fw-semibold">@item.Key</label>
+            <select class="form-select" name="selected[@item.Key]">
+                <option value="">-- Chọn @item.Key --</option>
+                @foreach (var p in item.Value)
+                {
+                    var isSelected = Model.Selected.TryGetValue(item.Key, out var id) && id == p.Id;
+                    if (isSelected)
+                    {
+                        <option value="@p.Id" selected>@p.Name - @((p.DiscountPrice ??  p.Price).ToString("N0")) đ</option>
+                    }
+                    else
+                    {
+                        <option value="@p.Id">@p.Name - @((p.DiscountPrice ??  p.Price).ToString("N0")) đ</option>
+                    }
+                }
+            </select>
+        </div>
+    }
+    <div class="col-12"><button class="btn btn-outline-primary">Kiểm tra tương thích</button></div>
+</form>
+
+<div class="alert @(Model.IsCompatible ? "alert-success" : "alert-warning") mt-3">@Model.CompatibilityMessage</div>
+<h5>Tổng tạm tính: <span class="text-danger">@Model.TotalPrice.ToString("N0") đ</span></h5>
+<div class="d-flex flex-wrap gap-2">
+    <form method="post" asp-action="AddConfigToCart">
+        @foreach (var item in Model.Selected){<input type="hidden" name="selected[@item.Key]" value="@item.Value" />}
+        <button class="btn btn-warning" @(Model.TotalPrice <= 0 ? "disabled" : null)>Thêm cấu hình vào giỏ hàng</button>
+    </form>
+
+    <form method="post" asp-action="SaveConfig" class="d-flex gap-2">
+        @foreach (var item in Model.Selected){<input type="hidden" name="selected[@item.Key]" value="@item.Value" />}
+        <input class="form-control" style="max-width:260px" name="configName" placeholder="Tên cấu hình (tuỳ chọn)" />
+        <button class="btn btn-outline-success" @(Model.TotalPrice <= 0 ? "disabled" : null)>Lưu cấu hình</button>
+    </form>
+</div>

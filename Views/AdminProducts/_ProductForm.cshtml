@@ -1,0 +1,171 @@
+@model Datn.PcStore.ViewModels.AdminProductUpsertVm
+@{
+    var isEdit = Model.Id > 0;
+    var orderedImages = Model.ExistingImages.OrderBy(x => x.SortOrder).ToList();
+}
+
+<form method="post" enctype="multipart/form-data" class="admin-product-form">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="Id" />
+
+    <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+    <div class="row g-4">
+        <div class="col-lg-7">
+            <div class="apf-card mb-4">
+                <h5 class="apf-title">Thông tin cơ bản</h5>
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label asp-for="Name" class="form-label">Tên sản phẩm</label>
+                        <input asp-for="Name" class="form-control" />
+                        <span asp-validation-for="Name" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="CategoryId" class="form-label">Danh mục</label>
+                        <select asp-for="CategoryId" class="form-select" asp-items="@(new Microsoft.AspNetCore.Mvc.Rendering.SelectList(Model.Categories, "Id", "Name"))">
+                            <option value="">-- Chọn danh mục --</option>
+                        </select>
+                        <span asp-validation-for="CategoryId" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="StockQuantity" class="form-label">Tồn kho</label>
+                        <input asp-for="StockQuantity" class="form-control" min="0" />
+                        <span asp-validation-for="StockQuantity" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="Price" class="form-label">Giá gốc</label>
+                        <input asp-for="Price" class="form-control" min="0" />
+                        <span asp-validation-for="Price" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="DiscountPrice" class="form-label">Giá khuyến mãi</label>
+                        <input asp-for="DiscountPrice" class="form-control" min="0" />
+                        <span asp-validation-for="DiscountPrice" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="WarrantyMonths" class="form-label">Bảo hành (tháng)</label>
+                        <input asp-for="WarrantyMonths" class="form-control" min="0" />
+                        <span asp-validation-for="WarrantyMonths" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6 d-flex align-items-end">
+                        <div class="form-check">
+                            <input asp-for="IsActive" class="form-check-input" />
+                            <label asp-for="IsActive" class="form-check-label">Trạng thái đang kinh doanh</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="apf-card mb-4">
+                <h5 class="apf-title">Mô tả sản phẩm</h5>
+                <textarea asp-for="Description" rows="8" class="form-control" placeholder="Mỗi dòng là một ý, frontend sẽ hiển thị dạng bullet list."></textarea>
+                <span asp-validation-for="Description" class="text-danger"></span>
+            </div>
+
+            <div class="apf-card">
+                <h5 class="apf-title">Thông số kỹ thuật</h5>
+                <textarea asp-for="Specifications" rows="10" class="form-control" placeholder="Mỗi dòng là một thông số. Ví dụ: CPU: Intel Core i5"></textarea>
+                <span asp-validation-for="Specifications" class="text-danger"></span>
+            </div>
+        </div>
+
+        <div class="col-lg-5">
+            <div class="apf-card">
+                <h5 class="apf-title">Hình ảnh sản phẩm</h5>
+
+                @if (isEdit)
+                {
+                    <div class="form-text mb-3">Nếu không chọn ảnh mới, hệ thống sẽ giữ nguyên ảnh hiện tại.</div>
+                }
+
+                @if (orderedImages.Any())
+                {
+                    <label class="form-label">Ảnh hiện có</label>
+                    <div id="existing-image-list" class="apf-image-list mb-3">
+                        @foreach (var image in orderedImages)
+                        {
+                            <div class="apf-image-item" data-image-id="@image.Id">
+                                <img src="@Url.Content(image.ImageUrl)" alt="Ảnh sản phẩm" onerror="this.onerror=null;this.src='/images/placeholders/product-placeholder.png';" />
+                                <div class="apf-image-meta">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <span class="badge text-bg-warning apf-primary-badge">Ảnh đại diện</span>
+                                        <label class="form-check-label text-danger small">
+                                            <input class="form-check-input" type="checkbox" name="RemoveImageIds" value="@image.Id" /> Xóa
+                                        </label>
+                                    </div>
+                                    <div class="d-flex gap-2">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary js-move-up">Lên</button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary js-move-down">Xuống</button>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+
+                <label asp-for="NewImages" class="form-label">Thêm ảnh mới</label>
+                <input asp-for="NewImages" type="file" multiple class="form-control" accept=".jpg,.jpeg,.png,.webp" />
+                <div class="form-text">Dung lượng tối đa 5MB / ảnh. Chỉ chấp nhận JPG, JPEG, PNG, WEBP.</div>
+                <div class="form-text mt-2">Ảnh upload sẽ lưu trong <code>wwwroot/uploads</code>. Nếu muốn chia sẻ qua GitHub hoặc nộp USB, cần copy thư mục uploads hoặc dùng ảnh demo trong <code>wwwroot/images</code>.</div>
+                <span asp-validation-for="NewImages" class="text-danger"></span>
+
+                <div id="existing-image-order-container"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-4 d-flex gap-2">
+        <button class="btn btn-primary">Lưu sản phẩm</button>
+        <a asp-action="Index" class="btn btn-outline-secondary">Quay lại</a>
+    </div>
+</form>
+
+<partial name="_ValidationScriptsPartial" />
+
+<script>
+    (function () {
+        const list = document.getElementById('existing-image-list');
+        const orderContainer = document.getElementById('existing-image-order-container');
+        if (!list || !orderContainer) return;
+
+        const refresh = () => {
+            const items = Array.from(list.querySelectorAll('.apf-image-item'));
+            items.forEach((item, idx) => {
+                const badge = item.querySelector('.apf-primary-badge');
+                if (badge) {
+                    badge.style.visibility = idx === 0 ? 'visible' : 'hidden';
+                }
+            });
+
+            orderContainer.innerHTML = '';
+            items.forEach(item => {
+                const imageId = item.dataset.imageId;
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'ExistingImageOrder';
+                input.value = imageId;
+                orderContainer.appendChild(input);
+            });
+        };
+
+        list.addEventListener('click', function (event) {
+            const button = event.target.closest('button');
+            if (!button) return;
+
+            const item = button.closest('.apf-image-item');
+            if (!item) return;
+
+            if (button.classList.contains('js-move-up') && item.previousElementSibling) {
+                list.insertBefore(item, item.previousElementSibling);
+                refresh();
+            }
+
+            if (button.classList.contains('js-move-down') && item.nextElementSibling) {
+                list.insertBefore(item.nextElementSibling, item);
+                refresh();
+            }
+        });
+
+        refresh();
+    })();
+</script>

@@ -1,0 +1,32 @@
+@model Tuple<string, List<Product>>
+@{
+    var sectionTitle = Model.Item1;
+    var isDeal = sectionTitle == "Sản phẩm nổi bật" || sectionTitle == "Khuyến mãi hot";
+}
+<section class="ttg-section @(isDeal ? "ttg-deal-section" : string.Empty)">
+    <div class="ttg-section-head">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <h4 class="ttg-section-title">@(sectionTitle == "Sản phẩm nổi bật" ? "DEAL HOT MỖI NGÀY - KHUYẾN MÃI LIỀN TAY" : sectionTitle)</h4>
+            @if (isDeal)
+            {
+                <span class="ttg-hot-badge">HOT SALE</span>
+            }
+            else
+            {
+                <div class="ttg-tabs">
+                    <a href="#" class="ttg-tab">PC Gaming giá rẻ</a>
+                    <a href="#" class="ttg-tab">PC Stream Game</a>
+                    <a href="#" class="ttg-tab">PC Core Ultra</a>
+                    <a href="#" class="ttg-tab">PC Gaming cao cấp</a>
+                </div>
+            }
+        </div>
+        <a class="ttg-view-all" asp-controller="Products" asp-action="Index">Xem tất cả</a>
+    </div>
+    <div class="ttg-products-grid">
+        @foreach (var p in Model.Item2)
+        {
+            <partial name="_ProductCard" model="p" />
+        }
+    </div>
+</section>

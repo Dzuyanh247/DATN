@@ -1,0 +1,21 @@
+@model ProductFilterVm
+<h3>Danh sách sản phẩm</h3>
+<form method="get" class="row g-2 mb-3">
+    <div class="col-md-3"><input asp-for="Keyword" class="form-control" placeholder="Từ khóa" /></div>
+    <div class="col-md-2">
+        <select asp-for="CategoryId" class="form-select">
+            <option value="">Tất cả danh mục</option>
+            @foreach (var c in Model.Categories) { <option value="@c.Id">@c.Name</option> }
+        </select>
+    </div>
+    <div class="col-md-2"><input asp-for="Brand" class="form-control" placeholder="Hãng" /></div>
+    <div class="col-md-2"><input asp-for="MinPrice" class="form-control" placeholder="Giá từ" /></div>
+    <div class="col-md-2"><input asp-for="MaxPrice" class="form-control" placeholder="Giá đến" /></div>
+    <div class="col-md-1"><button class="btn btn-primary w-100">Lọc</button></div>
+</form>
+<div class="row g-3">
+    @foreach (var p in Model.Products)
+    {
+        <div class="col-md-3"><partial name="_ProductCard" model="p" /></div>
+    }
+</div>

@@ -1,0 +1,3 @@
+@model List<Feedback>
+<h3>Feedback khách hàng</h3>
+<table class="table table-striped"><thead><tr><th>Người gửi</th><th>Email</th><th>Nội dung</th></tr></thead><tbody>@foreach (var f in Model){<tr><td>@f.Name</td><td>@f.Email</td><td>@f.Message</td></tr>}</tbody></table>

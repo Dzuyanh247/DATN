@@ -1,0 +1,104 @@
+@model Datn.PcStore.ViewModels.CartViewVm
+@{
+    ViewData["Title"] = "Giỏ hàng";
+}
+<link rel="stylesheet" href="~/css/cart.css" />
+<div class="cart-page">
+    <div class="mb-3"><a asp-controller="Home" asp-action="Index" class="text-decoration-none">Trang chủ</a> &gt; <strong>Thông tin giỏ hàng</strong></div>
+
+    @if (TempData["CartError"] is string err)
+    { <div class="alert alert-danger">@err</div> }
+    @if (TempData["CartSuccess"] is string ok)
+    { <div class="alert alert-success">@ok</div> }
+    @if (TempData["OrderSuccess"] is string orderOk)
+    { <div class="alert alert-success">@orderOk</div> }
+
+    <div class="box mb-3">
+        <div class="box-header d-flex justify-content-between align-items-center">
+            <span class="text-primary">Giỏ hàng</span>
+            <form method="post" asp-action="Clear"><button class="btn btn-link text-danger fw-bold p-0">Xóa toàn bộ giỏ hàng</button></form>
+        </div>
+
+        @if (!Model.Items.Any())
+        {
+            <div class="p-3">Chưa có sản phẩm trong giỏ hàng.</div>
+        }
+        else
+        {
+            @foreach (var i in Model.Items)
+            {
+                var img = string.IsNullOrWhiteSpace(i.ProductImage) ? "/images/placeholders/product-placeholder.png" : (i.ProductImage.StartsWith("/") ? i.ProductImage : $"/uploads/products/{i.ProductImage}");
+                <div class="cart-item row align-items-center g-3">
+                    <div class="col-lg-6 d-flex gap-3 align-items-center">
+                        <img src="@img" class="cart-product-image" onerror="this.onerror=null;this.src='/images/placeholders/product-placeholder.png';" />
+                        <div>
+                            <div class="fw-bold fs-5">@i.ProductName</div>
+                            <div>Bảo hành: <span class="text-danger">@i.Warranty</span></div>
+                        </div>
+                    </div>
+                    <div class="col-lg-2 text-lg-end">@i.UnitPrice.ToString("N0") VNĐ</div>
+                    <div class="col-lg-2">
+                        <form method="post" asp-action="Update" class="d-flex justify-content-lg-center">
+                            <input type="hidden" name="cartItemId" value="@i.CartItemId" />
+                            <div class="qty-box">
+                                <button type="button" onclick="stepQty(this,-1)">-</button>
+                                <input name="quantity" value="@i.Quantity" min="1" max="@i.StockQuantity" />
+                                <button type="button" onclick="stepQty(this,1)">+</button>
+                            </div>
+                            <button class="btn btn-sm btn-outline-secondary ms-2">Cập nhật</button>
+                        </form>
+                    </div>
+                    <div class="col-lg-1 fw-bold text-lg-end">@i.LineTotal.ToString("N0") VNĐ</div>
+                    <div class="col-lg-1 text-lg-end"><form method="post" asp-action="Remove"><input type="hidden" name="cartItemId" value="@i.CartItemId" /><button class="btn btn-link text-dark"><i class="bi bi-trash"></i></button></form></div>
+                </div>
+            }
+            <div class="p-3 text-end fs-4 fw-bold">Tổng tiền: <span class="text-danger">@Model.TotalAmount.ToString("N0") VNĐ</span></div>
+        }
+    </div>
+
+    @if (Model.Items.Any())
+    {
+        <div class="cart-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+            <div class="box">
+                <div class="box-header">THÔNG TIN NGƯỜI MUA</div>
+                <div class="p-3">
+                    <form method="post" asp-controller="Orders" asp-action="Checkout" id="checkoutForm">
+                        <div class="row mb-2"><label class="col-3 col-form-label">Họ tên*</label><div class="col-9"><input class="form-control" name="CustomerName" required /></div></div>
+                        <div class="row mb-2"><label class="col-3 col-form-label">SĐT*</label><div class="col-9"><input class="form-control" name="CustomerPhone" required /></div></div>
+                        <div class="row mb-2"><label class="col-3 col-form-label">Email*</label><div class="col-9"><input class="form-control" name="CustomerEmail" /></div></div>
+                        <div class="row mb-2"><label class="col-3 col-form-label">Địa chỉ*</label><div class="col-9"><input class="form-control" name="CustomerAddress" required /></div></div>
+                        <div class="row mb-2"><label class="col-3 col-form-label">Tỉnh/Thành phố*</label><div class="col-9"><select class="form-select" name="CustomerProvince" required><option value="">Chọn Tỉnh/Thành phố</option><option>Hà Nội</option><option>TP.HCM</option></select></div></div>
+                        <div class="row mb-2"><label class="col-3 col-form-label">Quận/Huyện*</label><div class="col-9"><select class="form-select" name="CustomerDistrict" required><option value="">Chọn Quận/Huyện</option></select></div></div>
+                        <div class="row mb-2"><label class="col-3 col-form-label">Ghi chú</label><div class="col-9"><textarea class="form-control" rows="3" name="Note"></textarea></div></div>
+                    </form>
+                </div>
+            </div>
+            <div class="box">
+                <div class="box-header">TỔNG TIỀN</div>
+                <div class="p-3">
+                    <div class="input-group mb-3"><input class="form-control" name="VoucherCode" placeholder="Mã Voucher" form="checkoutForm" /><button class="btn btn-primary" type="button">Chọn mã voucher</button></div>
+                    <div class="d-flex justify-content-between mb-1"><span>Tổng cộng</span><span>@Model.Subtotal.ToString("N0") VNĐ</span></div>
+                    <div class="d-flex justify-content-between mb-1"><span>Giảm giá Voucher</span><span>@Model.DiscountAmount.ToString("N0") VNĐ</span></div>
+                    <div class="d-flex justify-content-between fw-bold fs-4 mb-0"><span>Thành tiền</span><span class="text-danger">@Model.TotalAmount.ToString("N0") VNĐ</span></div>
+                    <div class="text-end">(Giá đã bao gồm VAT)</div>
+                    <div class="form-check my-3"><input class="form-check-input" type="checkbox" id="agree" form="checkoutForm" required><label class="form-check-label fw-bold" for="agree">Tôi đã đọc và đồng ý với các Điều kiện giao dịch chung của website</label></div>
+                    <div class="row g-2">
+                        <div class="col-6"><button type="button" class="btn btn-dark w-100">In báo giá</button></div>
+                        <div class="col-6"><button type="button" class="btn btn-dark w-100">Tải file Excel</button></div>
+                        <div class="col-6"><button type="submit" form="checkoutForm" class="btn btn-danger w-100">Đặt hàng</button></div>
+                        <div class="col-6"><button type="submit" form="checkoutForm" class="btn btn-danger w-100">Mua ngay</button></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+<script>
+function stepQty(btn, step){
+    const input = btn.parentElement.querySelector('input[name="quantity"]');
+    const min = parseInt(input.min || '1');
+    const max = parseInt(input.max || '9999');
+    const next = Math.max(min, Math.min(max, (parseInt(input.value || '1') + step)));
+    input.value = next;
+}
+</script>

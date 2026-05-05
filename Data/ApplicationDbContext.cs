@@ -1,0 +1,80 @@
+using Datn.PcStore.Models;
+using Microsoft.EntityFrameworkCore;
+
+namespace Datn.PcStore.Data;
+
+public class ApplicationDbContext : DbContext
+{
+    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options) { }
+
+    public DbSet<Role> Roles => Set<Role>();
+    public DbSet<User> Users => Set<User>();
+    public DbSet<Category> Categories => Set<Category>();
+    public DbSet<Product> Products => Set<Product>();
+    public DbSet<ProductImage> ProductImages => Set<ProductImage>();
+    public DbSet<Banner> Banners => Set<Banner>();
+    public DbSet<Cart> Carts => Set<Cart>();
+    public DbSet<CartItem> CartItems => Set<CartItem>();
+    public DbSet<Order> Orders => Set<Order>();
+    public DbSet<OrderDetail> OrderDetails => Set<OrderDetail>();
+    public DbSet<Warranty> Warranties => Set<Warranty>();
+    public DbSet<WarrantyRequest> WarrantyRequests => Set<WarrantyRequest>();
+    public DbSet<BuildPcConfig> BuildPcConfigs => Set<BuildPcConfig>();
+    public DbSet<BuildPcItem> BuildPcItems => Set<BuildPcItem>();
+    public DbSet<Article> Articles => Set<Article>();
+    public DbSet<Feedback> Feedbacks => Set<Feedback>();
+    public DbSet<SiteSetting> SiteSettings => Set<SiteSetting>();
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+
+        modelBuilder.Entity<User>().HasIndex(x => x.Email).IsUnique();
+        modelBuilder.Entity<User>().HasIndex(x => x.Username).IsUnique();
+        modelBuilder.Entity<Product>().HasIndex(x => x.ProductCode).IsUnique();
+        modelBuilder.Entity<Product>().HasIndex(x => x.Slug).IsUnique();
+
+        modelBuilder.Entity<Category>()
+            .HasOne(c => c.ParentCategory)
+            .WithMany(c => c.Children)
+            .HasForeignKey(c => c.ParentCategoryId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Product>()
+            .HasMany(p => p.ProductImages)
+            .WithOne(pi => pi.Product)
+            .HasForeignKey(pi => pi.ProductId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<ProductImage>()
+            .HasIndex(x => new { x.ProductId, x.SortOrder });
+
+        modelBuilder.Entity<Product>()
+            .Property(x => x.Price)
+            .HasPrecision(18, 2);
+        modelBuilder.Entity<Product>()
+            .Property(x => x.SalePrice)
+            .HasPrecision(18, 2);
+        modelBuilder.Entity<Product>()
+            .Property(x => x.DiscountPrice)
+            .HasPrecision(18, 2);
+        modelBuilder.Entity<Order>()
+            .Property(x => x.SubtotalAmount)
+            .HasPrecision(18, 2);
+        modelBuilder.Entity<Order>()
+            .Property(x => x.DiscountAmount)
+            .HasPrecision(18, 2);
+        modelBuilder.Entity<Order>()
+            .Property(x => x.TotalAmount)
+            .HasPrecision(18, 2);
+        modelBuilder.Entity<OrderDetail>()
+            .Property(x => x.UnitPrice)
+            .HasPrecision(18, 2);
+        modelBuilder.Entity<OrderDetail>()
+            .Property(x => x.TotalPrice)
+            .HasPrecision(18, 2);
+        modelBuilder.Entity<BuildPcConfig>()
+            .Property(x => x.TotalPrice)
+            .HasPrecision(18, 2);
+    }
+}

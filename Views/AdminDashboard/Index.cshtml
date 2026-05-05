@@ -1,0 +1,23 @@
+@model Datn.PcStore.ViewModels.AdminDashboardVm
+@{
+    ViewData["Title"] = "Dashboard quản trị";
+}
+
+<h3 class="mb-3">Dashboard quản trị</h3>
+<div class="row g-3 mb-4">
+    <div class="col-md-3"><div class="card border-0 shadow-sm"><div class="card-body"><div class="text-muted">Sản phẩm</div><div class="fs-3 fw-bold">@Model.ProductCount</div></div></div></div>
+    <div class="col-md-3"><div class="card border-0 shadow-sm"><div class="card-body"><div class="text-muted">Đơn hàng</div><div class="fs-3 fw-bold">@Model.OrderCount</div></div></div></div>
+    <div class="col-md-3"><div class="card border-0 shadow-sm"><div class="card-body"><div class="text-muted">Người dùng</div><div class="fs-3 fw-bold">@Model.UserCount</div></div></div></div>
+    <div class="col-md-3"><div class="card border-0 shadow-sm"><div class="card-body"><div class="text-muted">Yêu cầu bảo hành</div><div class="fs-3 fw-bold">@Model.WarrantyRequestCount</div></div></div></div>
+</div>
+
+<div class="list-group">
+    <a class="list-group-item list-group-item-action" asp-controller="AdminCategories" asp-action="Index">Quản lý danh mục</a>
+    <a class="list-group-item list-group-item-action" asp-controller="AdminProducts" asp-action="Index">Quản lý sản phẩm</a>
+    <a class="list-group-item list-group-item-action" asp-controller="AdminUsers" asp-action="Index">Quản lý tài khoản</a>
+    <a class="list-group-item list-group-item-action" asp-controller="AdminOrders" asp-action="Index">Quản lý đơn hàng</a>
+    <a class="list-group-item list-group-item-action" asp-controller="AdminBanners" asp-action="Index">Quản lý banner</a>
+    <a class="list-group-item list-group-item-action" asp-controller="AdminWarranty" asp-action="Index">Yêu cầu bảo hành</a>
+    <a class="list-group-item list-group-item-action" asp-controller="Articles" asp-action="Index">Tin tức / khuyến mãi</a>
+    <a class="list-group-item list-group-item-action" asp-controller="Contact" asp-action="Manage">Feedback liên hệ</a>
+</div>

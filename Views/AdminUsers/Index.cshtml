@@ -1,0 +1,52 @@
+@model Datn.PcStore.ViewModels.AdminUserIndexVm
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3>Quản lý tài khoản</h3>
+    <a class="btn btn-primary" asp-action="Create">Tạo tài khoản</a>
+</div>
+
+@if (TempData["Ok"] != null)
+{
+    <div class="alert alert-success">@TempData["Ok"]</div>
+}
+@if (TempData["Err"] != null)
+{
+    <div class="alert alert-danger">@TempData["Err"]</div>
+}
+
+<form method="get" class="row g-2 mb-3">
+    <div class="col-md-9"><input class="form-control" name="keyword" value="@Model.Keyword" placeholder="Tìm theo username, tên, email" /></div>
+    <div class="col-md-3"><button class="btn btn-outline-primary w-100">Tìm kiếm</button></div>
+</form>
+
+<table class="table table-striped align-middle">
+    <thead>
+    <tr><th>Username</th><th>Họ tên</th><th>Email</th><th>Role</th><th>Trạng thái</th><th>Ngày tạo</th><th></th></tr>
+    </thead>
+    <tbody>
+    @foreach (var u in Model.Users)
+    {
+        <tr>
+            <td>@u.Username</td>
+            <td>@u.FullName</td>
+            <td>@u.Email</td>
+            <td><span class="badge bg-info text-dark">@u.Role</span></td>
+            <td>@(u.IsActive ? "Active" : "Locked")</td>
+            <td>@u.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+            <td class="d-flex gap-2">
+                <a class="btn btn-sm btn-outline-primary" asp-action="Edit" asp-route-id="@u.Id">Sửa</a>
+                <form method="post" asp-action="ToggleLock">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" value="@u.Id" />
+                    <button class="btn btn-sm btn-outline-warning">@(u.IsActive ? "Khóa" : "Mở khóa")</button>
+                </form>
+                <form method="post" asp-action="Delete" onsubmit="return confirm('Xác nhận xóa user?');">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" value="@u.Id" />
+                    <button class="btn btn-sm btn-outline-danger">Xóa</button>
+                </form>
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>

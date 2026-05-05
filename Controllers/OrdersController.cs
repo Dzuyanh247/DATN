@@ -1,0 +1,92 @@
+using System.Security.Claims;
+using Datn.PcStore.Data;
+using Datn.PcStore.Models;
+using Datn.PcStore.Services;
+using Datn.PcStore.ViewModels;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+
+namespace Datn.PcStore.Controllers;
+
+public class OrdersController : Controller
+{
+    private readonly ApplicationDbContext _db;
+    private readonly ICartService _cartService;
+
+    public OrdersController(ApplicationDbContext db, ICartService cartService) { _db = db; _cartService = cartService; }
+
+    [HttpPost]
+    public async Task<IActionResult> Checkout(CheckoutRequestVm vm)
+    {
+        if (string.IsNullOrWhiteSpace(vm.CustomerName)) ModelState.AddModelError(nameof(vm.CustomerName), "Họ tên là bắt buộc.");
+        if (string.IsNullOrWhiteSpace(vm.CustomerPhone) || !System.Text.RegularExpressions.Regex.IsMatch(vm.CustomerPhone, "^(0|\\+84)[0-9]{9,10}$")) ModelState.AddModelError(nameof(vm.CustomerPhone), "Số điện thoại không hợp lệ.");
+        if (!string.IsNullOrWhiteSpace(vm.CustomerEmail) && !new System.ComponentModel.DataAnnotations.EmailAddressAttribute().IsValid(vm.CustomerEmail)) ModelState.AddModelError(nameof(vm.CustomerEmail), "Email không hợp lệ.");
+        if (string.IsNullOrWhiteSpace(vm.CustomerAddress)) ModelState.AddModelError(nameof(vm.CustomerAddress), "Địa chỉ là bắt buộc.");
+        if (string.IsNullOrWhiteSpace(vm.CustomerProvince)) ModelState.AddModelError(nameof(vm.CustomerProvince), "Tỉnh/Thành phố là bắt buộc.");
+        if (string.IsNullOrWhiteSpace(vm.CustomerDistrict)) ModelState.AddModelError(nameof(vm.CustomerDistrict), "Quận/Huyện là bắt buộc.");
+
+        var userId = User.Identity?.IsAuthenticated == true ? int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!) : (int?)null;
+        var cart = await _cartService.GetCartAsync(userId);
+        if (!cart.Items.Any()) ModelState.AddModelError(string.Empty, "Không thể đặt hàng khi giỏ hàng trống.");
+        if (!ModelState.IsValid) return RedirectToAction("Index", "Cart");
+
+        await using var tx = await _db.Database.BeginTransactionAsync();
+        try
+        {
+            decimal subtotal = 0;
+            var detailRows = new List<OrderDetail>();
+            foreach (var item in cart.Items)
+            {
+                var product = await _db.Products.FirstOrDefaultAsync(x => x.Id == item.ProductId && x.IsActive);
+                if (product == null) throw new Exception($"Sản phẩm #{item.ProductId} không tồn tại.");
+                if (product.StockQuantity < item.Quantity) throw new Exception($"Sản phẩm {product.Name} không đủ tồn kho.");
+                var unitPrice = product.DiscountPrice ?? product.SalePrice ?? product.Price;
+                var lineTotal = unitPrice * item.Quantity;
+                subtotal += lineTotal;
+                detailRows.Add(new OrderDetail { ProductId = product.Id, Quantity = item.Quantity, UnitPrice = unitPrice, ProductName = product.Name, ProductImage = product.ThumbnailImage, Warranty = product.WarrantyDuration, TotalPrice = lineTotal });
+            }
+
+            var discount = 0m;
+            var order = new Order
+            {
+                UserId = userId,
+                ReceiverName = vm.CustomerName,
+                ReceiverPhone = vm.CustomerPhone,
+                CustomerEmail = vm.CustomerEmail,
+                ShippingAddress = vm.CustomerAddress,
+                CustomerProvince = vm.CustomerProvince,
+                CustomerDistrict = vm.CustomerDistrict,
+                Note = vm.Note,
+                VoucherCode = vm.VoucherCode,
+                SubtotalAmount = subtotal,
+                DiscountAmount = discount,
+                TotalAmount = subtotal - discount,
+                PaymentMethod = "COD",
+                Status = OrderStatus.Pending,
+                Details = detailRows
+            };
+
+            _db.Orders.Add(order);
+            await _db.SaveChangesAsync();
+            await _cartService.ClearCartAsync(userId);
+            await tx.CommitAsync();
+            TempData["OrderSuccess"] = $"Đặt hàng thành công. Mã đơn hàng: #{order.Id}";
+            return RedirectToAction("Index", "Cart");
+        }
+        catch (Exception ex)
+        {
+            await tx.RollbackAsync();
+            TempData["CartError"] = ex.Message;
+            return RedirectToAction("Index", "Cart");
+        }
+    }
+
+    [Authorize]
+    public async Task<IActionResult> MyOrders()
+    {
+        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var orders = await _db.Orders.Include(o => o.Details).ThenInclude(d => d.Product).Where(o => o.UserId == userId).OrderByDescending(o => o.CreatedAt).ToListAsync();
+        return View(orders);
+    }
+}

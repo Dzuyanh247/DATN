@@ -1,0 +1,13 @@
+@model RegisterVm
+<h3>Đăng ký tài khoản</h3>
+<form method="post" class="card p-3">
+    <div asp-validation-summary="All" class="text-danger"></div>
+    <div class="row">
+        <div class="col-md-6 mb-3"><label>Họ tên</label><input asp-for="FullName" class="form-control" /></div>
+        <div class="col-md-6 mb-3"><label>Email</label><input asp-for="Email" class="form-control" /></div>
+        <div class="col-md-6 mb-3"><label>Mật khẩu</label><input asp-for="Password" type="password" class="form-control" /></div>
+        <div class="col-md-6 mb-3"><label>Điện thoại</label><input asp-for="Phone" class="form-control" /></div>
+        <div class="col-12 mb-3"><label>Địa chỉ</label><input asp-for="Address" class="form-control" /></div>
+    </div>
+    <button class="btn btn-success">Tạo tài khoản</button>
+</form>

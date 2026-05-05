@@ -1,0 +1,33 @@
+@model Product
+@{
+    var finalPrice = (Model.DiscountPrice ?? Model.SalePrice) ?? Model.Price;
+    var discount = finalPrice < Model.Price && Model.Price > 0 ? (int)Math.Round((1 - finalPrice / Model.Price) * 100) : 0;
+    var image = Model.ProductImages.FirstOrDefault(x => x.IsPrimary)?.ImageUrl
+        ?? Model.ProductImages.OrderBy(x => x.SortOrder).FirstOrDefault()?.ImageUrl
+        ?? Model.ThumbnailImage
+        ?? "/images/placeholders/product-placeholder.png";
+}
+<div class="ttg-product-card">
+    <a asp-controller="Products" asp-action="Detail" asp-route-id="@Model.Id" class="ttg-product-image-wrap text-decoration-none">
+        <img src="@Url.Content(image)" class="ttg-product-image" alt="@Model.Name" onerror="this.onerror=null;this.src='/images/placeholders/product-placeholder.png';" />
+        @if (discount > 0)
+        {
+            <span class="ttg-discount-badge">-@discount%</span>
+        }
+    </a>
+    <h6 class="ttg-product-title">@Model.Name</h6>
+    <div class="ttg-price">@finalPrice.ToString("N0") VNĐ</div>
+    <div class="ttg-old-price">@(finalPrice < Model.Price ? $"{Model.Price:N0} VNĐ" : "")</div>
+    <span class="ttg-stock">@(Model.IsInStock ? "Còn hàng" : "Hết hàng")</span>
+    @if (Model.IsInStock)
+    {
+        <form method="post" asp-controller="Cart" asp-action="Add" class="mt-2">
+            <input type="hidden" name="productId" value="@Model.Id" />
+            <button class="ttg-add-btn w-100"><i class="bi bi-cart-plus"></i> Thêm vào giỏ</button>
+        </form>
+    }
+    else
+    {
+        <button class="ttg-add-btn w-100 mt-2" disabled>Thêm vào giỏ</button>
+    }
+</div>

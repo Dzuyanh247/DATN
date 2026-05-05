@@ -1,0 +1,8 @@
+@model Category
+<h3>Sửa danh mục</h3>
+<form method="post" class="row g-3">
+    <input type="hidden" asp-for="Id" />
+    <div class="col-md-6"><label class="form-label">Tên danh mục</label><input asp-for="Name" class="form-control" /></div>
+    <div class="col-md-6"><label class="form-label">Icon class</label><input asp-for="IconClass" class="form-control" /></div>
+    <div class="col-12"><button class="btn btn-primary">Lưu</button></div>
+</form>

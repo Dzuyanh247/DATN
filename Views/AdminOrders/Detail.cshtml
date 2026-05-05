@@ -1,0 +1,25 @@
+@model Order
+<h3>Chi tiết đơn #@Model.Id</h3>
+<div class="card mb-3">
+    <div class="card-body">
+        <div><b>Khách:</b> @Model.ReceiverName (@Model.ReceiverPhone)</div>
+        <div><b>Địa chỉ:</b> @Model.ShippingAddress</div>
+        <div><b>Thanh toán:</b> @Model.PaymentMethod</div>
+        <div><b>Tổng tiền:</b> <span class="text-danger fw-bold">@Model.TotalAmount.ToString("N0") đ</span></div>
+    </div>
+</div>
+<table class="table table-bordered">
+    <thead><tr><th>Sản phẩm</th><th>SL</th><th>Đơn giá</th><th>Thành tiền</th></tr></thead>
+    <tbody>
+    @foreach (var d in Model.Details)
+    {
+        <tr>
+            <td>@d.Product?.Name</td>
+            <td>@d.Quantity</td>
+            <td>@d.UnitPrice.ToString("N0") đ</td>
+            <td>@((d.UnitPrice * d.Quantity).ToString("N0")) đ</td>
+        </tr>
+    }
+    </tbody>
+</table>
+<a class="btn btn-outline-secondary" asp-action="Index">Quay lại danh sách</a>

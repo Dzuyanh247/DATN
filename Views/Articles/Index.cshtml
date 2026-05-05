@@ -1,0 +1,34 @@
+@model List<Article>
+<div class="d-flex justify-content-between mb-3">
+    <h3>Tin tức / khuyến mãi</h3>
+    @if (User.IsInRole("Admin") || User.IsInRole("Staff"))
+    {
+        <a class="btn btn-primary" asp-action="Create">Đăng bài</a>
+    }
+</div>
+<div class="row g-3">
+    @foreach (var a in Model)
+    {
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-body">
+                    <span class="badge bg-info mb-2">@a.Type</span>
+                    <h5>@a.Title</h5>
+                    <p>@(a.Content.Length > 140 ? a.Content[..140] + "..." : a.Content)</p>
+                    <a class="btn btn-sm btn-outline-primary" asp-action="Detail" asp-route-slug="@a.Slug">Xem chi tiết</a>
+                    @if (User.IsInRole("Admin") || User.IsInRole("Staff"))
+                    {
+                        <a class="btn btn-sm btn-outline-secondary" asp-action="Edit" asp-route-id="@a.Id">Sửa</a>
+                    }
+                    @if (User.IsInRole("Admin"))
+                    {
+                        <form method="post" asp-action="Delete" class="d-inline">
+                            <input type="hidden" name="id" value="@a.Id" />
+                            <button class="btn btn-sm btn-outline-danger">Xóa</button>
+                        </form>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+</div>

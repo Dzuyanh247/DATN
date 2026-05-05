@@ -1,0 +1,164 @@
+@model Product
+@{
+    var suggestions = ViewBag.UpgradeSuggestions as List<Product> ?? new();
+    var galleryImages = Model.ProductImages.OrderBy(x => x.SortOrder).ToList();
+    var mainImage = galleryImages.FirstOrDefault()?.ImageUrl
+        ?? Model.ThumbnailImage
+        ?? "/images/no-image.png";
+    var finalPrice = (Model.DiscountPrice ?? Model.SalePrice) ?? Model.Price;
+    var savings = Model.Price > finalPrice ? Model.Price - finalPrice : 0;
+    var inStock = Model.StockQuantity > 0;
+
+    var descriptionLines = (string.IsNullOrWhiteSpace(Model.Description) ? Model.DetailDescription : Model.Description)
+        .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+        .Select(x => x.Trim(' ', '-', '•', '\t'))
+        .Where(x => !string.IsNullOrWhiteSpace(x))
+        .ToList();
+
+    var specsLines = (Model.Specifications ?? string.Empty)
+        .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+        .Select(x => x.Trim())
+        .Where(x => !string.IsNullOrWhiteSpace(x) && x != "1")
+        .ToList();
+}
+
+<div class="product-detail-page">
+    <div class="product-top card border-0 shadow-sm">
+        <div class="card-body p-4">
+            <div class="row g-4 align-items-start">
+                <div class="col-lg-7">
+                    <div class="product-gallery-main">
+                        <img id="main-product-image" src="@Url.Content(mainImage)" alt="@Model.Name" onerror="this.onerror=null;this.src='/images/no-image.png';" />
+                    </div>
+
+                    @if (galleryImages.Any())
+                    {
+                        <div class="product-gallery-thumbs mt-3">
+                            @for (var i = 0; i < galleryImages.Count; i++)
+                            {
+                                var image = galleryImages[i];
+                                <button type="button" class="thumb-btn @(i == 0 ? "active" : string.Empty)" data-src="@Url.Content(image.ImageUrl)">
+                                    <img src="@Url.Content(image.ImageUrl)" alt="Thumbnail @i" onerror="this.onerror=null;this.src='/images/no-image.png';" />
+                                </button>
+                            }
+                        </div>
+                    }
+                </div>
+
+                <div class="col-lg-5">
+                    <h1 class="product-name">@Model.Name</h1>
+
+                    <div class="price-row mt-3 mb-3">
+                        <span class="price-current">@finalPrice.ToString("N0", new System.Globalization.CultureInfo("vi-VN")) đ</span>
+                        @if (finalPrice < Model.Price)
+                        {
+                            <span class="price-old">@Model.Price.ToString("N0", new System.Globalization.CultureInfo("vi-VN")) đ</span>
+                        }
+                    </div>
+
+                    @if (savings > 0)
+                    {
+                        <div class="text-success fw-semibold mb-3">Tiết kiệm: @savings.ToString("N0", new System.Globalization.CultureInfo("vi-VN")) đ</div>
+                    }
+
+                    <div class="d-flex flex-wrap gap-2 mb-3">
+                        <span class="badge text-bg-light border">Bảo hành: @(Model.WarrantyMonths > 0 ? $"{Model.WarrantyMonths} tháng" : Model.WarrantyDuration)</span>
+                        @if (inStock)
+                        {
+                            <span class="badge text-bg-success">Còn hàng: @Model.StockQuantity</span>
+                        }
+                        else
+                        {
+                            <span class="badge text-bg-danger">Hết hàng</span>
+                        }
+                    </div>
+
+                    @if (descriptionLines.Any())
+                    {
+                        <div class="product-quick-desc mb-4">
+                            <h6 class="fw-bold mb-2">Mô tả sản phẩm</h6>
+                            <ul class="mb-0">
+                                @foreach (var line in descriptionLines)
+                                {
+                                    <li>@line</li>
+                                }
+                            </ul>
+                        </div>
+                    }
+
+                    <form method="post" asp-controller="Cart" asp-action="Add" class="purchase-form">
+                        <input type="hidden" name="productId" value="@Model.Id" />
+                        <div class="d-flex align-items-center gap-2 mb-3">
+                            <label class="mb-0 fw-semibold">Số lượng</label>
+                            <input type="number" name="quantity" value="1" min="1" max="@(Math.Max(1, Model.StockQuantity))" class="form-control" style="width:100px;" @(inStock ? string.Empty : "disabled") />
+                        </div>
+                        <div class="d-flex gap-2 flex-wrap">
+                            <button class="btn btn-danger" type="submit" @(inStock ? string.Empty : "disabled")>Mua ngay</button>
+                            <button class="btn btn-outline-primary" type="submit" @(inStock ? string.Empty : "disabled")>Thêm vào giỏ</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (specsLines.Any())
+    {
+        <div class="spec-card card border-0 shadow-sm mt-4">
+            <div class="card-body p-0">
+                <div class="spec-header">THÔNG SỐ KỸ THUẬT</div>
+                <div class="table-responsive">
+                    <table class="table spec-table mb-0">
+                        <thead>
+                            <tr>
+                                <th class="text-center" style="width:70px;">STT</th>
+                                <th>Mô tả thiết bị</th>
+                                <th class="text-center" style="width:80px;">SL</th>
+                                <th class="text-center" style="width:120px;">BH</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @for (var i = 0; i < specsLines.Count; i++)
+                            {
+                                <tr>
+                                    <td class="text-center">@(i + 1)</td>
+                                    <td>@specsLines[i]</td>
+                                    <td class="text-center">1</td>
+                                    <td class="text-center">@(Model.WarrantyMonths > 0 ? $"{Model.WarrantyMonths}T" : string.Empty)</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (suggestions.Any())
+    {
+        <div class="card border-0 shadow-sm mt-4">
+            <div class="card-body">
+                <h5 class="mb-3">Sản phẩm liên quan</h5>
+                <ul class="mb-0">
+                    @foreach (var p in suggestions)
+                    {
+                        <li>
+                            <a asp-action="Detail" asp-route-id="@p.Id">@p.Name</a>
+                            - @p.Price.ToString("N0", new System.Globalization.CultureInfo("vi-VN")) đ
+                        </li>
+                    }
+                </ul>
+            </div>
+        </div>
+    }
+</div>
+
+<script>
+    document.querySelectorAll('.thumb-btn').forEach(function (button) {
+        button.addEventListener('click', function () {
+            document.getElementById('main-product-image').src = this.dataset.src;
+            document.querySelectorAll('.thumb-btn').forEach(function (item) { item.classList.remove('active'); });
+            this.classList.add('active');
+        });
+    });
+</script>

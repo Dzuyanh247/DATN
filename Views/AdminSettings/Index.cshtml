@@ -1,0 +1,72 @@
+@model Datn.PcStore.ViewModels.AdminSiteSettingsVm
+@{
+    ViewData["Title"] = "Cấu hình website";
+}
+
+<div class="container py-3">
+    <h1 class="h3 mb-3">Cấu hình website</h1>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <h2 class="h5 mb-3">Logo website</h2>
+
+            @if (!string.IsNullOrWhiteSpace(Model.Message))
+            {
+                <div class="alert @(Model.IsSuccess ? "alert-success" : "alert-danger")" role="alert">@Model.Message</div>
+            }
+
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Logo hiện tại</label>
+                <div class="site-logo-preview-wrap">
+                    @if (!string.IsNullOrWhiteSpace(Model.LogoUrl))
+                    {
+                        <img id="logo-preview-image" src="@Model.LogoUrl" alt="KKSHOP" class="site-logo-preview-image" />
+                        <span id="logo-preview-text" class="site-logo-text" style="display:none;">KKSHOP</span>
+                    }
+                    else
+                    {
+                        <img id="logo-preview-image" src="" alt="KKSHOP" class="site-logo-preview-image" style="display:none;" />
+                        <span id="logo-preview-text" class="site-logo-text">KKSHOP</span>
+                    }
+                </div>
+            </div>
+
+            <form method="post" enctype="multipart/form-data">
+                @Html.AntiForgeryToken()
+                <div class="mb-3">
+                    <label class="form-label">Chọn logo mới</label>
+                    <input type="file" name="LogoFile" accept="image/jpeg,image/png,image/webp" class="form-control" id="logo-file-input" />
+                </div>
+
+                <p class="text-muted mb-3">Logo nên dùng ảnh ngang, nền trong suốt PNG/WebP, chiều cao khoảng 60px.</p>
+                <p class="small text-muted">Ảnh upload nằm trong wwwroot/uploads/logo. Khi copy sang máy khác hoặc nộp USB cần copy kèm thư mục uploads nếu muốn giữ logo đã upload.</p>
+                <button type="submit" class="btn btn-primary">Lưu logo</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+(() => {
+    const input = document.getElementById('logo-file-input');
+    const previewImg = document.getElementById('logo-preview-image');
+    const previewText = document.getElementById('logo-preview-text');
+
+    if (!input || !previewImg || !previewText) return;
+
+    input.addEventListener('change', () => {
+        const file = input.files && input.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            previewImg.src = event.target?.result;
+            previewImg.style.display = 'block';
+            previewText.style.display = 'none';
+        };
+        reader.readAsDataURL(file);
+    });
+})();
+</script>
+}

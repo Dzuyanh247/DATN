@@ -1,0 +1,37 @@
+using Datn.PcStore.Data;
+using Datn.PcStore.ViewModels;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+
+namespace Datn.PcStore.Controllers;
+
+public class HomeController : Controller
+{
+    private readonly ApplicationDbContext _db;
+    public HomeController(ApplicationDbContext db) => _db = db;
+
+    public async Task<IActionResult> Index()
+    {
+        var categories = await _db.Categories.OrderBy(c => c.Name).ToListAsync();
+        var vm = new HomeIndexVm
+        {
+            Categories = categories,
+            Banners = await _db.Banners.Where(b => b.IsActive).OrderBy(b => b.SortOrder).ToListAsync(),
+            FeaturedProducts = await _db.Products.Include(p => p.ProductImages).OrderByDescending(p => p.CreatedAt).Take(8).ToListAsync(),
+            PromotionProducts = await _db.Products.Include(p => p.ProductImages).Where(p => p.DiscountPrice.HasValue || p.SalePrice.HasValue).OrderByDescending(p => p.CreatedAt).Take(8).ToListAsync(),
+            PcGamingProducts = await GetByCategoryNameAsync("PC Gaming"),
+            LaptopProducts = await GetByCategoryNameAsync("Laptop"),
+            MonitorProducts = await GetByCategoryNameAsync("Màn hình"),
+            ComponentProducts = await GetByCategoryNameAsync("Linh kiện")
+        };
+
+        ViewBag.Categories = categories;
+        return View(vm);
+    }
+
+    private async Task<List<Models.Product>> GetByCategoryNameAsync(string categoryName)
+    {
+        var categoryId = await _db.Categories.Where(c => c.Name == categoryName).Select(c => c.Id).FirstOrDefaultAsync();
+        return await _db.Products.Include(p => p.ProductImages).Where(p => p.CategoryId == categoryId).OrderByDescending(p => p.CreatedAt).Take(8).ToListAsync();
+    }
+}

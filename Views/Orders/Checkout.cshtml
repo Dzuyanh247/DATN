@@ -1,0 +1,9 @@
+@model CheckoutVm
+<h3>Đặt hàng (COD)</h3>
+<form method="post" class="card p-3">
+    <div asp-validation-summary="All" class="text-danger"></div>
+    <div class="mb-3"><label>Người nhận</label><input asp-for="ReceiverName" class="form-control" /></div>
+    <div class="mb-3"><label>SĐT</label><input asp-for="ReceiverPhone" class="form-control" /></div>
+    <div class="mb-3"><label>Địa chỉ</label><input asp-for="ShippingAddress" class="form-control" /></div>
+    <button class="btn btn-primary">Xác nhận đặt hàng</button>
+</form>
