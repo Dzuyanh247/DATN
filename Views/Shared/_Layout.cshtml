@@ -125,10 +125,9 @@ else
 <div class="container ttg-shell py-3">
     @if (TempData["Success"] != null || TempData["SuccessMessage"] != null)
     {
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            @(TempData["Success"] ?? TempData["SuccessMessage"])
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
+        <script>
+            window.__successToastMessage = @Html.Raw(System.Text.Json.JsonSerializer.Serialize((TempData["Success"] ?? TempData["SuccessMessage"])?.ToString()));
+        </script>
     }
 
     @if (TempData["ErrorMessage"] != null)
@@ -160,15 +159,20 @@ const toastEl=document.getElementById('globalToast');
 const toastMsg=document.getElementById('globalToastMessage');
 const toastInstance=toastEl?new bootstrap.Toast(toastEl,{delay:2500}):null;
 window.showToast=function(message,type){
-    if(!toastEl||!toastMsg||!toastInstance) return;
-    toastEl.classList.remove('bg-success','bg-danger','bg-warning');
-    toastEl.classList.add(type==='error'?'bg-danger':'bg-success');
+    if(!toastEl||!toastMsg||!toastInstance||!message) return;
+    const tone=(type||'success').toLowerCase();
+    toastEl.classList.remove('bg-success','bg-danger','bg-warning','bg-info');
+    if(tone==='danger'||tone==='error') toastEl.classList.add('bg-danger');
+    else if(tone==='warning') toastEl.classList.add('bg-warning');
+    else if(tone==='info') toastEl.classList.add('bg-info');
+    else toastEl.classList.add('bg-success');
     toastMsg.textContent=message;
     toastInstance.show();
 };
-window.showGlobalToast=function(message,isError){window.showToast(message,isError?'error':'success');};
+window.showGlobalToast=function(message,type){window.showToast(message,type||'success');};
 function u(c){const b=document.getElementById('cart-count-badge');if(!b)return;b.textContent=c;}
-document.querySelectorAll('form[action*="/Cart/Add"]').forEach(function(f){f.addEventListener('submit',async function(e){e.preventDefault();const d=new FormData(f);try{const r=await fetch(f.action,{method:'POST',headers:{'X-Requested-With':'XMLHttpRequest','Accept':'application/json'},body:d});const j=await r.json();if(!r.ok||!j.success){window.showGlobalToast(j.message||'Có lỗi khi thêm vào giỏ.',true);return;}window.showGlobalToast(j.message||'Đã thêm vào giỏ hàng thành công');u(j.cartCount??0);}catch{window.showGlobalToast('Không thể kết nối máy chủ.',true);}});});
+document.querySelectorAll('form[action*="/Cart/Add"]').forEach(function(f){f.addEventListener('submit',async function(e){e.preventDefault();const d=new FormData(f);try{const r=await fetch(f.action,{method:'POST',headers:{'X-Requested-With':'XMLHttpRequest','Accept':'application/json'},body:d});const j=await r.json();if(!r.ok||!j.success){window.showGlobalToast((j&&j.message)||'Có lỗi khi thêm vào giỏ.','danger');return;}window.showGlobalToast(j.message||'Đã thêm sản phẩm vào giỏ hàng!','success');u(j.cartCount??0);}catch{window.showGlobalToast('Không thể kết nối máy chủ.','danger');}});});
+if(window.__successToastMessage){window.showGlobalToast(window.__successToastMessage,'success');}
 })();
 </script>
 <script src="~/js/tawk-chat.js"></script>

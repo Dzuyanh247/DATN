@@ -10,7 +10,7 @@
         _ => status.ToString()
     };
 }
-<h3>Chi tiết đơn DH@Model.Id.ToString("D6")</h3>
+<h3>Chi tiết đơn @($"DH{Model.Id:D6}")</h3>
 <div class="card mb-3">
     <div class="card-body">
         <div><b>Trạng thái:</b> @StatusLabel(Model.Status)</div>
