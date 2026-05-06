@@ -164,7 +164,9 @@ public static class SeedData
             db.SiteSettings.Add(new SiteSetting
             {
                 SiteName = "KKSHOP",
-                LogoUrl = null
+                LogoUrl = null,
+                DealSectionBackgroundUrl = null,
+                HotPromotionBackgroundUrl = null
             });
             await db.SaveChangesAsync();
         }
