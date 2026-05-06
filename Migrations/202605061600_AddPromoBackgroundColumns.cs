@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace Datn.PcStore.Migrations
 {
-    public partial class AddPromoBackgroundSettings : Migration
+    public partial class AddPromoBackgroundColumns : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
