@@ -34,6 +34,8 @@ public class CheckoutRequestVm
     public string ProvinceName { get; set; } = string.Empty;
     public string WardCode { get; set; } = string.Empty;
     public string WardName { get; set; } = string.Empty;
+    public string? ManualProvince { get; set; }
+    public string? ManualWard { get; set; }
     public string AddressDetail { get; set; } = string.Empty;
     public string FullAddress { get; set; } = string.Empty;
     public string? Note { get; set; }
