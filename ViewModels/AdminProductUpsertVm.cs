@@ -1,6 +1,5 @@
 using System.ComponentModel.DataAnnotations;
 using Datn.PcStore.Models;
-using Microsoft.AspNetCore.Http;
 
 namespace Datn.PcStore.ViewModels;
 
@@ -33,8 +32,11 @@ public class AdminProductUpsertVm
 
     public bool IsActive { get; set; } = true;
 
-    // Chỉ upload khi admin chọn file mới; Edit không bắt buộc có ảnh mới.
-    public List<IFormFile> NewImages { get; set; } = new();
+    [Url(ErrorMessage = "URL thumbnail không hợp lệ")]
+    [MaxLength(1000)]
+    public string ThumbnailImageUrl { get; set; } = string.Empty;
+
+    public string ProductImageUrlsText { get; set; } = string.Empty;
 
     public List<int> RemoveImageIds { get; set; } = new();
 

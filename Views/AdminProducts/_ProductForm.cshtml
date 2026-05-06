@@ -4,7 +4,7 @@
     var orderedImages = Model.ExistingImages.OrderBy(x => x.SortOrder).ToList();
 }
 
-<form method="post" enctype="multipart/form-data" class="admin-product-form">
+<form method="post" class="admin-product-form">
     @Html.AntiForgeryToken()
     <input type="hidden" asp-for="Id" />
 
@@ -85,7 +85,7 @@
                         @foreach (var image in orderedImages)
                         {
                             <div class="apf-image-item" data-image-id="@image.Id">
-                                <img src="@Url.Content(image.ImageUrl)" alt="Ảnh sản phẩm" onerror="this.onerror=null;this.src='/images/placeholders/product-placeholder.png';" />
+                                <img src="@image.ImageUrl" alt="Ảnh sản phẩm" onerror="this.onerror=null;this.src='/images/placeholders/product-placeholder.png';" />
                                 <div class="apf-image-meta">
                                     <div class="d-flex justify-content-between align-items-center mb-2">
                                         <span class="badge text-bg-warning apf-primary-badge">Ảnh đại diện</span>
@@ -103,11 +103,15 @@
                     </div>
                 }
 
-                <label asp-for="NewImages" class="form-label">Thêm ảnh mới</label>
-                <input asp-for="NewImages" type="file" multiple class="form-control" accept=".jpg,.jpeg,.png,.webp" />
-                <div class="form-text">Dung lượng tối đa 5MB / ảnh. Chỉ chấp nhận JPG, JPEG, PNG, WEBP.</div>
-                <div class="form-text mt-2">Ảnh upload sẽ lưu trong <code>wwwroot/uploads</code>. Nếu muốn chia sẻ qua GitHub hoặc nộp USB, cần copy thư mục uploads hoặc dùng ảnh demo trong <code>wwwroot/images</code>.</div>
-                <span asp-validation-for="NewImages" class="text-danger"></span>
+                <label asp-for="ThumbnailImageUrl" class="form-label">Thumbnail URL</label>
+                <input asp-for="ThumbnailImageUrl" class="form-control" placeholder="https://..." />
+                <div class="form-text">Dán URL ảnh Cloudinary</div>
+                <span asp-validation-for="ThumbnailImageUrl" class="text-danger"></span>
+
+                <label asp-for="ProductImageUrlsText" class="form-label mt-3">Ảnh sản phẩm (nhiều URL)</label>
+                <textarea asp-for="ProductImageUrlsText" rows="4" class="form-control" placeholder="Mỗi dòng một URL, ví dụ: https://..."></textarea>
+                <div class="form-text">Dán URL ảnh Cloudinary</div>
+                <span asp-validation-for="ProductImageUrlsText" class="text-danger"></span>
 
                 <div id="existing-image-order-container"></div>
             </div>

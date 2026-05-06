@@ -6,20 +6,20 @@
 <div class="admin-banner-page">
     <h3 class="mb-3">Thêm banner mới</h3>
 
-    <form method="post" enctype="multipart/form-data" class="banner-form card p-3 p-lg-4">
+    <form method="post" class="banner-form card p-3 p-lg-4">
         @Html.AntiForgeryToken()
         <div asp-validation-summary="ModelOnly" class="text-danger"></div>
         <div class="row g-4">
             <div class="col-lg-7">
                 <div class="mb-3"><label class="form-label">Tên banner</label><input asp-for="Title" class="form-control" /><span asp-validation-for="Title" class="text-danger"></span></div>
-                <div class="mb-3"><label class="form-label">Chọn ảnh từ máy tính</label><input type="file" name="ImageFile" accept="image/*" class="form-control" data-banner-file /><span class="text-danger field-validation-error">@Html.ValidationMessage("ImageFile")</span></div>
+                <div class="mb-3"><label asp-for="ImageUrl" class="form-label">URL ảnh banner</label><input asp-for="ImageUrl" class="form-control" placeholder="https://..." data-banner-url /><div class="form-text">Dán URL ảnh Cloudinary</div><span asp-validation-for="ImageUrl" class="text-danger"></span></div>
                 <div class="mb-3"><label class="form-label">Link khi click</label><input asp-for="LinkUrl" class="form-control" placeholder="https://..." /></div>
                 <div class="row g-3">
                     <div class="col-md-6"><label class="form-label">Vị trí hiển thị</label><select asp-for="Position" class="form-select" data-banner-position><option value="MainBanner">MainBanner - Banner chính</option><option value="SubBanner">SubBanner - Banner phụ</option><option value="Other">Other - Banner khác</option></select></div>
                     <div class="col-md-6"><label class="form-label">Thứ tự hiển thị</label><input asp-for="SortOrder" class="form-control" /><span asp-validation-for="SortOrder" class="text-danger"></span></div>
                 </div>
                 <div class="form-check mt-3"><input asp-for="IsActive" class="form-check-input" /><label class="form-check-label" asp-for="IsActive">Đang hiển thị</label></div>
-                <div class="alert alert-info py-2 mt-3 mb-0">Ảnh upload sẽ lưu trong <code>wwwroot/uploads</code>. Nếu muốn chia sẻ qua GitHub hoặc nộp USB, cần copy thư mục uploads hoặc dùng ảnh demo trong <code>wwwroot/images</code>.</div>
+
             </div>
             <div class="col-lg-5">
                 <div class="banner-preview-wrap">

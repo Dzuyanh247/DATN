@@ -28,7 +28,7 @@
             <div class="row g-4 align-items-start">
                 <div class="col-lg-7">
                     <div class="product-gallery-main">
-                        <img id="main-product-image" src="@Url.Content(mainImage)" alt="@Model.Name" onerror="this.onerror=null;this.src='/images/no-image.png';" />
+                        <img id="main-product-image" src="@mainImage" alt="@Model.Name" onerror="this.onerror=null;this.src='/images/no-image.png';" />
                     </div>
 
                     @if (galleryImages.Any())
@@ -37,8 +37,8 @@
                             @for (var i = 0; i < galleryImages.Count; i++)
                             {
                                 var image = galleryImages[i];
-                                <button type="button" class="thumb-btn @(i == 0 ? "active" : string.Empty)" data-src="@Url.Content(image.ImageUrl)">
-                                    <img src="@Url.Content(image.ImageUrl)" alt="Thumbnail @i" onerror="this.onerror=null;this.src='/images/no-image.png';" />
+                                <button type="button" class="thumb-btn @(i == 0 ? "active" : string.Empty)" data-src="@image.ImageUrl">
+                                    <img src="@image.ImageUrl" alt="Thumbnail @i" onerror="this.onerror=null;this.src='/images/no-image.png';" />
                                 </button>
                             }
                         </div>
