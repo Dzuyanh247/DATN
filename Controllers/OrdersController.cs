@@ -16,7 +16,19 @@ public class OrdersController : Controller
 
     public OrdersController(ApplicationDbContext db, ICartService cartService) { _db = db; _cartService = cartService; }
 
-    [HttpPost]
+    [HttpGet("/Checkout")]
+    public IActionResult Checkout()
+    {
+        var vm = new CheckoutRequestVm();
+        if (User.Identity?.IsAuthenticated == true)
+        {
+            vm.CustomerName = User.FindFirstValue(ClaimTypes.Name) ?? string.Empty;
+        }
+
+        return View(vm);
+    }
+
+    [HttpPost("/Checkout")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Checkout(CheckoutRequestVm vm)
     {

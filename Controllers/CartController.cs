@@ -33,11 +33,11 @@ public class CartController : Controller
 
         if (!result.Ok)
         {
-            TempData["CartError"] = result.Error;
+            TempData["ErrorMessage"] = "Không thể thêm sản phẩm vào giỏ hàng";
         }
         else
         {
-            TempData["CartSuccess"] = "Đã thêm sản phẩm vào giỏ hàng";
+            TempData["SuccessMessage"] = "Đã thêm sản phẩm vào giỏ hàng";
         }
 
         var referer = Request.Headers.Referer.ToString();
