@@ -11,17 +11,11 @@ namespace Datn.PcStore.Controllers;
 [Route("Admin/Settings")]
 public class AdminSettingsController : Controller
 {
-    private static readonly HashSet<string> AllowedExtensions = new(StringComparer.OrdinalIgnoreCase) { ".jpg", ".jpeg", ".png", ".webp" };
-    private static readonly HashSet<string> AllowedContentTypes = new(StringComparer.OrdinalIgnoreCase) { "image/jpeg", "image/png", "image/webp" };
-    private const long MaxFileSize = 5 * 1024 * 1024;
-
     private readonly ApplicationDbContext _db;
-    private readonly IWebHostEnvironment _env;
 
-    public AdminSettingsController(ApplicationDbContext db, IWebHostEnvironment env)
+    public AdminSettingsController(ApplicationDbContext db)
     {
         _db = db;
-        _env = env;
     }
 
     [HttpGet("")]
@@ -37,51 +31,31 @@ public class AdminSettingsController : Controller
     {
         var settings = await GetOrCreateSettingsAsync();
         vm.SiteName = settings.SiteName;
-        vm.LogoUrl = settings.LogoUrl;
+        var logoUrl = vm.LogoUrl?.Trim();
 
-        if (vm.LogoFile is null || vm.LogoFile.Length == 0)
+        if (!string.IsNullOrWhiteSpace(logoUrl) &&
+            !Uri.TryCreate(logoUrl, UriKind.Absolute, out var parsedUri))
         {
-            vm.Message = "Vui lòng chọn file ảnh logo trước khi lưu.";
+            vm.LogoUrl = logoUrl;
+            vm.Message = "Logo URL không hợp lệ. Vui lòng dán URL tuyệt đối (https://...).";
             return View(vm);
         }
 
-        if (vm.LogoFile.Length > MaxFileSize)
+        if (!string.IsNullOrWhiteSpace(logoUrl) && parsedUri is not null &&
+            parsedUri.Scheme != Uri.UriSchemeHttp && parsedUri.Scheme != Uri.UriSchemeHttps)
         {
-            vm.Message = "File logo vượt quá 5MB. Vui lòng chọn ảnh nhỏ hơn.";
+            vm.LogoUrl = logoUrl;
+            vm.Message = "Logo URL chỉ hỗ trợ giao thức http/https.";
             return View(vm);
         }
 
-        var ext = Path.GetExtension(vm.LogoFile.FileName);
-        if (string.IsNullOrWhiteSpace(ext) || !AllowedExtensions.Contains(ext))
-        {
-            vm.Message = "Định dạng không hợp lệ. Chỉ chấp nhận: jpg, jpeg, png, webp.";
-            return View(vm);
-        }
-
-        if (!AllowedContentTypes.Contains(vm.LogoFile.ContentType))
-        {
-            vm.Message = "Content-Type không hợp lệ. Vui lòng chọn đúng ảnh JPG/PNG/WEBP.";
-            return View(vm);
-        }
-
-        var logoDirectory = Path.Combine(_env.WebRootPath, "uploads", "logo");
-        Directory.CreateDirectory(logoDirectory);
-
-        var uniqueFileName = $"{Guid.NewGuid():N}{ext.ToLowerInvariant()}";
-        var savePath = Path.Combine(logoDirectory, uniqueFileName);
-
-        await using (var stream = System.IO.File.Create(savePath))
-        {
-            await vm.LogoFile.CopyToAsync(stream);
-        }
-
-        settings.LogoUrl = $"/uploads/logo/{uniqueFileName}";
+        settings.LogoUrl = string.IsNullOrWhiteSpace(logoUrl) ? null : logoUrl;
         settings.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
 
         vm.LogoUrl = settings.LogoUrl;
         vm.IsSuccess = true;
-        vm.Message = "Đã lưu logo website thành công.";
+        vm.Message = "Đã lưu Logo URL thành công.";
         return View(vm);
     }
 

@@ -31,16 +31,16 @@
                 </div>
             </div>
 
-            <form method="post" enctype="multipart/form-data">
+            <form method="post">
                 @Html.AntiForgeryToken()
                 <div class="mb-3">
-                    <label class="form-label">Chọn logo mới</label>
-                    <input type="file" name="LogoFile" accept="image/jpeg,image/png,image/webp" class="form-control" id="logo-file-input" />
+                    <label asp-for="LogoUrl" class="form-label">Logo URL (Cloudinary)</label>
+                    <input asp-for="LogoUrl" class="form-control" id="logo-url-input" placeholder="https://res.cloudinary.com/..." />
+                    <span asp-validation-for="LogoUrl" class="text-danger"></span>
                 </div>
 
-                <p class="text-muted mb-3">Logo nên dùng ảnh ngang, nền trong suốt PNG/WebP, chiều cao khoảng 60px.</p>
-                <p class="small text-muted">Ảnh upload nằm trong wwwroot/uploads/logo. Khi copy sang máy khác hoặc nộp USB cần copy kèm thư mục uploads nếu muốn giữ logo đã upload.</p>
-                <button type="submit" class="btn btn-primary">Lưu logo</button>
+                <p class="text-muted mb-3">Dán URL ảnh động/tĩnh từ Cloudinary. Hệ thống sẽ lưu URL vào DB và dùng trực tiếp trên mọi máy sau khi pull code + DB.</p>
+                <button type="submit" class="btn btn-primary">Lưu Logo URL</button>
             </form>
         </div>
     </div>
@@ -49,23 +49,31 @@
 @section Scripts {
 <script>
 (() => {
-    const input = document.getElementById('logo-file-input');
+    const input = document.getElementById('logo-url-input');
     const previewImg = document.getElementById('logo-preview-image');
     const previewText = document.getElementById('logo-preview-text');
 
     if (!input || !previewImg || !previewText) return;
 
-    input.addEventListener('change', () => {
-        const file = input.files && input.files[0];
-        if (!file) return;
+    const updatePreview = () => {
+        const url = input.value?.trim();
+        if (!url) {
+            previewImg.removeAttribute('src');
+            previewImg.style.display = 'none';
+            previewText.style.display = 'inline-flex';
+            return;
+        }
 
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            previewImg.src = event.target?.result;
-            previewImg.style.display = 'block';
-            previewText.style.display = 'none';
-        };
-        reader.readAsDataURL(file);
+        previewImg.src = url;
+        previewImg.style.display = 'block';
+        previewText.style.display = 'none';
+    };
+
+    input.addEventListener('input', updatePreview);
+
+    previewImg.addEventListener('error', () => {
+        previewImg.style.display = 'none';
+        previewText.style.display = 'inline-flex';
     });
 })();
 </script>
