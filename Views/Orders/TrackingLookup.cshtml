@@ -1,0 +1,20 @@
+@{
+    ViewData["Title"] = "Tra cứu đơn hàng";
+}
+<h3>Tra cứu đơn hàng</h3>
+@if (TempData["TrackingError"] is string err && !string.IsNullOrWhiteSpace(err))
+{
+    <div class="alert alert-danger">@err</div>
+}
+<form method="post" asp-action="TrackingLookup" class="card card-body" style="max-width:520px;">
+    @Html.AntiForgeryToken()
+    <div class="mb-3">
+        <label class="form-label">Mã đơn hàng</label>
+        <input class="form-control" name="orderCode" placeholder="VD: DH000123" required />
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Số điện thoại</label>
+        <input class="form-control" name="phone" placeholder="VD: 09xxxxxxxx" required />
+    </div>
+    <button class="btn btn-primary">Tra cứu</button>
+</form>

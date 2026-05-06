@@ -1,10 +1,22 @@
 @model Order
 @{
-    ViewData["Title"] = $"Chi tiết đơn hàng #{Model.Id}";
+    ViewData["Title"] = $"Chi tiết đơn hàng DH{Model.Id:D6}";
+    string StatusLabel(OrderStatus status) => status switch
+    {
+        OrderStatus.Pending => "Chờ xác nhận",
+        OrderStatus.Processing => "Đã xác nhận",
+        OrderStatus.Delivering => "Đang giao hàng",
+        OrderStatus.Completed => "Đã giao hàng",
+        OrderStatus.Cancelled => "Đã hủy",
+        _ => status.ToString()
+    };
 }
-<h3>Chi tiết đơn hàng #@Model.Id</h3>
+<h3>Chi tiết đơn hàng DH@Model.Id.ToString("D6")</h3>
 <p><strong>Ngày đặt:</strong> @Model.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</p>
-<p><strong>Trạng thái:</strong> @Model.Status</p>
+<p><strong>Trạng thái:</strong> @StatusLabel(Model.Status)</p>
+<p><strong>Người nhận:</strong> @Model.ReceiverName - @Model.ReceiverPhone</p>
+<p><strong>Địa chỉ giao hàng:</strong> @Model.ShippingAddress</p>
+<p><strong>Phương thức thanh toán:</strong> @Model.PaymentMethod</p>
 <p><strong>Tổng tiền:</strong> @Model.TotalAmount.ToString("N0") đ</p>
 <table class="table table-bordered">
     <thead><tr><th>Sản phẩm</th><th>Đơn giá</th><th>Số lượng</th><th>Thành tiền</th></tr></thead>

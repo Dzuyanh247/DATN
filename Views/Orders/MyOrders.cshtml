@@ -1,4 +1,15 @@
 @model List<Order>
+@{
+    string StatusLabel(OrderStatus status) => status switch
+    {
+        OrderStatus.Pending => "Chờ xác nhận",
+        OrderStatus.Processing => "Đã xác nhận",
+        OrderStatus.Delivering => "Đang giao hàng",
+        OrderStatus.Completed => "Đã giao hàng",
+        OrderStatus.Cancelled => "Đã hủy",
+        _ => status.ToString()
+    };
+}
 <h3>Đơn hàng của tôi</h3>
 <table class="table table-bordered">
     <thead><tr><th>Mã</th><th>Ngày</th><th>Trạng thái</th><th>Tổng tiền</th><th></th></tr></thead>
@@ -6,11 +17,11 @@
     @foreach (var o in Model)
     {
         <tr>
-            <td>#@o.Id</td>
+            <td>DH@o.Id.ToString("D6")</td>
             <td>@o.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
-            <td>@o.Status</td>
+            <td>@StatusLabel(o.Status)</td>
             <td>@o.TotalAmount.ToString("N0") đ</td>
-            <td><a class="btn btn-sm btn-outline-primary" asp-action="Detail" asp-route-id="@o.Id">Xem chi tiết</a></td>
+            <td><a class="btn btn-sm btn-outline-primary" asp-action="Tracking" asp-route-id="@o.Id">Xem chi tiết</a></td>
         </tr>
     }
     </tbody>

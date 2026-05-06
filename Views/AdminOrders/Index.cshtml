@@ -3,9 +3,9 @@
     string Label(OrderStatus status) => status switch
     {
         OrderStatus.Pending => "Chờ xác nhận",
-        OrderStatus.Processing => "Đang xử lý",
-        OrderStatus.Delivering => "Đang giao",
-        OrderStatus.Completed => "Hoàn thành",
+        OrderStatus.Processing => "Đã xác nhận",
+        OrderStatus.Delivering => "Đang giao hàng",
+        OrderStatus.Completed => "Đã giao hàng",
         OrderStatus.Cancelled => "Đã hủy",
         _ => status.ToString()
     };
@@ -17,7 +17,7 @@
     @foreach (var o in Model)
     {
         <tr>
-            <td>#@o.Id</td><td>@o.ReceiverName</td><td>@o.TotalAmount.ToString("N0") đ</td><td>@Label(o.Status)</td>
+            <td>DH@o.Id.ToString("D6")</td><td>@o.ReceiverName</td><td>@o.TotalAmount.ToString("N0") đ</td><td>@Label(o.Status)</td>
             <td>
                 <form method="post" asp-action="UpdateStatus" class="d-flex gap-2">
                     <input type="hidden" name="id" value="@o.Id" />

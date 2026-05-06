@@ -1,12 +1,15 @@
 @model Order
 @{
     ViewData["Title"] = "Đặt hàng thành công";
+    var orderCode = $"DH{Model.Id:D6}";
 }
 <div class="card shadow-sm">
     <div class="card-body p-4">
         <h3 class="text-success mb-3">Đặt hàng thành công</h3>
-        <p>Cảm ơn bạn đã mua hàng. Mã đơn hàng của bạn là <strong>#@Model.Id</strong>.</p>
+        <p>Cảm ơn bạn đã mua hàng. Mã đơn hàng của bạn là <strong>@orderCode</strong>.</p>
         <ul class="list-unstyled">
+            <li><strong>Mã đơn hàng:</strong> @orderCode</li>
+            <li><strong>Ngày đặt:</strong> @Model.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</li>
             <li><strong>Người nhận:</strong> @Model.ReceiverName - @Model.ReceiverPhone</li>
             <li><strong>Địa chỉ:</strong> @Model.ShippingAddress</li>
             <li><strong>Tổng tiền:</strong> @Model.TotalAmount.ToString("N0") đ</li>
@@ -14,10 +17,7 @@
         </ul>
         <div class="d-flex gap-2">
             <a asp-controller="Products" asp-action="Index" class="btn btn-primary">Tiếp tục mua hàng</a>
-            @if (User.Identity?.IsAuthenticated == true)
-            {
-                <a asp-action="MyOrders" class="btn btn-outline-secondary">Xem đơn hàng của tôi</a>
-            }
+            <a asp-action="Tracking" asp-route-id="@Model.Id" class="btn btn-outline-secondary">Theo dõi đơn hàng</a>
         </div>
     </div>
 </div>
