@@ -32,8 +32,8 @@
     </div>
 }
 
-<partial name="_ProductSection" model='Tuple.Create("Sản phẩm nổi bật", Model.FeaturedProducts)' />
-<partial name="_ProductSection" model='Tuple.Create("Khuyến mãi hot", Model.PromotionProducts)' />
+<partial name="_ProductSection" model='Tuple.Create("Sản phẩm nổi bật", Model.FeaturedProducts, Model.SiteSettings?.DealSectionBackgroundUrl)' />
+<partial name="_ProductSection" model='Tuple.Create("Khuyến mãi hot", Model.PromotionProducts, Model.SiteSettings?.HotPromotionBackgroundUrl)' />
 <partial name="_ProductSection" model='Tuple.Create("PC GAMING", Model.PcGamingProducts)' />
 <partial name="_ProductSection" model='Tuple.Create("LAPTOP", Model.LaptopProducts)' />
 <partial name="_ProductSection" model='Tuple.Create("MÀN HÌNH", Model.MonitorProducts)' />

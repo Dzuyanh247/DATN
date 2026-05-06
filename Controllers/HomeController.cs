@@ -16,9 +16,10 @@ public class HomeController : Controller
         var vm = new HomeIndexVm
         {
             Categories = categories,
+            SiteSettings = await _db.SiteSettings.OrderBy(x => x.Id).FirstOrDefaultAsync(),
             Banners = await _db.Banners.Where(b => b.IsActive).OrderBy(b => b.SortOrder).ToListAsync(),
-            FeaturedProducts = await _db.Products.Include(p => p.ProductImages).OrderByDescending(p => p.CreatedAt).Take(8).ToListAsync(),
-            PromotionProducts = await _db.Products.Include(p => p.ProductImages).Where(p => p.DiscountPrice.HasValue || p.SalePrice.HasValue).OrderByDescending(p => p.CreatedAt).Take(8).ToListAsync(),
+            FeaturedProducts = await _db.Products.Include(p => p.ProductImages).Where(p => p.IsActive).OrderByDescending(p => p.CreatedAt).Take(6).ToListAsync(),
+            PromotionProducts = await _db.Products.Include(p => p.ProductImages).Where(p => p.IsActive && (p.DiscountPrice.HasValue || p.SalePrice.HasValue)).OrderByDescending(p => p.CreatedAt).Take(6).ToListAsync(),
             PcGamingProducts = await GetByCategoryNameAsync("PC Gaming"),
             LaptopProducts = await GetByCategoryNameAsync("Laptop"),
             MonitorProducts = await GetByCategoryNameAsync("Màn hình"),

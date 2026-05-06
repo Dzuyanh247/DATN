@@ -1,9 +1,12 @@
-@model Tuple<string, List<Product>>
+@model Tuple<string, List<Product>, string?>
 @{
     var sectionTitle = Model.Item1;
     var isDeal = sectionTitle == "Sản phẩm nổi bật" || sectionTitle == "Khuyến mãi hot";
+    var defaultBg = sectionTitle == "Sản phẩm nổi bật" ? "/images/defaults/deal-bg.jpg" : "/images/defaults/hot-promotion-bg.jpg";
+    var sectionBackground = string.IsNullOrWhiteSpace(Model.Item3) ? defaultBg : Model.Item3;
+    var sectionStyle = $"background-image:url('{sectionBackground}')";
 }
-<section class="ttg-section @(isDeal ? "ttg-deal-section" : string.Empty)">
+<section class="ttg-section @(isDeal ? "promo-section" : string.Empty)" style="@(isDeal ? sectionStyle : string.Empty)">
     <div class="ttg-section-head">
         <div class="d-flex align-items-center gap-2 flex-wrap">
             <h4 class="ttg-section-title">@(sectionTitle == "Sản phẩm nổi bật" ? "DEAL HOT MỖI NGÀY - KHUYẾN MÃI LIỀN TAY" : sectionTitle)</h4>
@@ -23,7 +26,7 @@
         </div>
         <a class="ttg-view-all" asp-controller="Products" asp-action="Index">Xem tất cả</a>
     </div>
-    <div class="ttg-products-grid">
+    <div class="ttg-products-grid @(isDeal ? "promo-product-grid" : string.Empty)">
         @foreach (var p in Model.Item2)
         {
             <partial name="_ProductCard" model="p" />

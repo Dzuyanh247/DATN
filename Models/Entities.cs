@@ -186,6 +186,8 @@ public class SiteSetting : BaseEntity
 {
     [MaxLength(120)] public string SiteName { get; set; } = "KKSHOP";
     [MaxLength(1000)] public string? LogoUrl { get; set; }
+    [MaxLength(1000)] public string? DealSectionBackgroundUrl { get; set; }
+    [MaxLength(1000)] public string? HotPromotionBackgroundUrl { get; set; }
 }
 
 public class Feedback : BaseEntity
