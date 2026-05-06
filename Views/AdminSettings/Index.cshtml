@@ -31,7 +31,7 @@
                 </div>
             </div>
 
-            <form method="post">
+            <form method="post" enctype="multipart/form-data">
                 @Html.AntiForgeryToken()
                 <div class="mb-3">
                     <label asp-for="LogoUrl" class="form-label">Logo URL (Cloudinary)</label>
@@ -40,7 +40,23 @@
                 </div>
 
                 <p class="text-muted mb-3">Dán URL ảnh động/tĩnh từ Cloudinary. Hệ thống sẽ lưu URL vào DB và dùng trực tiếp trên mọi máy sau khi pull code + DB.</p>
-                <button type="submit" class="btn btn-primary">Lưu Logo URL</button>
+
+                <hr />
+                <h2 class="h5 mb-3">Background section khuyến mãi</h2>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Deal Hot hiện tại</label>
+                        <img src="@(Model.DealSectionBackgroundUrl ?? "/images/defaults/deal-bg.jpg")" class="img-fluid rounded border" alt="Deal background" />
+                        <input type="file" name="dealBackgroundFile" class="form-control mt-2" accept="image/*" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Khuyến mãi Hot hiện tại</label>
+                        <img src="@(Model.HotPromotionBackgroundUrl ?? "/images/defaults/hot-promotion-bg.jpg")" class="img-fluid rounded border" alt="Hot promotion background" />
+                        <input type="file" name="hotPromotionBackgroundFile" class="form-control mt-2" accept="image/*" />
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Lưu cấu hình</button>
             </form>
         </div>
     </div>
