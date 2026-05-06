@@ -22,7 +22,7 @@ body { background: var(--ttg-bg) !important; color: var(--ttg-text); }
 .ttg-main-header { background: #fff; border-bottom: 1px solid var(--ttg-border); }
 .ttg-logo { font-size: 2rem; letter-spacing: .8px; color: var(--ttg-dark) !important; }
 
-.site-logo { display:inline-flex; align-items:center; text-decoration:none; gap:8px; min-height:56px; }
+.site-logo { display:inline-flex; align-items:center; justify-content:center; text-decoration:none; min-height:56px; }
 .site-logo img { max-height:56px; width:auto; object-fit:contain; display:block; }
 .site-logo-fallback { font-size:2rem; font-weight:700; letter-spacing:.8px; color:var(--ttg-dark); display:none; }
 @media (max-width: 768px) {
