@@ -179,5 +179,6 @@ if(window.__successToastMessage){window.showGlobalToast(window.__successToastMes
 })();
 </script>
 <script src="~/js/tawk-chat.js"></script>
+    @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>
