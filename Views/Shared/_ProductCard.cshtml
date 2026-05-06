@@ -5,11 +5,11 @@
     var image = Model.ProductImages.FirstOrDefault(x => x.IsPrimary)?.ImageUrl
         ?? Model.ProductImages.OrderBy(x => x.SortOrder).FirstOrDefault()?.ImageUrl
         ?? Model.ThumbnailImage
-        ?? "/images/placeholders/product-placeholder.png";
+        ?? "/images/banners/banner_main1.png";
 }
 <div class="ttg-product-card">
     <a asp-controller="Products" asp-action="Detail" asp-route-id="@Model.Id" class="ttg-product-image-wrap text-decoration-none">
-        <img src="@image" class="ttg-product-image" alt="@Model.Name" onerror="this.onerror=null;this.src='/images/placeholders/product-placeholder.png';" />
+        <img src="@image" class="ttg-product-image" alt="@Model.Name" onerror="this.onerror=null;this.src='/images/banners/banner_main1.png';" />
         @if (discount > 0)
         {
             <span class="ttg-discount-badge">-@discount%</span>
