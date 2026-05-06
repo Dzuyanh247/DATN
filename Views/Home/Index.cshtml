@@ -10,23 +10,20 @@
 }
 @if (mainBanners.Any())
 {
-    <div id="homeBanner" class="carousel slide ttg-main-banner" data-bs-ride="carousel">
-        <div class="carousel-indicators">
-            @for (var i = 0; i < mainBanners.Count; i++)
+    <div class="swiper ttg-hero-swiper ttg-main-banner">
+        <div class="swiper-wrapper">
+            @foreach (var b in mainBanners)
             {
-                <button type="button" data-bs-target="#homeBanner" data-bs-slide-to="@i" class="@(i == 0 ? "active" : "")"></button>
-            }
-        </div>
-        <div class="carousel-inner">
-            @for (var i = 0; i < mainBanners.Count; i++)
-            {
-                var b = mainBanners[i];
-                <div class="carousel-item @(i == 0 ? "active" : "")">
+                <div class="swiper-slide">
                     <img src="@b.ImageUrl" class="d-block w-100 banner-image" alt="@b.Title" onerror="this.onerror=null;this.src='/images/placeholders/banner-placeholder.png';">
                 </div>
             }
         </div>
+        <div class="swiper-button-prev"></div>
+        <div class="swiper-button-next"></div>
+        <div class="swiper-pagination"></div>
     </div>
+
     <div class="ttg-sub-banners">
         @foreach (var b in subBanners)
         {
@@ -42,3 +39,16 @@
 <partial name="_ProductSection" model='Tuple.Create("MÀN HÌNH", Model.MonitorProducts)' />
 <partial name="_ProductSection" model='Tuple.Create("LINH KIỆN", Model.ComponentProducts)' />
 </div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+    <script>
+        new Swiper('.ttg-hero-swiper', {
+            loop: true,
+            speed: 900,
+            autoplay: { delay: 3500, disableOnInteraction: false },
+            pagination: { el: '.swiper-pagination', clickable: true },
+            navigation: { nextEl: '.swiper-button-next', prevEl: '.swiper-button-prev' }
+        });
+    </script>
+}
