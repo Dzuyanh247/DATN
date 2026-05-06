@@ -40,7 +40,7 @@ public class Product : BaseEntity
     public decimal? DiscountPrice { get; set; }
     public decimal? SalePrice { get; set; }
     public int StockQuantity { get; set; }
-    [MaxLength(250)] public string ThumbnailImage { get; set; } = string.Empty;
+    [MaxLength(1000)] public string ThumbnailImage { get; set; } = string.Empty;
     [MaxLength(500)] public string ShortDescription { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public string DetailDescription { get; set; } = string.Empty;
@@ -62,8 +62,8 @@ public class Banner : BaseEntity
 {
     [Required(ErrorMessage = "Tên banner không được để trống")]
     [MaxLength(160)] public string Title { get; set; } = string.Empty;
-    [MaxLength(250)] public string ImageUrl { get; set; } = string.Empty;
-    [MaxLength(250)] public string LinkUrl { get; set; } = "/Products";
+    [MaxLength(1000)] public string ImageUrl { get; set; } = string.Empty;
+    [MaxLength(1000)] public string LinkUrl { get; set; } = "/Products";
     [MaxLength(500)] public string Description { get; set; } = string.Empty;
     [Required(ErrorMessage = "Vui lòng chọn vị trí hiển thị")]
     [MaxLength(50)] public string Position { get; set; } = "MainBanner";
@@ -134,7 +134,7 @@ public class ProductImage : BaseEntity
 {
     public int ProductId { get; set; }
     public Product? Product { get; set; }
-    [MaxLength(250)] public string ImageUrl { get; set; } = string.Empty;
+    [MaxLength(1000)] public string ImageUrl { get; set; } = string.Empty;
     public int SortOrder { get; set; }
     public bool IsPrimary { get; set; }
 }
