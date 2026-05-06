@@ -59,15 +59,15 @@
 else
 {
 <div class="ttg-topbar text-light py-2 small">
-    <div class="container ttg-shell d-flex justify-content-between align-items-center gap-2 flex-wrap">
-        <div class="d-flex gap-2 flex-wrap">
+    <div class="container ttg-shell ttg-topbar-inner">
+        <div class="ttg-topbar-left">
             <a href="#" class="ttg-pill"><i class="bi bi-geo-alt"></i> Hệ thống showroom</a>
             <a href="#" class="ttg-pill"><i class="bi bi-telephone"></i> Bán hàng trực tuyến</a>
             <a asp-controller="Articles" asp-action="Index" class="ttg-pill">Trang tin công nghệ</a>
             <a asp-controller="BuildPc" asp-action="Index" class="ttg-pill"><i class="bi bi-cpu"></i> Tư vấn build PC</a>
             <a href="#" class="ttg-pill">Phần mềm hay</a>
         </div>
-        <div class="d-flex gap-3">
+        <div class="ttg-topbar-right">
             @if (User.Identity?.IsAuthenticated == true)
             {
                 <a class="text-light text-decoration-none" asp-controller="Orders" asp-action="MyOrders">Đơn hàng</a>
@@ -86,7 +86,7 @@ else
     </div>
 </div>
 <header class="ttg-main-header shadow-sm sticky-top">
-    <div class="container ttg-shell py-3 d-flex flex-wrap justify-content-between align-items-center gap-3">
+    <div class="container ttg-shell ttg-main-header-row">
         <a asp-controller="Home" asp-action="Index" class="site-logo" aria-label="KKSHOP">
             @if (!string.IsNullOrWhiteSpace(siteLogoUrl))
             {
@@ -97,23 +97,23 @@ else
                      decoding="async" />
             }
         </a>
-        <form class="ttg-search flex-grow-1" asp-controller="Products" asp-action="Index" method="get">
+        <form class="ttg-search" asp-controller="Products" asp-action="Index" method="get">
             <div class="input-group">
                 <select class="form-select" style="max-width:180px"><option>Tất cả danh mục</option></select>
                 <input class="form-control" name="Keyword" placeholder="Tìm kiếm sản phẩm..." />
                 <button class="btn text-white" type="submit"><i class="bi bi-search"></i></button>
             </div>
         </form>
-        <div class="d-flex gap-2 align-items-center flex-wrap">
+        <div class="ttg-header-actions">
             <a class="ttg-cta d-inline-flex align-items-center gap-2" href="tel:19006868"><span class="icon"><i class="bi bi-telephone"></i></span><span>Hotline<br><b>1900 6868</b></span></a>
             <a class="ttg-cta d-inline-flex align-items-center gap-2" asp-controller="BuildPc" asp-action="Index"><span class="icon"><i class="bi bi-tools"></i></span><span>Xây dựng<br><b>Cấu hình PC</b></span></a>
             <a class="ttg-cta d-inline-flex align-items-center gap-2 position-relative" asp-controller="Cart" asp-action="Index"><span class="icon"><i class="bi bi-cart3"></i></span><span>Giỏ hàng</span><span id="cart-count-badge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill text-bg-danger">@await Component.InvokeAsync("CartCount")</span></a>
         </div>
     </div>
     <div class="ttg-cat-nav-wrap">
-        <div class="container ttg-shell py-2 d-flex align-items-center gap-3 flex-wrap">
+        <div class="container ttg-shell ttg-cat-row">
             <button class="ttg-cat-btn" type="button"><i class="bi bi-list"></i> DANH MỤC SẢN PHẨM</button>
-            <div class="ttg-cat-nav">
+            <div class="ttg-cat-nav" aria-label="Danh mục nổi bật">
                 <a class="ttg-cat-link" asp-controller="Products" asp-action="Index"><i class="bi bi-pc-display"></i>PC Gaming</a>
                 <a class="ttg-cat-link" asp-controller="Products" asp-action="Index"><i class="bi bi-cpu"></i>Workstation</a>
                 <a class="ttg-cat-link" asp-controller="Products" asp-action="Index"><i class="bi bi-gpu-card"></i>AMD Gaming</a>
