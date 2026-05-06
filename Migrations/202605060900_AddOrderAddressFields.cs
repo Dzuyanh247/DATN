@@ -8,47 +8,12 @@ public partial class AddOrderAddressFields : Migration
 {
     protected override void Up(MigrationBuilder migrationBuilder)
     {
-        migrationBuilder.AddColumn<string>(
-            name: "AddressDetail",
-            table: "Orders",
-            type: "nvarchar(250)",
-            maxLength: 250,
-            nullable: true);
-
-        migrationBuilder.AddColumn<string>(
-            name: "FullAddress",
-            table: "Orders",
-            type: "nvarchar(250)",
-            maxLength: 250,
-            nullable: true);
-
-        migrationBuilder.AddColumn<string>(
-            name: "ProvinceCode",
-            table: "Orders",
-            type: "nvarchar(20)",
-            maxLength: 20,
-            nullable: true);
-
-        migrationBuilder.AddColumn<string>(
-            name: "ProvinceName",
-            table: "Orders",
-            type: "nvarchar(100)",
-            maxLength: 100,
-            nullable: true);
-
-        migrationBuilder.AddColumn<string>(
-            name: "WardCode",
-            table: "Orders",
-            type: "nvarchar(20)",
-            maxLength: 20,
-            nullable: true);
-
-        migrationBuilder.AddColumn<string>(
-            name: "WardName",
-            table: "Orders",
-            type: "nvarchar(100)",
-            maxLength: 100,
-            nullable: true);
+        migrationBuilder.Sql("IF COL_LENGTH('Orders', 'AddressDetail') IS NULL ALTER TABLE Orders ADD AddressDetail nvarchar(250) NULL");
+        migrationBuilder.Sql("IF COL_LENGTH('Orders', 'FullAddress') IS NULL ALTER TABLE Orders ADD FullAddress nvarchar(250) NULL");
+        migrationBuilder.Sql("IF COL_LENGTH('Orders', 'ProvinceCode') IS NULL ALTER TABLE Orders ADD ProvinceCode nvarchar(20) NULL");
+        migrationBuilder.Sql("IF COL_LENGTH('Orders', 'ProvinceName') IS NULL ALTER TABLE Orders ADD ProvinceName nvarchar(100) NULL");
+        migrationBuilder.Sql("IF COL_LENGTH('Orders', 'WardCode') IS NULL ALTER TABLE Orders ADD WardCode nvarchar(20) NULL");
+        migrationBuilder.Sql("IF COL_LENGTH('Orders', 'WardName') IS NULL ALTER TABLE Orders ADD WardName nvarchar(100) NULL");
     }
 
     protected override void Down(MigrationBuilder migrationBuilder)
