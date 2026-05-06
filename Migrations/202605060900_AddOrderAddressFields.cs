@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace Datn.PcStore.Migrations;
 
-public partial class AddOrderAddressFields : Migration
+public partial class AddOrderAddressFields_202605060900 : Migration
 {
     protected override void Up(MigrationBuilder migrationBuilder)
     {
