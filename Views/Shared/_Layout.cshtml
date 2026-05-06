@@ -84,20 +84,14 @@ else
 </div>
 <header class="ttg-main-header shadow-sm sticky-top">
     <div class="container ttg-shell py-3 d-flex flex-wrap justify-content-between align-items-center gap-3">
-        <a asp-controller="Home" asp-action="Index" class="site-logo">
+        <a asp-controller="Home" asp-action="Index" class="site-logo" aria-label="KKSHOP">
             @if (!string.IsNullOrWhiteSpace(siteLogoUrl))
             {
                 <img src="@siteLogoUrl"
                      class="site-logo-image"
                      alt="KKSHOP"
                      loading="eager"
-                     decoding="async"
-                     onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex';" />
-                <span class="site-logo-text site-logo-text-fallback">KKSHOP</span>
-            }
-            else
-            {
-                <span class="site-logo-text">KKSHOP</span>
+                     decoding="async" />
             }
         </a>
         <form class="ttg-search flex-grow-1" asp-controller="Products" asp-action="Index" method="get">
