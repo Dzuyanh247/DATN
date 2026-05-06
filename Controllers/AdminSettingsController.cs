@@ -2,7 +2,6 @@ using Datn.PcStore.Data;
 using Datn.PcStore.Models;
 using Datn.PcStore.ViewModels;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Data.SqlClient;
@@ -14,12 +13,9 @@ namespace Datn.PcStore.Controllers;
 public class AdminSettingsController : Controller
 {
     private readonly ApplicationDbContext _db;
-    private readonly IWebHostEnvironment _env;
-
-    public AdminSettingsController(ApplicationDbContext db, IWebHostEnvironment env)
+    public AdminSettingsController(ApplicationDbContext db)
     {
         _db = db;
-        _env = env;
     }
 
     [HttpGet("")]
@@ -31,7 +27,7 @@ public class AdminSettingsController : Controller
 
     [HttpPost("")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Index(AdminSiteSettingsVm vm, IFormFile? dealBackgroundFile, IFormFile? hotPromotionBackgroundFile)
+    public async Task<IActionResult> Index(AdminSiteSettingsVm vm)
     {
         var settings = await GetOrCreateSettingsAsync();
         vm.SiteName = settings.SiteName;
@@ -54,16 +50,15 @@ public class AdminSettingsController : Controller
             return View(vm);
         }
 
-        settings.LogoUrl = string.IsNullOrWhiteSpace(logoUrl) ? null : logoUrl;
-        if (dealBackgroundFile is not null && dealBackgroundFile.Length > 0)
-        {
-            settings.DealSectionBackgroundUrl = await SaveSettingsImageAsync(dealBackgroundFile, "deal");
-        }
+        var dealUrl = vm.DealSectionBackgroundUrl?.Trim();
+        var hotUrl = vm.HotPromotionBackgroundUrl?.Trim();
 
-        if (hotPromotionBackgroundFile is not null && hotPromotionBackgroundFile.Length > 0)
-        {
-            settings.HotPromotionBackgroundUrl = await SaveSettingsImageAsync(hotPromotionBackgroundFile, "hotpromotion");
-        }
+        if (!TryValidateOptionalHttpUrl(dealUrl, out var dealErr)) { vm.Message = dealErr; return View(vm); }
+        if (!TryValidateOptionalHttpUrl(hotUrl, out var hotErr)) { vm.Message = hotErr; return View(vm); }
+
+        settings.LogoUrl = string.IsNullOrWhiteSpace(logoUrl) ? null : logoUrl;
+        settings.DealSectionBackgroundUrl = string.IsNullOrWhiteSpace(dealUrl) ? null : dealUrl;
+        settings.HotPromotionBackgroundUrl = string.IsNullOrWhiteSpace(hotUrl) ? null : hotUrl;
 
         settings.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
@@ -127,15 +122,16 @@ IF COL_LENGTH('dbo.SiteSettings', 'HotPromotionBackgroundUrl') IS NULL
         }
     }
 
-    private async Task<string> SaveSettingsImageAsync(IFormFile file, string prefix)
+    private static bool TryValidateOptionalHttpUrl(string? value, out string? error)
     {
-        var ext = Path.GetExtension(file.FileName);
-        var fileName = $"{prefix}-bg-{DateTime.UtcNow:yyyyMMddHHmmssfff}{ext}";
-        var folder = Path.Combine(_env.WebRootPath, "uploads", "settings");
-        Directory.CreateDirectory(folder);
-        var fullPath = Path.Combine(folder, fileName);
-        await using var stream = System.IO.File.Create(fullPath);
-        await file.CopyToAsync(stream);
-        return $"/uploads/settings/{fileName}";
+        error = null;
+        if (string.IsNullOrWhiteSpace(value)) return true;
+        if (!Uri.TryCreate(value, UriKind.Absolute, out var parsed) ||
+            (parsed.Scheme != Uri.UriSchemeHttp && parsed.Scheme != Uri.UriSchemeHttps))
+        {
+            error = "URL ảnh không hợp lệ. Vui lòng dán URL tuyệt đối (http/https).";
+            return false;
+        }
+        return true;
     }
 }

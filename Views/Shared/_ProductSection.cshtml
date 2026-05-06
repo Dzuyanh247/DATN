@@ -3,7 +3,7 @@
     var sectionTitle = Model.Item1;
     var isDeal = sectionTitle == "Sản phẩm nổi bật" || sectionTitle == "Khuyến mãi hot";
     var defaultBg = sectionTitle == "Sản phẩm nổi bật" ? "/images/defaults/deal-bg.jpg" : "/images/defaults/hot-promotion-bg.jpg";
-    var sectionBackground = string.IsNullOrWhiteSpace(Model.Item3) ? defaultBg : Model.Item3;
+    var sectionBackground = ImageUrlHelper.ResolveImageUrl(Model.Item3, defaultBg);
     var sectionStyle = $"background-image:url('{sectionBackground}')";
 }
 <section class="ttg-section @(isDeal ? "promo-section" : string.Empty)" style="@(isDeal ? sectionStyle : string.Empty)">

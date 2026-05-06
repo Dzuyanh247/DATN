@@ -23,7 +23,7 @@
     <tbody>
     @foreach (var d in Model.Details)
     {
-        var img = string.IsNullOrWhiteSpace(d.ProductImage) ? "/images/placeholders/product-placeholder.png" : (d.ProductImage.StartsWith("/") ? d.ProductImage : $"/uploads/products/{d.ProductImage}");
+        var img = ImageUrlHelper.ResolveImageUrl(d.ProductImage, "/images/placeholders/product-placeholder.png");
         <tr>
             <td><img src="@img" style="width:56px;height:56px;object-fit:cover;" class="me-2" onerror="this.onerror=null;this.src='/images/placeholders/product-placeholder.png';"/>@d.ProductName</td>
             <td>@d.UnitPrice.ToString("N0") đ</td>

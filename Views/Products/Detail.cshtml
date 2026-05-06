@@ -2,9 +2,8 @@
 @{
     var suggestions = ViewBag.UpgradeSuggestions as List<Product> ?? new();
     var galleryImages = Model.ProductImages.OrderBy(x => x.SortOrder).ToList();
-    var mainImage = galleryImages.FirstOrDefault()?.ImageUrl
-        ?? Model.ThumbnailImage
-        ?? "/images/no-image.png";
+    var mainImage = ImageUrlHelper.ResolveImageUrl(galleryImages.FirstOrDefault()?.ImageUrl
+        ?? Model.ThumbnailImage, "/images/no-image.png");
     var finalPrice = (Model.DiscountPrice ?? Model.SalePrice) ?? Model.Price;
     var savings = Model.Price > finalPrice ? Model.Price - finalPrice : 0;
     var inStock = Model.StockQuantity > 0;
@@ -37,8 +36,8 @@
                             @for (var i = 0; i < galleryImages.Count; i++)
                             {
                                 var image = galleryImages[i];
-                                <button type="button" class="thumb-btn @(i == 0 ? "active" : string.Empty)" data-src="@image.ImageUrl">
-                                    <img src="@image.ImageUrl" alt="Thumbnail @i" onerror="this.onerror=null;this.src='/images/no-image.png';" />
+                                <button type="button" class="thumb-btn @(i == 0 ? "active" : string.Empty)" data-src="@ImageUrlHelper.ResolveImageUrl(image.ImageUrl, "/images/no-image.png")">
+                                    <img src="@ImageUrlHelper.ResolveImageUrl(image.ImageUrl, "/images/no-image.png")" alt="Thumbnail @i" onerror="this.onerror=null;this.src='/images/no-image.png';" />
                                 </button>
                             }
                         </div>

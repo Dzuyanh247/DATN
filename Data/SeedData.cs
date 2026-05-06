@@ -54,7 +54,7 @@ public static class SeedData
                 {
                     Title = "Flash Sale Gaming Gear",
                     Description = "Giảm sâu dàn PC gaming, số lượng có hạn",
-                    ImageUrl = "/images/banners/home-main-banner.jpg",
+                    ImageUrl = "https://res.cloudinary.com/demo/image/upload/v1312461204/sample.jpg",
                     LinkUrl = "/Products",
                     SortOrder = 1,
                     IsActive = true,
@@ -64,7 +64,7 @@ public static class SeedData
                 {
                     Title = "Laptop cho sinh viên",
                     Description = "Nhiều lựa chọn từ học tập đến thiết kế",
-                    ImageUrl = "/images/banners/home-sub-1.jpg",
+                    ImageUrl = "https://res.cloudinary.com/demo/image/upload/v1312461204/flower.jpg",
                     LinkUrl = $"/Products?CategoryId={laptopCategoryId}",
                     SortOrder = 2,
                     IsActive = true,
@@ -74,7 +74,7 @@ public static class SeedData
                 {
                     Title = "Góc học tập hiệu quả",
                     Description = "Màn hình và phụ kiện cho học tập",
-                    ImageUrl = "/images/banners/home-sub-2.jpg",
+                    ImageUrl = "https://res.cloudinary.com/demo/image/upload/v1312461204/animals.jpg",
                     LinkUrl = "/Products",
                     SortOrder = 3,
                     IsActive = true,
@@ -84,7 +84,7 @@ public static class SeedData
                 {
                     Title = "Linh kiện nâng cấp",
                     Description = "SSD, RAM, tản nhiệt chính hãng",
-                    ImageUrl = "/images/banners/home-sub-3.jpg",
+                    ImageUrl = "https://res.cloudinary.com/demo/image/upload/v1312461204/couple.jpg",
                     LinkUrl = "/Products",
                     SortOrder = 4,
                     IsActive = true,
@@ -112,7 +112,7 @@ public static class SeedData
                     SalePrice =23990000,
                     StockQuantity = 5,
                     CategoryId = pcCategoryId,
-                    ThumbnailImage = "/images/products/product-1.jpg",
+                    ThumbnailImage = "https://res.cloudinary.com/demo/image/upload/v1312461204/sample.jpg",
                     ShortDescription = "PC gaming tầm trung, chiến game 2K.",
                     Description = "Cấu hình gồm i5 + RTX 4060.",
                     DetailDescription = "Cấu hình gồm i5 + RTX 4060.",
@@ -124,8 +124,8 @@ public static class SeedData
                     IsActive = true,
                     ProductImages = new List<ProductImage>
                     {
-                        new() { ImageUrl = "/images/products/product-1.jpg", SortOrder = 1, IsPrimary = true },
-                        new() { ImageUrl = "/images/products/product-2.jpg", SortOrder = 2, IsPrimary = false }
+                        new() { ImageUrl = "https://res.cloudinary.com/demo/image/upload/v1312461204/sample.jpg", SortOrder = 1, IsPrimary = true },
+                        new() { ImageUrl = "https://res.cloudinary.com/demo/image/upload/v1312461204/flower.jpg", SortOrder = 2, IsPrimary = false }
                     }
                 },
                 new()
@@ -137,7 +137,7 @@ public static class SeedData
                     Price = 18990000,
                     StockQuantity = 8,
                     CategoryId = laptopCategoryId,
-                    ThumbnailImage = "/images/products/product-3.jpg",
+                    ThumbnailImage = "https://res.cloudinary.com/demo/image/upload/v1312461204/animals.jpg",
                     ShortDescription = "Laptop văn phòng mỏng nhẹ.",
                     Description = "Phù hợp sinh viên và dân công sở.",
                     DetailDescription = "Phù hợp sinh viên và dân công sở.",
@@ -149,8 +149,8 @@ public static class SeedData
                     IsActive = true,
                     ProductImages = new List<ProductImage>
                     {
-                        new() { ImageUrl = "/images/products/product-3.jpg", SortOrder = 1, IsPrimary = true },
-                        new() { ImageUrl = "/images/products/product-4.jpg", SortOrder = 2, IsPrimary = false }
+                        new() { ImageUrl = "https://res.cloudinary.com/demo/image/upload/v1312461204/animals.jpg", SortOrder = 1, IsPrimary = true },
+                        new() { ImageUrl = "https://res.cloudinary.com/demo/image/upload/v1312461204/couple.jpg", SortOrder = 2, IsPrimary = false }
                     }
                 }
             };

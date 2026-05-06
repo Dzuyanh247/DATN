@@ -43,11 +43,11 @@
     <tbody>
     @foreach (var p in Model)
     {
-        var thumb = p.ProductImages.FirstOrDefault(x => x.IsPrimary)?.ImageUrl
+        var thumb = ImageUrlHelper.ResolveImageUrl(p.ProductImages.FirstOrDefault(x => x.IsPrimary)?.ImageUrl
                     ?? p.ProductImages.OrderBy(x => x.SortOrder).FirstOrDefault()?.ImageUrl
-                    ?? p.ThumbnailImage;
+                    ?? p.ThumbnailImage, "/images/no-image.png");
         <tr>
-            <td><img src="@Url.Content(thumb)" style="width:72px; height:72px; object-fit:cover;" class="rounded" onerror="this.onerror=null;this.src='/images/no-image.png';" /></td>
+            <td><img src="@thumb" style="width:72px; height:72px; object-fit:cover;" class="rounded" onerror="this.onerror=null;this.src='/images/no-image.png';" /></td>
             <td>@p.Name</td>
             <td>@p.Category?.Name</td>
             <td>@((p.DiscountPrice ?? p.SalePrice ?? p.Price).ToString("N0")) đ</td>
