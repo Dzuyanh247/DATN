@@ -1,9 +1,61 @@
-@model CheckoutVm
-<h3>Đặt hàng (COD)</h3>
-<form method="post" class="card p-3">
+@model Datn.PcStore.ViewModels.CheckoutRequestVm
+@{
+    ViewData["Title"] = "Checkout";
+}
+
+<h3 class="mb-3">Thông tin đặt hàng</h3>
+<form method="post" action="/Checkout" class="card p-3" id="checkoutForm">
+    @Html.AntiForgeryToken()
     <div asp-validation-summary="All" class="text-danger"></div>
-    <div class="mb-3"><label>Người nhận</label><input asp-for="ReceiverName" class="form-control" /></div>
-    <div class="mb-3"><label>SĐT</label><input asp-for="ReceiverPhone" class="form-control" /></div>
-    <div class="mb-3"><label>Địa chỉ</label><input asp-for="ShippingAddress" class="form-control" /></div>
-    <button class="btn btn-primary">Xác nhận đặt hàng</button>
+
+    <div class="mb-3"><label class="form-label">Họ tên*</label><input class="form-control" name="CustomerName" value="@Model.CustomerName" required /></div>
+    <div class="mb-3"><label class="form-label">Số điện thoại*</label><input class="form-control" name="CustomerPhone" value="@Model.CustomerPhone" required /></div>
+    <div class="mb-3"><label class="form-label">Email</label><input class="form-control" name="CustomerEmail" value="@Model.CustomerEmail" /></div>
+
+    <input type="hidden" name="CustomerAddress" id="customerAddress" />
+    <input type="hidden" name="FullAddress" id="fullAddress" />
+    <input type="hidden" name="ProvinceCode" id="provinceCode" />
+    <input type="hidden" name="ProvinceName" id="provinceName" />
+    <input type="hidden" name="WardCode" id="wardCode" />
+    <input type="hidden" name="WardName" id="wardName" />
+
+    <div class="mb-3">
+        <label class="form-label">Tỉnh/Thành phố*</label>
+        <select class="form-select" id="provinceSelect" required>
+            <option value="">Chọn Tỉnh/Thành phố</option>
+        </select>
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Phường/Xã*</label>
+        <select class="form-select" id="wardSelect" required disabled>
+            <option value="">Chọn Phường/Xã</option>
+        </select>
+    </div>
+    <div class="mb-3"><label class="form-label">Địa chỉ nhận hàng*</label><input class="form-control" id="addressDetail" name="AddressDetail" required /></div>
+    <div class="mb-3"><label class="form-label">Ghi chú</label><textarea class="form-control" rows="3" name="Note">@Model.Note</textarea></div>
+    <small class="text-danger d-none" id="addressError">Không tải được danh sách địa chỉ hoặc thiếu thông tin địa chỉ.</small>
+
+    <button class="btn btn-danger mt-3">Đặt hàng</button>
 </form>
+
+<script>
+const provinceSelect = document.getElementById('provinceSelect');
+const wardSelect = document.getElementById('wardSelect');
+const addressDetail = document.getElementById('addressDetail');
+const addressError = document.getElementById('addressError');
+const provinceCodeInput = document.getElementById('provinceCode');
+const provinceNameInput = document.getElementById('provinceName');
+const wardCodeInput = document.getElementById('wardCode');
+const wardNameInput = document.getElementById('wardName');
+const fullAddressInput = document.getElementById('fullAddress');
+const customerAddressInput = document.getElementById('customerAddress');
+const checkoutForm = document.getElementById('checkoutForm');
+const API_BASE = 'https://provinces.open-api.vn/api/v2';
+function setSelectLoading(selectEl, label){selectEl.innerHTML=`<option value="">${label}</option>`;selectEl.disabled=true;}
+function showAddressError(show){addressError.classList.toggle('d-none',!show);}
+async function loadProvinces(){try{showAddressError(false);setSelectLoading(provinceSelect,'Đang tải Tỉnh/Thành phố...');const response=await fetch(`${API_BASE}/p`);if(!response.ok) throw new Error();const provinces=await response.json();provinceSelect.innerHTML='<option value="">Chọn Tỉnh/Thành phố</option>';provinces.forEach((p)=>provinceSelect.insertAdjacentHTML('beforeend',`<option value="${p.code}" data-name="${p.name}">${p.name}</option>`));provinceSelect.disabled=false;}catch{showAddressError(true);setSelectLoading(provinceSelect,'Không tải được Tỉnh/Thành phố');}}
+provinceSelect.addEventListener('change',async function(){const o=provinceSelect.options[provinceSelect.selectedIndex];provinceCodeInput.value=o.value||'';provinceNameInput.value=o.dataset.name||'';wardCodeInput.value='';wardNameInput.value='';wardSelect.innerHTML='<option value="">Chọn Phường/Xã</option>';if(!provinceCodeInput.value){wardSelect.disabled=true;return;}try{setSelectLoading(wardSelect,'Đang tải Phường/Xã...');const response=await fetch(`${API_BASE}/p/${provinceCodeInput.value}?depth=2`);if(!response.ok) throw new Error();const provinceDetail=await response.json();wardSelect.innerHTML='<option value="">Chọn Phường/Xã</option>';(provinceDetail.wards??[]).forEach((w)=>wardSelect.insertAdjacentHTML('beforeend',`<option value="${w.code}" data-name="${w.name}">${w.name}</option>`));wardSelect.disabled=false;}catch{showAddressError(true);wardSelect.disabled=true;}});
+wardSelect.addEventListener('change',function(){const o=wardSelect.options[wardSelect.selectedIndex];wardCodeInput.value=o.value||'';wardNameInput.value=o.dataset.name||'';});
+checkoutForm.addEventListener('submit',function(e){if(!provinceCodeInput.value||!wardCodeInput.value||!addressDetail.value.trim()){e.preventDefault();showAddressError(true);return;}const fullAddress=`${addressDetail.value.trim()}, ${wardNameInput.value}, ${provinceNameInput.value}`;fullAddressInput.value=fullAddress;customerAddressInput.value=fullAddress;});
+loadProvinces();
+</script>

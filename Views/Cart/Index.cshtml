@@ -51,62 +51,13 @@
 
     @if (Model.Items.Any())
     {
-        <div class="cart-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-            <div class="box">
-                <div class="box-header">THÔNG TIN NGƯỜI MUA</div>
-                <div class="p-3">
-                    <form method="post" asp-controller="Orders" asp-action="Checkout" id="checkoutForm">
-                        <div class="row mb-2"><label class="col-3 col-form-label">Họ tên*</label><div class="col-9"><input class="form-control" name="CustomerName" required /></div></div>
-                        <div class="row mb-2"><label class="col-3 col-form-label">SĐT*</label><div class="col-9"><input class="form-control" name="CustomerPhone" required /></div></div>
-                        <div class="row mb-2"><label class="col-3 col-form-label">Email*</label><div class="col-9"><input class="form-control" name="CustomerEmail" /></div></div>
-                        <input type="hidden" name="PaymentMethod" value="COD" />
-                        @Html.AntiForgeryToken()
-                        <input type="hidden" name="CustomerAddress" id="customerAddress" />
-                        <input type="hidden" name="FullAddress" id="fullAddress" />
-                        <input type="hidden" name="ProvinceCode" id="provinceCode" />
-                        <input type="hidden" name="ProvinceName" id="provinceName" />
-                        <input type="hidden" name="WardCode" id="wardCode" />
-                        <input type="hidden" name="WardName" id="wardName" />
-                        <div class="row mb-2">
-                            <label class="col-3 col-form-label">Tỉnh/Thành phố*</label>
-                            <div class="col-9">
-                                <select class="form-select" id="provinceSelect" required>
-                                    <option value="">Chọn Tỉnh/Thành phố</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="row mb-2">
-                            <label class="col-3 col-form-label">Phường/Xã*</label>
-                            <div class="col-9">
-                                <select class="form-select" id="wardSelect" required disabled>
-                                    <option value="">Chọn Phường/Xã</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="row mb-2"><label class="col-3 col-form-label">Địa chỉ cụ thể*</label><div class="col-9"><input class="form-control" id="addressDetail" name="AddressDetail" required /></div></div>
-                        <div class="row mb-2">
-                            <div class="col-3"></div>
-                            <div class="col-9"><small class="text-danger d-none" id="addressError">Không tải được danh sách địa chỉ, vui lòng thử lại</small></div>
-                        </div>
-                        <div class="row mb-2"><label class="col-3 col-form-label">Ghi chú</label><div class="col-9"><textarea class="form-control" rows="3" name="Note"></textarea></div></div>
-                    </form>
+        <div class="box p-3">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div>
+                    <h5 class="mb-1">Sẵn sàng đặt hàng</h5>
+                    <div class="text-muted">Vui lòng kiểm tra giỏ hàng và tiếp tục đến trang checkout để nhập thông tin nhận hàng.</div>
                 </div>
-            </div>
-            <div class="box">
-                <div class="box-header">TỔNG TIỀN</div>
-                <div class="p-3">
-                    <div class="input-group mb-3"><input class="form-control" name="VoucherCode" placeholder="Mã Voucher" form="checkoutForm" /><button class="btn btn-primary" type="button">Chọn mã voucher</button></div>
-                    <div class="d-flex justify-content-between mb-1"><span>Tổng cộng</span><span>@Model.Subtotal.ToString("N0") VNĐ</span></div>
-                    <div class="d-flex justify-content-between mb-1"><span>Giảm giá Voucher</span><span>@Model.DiscountAmount.ToString("N0") VNĐ</span></div>
-                    <div class="d-flex justify-content-between fw-bold fs-4 mb-0"><span>Thành tiền</span><span class="text-danger">@Model.TotalAmount.ToString("N0") VNĐ</span></div>
-                    <div class="text-end">(Giá đã bao gồm VAT)</div>
-                    <div class="form-check my-3"><input class="form-check-input" type="checkbox" id="agree" form="checkoutForm" required><label class="form-check-label fw-bold" for="agree">Tôi đã đọc và đồng ý với các Điều kiện giao dịch chung của website</label></div>
-                    <div class="row g-2">
-                        <div class="col-6"><button type="button" class="btn btn-dark w-100">In báo giá</button></div>
-                        <div class="col-6"><button type="button" class="btn btn-dark w-100">Tải file Excel</button></div>
-                        <div class="col-12"><button type="submit" form="checkoutForm" class="btn btn-danger w-100">Đặt hàng</button></div>
-                    </div>
-                </div>
+                <a class="btn btn-danger" href="/Checkout">Tiến hành đặt hàng</a>
             </div>
         </div>
     }
@@ -119,95 +70,4 @@ function stepQty(btn, step){
     const next = Math.max(min, Math.min(max, (parseInt(input.value || '1') + step)));
     input.value = next;
 }
-
-const provinceSelect = document.getElementById('provinceSelect');
-const wardSelect = document.getElementById('wardSelect');
-const addressDetail = document.getElementById('addressDetail');
-const addressError = document.getElementById('addressError');
-const provinceCodeInput = document.getElementById('provinceCode');
-const provinceNameInput = document.getElementById('provinceName');
-const wardCodeInput = document.getElementById('wardCode');
-const wardNameInput = document.getElementById('wardName');
-const fullAddressInput = document.getElementById('fullAddress');
-const customerAddressInput = document.getElementById('customerAddress');
-const checkoutForm = document.getElementById('checkoutForm');
-const API_BASE = 'https://provinces.open-api.vn/api/v2';
-
-function setSelectLoading(selectEl, label) {
-    selectEl.innerHTML = `<option value="">${label}</option>`;
-    selectEl.disabled = true;
-}
-
-function showAddressError(show) {
-    addressError.classList.toggle('d-none', !show);
-}
-
-async function loadProvinces() {
-    try {
-        showAddressError(false);
-        setSelectLoading(provinceSelect, 'Đang tải Tỉnh/Thành phố...');
-        const response = await fetch(`${API_BASE}/p`);
-        if (!response.ok) throw new Error('Load provinces failed');
-        const provinces = await response.json();
-        provinceSelect.innerHTML = '<option value="">Chọn Tỉnh/Thành phố</option>';
-        provinces.forEach((p) => {
-            provinceSelect.insertAdjacentHTML('beforeend', `<option value="${p.code}" data-name="${p.name}">${p.name}</option>`);
-        });
-        provinceSelect.disabled = false;
-    } catch (_) {
-        showAddressError(true);
-        setSelectLoading(provinceSelect, 'Không tải được Tỉnh/Thành phố');
-    }
-}
-
-provinceSelect.addEventListener('change', async function () {
-    const selectedOption = provinceSelect.options[provinceSelect.selectedIndex];
-    provinceCodeInput.value = selectedOption.value || '';
-    provinceNameInput.value = selectedOption.dataset.name || '';
-    wardCodeInput.value = '';
-    wardNameInput.value = '';
-    wardSelect.innerHTML = '<option value="">Chọn Phường/Xã</option>';
-
-    if (!provinceCodeInput.value) {
-        wardSelect.disabled = true;
-        return;
-    }
-
-    try {
-        showAddressError(false);
-        setSelectLoading(wardSelect, 'Đang tải Phường/Xã...');
-        const response = await fetch(`${API_BASE}/p/${provinceCodeInput.value}?depth=2`);
-        if (!response.ok) throw new Error('Load wards failed');
-        const provinceDetail = await response.json();
-        const wards = provinceDetail.wards ?? [];
-        wardSelect.innerHTML = '<option value="">Chọn Phường/Xã</option>';
-        wards.forEach((w) => {
-            wardSelect.insertAdjacentHTML('beforeend', `<option value="${w.code}" data-name="${w.name}">${w.name}</option>`);
-        });
-        wardSelect.disabled = false;
-    } catch (_) {
-        showAddressError(true);
-        wardSelect.innerHTML = '<option value="">Không tải được Phường/Xã</option>';
-        wardSelect.disabled = true;
-    }
-});
-
-wardSelect.addEventListener('change', function () {
-    const selectedOption = wardSelect.options[wardSelect.selectedIndex];
-    wardCodeInput.value = selectedOption.value || '';
-    wardNameInput.value = selectedOption.dataset.name || '';
-});
-
-checkoutForm.addEventListener('submit', function (e) {
-    if (!provinceCodeInput.value || !wardCodeInput.value || !addressDetail.value.trim()) {
-        e.preventDefault();
-        showAddressError(true);
-        return;
-    }
-    const fullAddress = `${addressDetail.value.trim()}, ${wardNameInput.value}, ${provinceNameInput.value}`;
-    fullAddressInput.value = fullAddress;
-    customerAddressInput.value = fullAddress;
-});
-
-loadProvinces();
 </script>
