@@ -32,9 +32,10 @@ public class AdminSettingsController : Controller
         var settings = await GetOrCreateSettingsAsync();
         vm.SiteName = settings.SiteName;
         var logoUrl = vm.LogoUrl?.Trim();
+        Uri? parsedUri = null;
 
         if (!string.IsNullOrWhiteSpace(logoUrl) &&
-            !Uri.TryCreate(logoUrl, UriKind.Absolute, out var parsedUri))
+            !Uri.TryCreate(logoUrl, UriKind.Absolute, out parsedUri))
         {
             vm.LogoUrl = logoUrl;
             vm.Message = "Logo URL không hợp lệ. Vui lòng dán URL tuyệt đối (https://...).";
