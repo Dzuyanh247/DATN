@@ -76,5 +76,14 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<BuildPcConfig>()
             .Property(x => x.TotalPrice)
             .HasPrecision(18, 2);
+
+        modelBuilder.Entity<SiteSetting>(entity =>
+        {
+            entity.Property(e => e.DealSectionBackgroundUrl)
+                .HasMaxLength(1000);
+
+            entity.Property(e => e.HotPromotionBackgroundUrl)
+                .HasMaxLength(1000);
+        });
     }
 }
