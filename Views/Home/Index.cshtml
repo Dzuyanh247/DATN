@@ -1,6 +1,9 @@
 @model Datn.PcStore.ViewModels.HomeIndexVm
 @{
     ViewData["Title"] = "Trang chủ";
+    
+var dealSectionBackground = Model.SiteSettings?.DealSectionBackgroundUrl ?? string.Empty;
+var hotPromotionBackground = Model.SiteSettings?.HotPromotionBackgroundUrl ?? string.Empty;
 }
 
 <div class="ttg-home">
@@ -32,12 +35,12 @@
     </div>
 }
 
-<partial name="_ProductSection" model='Tuple.Create("Sản phẩm nổi bật", Model.FeaturedProducts, Model.SiteSettings?.DealSectionBackgroundUrl)' />
-<partial name="_ProductSection" model='Tuple.Create("Khuyến mãi hot", Model.PromotionProducts, Model.SiteSettings?.HotPromotionBackgroundUrl)' />
-<partial name="_ProductSection" model='Tuple.Create("PC GAMING", Model.PcGamingProducts, (string?)null)' />
-<partial name="_ProductSection" model='Tuple.Create("LAPTOP", Model.LaptopProducts, (string?)null)' />
-<partial name="_ProductSection" model='Tuple.Create("MÀN HÌNH", Model.MonitorProducts, (string?)null)' />
-<partial name="_ProductSection" model='Tuple.Create("LINH KIỆN", Model.ComponentProducts, (string?)null)' />
+<partial name="_ProductSection" model='Tuple.Create("Sản phẩm nổi bật", Model.FeaturedProducts, dealSectionBackground)' />
+<partial name="_ProductSection" model='Tuple.Create("Khuyến mãi hot", Model.PromotionProducts, hotPromotionBackground)' />
+<partial name="_ProductSection" model='Tuple.Create("PC GAMING", Model.PcGamingProducts, string.Empty)' />
+<partial name="_ProductSection" model='Tuple.Create("LAPTOP", Model.LaptopProducts, string.Empty)' />
+<partial name="_ProductSection" model='Tuple.Create("MÀN HÌNH", Model.MonitorProducts, string.Empty)' />
+<partial name="_ProductSection" model='Tuple.Create("LINH KIỆN", Model.ComponentProducts, string.Empty)' />
 </div>
 
 @section Scripts {
