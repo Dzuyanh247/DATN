@@ -12,6 +12,7 @@ public class CartController : Controller
     public async Task<IActionResult> Index() => View(await _cartService.GetCartAsync(GetUserId()));
 
     [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Add(int productId, int quantity = 1)
     {
         var result = await _cartService.AddToCartAsync(GetUserId(), productId, quantity);
@@ -26,7 +27,7 @@ public class CartController : Controller
             return Json(new
             {
                 success = true,
-                message = "Đã thêm sản phẩm vào giỏ hàng",
+                message = "Đã thêm sản phẩm vào giỏ hàng!",
                 cartCount = cart.Items.Sum(x => x.Quantity)
             });
         }

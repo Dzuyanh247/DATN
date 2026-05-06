@@ -17,7 +17,7 @@
     @foreach (var o in Model)
     {
         <tr>
-            <td>DH@o.Id.ToString("D6")</td>
+            <td>@($"DH{o.Id:D6}")</td>
             <td>@o.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
             <td>@StatusLabel(o.Status)</td>
             <td>@o.TotalAmount.ToString("N0") đ</td>

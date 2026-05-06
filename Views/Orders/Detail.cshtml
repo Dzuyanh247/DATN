@@ -11,7 +11,7 @@
         _ => status.ToString()
     };
 }
-<h3>Chi tiết đơn hàng DH@Model.Id.ToString("D6")</h3>
+<h3>Chi tiết đơn hàng @($"DH{Model.Id:D6}")</h3>
 <p><strong>Ngày đặt:</strong> @Model.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</p>
 <p><strong>Trạng thái:</strong> @StatusLabel(Model.Status)</p>
 <p><strong>Người nhận:</strong> @Model.ReceiverName - @Model.ReceiverPhone</p>
