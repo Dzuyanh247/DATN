@@ -124,13 +124,15 @@ public class OrdersController : Controller
             HttpContext.Session.SetInt32("LastOrderId", order.Id);
             await _cartService.ClearCartAsync(userId);
             await tx.CommitAsync();
+            TempData["SuccessMessage"] = "Đặt hàng thành công!";
             return RedirectToAction(nameof(Success), new { id = order.Id });
         }
         catch (Exception ex)
         {
             await tx.RollbackAsync();
             _logger.LogError(ex, "Checkout failed for user {UserId}", userId);
-            TempData["ErrorMessage"] = "Không thể đặt hàng, vui lòng kiểm tra thông tin và thử lại";
+            ModelState.AddModelError(string.Empty, "Không thể đặt hàng lúc này. Vui lòng kiểm tra tồn kho hoặc thử lại sau.");
+            TempData["ErrorMessage"] = "Không thể đặt hàng, vui lòng kiểm tra thông tin và thử lại.";
             return View(vm);
         }
     }
