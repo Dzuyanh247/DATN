@@ -16,6 +16,8 @@ public class OrdersController : Controller
 
     public OrdersController(ApplicationDbContext db, ICartService cartService) { _db = db; _cartService = cartService; }
 
+    private static string ToOrderCode(int orderId) => $"DH{orderId:D6}";
+
     [HttpGet("/Checkout")]
     public IActionResult Checkout()
     {
@@ -108,6 +110,7 @@ public class OrdersController : Controller
 
             _db.Orders.Add(order);
             await _db.SaveChangesAsync();
+            HttpContext.Session.SetInt32("LastOrderId", order.Id);
             await _cartService.ClearCartAsync(userId);
             await tx.CommitAsync();
             return RedirectToAction(nameof(Success), new { id = order.Id });
@@ -122,6 +125,9 @@ public class OrdersController : Controller
 
     public async Task<IActionResult> Success(int id)
     {
+        var lastOrderId = HttpContext.Session.GetInt32("LastOrderId");
+        if (lastOrderId != id) return RedirectToAction(nameof(Tracking), new { id });
+
         var order = await _db.Orders.Include(x => x.Details).FirstOrDefaultAsync(x => x.Id == id);
         if (order == null) return NotFound();
 
@@ -133,6 +139,68 @@ public class OrdersController : Controller
         }
 
         return View(order);
+    }
+
+    [HttpGet("/Order/Tracking/{id:int}")]
+    public async Task<IActionResult> Tracking(int id)
+    {
+        var order = await _db.Orders.Include(x => x.Details).FirstOrDefaultAsync(x => x.Id == id);
+        if (order == null) return NotFound();
+
+        if (order.UserId.HasValue)
+        {
+            if (User.Identity?.IsAuthenticated != true) return Forbid();
+            var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            if (order.UserId.Value != userId) return Forbid();
+            return View("Detail", order);
+        }
+
+        var canAccessBySession = HttpContext.Session.GetInt32("LastOrderId") == id;
+        if (!canAccessBySession && string.IsNullOrWhiteSpace(Request.Query["phone"]))
+        {
+            TempData["TrackingError"] = "Vui lòng nhập số điện thoại để xem đơn hàng.";
+            return RedirectToAction(nameof(TrackingLookup));
+        }
+
+        var phone = Request.Query["phone"].ToString();
+        if (!canAccessBySession && !string.Equals(order.ReceiverPhone, phone, StringComparison.OrdinalIgnoreCase))
+        {
+            TempData["TrackingError"] = "Không tìm thấy đơn hàng.";
+            return RedirectToAction(nameof(TrackingLookup));
+        }
+
+        return View("Detail", order);
+    }
+
+    [HttpGet("/Order/Lookup")]
+    public IActionResult TrackingLookup() => View();
+
+    [HttpPost("/Order/Lookup")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> TrackingLookup(string orderCode, string phone)
+    {
+        if (string.IsNullOrWhiteSpace(orderCode) || string.IsNullOrWhiteSpace(phone))
+        {
+            TempData["TrackingError"] = "Vui lòng nhập mã đơn hàng và số điện thoại.";
+            return View();
+        }
+
+        var digits = new string(orderCode.Where(char.IsDigit).ToArray());
+        if (!int.TryParse(digits, out var orderId))
+        {
+            TempData["TrackingError"] = "Mã đơn hàng không hợp lệ.";
+            return View();
+        }
+
+        var order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == orderId && o.ReceiverPhone == phone);
+        if (order == null)
+        {
+            TempData["TrackingError"] = "Không tìm thấy đơn hàng.";
+            return View();
+        }
+
+        HttpContext.Session.SetInt32("LastOrderId", order.Id);
+        return RedirectToAction(nameof(Tracking), new { id = order.Id, phone });
     }
 
     [Authorize]
