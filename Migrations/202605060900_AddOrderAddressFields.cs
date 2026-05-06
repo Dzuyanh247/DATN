@@ -18,11 +18,11 @@ public partial class AddOrderAddressFields : Migration
 
     protected override void Down(MigrationBuilder migrationBuilder)
     {
-        migrationBuilder.DropColumn(name: "AddressDetail", table: "Orders");
-        migrationBuilder.DropColumn(name: "FullAddress", table: "Orders");
-        migrationBuilder.DropColumn(name: "ProvinceCode", table: "Orders");
-        migrationBuilder.DropColumn(name: "ProvinceName", table: "Orders");
-        migrationBuilder.DropColumn(name: "WardCode", table: "Orders");
-        migrationBuilder.DropColumn(name: "WardName", table: "Orders");
+        migrationBuilder.Sql("IF COL_LENGTH('Orders', 'AddressDetail') IS NOT NULL ALTER TABLE Orders DROP COLUMN AddressDetail");
+        migrationBuilder.Sql("IF COL_LENGTH('Orders', 'FullAddress') IS NOT NULL ALTER TABLE Orders DROP COLUMN FullAddress");
+        migrationBuilder.Sql("IF COL_LENGTH('Orders', 'ProvinceCode') IS NOT NULL ALTER TABLE Orders DROP COLUMN ProvinceCode");
+        migrationBuilder.Sql("IF COL_LENGTH('Orders', 'ProvinceName') IS NOT NULL ALTER TABLE Orders DROP COLUMN ProvinceName");
+        migrationBuilder.Sql("IF COL_LENGTH('Orders', 'WardCode') IS NOT NULL ALTER TABLE Orders DROP COLUMN WardCode");
+        migrationBuilder.Sql("IF COL_LENGTH('Orders', 'WardName') IS NOT NULL ALTER TABLE Orders DROP COLUMN WardName");
     }
 }
