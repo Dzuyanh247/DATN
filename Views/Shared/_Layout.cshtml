@@ -67,25 +67,27 @@ else
             <a asp-controller="BuildPc" asp-action="Index" class="ttg-pill"><i class="bi bi-cpu"></i> Tư vấn build PC</a>
             <a href="#" class="ttg-pill">Phần mềm hay</a>
         </div>
-        <div class="d-flex gap-3">
+        <div class="ttg-topbar-right d-flex gap-2 flex-wrap justify-content-end">
             @if (User.Identity?.IsAuthenticated == true)
             {
-                <a class="text-light text-decoration-none" asp-controller="Orders" asp-action="MyOrders">Đơn hàng</a>
+                <a class="ttg-pill ttg-pill-right" asp-controller="Orders" asp-action="MyOrders"><i class="bi bi-receipt"></i> Đơn hàng</a>
                 @if (User.IsInRole("Admin"))
                 {
-                    <a class="text-light text-decoration-none" asp-controller="AdminDashboard" asp-action="Index">Quản trị</a>
+                    <a class="ttg-pill ttg-pill-right" asp-controller="AdminDashboard" asp-action="Index"><i class="bi bi-shield-lock"></i> Quản trị</a>
                 }
-                <form method="post" asp-controller="Account" asp-action="Logout" class="d-inline"><button class="btn btn-sm btn-outline-light py-0">Đăng xuất</button></form>
+                <form method="post" asp-controller="Account" asp-action="Logout" class="d-inline">
+                    <button class="ttg-pill ttg-pill-right ttg-pill-btn" type="submit"><i class="bi bi-box-arrow-right"></i> Đăng xuất</button>
+                </form>
             }
             else
             {
-                <a class="text-light text-decoration-none" asp-controller="Account" asp-action="Register">Đăng ký</a>
-                <a class="text-light text-decoration-none" asp-controller="Account" asp-action="Login">Đăng nhập</a>
+                <a class="ttg-pill ttg-pill-right" asp-controller="Account" asp-action="Register"><i class="bi bi-person-plus"></i> Đăng ký</a>
+                <a class="ttg-pill ttg-pill-right" asp-controller="Account" asp-action="Login"><i class="bi bi-person"></i> Đăng nhập</a>
             }
         </div>
     </div>
 </div>
-<header class="ttg-main-header shadow-sm sticky-top">
+<header class="ttg-main-header shadow-sm">
     <div class="container ttg-shell ttg-main-header-row py-3 d-flex justify-content-between align-items-center gap-3">
         <a asp-controller="Home" asp-action="Index" class="site-logo" aria-label="KKSHOP">
             @if (!string.IsNullOrWhiteSpace(siteLogoUrl))
@@ -112,7 +114,7 @@ else
     </div>
     <div class="ttg-cat-nav-wrap">
         <div class="container ttg-shell ttg-cat-row py-2 d-flex align-items-center gap-3">
-            <button class="ttg-cat-btn" type="button"><i class="bi bi-list"></i> DANH MỤC SẢN PHẨM</button>
+            <button class="ttg-cat-btn" type="button"><i class="bi bi-list"></i><span>DANH MỤC SẢN PHẨM</span></button>
             <div class="ttg-cat-nav">
                 <a class="ttg-cat-link" asp-controller="Products" asp-action="Index"><i class="bi bi-pc-display"></i>PC Gaming</a>
                 <a class="ttg-cat-link" asp-controller="Products" asp-action="Index"><i class="bi bi-cpu"></i>Workstation</a>
