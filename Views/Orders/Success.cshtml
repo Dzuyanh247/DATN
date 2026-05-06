@@ -1,0 +1,23 @@
+@model Order
+@{
+    ViewData["Title"] = "Đặt hàng thành công";
+}
+<div class="card shadow-sm">
+    <div class="card-body p-4">
+        <h3 class="text-success mb-3">Đặt hàng thành công</h3>
+        <p>Cảm ơn bạn đã mua hàng. Mã đơn hàng của bạn là <strong>#@Model.Id</strong>.</p>
+        <ul class="list-unstyled">
+            <li><strong>Người nhận:</strong> @Model.ReceiverName - @Model.ReceiverPhone</li>
+            <li><strong>Địa chỉ:</strong> @Model.ShippingAddress</li>
+            <li><strong>Tổng tiền:</strong> @Model.TotalAmount.ToString("N0") đ</li>
+            <li><strong>Trạng thái:</strong> Chờ xác nhận</li>
+        </ul>
+        <div class="d-flex gap-2">
+            <a asp-controller="Products" asp-action="Index" class="btn btn-primary">Tiếp tục mua hàng</a>
+            @if (User.Identity?.IsAuthenticated == true)
+            {
+                <a asp-action="MyOrders" class="btn btn-outline-secondary">Xem đơn hàng của tôi</a>
+            }
+        </div>
+    </div>
+</div>

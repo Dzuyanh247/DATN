@@ -6,13 +6,6 @@
 <div class="cart-page">
     <div class="mb-3"><a asp-controller="Home" asp-action="Index" class="text-decoration-none">Trang chủ</a> &gt; <strong>Thông tin giỏ hàng</strong></div>
 
-    @if (TempData["CartError"] is string err)
-    { <div class="alert alert-danger">@err</div> }
-    @if (TempData["CartSuccess"] is string ok)
-    { <div class="alert alert-success">@ok</div> }
-    @if (TempData["OrderSuccess"] is string orderOk)
-    { <div class="alert alert-success">@orderOk</div> }
-
     <div class="box mb-3">
         <div class="box-header d-flex justify-content-between align-items-center">
             <span class="text-primary">Giỏ hàng</span>
@@ -21,7 +14,7 @@
 
         @if (!Model.Items.Any())
         {
-            <div class="p-3">Chưa có sản phẩm trong giỏ hàng.</div>
+            <div class="p-3">Giỏ hàng của bạn đang trống. <a asp-controller="Products" asp-action="Index" class="btn btn-sm btn-primary ms-2">Quay lại mua hàng</a></div>
         }
         else
         {
@@ -66,6 +59,7 @@
                         <div class="row mb-2"><label class="col-3 col-form-label">Họ tên*</label><div class="col-9"><input class="form-control" name="CustomerName" required /></div></div>
                         <div class="row mb-2"><label class="col-3 col-form-label">SĐT*</label><div class="col-9"><input class="form-control" name="CustomerPhone" required /></div></div>
                         <div class="row mb-2"><label class="col-3 col-form-label">Email*</label><div class="col-9"><input class="form-control" name="CustomerEmail" /></div></div>
+                        <input type="hidden" name="PaymentMethod" value="COD" />
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="CustomerAddress" id="customerAddress" />
                         <input type="hidden" name="FullAddress" id="fullAddress" />
@@ -110,8 +104,7 @@
                     <div class="row g-2">
                         <div class="col-6"><button type="button" class="btn btn-dark w-100">In báo giá</button></div>
                         <div class="col-6"><button type="button" class="btn btn-dark w-100">Tải file Excel</button></div>
-                        <div class="col-6"><button type="submit" form="checkoutForm" class="btn btn-danger w-100">Đặt hàng</button></div>
-                        <div class="col-6"><button type="submit" form="checkoutForm" class="btn btn-danger w-100">Mua ngay</button></div>
+                        <div class="col-12"><button type="submit" form="checkoutForm" class="btn btn-danger w-100">Đặt hàng</button></div>
                     </div>
                 </div>
             </div>

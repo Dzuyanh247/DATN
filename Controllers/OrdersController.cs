@@ -17,6 +17,7 @@ public class OrdersController : Controller
     public OrdersController(ApplicationDbContext db, ICartService cartService) { _db = db; _cartService = cartService; }
 
     [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Checkout(CheckoutRequestVm vm)
     {
         if (string.IsNullOrWhiteSpace(vm.CustomerName)) ModelState.AddModelError(nameof(vm.CustomerName), "Họ tên là bắt buộc.");
@@ -37,7 +38,11 @@ public class OrdersController : Controller
         var userId = User.Identity?.IsAuthenticated == true ? int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!) : (int?)null;
         var cart = await _cartService.GetCartAsync(userId);
         if (!cart.Items.Any()) ModelState.AddModelError(string.Empty, "Không thể đặt hàng khi giỏ hàng trống.");
-        if (!ModelState.IsValid) return RedirectToAction("Index", "Cart");
+        if (!ModelState.IsValid)
+        {
+            TempData["CartError"] = string.Join(" ", ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).Where(x => !string.IsNullOrWhiteSpace(x)));
+            return RedirectToAction("Index", "Cart");
+        }
 
         await using var tx = await _db.Database.BeginTransactionAsync();
         try
@@ -81,12 +86,19 @@ public class OrdersController : Controller
                 Details = detailRows
             };
 
+            foreach (var item in cart.Items)
+            {
+                var product = await _db.Products.FirstAsync(x => x.Id == item.ProductId);
+                product.StockQuantity -= item.Quantity;
+                if (product.StockQuantity < 0) throw new Exception($"Sản phẩm {product.Name} không đủ tồn kho.");
+                product.IsInStock = product.StockQuantity > 0;
+            }
+
             _db.Orders.Add(order);
             await _db.SaveChangesAsync();
             await _cartService.ClearCartAsync(userId);
             await tx.CommitAsync();
-            TempData["OrderSuccess"] = $"Đặt hàng thành công. Mã đơn hàng: #{order.Id}";
-            return RedirectToAction("Index", "Cart");
+            return RedirectToAction(nameof(Success), new { id = order.Id });
         }
         catch (Exception ex)
         {
@@ -96,11 +108,35 @@ public class OrdersController : Controller
         }
     }
 
+    public async Task<IActionResult> Success(int id)
+    {
+        var order = await _db.Orders.Include(x => x.Details).FirstOrDefaultAsync(x => x.Id == id);
+        if (order == null) return NotFound();
+
+        if (order.UserId.HasValue)
+        {
+            if (User.Identity?.IsAuthenticated != true) return Forbid();
+            var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            if (order.UserId.Value != userId) return Forbid();
+        }
+
+        return View(order);
+    }
+
     [Authorize]
     public async Task<IActionResult> MyOrders()
     {
         var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         var orders = await _db.Orders.Include(o => o.Details).ThenInclude(d => d.Product).Where(o => o.UserId == userId).OrderByDescending(o => o.CreatedAt).ToListAsync();
         return View(orders);
+    }
+
+    [Authorize]
+    public async Task<IActionResult> Detail(int id)
+    {
+        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var order = await _db.Orders.Include(x => x.Details).FirstOrDefaultAsync(x => x.Id == id && x.UserId == userId);
+        if (order == null) return NotFound();
+        return View(order);
     }
 }

@@ -1,0 +1,23 @@
+@model Order
+@{
+    ViewData["Title"] = $"Chi tiết đơn hàng #{Model.Id}";
+}
+<h3>Chi tiết đơn hàng #@Model.Id</h3>
+<p><strong>Ngày đặt:</strong> @Model.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</p>
+<p><strong>Trạng thái:</strong> @Model.Status</p>
+<p><strong>Tổng tiền:</strong> @Model.TotalAmount.ToString("N0") đ</p>
+<table class="table table-bordered">
+    <thead><tr><th>Sản phẩm</th><th>Đơn giá</th><th>Số lượng</th><th>Thành tiền</th></tr></thead>
+    <tbody>
+    @foreach (var d in Model.Details)
+    {
+        var img = string.IsNullOrWhiteSpace(d.ProductImage) ? "/images/placeholders/product-placeholder.png" : (d.ProductImage.StartsWith("/") ? d.ProductImage : $"/uploads/products/{d.ProductImage}");
+        <tr>
+            <td><img src="@img" style="width:56px;height:56px;object-fit:cover;" class="me-2" onerror="this.onerror=null;this.src='/images/placeholders/product-placeholder.png';"/>@d.ProductName</td>
+            <td>@d.UnitPrice.ToString("N0") đ</td>
+            <td>@d.Quantity</td>
+            <td>@d.TotalPrice.ToString("N0") đ</td>
+        </tr>
+    }
+    </tbody>
+</table>
