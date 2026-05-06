@@ -27,9 +27,16 @@
         <a class="ttg-view-all" asp-controller="Products" asp-action="Index">Xem tất cả</a>
     </div>
     <div class="ttg-products-grid @(isDeal ? "promo-product-grid" : string.Empty)">
-        @foreach (var p in Model.Item2)
+        @if (Model.Item2 != null && Model.Item2.Any())
         {
-            <partial name="_ProductCard" model="p" />
+            @foreach (var p in Model.Item2)
+            {
+                <partial name="_ProductCard" model="p" />
+            }
+        }
+        else
+        {
+            <div class="ttg-empty-state">Danh mục đang được cập nhật sản phẩm. Vui lòng quay lại sau.</div>
         }
     </div>
 </section>

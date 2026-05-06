@@ -3,7 +3,8 @@
     ViewData["Title"] = "Trang chủ";
     
 var dealSectionBackground = Model.SiteSettings?.DealSectionBackgroundUrl ?? string.Empty;
-var hotPromotionBackground = Model.SiteSettings?.HotPromotionBackgroundUrl ?? string.Empty;
+    var hotPromotionBackground = Model.SiteSettings?.HotPromotionBackgroundUrl ?? string.Empty;
+    var fallbackBanner = "/images/banners/banner_main1.png";
 }
 
 <div class="ttg-home">
@@ -18,7 +19,7 @@ var hotPromotionBackground = Model.SiteSettings?.HotPromotionBackgroundUrl ?? st
             @foreach (var b in mainBanners)
             {
                 <div class="swiper-slide">
-                    <img src="@b.ImageUrl" class="d-block w-100 banner-image" alt="@b.Title" onerror="this.onerror=null;this.src='/images/placeholders/banner-placeholder.png';">
+                    <img src="@b.ImageUrl" class="d-block w-100 banner-image" alt="@(string.IsNullOrWhiteSpace(b.Title) ? "Main banner" : b.Title)" onerror="this.onerror=null;this.src='@fallbackBanner';">
                 </div>
             }
         </div>
@@ -27,12 +28,17 @@ var hotPromotionBackground = Model.SiteSettings?.HotPromotionBackgroundUrl ?? st
         <div class="swiper-pagination"></div>
     </div>
 
-    <div class="ttg-sub-banners">
-        @foreach (var b in subBanners)
-        {
-            <a class="ttg-sub-banner-item" href="@b.LinkUrl"><img src="@b.ImageUrl" alt="@b.Title" onerror="this.onerror=null;this.src='/images/placeholders/banner-placeholder.png';" /></a>
-        }
-    </div>
+    @if (subBanners.Any())
+    {
+        <div class="ttg-sub-banners">
+            @foreach (var b in subBanners)
+            {
+                <a class="ttg-sub-banner-item" href="@(string.IsNullOrWhiteSpace(b.LinkUrl) ? "#" : b.LinkUrl)">
+                    <img src="@b.ImageUrl" alt="@(string.IsNullOrWhiteSpace(b.Title) ? "Sub banner" : b.Title)" onerror="this.onerror=null;this.src='@fallbackBanner';" />
+                </a>
+            }
+        </div>
+    }
 }
 
 <partial name="_ProductSection" model='Tuple.Create("Sản phẩm nổi bật", Model.FeaturedProducts, dealSectionBackground)' />
