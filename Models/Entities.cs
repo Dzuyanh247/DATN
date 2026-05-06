@@ -103,6 +103,12 @@ public class Order : BaseEntity
     [MaxLength(120)] public string? CustomerEmail { get; set; }
     [MaxLength(100)] public string? CustomerProvince { get; set; }
     [MaxLength(100)] public string? CustomerDistrict { get; set; }
+    [MaxLength(20)] public string? ProvinceCode { get; set; }
+    [MaxLength(100)] public string? ProvinceName { get; set; }
+    [MaxLength(20)] public string? WardCode { get; set; }
+    [MaxLength(100)] public string? WardName { get; set; }
+    [MaxLength(250)] public string? AddressDetail { get; set; }
+    [MaxLength(250)] public string? FullAddress { get; set; }
     [MaxLength(500)] public string? Note { get; set; }
     public decimal SubtotalAmount { get; set; }
     public decimal DiscountAmount { get; set; }

@@ -29,9 +29,13 @@ public class CheckoutRequestVm
     public string CustomerName { get; set; } = string.Empty;
     public string CustomerPhone { get; set; } = string.Empty;
     public string? CustomerEmail { get; set; }
-    public string CustomerAddress { get; set; } = string.Empty;
-    public string CustomerProvince { get; set; } = string.Empty;
-    public string CustomerDistrict { get; set; } = string.Empty;
+    public string CustomerAddress { get; set; } = string.Empty; // Backward-compatible full address text
+    public string ProvinceCode { get; set; } = string.Empty;
+    public string ProvinceName { get; set; } = string.Empty;
+    public string WardCode { get; set; } = string.Empty;
+    public string WardName { get; set; } = string.Empty;
+    public string AddressDetail { get; set; } = string.Empty;
+    public string FullAddress { get; set; } = string.Empty;
     public string? Note { get; set; }
     public string? VoucherCode { get; set; }
 }

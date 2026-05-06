@@ -66,9 +66,34 @@
                         <div class="row mb-2"><label class="col-3 col-form-label">Họ tên*</label><div class="col-9"><input class="form-control" name="CustomerName" required /></div></div>
                         <div class="row mb-2"><label class="col-3 col-form-label">SĐT*</label><div class="col-9"><input class="form-control" name="CustomerPhone" required /></div></div>
                         <div class="row mb-2"><label class="col-3 col-form-label">Email*</label><div class="col-9"><input class="form-control" name="CustomerEmail" /></div></div>
-                        <div class="row mb-2"><label class="col-3 col-form-label">Địa chỉ*</label><div class="col-9"><input class="form-control" name="CustomerAddress" required /></div></div>
-                        <div class="row mb-2"><label class="col-3 col-form-label">Tỉnh/Thành phố*</label><div class="col-9"><select class="form-select" name="CustomerProvince" required><option value="">Chọn Tỉnh/Thành phố</option><option>Hà Nội</option><option>TP.HCM</option></select></div></div>
-                        <div class="row mb-2"><label class="col-3 col-form-label">Quận/Huyện*</label><div class="col-9"><select class="form-select" name="CustomerDistrict" required><option value="">Chọn Quận/Huyện</option></select></div></div>
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="CustomerAddress" id="customerAddress" />
+                        <input type="hidden" name="FullAddress" id="fullAddress" />
+                        <input type="hidden" name="ProvinceCode" id="provinceCode" />
+                        <input type="hidden" name="ProvinceName" id="provinceName" />
+                        <input type="hidden" name="WardCode" id="wardCode" />
+                        <input type="hidden" name="WardName" id="wardName" />
+                        <div class="row mb-2">
+                            <label class="col-3 col-form-label">Tỉnh/Thành phố*</label>
+                            <div class="col-9">
+                                <select class="form-select" id="provinceSelect" required>
+                                    <option value="">Chọn Tỉnh/Thành phố</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row mb-2">
+                            <label class="col-3 col-form-label">Phường/Xã*</label>
+                            <div class="col-9">
+                                <select class="form-select" id="wardSelect" required disabled>
+                                    <option value="">Chọn Phường/Xã</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row mb-2"><label class="col-3 col-form-label">Địa chỉ cụ thể*</label><div class="col-9"><input class="form-control" id="addressDetail" name="AddressDetail" required /></div></div>
+                        <div class="row mb-2">
+                            <div class="col-3"></div>
+                            <div class="col-9"><small class="text-danger d-none" id="addressError">Không tải được danh sách địa chỉ, vui lòng thử lại</small></div>
+                        </div>
                         <div class="row mb-2"><label class="col-3 col-form-label">Ghi chú</label><div class="col-9"><textarea class="form-control" rows="3" name="Note"></textarea></div></div>
                     </form>
                 </div>
@@ -101,4 +126,95 @@ function stepQty(btn, step){
     const next = Math.max(min, Math.min(max, (parseInt(input.value || '1') + step)));
     input.value = next;
 }
+
+const provinceSelect = document.getElementById('provinceSelect');
+const wardSelect = document.getElementById('wardSelect');
+const addressDetail = document.getElementById('addressDetail');
+const addressError = document.getElementById('addressError');
+const provinceCodeInput = document.getElementById('provinceCode');
+const provinceNameInput = document.getElementById('provinceName');
+const wardCodeInput = document.getElementById('wardCode');
+const wardNameInput = document.getElementById('wardName');
+const fullAddressInput = document.getElementById('fullAddress');
+const customerAddressInput = document.getElementById('customerAddress');
+const checkoutForm = document.getElementById('checkoutForm');
+const API_BASE = 'https://provinces.open-api.vn/api/v2';
+
+function setSelectLoading(selectEl, label) {
+    selectEl.innerHTML = `<option value="">${label}</option>`;
+    selectEl.disabled = true;
+}
+
+function showAddressError(show) {
+    addressError.classList.toggle('d-none', !show);
+}
+
+async function loadProvinces() {
+    try {
+        showAddressError(false);
+        setSelectLoading(provinceSelect, 'Đang tải Tỉnh/Thành phố...');
+        const response = await fetch(`${API_BASE}/p`);
+        if (!response.ok) throw new Error('Load provinces failed');
+        const provinces = await response.json();
+        provinceSelect.innerHTML = '<option value="">Chọn Tỉnh/Thành phố</option>';
+        provinces.forEach((p) => {
+            provinceSelect.insertAdjacentHTML('beforeend', `<option value="${p.code}" data-name="${p.name}">${p.name}</option>`);
+        });
+        provinceSelect.disabled = false;
+    } catch (_) {
+        showAddressError(true);
+        setSelectLoading(provinceSelect, 'Không tải được Tỉnh/Thành phố');
+    }
+}
+
+provinceSelect.addEventListener('change', async function () {
+    const selectedOption = provinceSelect.options[provinceSelect.selectedIndex];
+    provinceCodeInput.value = selectedOption.value || '';
+    provinceNameInput.value = selectedOption.dataset.name || '';
+    wardCodeInput.value = '';
+    wardNameInput.value = '';
+    wardSelect.innerHTML = '<option value="">Chọn Phường/Xã</option>';
+
+    if (!provinceCodeInput.value) {
+        wardSelect.disabled = true;
+        return;
+    }
+
+    try {
+        showAddressError(false);
+        setSelectLoading(wardSelect, 'Đang tải Phường/Xã...');
+        const response = await fetch(`${API_BASE}/p/${provinceCodeInput.value}?depth=2`);
+        if (!response.ok) throw new Error('Load wards failed');
+        const provinceDetail = await response.json();
+        const wards = provinceDetail.wards ?? [];
+        wardSelect.innerHTML = '<option value="">Chọn Phường/Xã</option>';
+        wards.forEach((w) => {
+            wardSelect.insertAdjacentHTML('beforeend', `<option value="${w.code}" data-name="${w.name}">${w.name}</option>`);
+        });
+        wardSelect.disabled = false;
+    } catch (_) {
+        showAddressError(true);
+        wardSelect.innerHTML = '<option value="">Không tải được Phường/Xã</option>';
+        wardSelect.disabled = true;
+    }
+});
+
+wardSelect.addEventListener('change', function () {
+    const selectedOption = wardSelect.options[wardSelect.selectedIndex];
+    wardCodeInput.value = selectedOption.value || '';
+    wardNameInput.value = selectedOption.dataset.name || '';
+});
+
+checkoutForm.addEventListener('submit', function (e) {
+    if (!provinceCodeInput.value || !wardCodeInput.value || !addressDetail.value.trim()) {
+        e.preventDefault();
+        showAddressError(true);
+        return;
+    }
+    const fullAddress = `${addressDetail.value.trim()}, ${wardNameInput.value}, ${provinceNameInput.value}`;
+    fullAddressInput.value = fullAddress;
+    customerAddressInput.value = fullAddress;
+});
+
+loadProvinces();
 </script>
