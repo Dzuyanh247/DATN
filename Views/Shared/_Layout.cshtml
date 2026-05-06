@@ -123,10 +123,10 @@ else
 </header>
 
 <div class="container ttg-shell py-3">
-    @if (TempData["SuccessMessage"] != null)
+    @if (TempData["Success"] != null || TempData["SuccessMessage"] != null)
     {
         <div class="alert alert-success alert-dismissible fade show" role="alert">
-            @TempData["SuccessMessage"]
+            @(TempData["Success"] ?? TempData["SuccessMessage"])
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     }
@@ -144,12 +144,30 @@ else
 </div>
 }
 
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1090;">
+    <div id="globalToast" class="toast align-items-center text-white border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body" id="globalToastMessage"></div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 (function(){
-const t=document.createElement('div');t.id='cart-toast';t.className='cart-toast';document.body.appendChild(t);
-window.showGlobalToast=function(message,isError){t.textContent=message;t.classList.toggle('error',!!isError);t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);};
-function u(c){const b=document.getElementById('cart-count-badge');if(!b)return;b.textContent=c}
+const toastEl=document.getElementById('globalToast');
+const toastMsg=document.getElementById('globalToastMessage');
+const toastInstance=toastEl?new bootstrap.Toast(toastEl,{delay:2500}):null;
+window.showToast=function(message,type){
+    if(!toastEl||!toastMsg||!toastInstance) return;
+    toastEl.classList.remove('bg-success','bg-danger','bg-warning');
+    toastEl.classList.add(type==='error'?'bg-danger':'bg-success');
+    toastMsg.textContent=message;
+    toastInstance.show();
+};
+window.showGlobalToast=function(message,isError){window.showToast(message,isError?'error':'success');};
+function u(c){const b=document.getElementById('cart-count-badge');if(!b)return;b.textContent=c;}
 document.querySelectorAll('form[action*="/Cart/Add"]').forEach(function(f){f.addEventListener('submit',async function(e){e.preventDefault();const d=new FormData(f);try{const r=await fetch(f.action,{method:'POST',headers:{'X-Requested-With':'XMLHttpRequest','Accept':'application/json'},body:d});const j=await r.json();if(!r.ok||!j.success){window.showGlobalToast(j.message||'Có lỗi khi thêm vào giỏ.',true);return;}window.showGlobalToast(j.message||'Đã thêm vào giỏ hàng thành công');u(j.cartCount??0);}catch{window.showGlobalToast('Không thể kết nối máy chủ.',true);}});});
 })();
 </script>
