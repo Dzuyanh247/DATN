@@ -34,10 +34,10 @@
 
 <partial name="_ProductSection" model='Tuple.Create("Sản phẩm nổi bật", Model.FeaturedProducts, Model.SiteSettings?.DealSectionBackgroundUrl)' />
 <partial name="_ProductSection" model='Tuple.Create("Khuyến mãi hot", Model.PromotionProducts, Model.SiteSettings?.HotPromotionBackgroundUrl)' />
-<partial name="_ProductSection" model='Tuple.Create("PC GAMING", Model.PcGamingProducts)' />
-<partial name="_ProductSection" model='Tuple.Create("LAPTOP", Model.LaptopProducts)' />
-<partial name="_ProductSection" model='Tuple.Create("MÀN HÌNH", Model.MonitorProducts)' />
-<partial name="_ProductSection" model='Tuple.Create("LINH KIỆN", Model.ComponentProducts)' />
+<partial name="_ProductSection" model='Tuple.Create("PC GAMING", Model.PcGamingProducts, (string?)null)' />
+<partial name="_ProductSection" model='Tuple.Create("LAPTOP", Model.LaptopProducts, (string?)null)' />
+<partial name="_ProductSection" model='Tuple.Create("MÀN HÌNH", Model.MonitorProducts, (string?)null)' />
+<partial name="_ProductSection" model='Tuple.Create("LINH KIỆN", Model.ComponentProducts, (string?)null)' />
 </div>
 
 @section Scripts {
