@@ -3,7 +3,7 @@
 @inject ApplicationDbContext DbContext
 @{
     var menuCategories = await DbContext.Categories.OrderBy(c => c.CreatedAt).ToListAsync();
-    var siteLogoUrl = await DbContext.SiteSettings.OrderBy(x => x.Id).Select(x => x.LogoUrl).FirstOrDefaultAsync();
+    var siteLogoUrl = ImageUrlHelper.ResolveImageUrl(await DbContext.SiteSettings.OrderBy(x => x.Id).Select(x => x.LogoUrl).FirstOrDefaultAsync(), string.Empty);
     var controllerName = ViewContext.RouteData.Values["controller"]?.ToString() ?? string.Empty;
     var actionName = ViewContext.RouteData.Values["action"]?.ToString() ?? string.Empty;
     var isAdminPage = controllerName.StartsWith("Admin") ||

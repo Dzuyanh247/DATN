@@ -20,7 +20,7 @@
         {
             @foreach (var i in Model.Items)
             {
-                var img = string.IsNullOrWhiteSpace(i.ProductImage) ? "/images/placeholders/product-placeholder.png" : (i.ProductImage.StartsWith("/") ? i.ProductImage : $"/uploads/products/{i.ProductImage}");
+                var img = ImageUrlHelper.ResolveImageUrl(i.ProductImage, "/images/placeholders/product-placeholder.png");
                 <div class="cart-item row align-items-center g-3">
                     <div class="col-lg-6 d-flex gap-3 align-items-center">
                         <img src="@img" class="cart-product-image" onerror="this.onerror=null;this.src='/images/placeholders/product-placeholder.png';" />
