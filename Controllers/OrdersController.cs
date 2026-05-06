@@ -13,8 +13,14 @@ public class OrdersController : Controller
 {
     private readonly ApplicationDbContext _db;
     private readonly ICartService _cartService;
+    private readonly ILogger<OrdersController> _logger;
 
-    public OrdersController(ApplicationDbContext db, ICartService cartService) { _db = db; _cartService = cartService; }
+    public OrdersController(ApplicationDbContext db, ICartService cartService, ILogger<OrdersController> logger)
+    {
+        _db = db;
+        _cartService = cartService;
+        _logger = logger;
+    }
 
     private static string ToOrderCode(int orderId) => $"DH{orderId:D6}";
 
@@ -37,12 +43,18 @@ public class OrdersController : Controller
         if (string.IsNullOrWhiteSpace(vm.CustomerName)) ModelState.AddModelError(nameof(vm.CustomerName), "Họ tên là bắt buộc.");
         if (string.IsNullOrWhiteSpace(vm.CustomerPhone) || !System.Text.RegularExpressions.Regex.IsMatch(vm.CustomerPhone, "^(0|\\+84)[0-9]{9,10}$")) ModelState.AddModelError(nameof(vm.CustomerPhone), "Số điện thoại không hợp lệ.");
         if (!string.IsNullOrWhiteSpace(vm.CustomerEmail) && !new System.ComponentModel.DataAnnotations.EmailAddressAttribute().IsValid(vm.CustomerEmail)) ModelState.AddModelError(nameof(vm.CustomerEmail), "Email không hợp lệ.");
-        if (string.IsNullOrWhiteSpace(vm.ProvinceCode) || string.IsNullOrWhiteSpace(vm.ProvinceName))
-            ModelState.AddModelError(nameof(vm.ProvinceCode), "Tỉnh/Thành phố là bắt buộc.");
-        if (string.IsNullOrWhiteSpace(vm.WardCode) || string.IsNullOrWhiteSpace(vm.WardName))
-            ModelState.AddModelError(nameof(vm.WardCode), "Phường/Xã là bắt buộc.");
         if (string.IsNullOrWhiteSpace(vm.AddressDetail))
             ModelState.AddModelError(nameof(vm.AddressDetail), "Địa chỉ cụ thể là bắt buộc.");
+
+        if (string.IsNullOrWhiteSpace(vm.ProvinceName))
+            vm.ProvinceName = vm.ManualProvince?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(vm.WardName))
+            vm.WardName = vm.ManualWard?.Trim() ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(vm.ProvinceName))
+            ModelState.AddModelError(nameof(vm.ProvinceName), "Tỉnh/Thành phố là bắt buộc.");
+        if (string.IsNullOrWhiteSpace(vm.WardName))
+            ModelState.AddModelError(nameof(vm.WardName), "Phường/Xã là bắt buộc.");
 
         vm.FullAddress = string.IsNullOrWhiteSpace(vm.FullAddress)
             ? $"{vm.AddressDetail}, {vm.WardName}, {vm.ProvinceName}"
@@ -54,8 +66,7 @@ public class OrdersController : Controller
         if (!cart.Items.Any()) ModelState.AddModelError(string.Empty, "Không thể đặt hàng khi giỏ hàng trống.");
         if (!ModelState.IsValid)
         {
-            TempData["CartError"] = string.Join(" ", ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).Where(x => !string.IsNullOrWhiteSpace(x)));
-            return RedirectToAction("Index", "Cart");
+            return View(vm);
         }
 
         await using var tx = await _db.Database.BeginTransactionAsync();
@@ -118,8 +129,9 @@ public class OrdersController : Controller
         catch (Exception ex)
         {
             await tx.RollbackAsync();
-            TempData["CartError"] = ex.Message;
-            return RedirectToAction("Index", "Cart");
+            _logger.LogError(ex, "Checkout failed for user {UserId}", userId);
+            TempData["ErrorMessage"] = "Không thể đặt hàng, vui lòng kiểm tra thông tin và thử lại";
+            return View(vm);
         }
     }
 
