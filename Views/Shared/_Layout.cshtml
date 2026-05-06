@@ -90,8 +90,10 @@ else
                 <img src="@siteLogoUrl"
                      class="site-logo-image"
                      alt="KKSHOP"
+                     loading="eager"
+                     decoding="async"
                      onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex';" />
-                <span class="site-logo-text" style="display:none;">KKSHOP</span>
+                <span class="site-logo-text site-logo-text-fallback">KKSHOP</span>
             }
             else
             {

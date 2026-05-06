@@ -286,7 +286,13 @@
 
 .site-logo-image {
     max-width: min(220px, 32vw);
+    max-height: 56px;
+    width: auto;
     image-rendering: -webkit-optimize-contrast;
+}
+
+.site-logo-text-fallback {
+    display: none;
 }
 
 .site-logo-text {
@@ -315,6 +321,7 @@
 
     .site-logo-image {
         max-width: 42vw;
+        max-height: 42px;
     }
 
     .site-logo-text {
