@@ -23,85 +23,74 @@ public class ShippingController : ControllerBase
     public async Task<IActionResult> Calculate([FromBody] ShippingCalculateRequest? request, CancellationToken cancellationToken)
     {
         if (request == null)
-            return BadRequest(new { success = false, message = "Payload không hợp lệ.", errors = new { request = new[] { "Request body trống hoặc sai định dạng JSON." } } });
+            return Ok(new { success = false, message = "Payload không hợp lệ." });
 
         request.NormalizeAliases();
-        _logger.LogInformation("Shipping calculate request body {@Request}", request);
+        _logger.LogInformation("Shipping calculate payload {@Request}", request);
 
-        var validationErrors = new Dictionary<string, string[]>();
         if (string.IsNullOrWhiteSpace(request.Address) && string.IsNullOrWhiteSpace(request.FullAddress) && string.IsNullOrWhiteSpace(request.AddressDetail))
-            validationErrors["address"] = new[] { "Địa chỉ giao hàng là bắt buộc." };
+            return Ok(new { success = false, message = "Địa chỉ giao hàng là bắt buộc." });
 
-        if ((!request.Latitude.HasValue || !request.Longitude.HasValue) && (string.IsNullOrWhiteSpace(request.WardName) || string.IsNullOrWhiteSpace(request.ProvinceName)))
-            validationErrors["location"] = new[] { "Thiếu thông tin phường/xã hoặc tỉnh/thành để định vị địa chỉ." };
-
-        if (validationErrors.Count > 0)
+        var fullAddress = request.FullAddress;
+        if (string.IsNullOrWhiteSpace(fullAddress))
         {
-            _logger.LogWarning("Shipping calculate validation errors {@Errors}", validationErrors);
-            return BadRequest(new { success = false, message = "Dữ liệu tính phí giao hàng không hợp lệ.", errors = validationErrors });
+            fullAddress = string.Join(", ", new[] { request.AddressDetail, request.WardName, request.ProvinceName, "Vietnam" }
+                .Where(x => !string.IsNullOrWhiteSpace(x)));
         }
+
+        var hasCoordinates = request.Latitude.HasValue && request.Longitude.HasValue;
+        _logger.LogInformation("Shipping calculate hasCoordinates={HasCoordinates} fallbackAddress='{Address}'", hasCoordinates, fullAddress);
 
         try
         {
-            var fallbackAddress = request.FullAddress;
-            if (!request.Latitude.HasValue || !request.Longitude.HasValue)
-            {
-                fallbackAddress = string.IsNullOrWhiteSpace(request.FullAddress)
-                    ? string.Join(", ", new[] { request.AddressDetail, request.WardName, request.ProvinceName, "Vietnam" }.Where(x => !string.IsNullOrWhiteSpace(x)))
-                    : request.FullAddress;
-                _logger.LogInformation("Shipping calculate geocode fallback with fullAddress='{FallbackAddress}' (lat/lng missing)", fallbackAddress);
-            }
-
-            var quote = await _shippingService.CalculateAsync(fallbackAddress ?? request.Address ?? string.Empty, request.Latitude, request.Longitude, cancellationToken);
+            var quote = await _shippingService.CalculateAsync(fullAddress ?? request.Address ?? string.Empty, request.Latitude, request.Longitude, cancellationToken);
+            _logger.LogInformation("Shipping calculate success distanceKm={DistanceKm} durationMinutes={DurationMinutes} fee={Fee}", quote.DistanceKm, quote.DurationMinutes, quote.ShippingFee);
             return Ok(new
             {
                 success = true,
-                destination_latitude = quote.DestinationLatitude,
-                destination_longitude = quote.DestinationLongitude,
-                distance_km = quote.DistanceKm,
-                duration_minutes = quote.DurationMinutes,
-                shipping_fee = quote.ShippingFee,
-                shipping_provider = quote.Provider,
-                shipping_formula_snapshot = quote.FormulaSnapshot
+                message = "Tính phí giao hàng thành công.",
+                destinationLatitude = quote.DestinationLatitude,
+                destinationLongitude = quote.DestinationLongitude,
+                distanceKm = quote.DistanceKm,
+                durationMinutes = quote.DurationMinutes,
+                shippingFee = quote.ShippingFee,
+                shippingProvider = quote.Provider,
+                formula = quote.FormulaSnapshot
             });
         }
         catch (InvalidOperationException ex)
         {
             _logger.LogWarning(ex, "Shipping calculate failed due to invalid operation. request={@Request}", request);
-            return BadRequest(new { success = false, message = ex.Message, errors = new { exception = new[] { ex.Message } } });
+            return Ok(new { success = false, message = ex.Message });
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            return StatusCode(500, new { success = false, message = "Không thể tính phí giao hàng lúc này. Vui lòng thử lại." });
+            _logger.LogError(ex, "Shipping calculate unexpected error.");
+            return Ok(new { success = false, message = "Không thể tính phí giao hàng lúc này. Vui lòng thử lại." });
         }
     }
 
     [HttpGet("autocomplete")]
-    public async Task<IActionResult> Autocomplete([FromQuery] string query, [FromQuery] string? provinceName, CancellationToken cancellationToken)
+    public async Task<IActionResult> Autocomplete([FromQuery] string query, [FromQuery] string? wardName, [FromQuery] string? provinceName, CancellationToken cancellationToken)
     {
         var normalizedQuery = string.Join(" ", (query ?? string.Empty).Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries));
         if (string.IsNullOrWhiteSpace(normalizedQuery) || normalizedQuery.Length < 3)
-            return Ok(new { success = true, queryUsed = normalizedQuery, count = 0, suggestions = Array.Empty<object>() });
+            return Ok(new { success = true, suggestions = Array.Empty<object>() });
 
         try
         {
-            _logger.LogInformation("Shipping autocomplete query='{Query}' province='{Province}'", normalizedQuery, provinceName);
-            var searchResult = await _mapProvider.SearchAddressesAsync(normalizedQuery, provinceName, cancellationToken);
+            var composedQuery = string.Join(", ", new[] { normalizedQuery, wardName, provinceName, "Vietnam" }.Where(x => !string.IsNullOrWhiteSpace(x)));
+            _logger.LogInformation("Shipping autocomplete backend query='{Query}' ward='{Ward}' province='{Province}'", composedQuery, wardName, provinceName);
+            var searchResult = await _mapProvider.SearchAddressesAsync(composedQuery, provinceName, cancellationToken);
             var mapped = searchResult.Suggestions.Select(x => new { label = x.DisplayName, latitude = x.Latitude, longitude = x.Longitude }).ToList();
-            _logger.LogInformation("Shipping autocomplete mapped_suggestions_count={Count}", mapped.Count);
+            _logger.LogInformation("Shipping autocomplete suggestions_count={Count} query_used='{QueryUsed}'", mapped.Count, searchResult.QueryUsed);
 
-            return Ok(new
-            {
-                success = true,
-                queryUsed = searchResult.QueryUsed,
-                count = mapped.Count,
-                suggestions = mapped
-            });
+            return Ok(new { success = true, suggestions = mapped });
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Shipping autocomplete failed for query='{Query}'", normalizedQuery);
-            return StatusCode(500, new { success = false, message = "Không thể tính phí giao hàng lúc này. Vui lòng thử lại." });
+            return Ok(new { success = false, message = "Không thể gợi ý địa chỉ lúc này. Vui lòng thử lại.", suggestions = Array.Empty<object>() });
         }
     }
 }

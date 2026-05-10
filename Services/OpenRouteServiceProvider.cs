@@ -30,7 +30,8 @@ public class OpenRouteServiceProvider : IMapProvider
         var cleanedNoComma = NormalizeQuery(normalizedQuery.Replace(",", " "));
         _logger.LogInformation("ORS address search raw_query='{RawQuery}' normalized_query='{NormalizedQuery}' province='{Province}'", query, normalizedQuery, provinceName);
 
-        var fallbackQueries = BuildFallbackQueries(normalizedQuery, cleanedNoComma);
+        var fallbackQueries = BuildFallbackQueries(normalizedQuery, cleanedNoComma, provinceName);
+        _logger.LogInformation("ORS fallback query candidates count={Count}", fallbackQueries.Count);
         foreach (var candidate in fallbackQueries)
         {
             var suggestions = await SearchInternalAsync(candidate, cancellationToken);
@@ -86,15 +87,17 @@ public class OpenRouteServiceProvider : IMapProvider
         return results;
     }
 
-    private static IReadOnlyList<string> BuildFallbackQueries(string normalizedQuery, string cleanedNoComma)
+    private static IReadOnlyList<string> BuildFallbackQueries(string normalizedQuery, string cleanedNoComma, string? provinceName)
     {
         var removedDiacritics = RemoveDiacritics(cleanedNoComma);
         var noHouseNumber = NormalizeQuery(Regex.Replace(cleanedNoComma, "^\\d+\\s*", string.Empty));
+        var province = NormalizeQuery(provinceName ?? string.Empty);
         var candidates = new List<string>
         {
             normalizedQuery,
             cleanedNoComma,
             removedDiacritics,
+            string.IsNullOrWhiteSpace(province) ? string.Empty : $"{cleanedNoComma}, {province}, Vietnam",
             $"{cleanedNoComma} Vietnam",
             $"{cleanedNoComma} Ha Noi Vietnam",
             noHouseNumber
@@ -140,6 +143,7 @@ public class OpenRouteServiceProvider : IMapProvider
         request.Content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json");
 
         using var response = await _httpClient.SendAsync(request, cancellationToken);
+        _logger.LogInformation("ORS route status={StatusCode} origin=({OriginLat},{OriginLng}) destination=({DestLat},{DestLng})", (int)response.StatusCode, origin.Latitude, origin.Longitude, destination.Latitude, destination.Longitude);
         if (!response.IsSuccessStatusCode) return null;
 
         await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
@@ -169,6 +173,7 @@ public class OpenRouteServiceProvider : IMapProvider
         request.Content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json");
 
         using var response = await _httpClient.SendAsync(request, cancellationToken);
+        _logger.LogInformation("ORS route status={StatusCode} origin=({OriginLat},{OriginLng}) destination=({DestLat},{DestLng})", (int)response.StatusCode, origin.Latitude, origin.Longitude, destination.Latitude, destination.Longitude);
         if (!response.IsSuccessStatusCode) return null;
 
         await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
