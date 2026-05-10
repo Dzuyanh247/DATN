@@ -59,12 +59,18 @@ public class OrdersController : Controller
         vm.FullAddress = string.IsNullOrWhiteSpace(vm.FullAddress)
             ? $"{vm.AddressDetail}, {vm.WardName}, {vm.ProvinceName}"
             : vm.FullAddress;
+        vm.ShippingFullAddress = string.IsNullOrWhiteSpace(vm.ShippingFullAddress) ? vm.FullAddress : vm.ShippingFullAddress;
         vm.CustomerAddress = vm.FullAddress; // Keep old flow/database field compatible
 
         var userId = User.Identity?.IsAuthenticated == true ? int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!) : (int?)null;
         var cart = await _cartService.GetCartAsync(userId);
         if (!cart.Items.Any()) ModelState.AddModelError(string.Empty, "Không thể đặt hàng khi giỏ hàng trống.");
-        if (vm.ShippingDistanceKm <= 0 || string.IsNullOrWhiteSpace(vm.ShippingProvider)) ModelState.AddModelError(string.Empty, "Vui lòng tính phí giao hàng trước khi đặt hàng.");
+        if (vm.ShippingDistanceKm <= 0 || vm.ShippingFee <= 0 || string.IsNullOrWhiteSpace(vm.ShippingProvider))
+            ModelState.AddModelError(string.Empty, "Vui lòng tính phí giao hàng hợp lệ trước khi đặt hàng.");
+        if (!vm.ShippingLatitude.HasValue || !vm.ShippingLongitude.HasValue)
+            ModelState.AddModelError(string.Empty, "Vui lòng chọn địa chỉ gợi ý hoặc nhập địa chỉ rõ ràng để xác định vị trí giao hàng.");
+        if (!vm.IsAddressConfirmed && string.IsNullOrWhiteSpace(vm.ShippingProvider))
+            ModelState.AddModelError(string.Empty, "Địa chỉ giao hàng chưa được xác nhận.");
 
         if (!ModelState.IsValid)
         {

@@ -5,7 +5,7 @@ namespace Datn.PcStore.Services;
 
 public interface IShippingService
 {
-    Task<ShippingQuote> CalculateAsync(string shippingAddress, CancellationToken cancellationToken = default);
+    Task<ShippingQuote> CalculateAsync(string shippingAddress, double? latitude = null, double? longitude = null, CancellationToken cancellationToken = default);
 }
 
 public class ShippingService : IShippingService
@@ -30,7 +30,7 @@ public class ShippingService : IShippingService
         _mapProvider = mapProvider;
     }
 
-    public async Task<ShippingQuote> CalculateAsync(string shippingAddress, CancellationToken cancellationToken = default)
+    public async Task<ShippingQuote> CalculateAsync(string shippingAddress, double? latitude = null, double? longitude = null, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(shippingAddress))
             throw new InvalidOperationException("Vui lòng nhập địa chỉ chi tiết để tính phí giao hàng.");
@@ -40,12 +40,22 @@ public class ShippingService : IShippingService
         var shop = await _db.ShopLocations.FirstOrDefaultAsync(x => x.IsDefault, cancellationToken)
             ?? throw new InvalidOperationException("Không lấy được tọa độ shop.");
 
-        var destination = await _geocodingService.GeocodeAsync(shippingAddress, cancellationToken);
+        GeoPoint destination;
+        if (latitude.HasValue && longitude.HasValue)
+        {
+            destination = new GeoPoint(latitude.Value, longitude.Value);
+        }
+        else
+        {
+            destination = await _geocodingService.GeocodeAsync(shippingAddress, cancellationToken);
+        }
         var metrics = await _routeService.GetRouteMetricsAsync(new GeoPoint(shop.Latitude, shop.Longitude), destination, cancellationToken);
         var feeBreakdown = _shippingFeeCalculator.Calculate(metrics.DistanceKm, config);
 
         return new ShippingQuote
         {
+            DestinationLatitude = destination.Latitude,
+            DestinationLongitude = destination.Longitude,
             DistanceKm = metrics.DistanceKm,
             DurationMinutes = metrics.DurationMinutes,
             ShippingFee = feeBreakdown.Fee,

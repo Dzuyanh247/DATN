@@ -43,6 +43,10 @@ public class CheckoutRequestVm
     public string? ManualWard { get; set; }
     public string AddressDetail { get; set; } = string.Empty;
     public string FullAddress { get; set; } = string.Empty;
+    public double? ShippingLatitude { get; set; }
+    public double? ShippingLongitude { get; set; }
+    public string? ShippingFullAddress { get; set; }
+    public bool IsAddressConfirmed { get; set; }
     public string? Note { get; set; }
     public string? VoucherCode { get; set; }
     public double ShippingDistanceKm { get; set; }
