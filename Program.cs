@@ -239,7 +239,7 @@ END");
     if (!await db.ShopLocations.AnyAsync())
     {
         const string shopAddress = "83-85 Thái Hà, Đống Đa, Hà Nội";
-        var point = await mapProvider.GeocodeAsync(shopAddress) ?? new GeoPoint(21.012763, 105.821866);
+        var point = await mapProvider.GeocodeAsync(shopAddress, "Thành phố Hà Nội") ?? new GeoPoint(21.012763, 105.821866);
         db.ShopLocations.Add(new Datn.PcStore.Models.ShopLocation
         {
             ShopName = "Cửa hàng chính",
@@ -251,6 +251,21 @@ END");
         await db.SaveChangesAsync();
     }
 
+
+    var defaultShop = await db.ShopLocations.FirstOrDefaultAsync(x => x.IsDefault);
+    if (defaultShop != null)
+    {
+        var lat = defaultShop.Latitude;
+        var lng = defaultShop.Longitude;
+        if (Math.Abs(lat) > 90 && Math.Abs(lat) <= 9000000000d) lat /= 10000000d;
+        if (Math.Abs(lng) > 180 && Math.Abs(lng) <= 18000000000d) lng /= 10000000d;
+        if (lat != defaultShop.Latitude || lng != defaultShop.Longitude)
+        {
+            defaultShop.Latitude = lat;
+            defaultShop.Longitude = lng;
+            await db.SaveChangesAsync();
+        }
+    }
     await SeedData.InitializeAsync(db);
 }
 
