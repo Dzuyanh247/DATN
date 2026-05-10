@@ -1,10 +1,10 @@
 @model Datn.PcStore.Models.Order
 @{
     ViewData["Title"] = "Thanh toán chuyển khoản";
-    const string bankName = "Ngân hàng TMCP Ngoại thương Việt Nam (Vietcombank)";
-    const string accountNumber = "1234567890";
+    const string bankName = "Ngân hàng TMCP Quân đội (MBBank)";
+    const string accountNumber = "0375570025";
     const string accountName = "CONG TY TNHH KKSHOP";
-    var qrData = $"https://img.vietqr.io/image/970436-{accountNumber}-compact2.png?amount={(long)Model.TotalAmount}&addInfo={Model.TransferContent}&accountName={Uri.EscapeDataString(accountName)}";
+    var qrData = $"https://img.vietqr.io/image/970422-{accountNumber}-compact2.png?amount={(long)Model.TotalAmount}&addInfo={Model.TransferContent}&accountName={Uri.EscapeDataString(accountName)}";
 }
 
 <h3>Thanh toán chuyển khoản cho đơn @($"DH{Model.Id:D6}")</h3>
