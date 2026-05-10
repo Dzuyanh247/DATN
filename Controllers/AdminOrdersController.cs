@@ -39,4 +39,18 @@ public class AdminOrdersController : Controller
         await _db.SaveChangesAsync();
         return RedirectToAction(nameof(Index));
     }
+    [HttpPost]
+    public async Task<IActionResult> ConfirmBankTransfer(int id)
+    {
+        var order = await _db.Orders.FindAsync(id);
+        if (order == null) return NotFound();
+        if (order.PaymentMethod != "BANK_TRANSFER" || order.PaymentStatus != "WAITING_CONFIRMATION") return BadRequest();
+
+        order.PaymentStatus = "PAID";
+        order.Status = OrderStatus.Processing;
+        order.PaidAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        return RedirectToAction(nameof(Detail), new { id });
+    }
+
 }

@@ -88,7 +88,7 @@ public class CartItem : BaseEntity
     public int Quantity { get; set; }
 }
 
-public enum OrderStatus { Pending = 1, Processing, Delivering, Completed, Cancelled }
+public enum OrderStatus { Pending = 1, Processing, Delivering, Completed, Cancelled, PendingConfirmation, PendingPayment }
 
 public class Order : BaseEntity
 {
@@ -98,6 +98,9 @@ public class Order : BaseEntity
     [MaxLength(20)] public string ReceiverPhone { get; set; } = string.Empty;
     [MaxLength(250)] public string ShippingAddress { get; set; } = string.Empty;
     [MaxLength(30)] public string PaymentMethod { get; set; } = "COD";
+    [MaxLength(30)] public string PaymentStatus { get; set; } = "UNPAID";
+    [MaxLength(50)] public string? TransferContent { get; set; }
+    public DateTime? PaidAt { get; set; }
     public OrderStatus Status { get; set; } = OrderStatus.Pending;
     public decimal TotalAmount { get; set; }
     [MaxLength(120)] public string? CustomerEmail { get; set; }

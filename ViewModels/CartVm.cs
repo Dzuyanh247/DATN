@@ -27,6 +27,7 @@ public class CartViewVm
     public decimal ShippingFee { get; set; }
     public string? ShippingProvider { get; set; }
     public string? ShippingFormulaSnapshot { get; set; }
+    public string PaymentMethod { get; set; } = "COD";
 }
 
 public class CheckoutRequestVm
@@ -56,4 +57,5 @@ public class CheckoutRequestVm
     public decimal ShippingFee { get; set; }
     public string? ShippingProvider { get; set; }
     public string? ShippingFormulaSnapshot { get; set; }
+    public string PaymentMethod { get; set; } = "COD";
 }

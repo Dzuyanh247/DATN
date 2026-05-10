@@ -1,0 +1,26 @@
+@model Datn.PcStore.Models.Order
+@{
+    ViewData["Title"] = "Thanh toán chuyển khoản";
+    const string bankName = "Ngân hàng TMCP Ngoại thương Việt Nam (Vietcombank)";
+    const string accountNumber = "1234567890";
+    const string accountName = "CONG TY TNHH KKSHOP";
+    var qrData = $"https://img.vietqr.io/image/970436-{accountNumber}-compact2.png?amount={(long)Model.TotalAmount}&addInfo={Model.TransferContent}&accountName={Uri.EscapeDataString(accountName)}";
+}
+
+<h3>Thanh toán chuyển khoản cho đơn @($"DH{Model.Id:D6}")</h3>
+<div class="card p-3">
+    <p><strong>Ngân hàng:</strong> @bankName</p>
+    <p><strong>Số tài khoản:</strong> @accountNumber</p>
+    <p><strong>Chủ tài khoản:</strong> @accountName</p>
+    <p><strong>Số tiền cần chuyển:</strong> <span class="text-danger fw-bold">@Model.TotalAmount.ToString("N0") đ</span></p>
+    <p><strong>Nội dung chuyển khoản:</strong> <code>@Model.TransferContent</code></p>
+    <div class="mb-3">
+        <img src="@qrData" alt="QR chuyển khoản" style="max-width:280px" class="img-thumbnail" />
+    </div>
+
+    <form asp-action="ConfirmTransferred" method="post">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="id" value="@Model.Id" />
+        <button class="btn btn-primary">Tôi đã thanh toán</button>
+    </form>
+</div>
