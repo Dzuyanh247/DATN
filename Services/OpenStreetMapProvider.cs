@@ -41,8 +41,11 @@ public class OpenStreetMapProvider : IMapProvider
         var first = routes.EnumerateArray().FirstOrDefault();
         if (first.ValueKind == JsonValueKind.Undefined) return null;
 
-        var distanceMeters = first.GetProperty("distance").GetDouble();
+        var distanceMeters = first.GetProperty("distance").GetDecimal();
         var durationSeconds = first.GetProperty("duration").GetDouble();
-        return new RouteMetrics(Math.Round(distanceMeters / 1000d, 2), (int)Math.Ceiling(durationSeconds / 60d));
+        var distanceKm = decimal.Round(distanceMeters / 1000m, 2, MidpointRounding.AwayFromZero);
+        var durationMinutes = (int)Math.Ceiling(durationSeconds / 60d);
+
+        return new RouteMetrics(distanceKm, durationMinutes);
     }
 }

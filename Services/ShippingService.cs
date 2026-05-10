@@ -38,18 +38,19 @@ public class ShippingService : IShippingService
             throw new InvalidOperationException("Địa chỉ nằm ngoài phạm vi hỗ trợ giao hàng");
         }
 
-        decimal fee = config.BaseFee;
+        decimal shippingFee = config.BaseFee;
         if (metrics.DistanceKm > config.BaseDistanceKm)
         {
-            var extraKm = (decimal)Math.Ceiling(metrics.DistanceKm - config.BaseDistanceKm);
-            fee += extraKm * config.ExtraFeePerKm;
+            var extraDistance = metrics.DistanceKm - config.BaseDistanceKm;
+            var billedExtraDistance = decimal.Ceiling(extraDistance);
+            shippingFee += billedExtraDistance * config.ExtraFeePerKm;
         }
 
         return new ShippingQuote
         {
             DistanceKm = metrics.DistanceKm,
             DurationMinutes = metrics.DurationMinutes,
-            ShippingFee = fee,
+            ShippingFee = shippingFee,
             Provider = _mapProvider.ProviderName,
             FormulaSnapshot = $"{config.BaseFee:N0}đ/{config.BaseDistanceKm}km đầu, +{config.ExtraFeePerKm:N0}đ/km tiếp theo, tối đa {config.MaxDistanceKm}km"
         };

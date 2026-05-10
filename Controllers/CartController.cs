@@ -69,7 +69,21 @@ public class CartController : Controller
         return RedirectToAction(nameof(Index));
     }
 
-    private int? GetUserId() => User.Identity?.IsAuthenticated == true ? int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!) : null;
+    private int? GetUserId()
+    {
+        if (User.Identity?.IsAuthenticated != true)
+        {
+            return null;
+        }
+
+        var userIdValue = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrWhiteSpace(userIdValue))
+        {
+            return null;
+        }
+
+        return int.TryParse(userIdValue, out var userId) ? userId : null;
+    }
     private bool IsAjaxRequest()
         => Request.Headers.XRequestedWith == "XMLHttpRequest"
            || Request.Headers.Accept.Any(x => x.Contains("application/json", StringComparison.OrdinalIgnoreCase));
