@@ -23,6 +23,8 @@ builder.Services.AddAuthentication(options =>
     });
 
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddMemoryCache();
+builder.Services.Configure<GhnOptions>(builder.Configuration.GetSection("GHN"));
 builder.Services.AddSession();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ICartService, CartService>();
@@ -35,6 +37,18 @@ builder.Services.AddScoped<IGeocodingService, GeocodingService>();
 builder.Services.AddScoped<IRouteService, RouteService>();
 builder.Services.AddScoped<IShippingFeeCalculator, ShippingFeeCalculator>();
 builder.Services.AddScoped<IShippingService, ShippingService>();
+builder.Services.AddHttpClient<IGhnAddressService, GhnAddressService>((sp, client) =>
+{
+    var options = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<GhnOptions>>().Value;
+    client.BaseAddress = new Uri(options.BaseUrl.TrimEnd('/') + "/");
+    client.Timeout = TimeSpan.FromSeconds(10);
+    if (!string.IsNullOrWhiteSpace(options.Token))
+    {
+        client.DefaultRequestHeaders.Remove("Token");
+        client.DefaultRequestHeaders.Add("Token", options.Token);
+    }
+});
+
 
 var app = builder.Build();
 
