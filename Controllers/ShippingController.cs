@@ -38,8 +38,8 @@ public class ShippingController : ControllerBase
             var weight = Math.Max(1000, quantity * 500);
             var length = 20; var width = 20; var height = Math.Max(10, quantity * 2);
 
-            var quote = await _shippingService.CalculateAsync(request.DistrictId, request.WardCode!, request.ProvinceName ?? string.Empty, request.DistrictName ?? string.Empty, request.WardName ?? string.Empty, weight, length, width, height, cancellationToken);
-            return Ok(new { success = true, shippingFee = quote.ShippingFee, currency = "VND", message = "Tính phí giao hàng thành công", total = quote.GhnTotal, service_fee = quote.GhnServiceFee, insurance_fee = quote.GhnInsuranceFee, leadtime = quote.GhnLeadTime, shippingProvider = quote.Provider, formula = quote.FormulaSnapshot });
+            var quote = await _shippingService.CalculateAsync(request.DistrictId, request.WardCode!, request.ProvinceName ?? string.Empty, request.DistrictName ?? string.Empty, request.WardName ?? string.Empty, request.AddressDetail ?? string.Empty, weight, length, width, height, cancellationToken);
+            return Ok(new { success = true, shippingFee = quote.ShippingFee, isFreeShipping = quote.IsFreeShipping, feeSource = quote.Provider, currency = "VND", message = quote.Message, total = quote.GhnTotal, service_fee = quote.GhnServiceFee, insurance_fee = quote.GhnInsuranceFee, leadtime = quote.GhnLeadTime, shippingProvider = quote.Provider, formula = quote.FormulaSnapshot });
         }
         catch (Exception ex)
         {

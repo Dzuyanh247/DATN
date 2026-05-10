@@ -13,8 +13,10 @@ public class ShippingQuote
     public decimal DistanceKm { get; set; }
     public int DurationMinutes { get; set; }
     public decimal ShippingFee { get; set; }
+    public bool IsFreeShipping { get; set; }
     public string Provider { get; set; } = string.Empty;
     public string FormulaSnapshot { get; set; } = string.Empty;
+    public string Message { get; set; } = string.Empty;
     public decimal? GhnTotal { get; set; }
     public decimal? GhnServiceFee { get; set; }
     public decimal? GhnInsuranceFee { get; set; }

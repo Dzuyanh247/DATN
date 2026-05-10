@@ -25,6 +25,8 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddMemoryCache();
 builder.Services.Configure<GhnOptions>(builder.Configuration.GetSection("GHN"));
+builder.Services.Configure<ShippingPolicyOptions>(builder.Configuration.GetSection("ShippingPolicy"));
+builder.Services.Configure<ShopAddressOptions>(builder.Configuration.GetSection("ShopAddress"));
 builder.Services.AddSession();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ICartService, CartService>();
