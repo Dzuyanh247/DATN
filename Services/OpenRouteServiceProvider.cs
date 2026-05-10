@@ -143,7 +143,7 @@ public class OpenRouteServiceProvider : IMapProvider
         request.Content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json");
 
         using var response = await _httpClient.SendAsync(request, cancellationToken);
-        _logger.LogInformation("ORS route status={StatusCode} origin=({OriginLat},{OriginLng}) destination=({DestLat},{DestLng})", (int)response.StatusCode, origin.Latitude, origin.Longitude, destination.Latitude, destination.Longitude);
+        _logger.LogInformation("ORS geocode status={StatusCode} query={Query}", (int)response.StatusCode, address);
         if (!response.IsSuccessStatusCode) return null;
 
         await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
