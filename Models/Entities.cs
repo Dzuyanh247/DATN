@@ -194,7 +194,8 @@ public class ShippingConfig : BaseEntity
     public decimal BaseFee { get; set; } = 15000m;
     public decimal ExtraFeePerKm { get; set; } = 5000m;
     public decimal MaxDistanceKm { get; set; } = 15m;
-    public bool Active { get; set; } = true;
+    public decimal FreeShippingDistanceKm { get; set; } = 0m;
+    public bool IsActive { get; set; } = true;
 }
 
 public class ShopLocation : BaseEntity
@@ -203,6 +204,7 @@ public class ShopLocation : BaseEntity
     [MaxLength(250)] public string Address { get; set; } = string.Empty;
     public double Latitude { get; set; }
     public double Longitude { get; set; }
+    public bool IsDefault { get; set; } = true;
 }
 
 public class SiteSetting : BaseEntity

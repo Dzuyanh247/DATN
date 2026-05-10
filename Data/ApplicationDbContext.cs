@@ -79,6 +79,9 @@ public class ApplicationDbContext : DbContext
             .Property(x => x.MaxDistanceKm)
             .HasPrecision(8, 2);
         modelBuilder.Entity<ShippingConfig>()
+            .Property(x => x.FreeShippingDistanceKm)
+            .HasPrecision(8, 2);
+        modelBuilder.Entity<ShippingConfig>()
             .Property(x => x.BaseFee)
             .HasPrecision(18, 2);
         modelBuilder.Entity<ShippingConfig>()

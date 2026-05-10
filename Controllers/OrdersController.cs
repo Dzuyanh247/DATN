@@ -64,7 +64,7 @@ public class OrdersController : Controller
         var userId = User.Identity?.IsAuthenticated == true ? int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!) : (int?)null;
         var cart = await _cartService.GetCartAsync(userId);
         if (!cart.Items.Any()) ModelState.AddModelError(string.Empty, "Không thể đặt hàng khi giỏ hàng trống.");
-        if (vm.ShippingFee <= 0 || vm.ShippingDistanceKm <= 0) ModelState.AddModelError(string.Empty, "Vui lòng tính phí giao hàng trước khi đặt hàng.");
+        if (vm.ShippingDistanceKm <= 0 || string.IsNullOrWhiteSpace(vm.ShippingProvider)) ModelState.AddModelError(string.Empty, "Vui lòng tính phí giao hàng trước khi đặt hàng.");
 
         if (!ModelState.IsValid)
         {

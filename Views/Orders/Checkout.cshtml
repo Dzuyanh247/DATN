@@ -43,13 +43,13 @@
     </div>
     <div class="mb-3 d-none" id="manualProvinceWrap"><label class="form-label">Tỉnh/Thành phố*</label><input class="form-control" name="ManualProvince" value="@Model.ManualProvince" /></div>
     <div class="mb-3 d-none" id="manualWardWrap"><label class="form-label">Phường/Xã*</label><input class="form-control" name="ManualWard" value="@Model.ManualWard" /></div>
-    <div class="mb-3"><label class="form-label">Địa chỉ nhận hàng*</label><input class="form-control" id="addressDetail" name="AddressDetail" value="@Model.AddressDetail" required /></div>
+    <div class="mb-3"><label class="form-label">Địa chỉ chi tiết*</label><input class="form-control" id="addressDetail" name="AddressDetail" value="@Model.AddressDetail" placeholder="Nhập số nhà, tên đường, ngõ/ngách..." required /></div>
     <div class="mb-3"><label class="form-label">Ghi chú</label><textarea class="form-control" rows="3" name="Note">@Model.Note</textarea></div>
     <small class="text-danger d-none" id="addressError">Không tải được danh sách địa chỉ hoặc thiếu thông tin địa chỉ.</small>
 
     <div class="alert alert-info">
-        <div><strong>Chính sách phí ship:</strong> 15.000đ cho 3km đầu, từ km tiếp theo cộng 5.000đ/km (tối đa 15km).</div>
-        <div id="shippingCalcText" class="mt-2 text-muted">Nhập địa chỉ đầy đủ để tính khoảng cách và phí ship tự động.</div>
+        <div><strong>Chính sách phí ship:</strong> Miễn phí giao hàng trong phạm vi 2km • 15.000đ cho 3km đầu • Từ km tiếp theo cộng 5.000đ/km • Tối đa hỗ trợ 15km.</div>
+        <div id="shippingCalcText" class="mt-2 text-muted">Giao hàng từ cửa hàng 83-85 Thái Hà, Đống Đa, Hà Nội. Nhập địa chỉ đầy đủ để tính phí ship.</div>
     </div>
 
     <button class="btn btn-danger mt-3">Đặt hàng</button>
@@ -78,8 +78,8 @@ const shippingProviderInput = document.getElementById('shippingProvider');
 const shippingFormulaSnapshotInput = document.getElementById('shippingFormulaSnapshot');
 const shippingCalcText = document.getElementById('shippingCalcText');
 let shippingTimer;
-function resetShippingState(msg){shippingDistanceKmInput.value='';shippingDurationMinutesInput.value='';shippingFeeInput.value='';shippingProviderInput.value='';shippingFormulaSnapshotInput.value='';shippingCalcText.textContent=msg||'Nhập địa chỉ đầy đủ để tính khoảng cách và phí ship tự động.';}
-async function calculateShipping(){if(!provinceNameInput.value||!wardNameInput.value||!addressDetail.value.trim()){resetShippingState();return;}const fullAddress=`${addressDetail.value.trim()}, ${wardNameInput.value}, ${provinceNameInput.value}`;fullAddressInput.value=fullAddress;customerAddressInput.value=fullAddress;shippingCalcText.textContent='Đang tính phí giao hàng...';try{const response=await fetch('/api/shipping/calculate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({address:fullAddress})});const payload=await response.json();if(!response.ok){resetShippingState(payload.message||'Không thể tính phí giao hàng.');return;}shippingDistanceKmInput.value=payload.distance_km;shippingDurationMinutesInput.value=payload.duration_minutes;shippingFeeInput.value=payload.shipping_fee;shippingProviderInput.value=payload.shipping_provider;shippingFormulaSnapshotInput.value=payload.shipping_formula_snapshot;shippingCalcText.textContent=`Khoảng cách: ${payload.distance_km}km • Thời gian dự kiến: ${payload.duration_minutes} phút • Phí ship: ${Number(payload.shipping_fee).toLocaleString('vi-VN')}đ`; }catch{resetShippingState('Lỗi kết nối API tính phí giao hàng.');}}
+function resetShippingState(msg){shippingDistanceKmInput.value='';shippingDurationMinutesInput.value='';shippingFeeInput.value='';shippingProviderInput.value='';shippingFormulaSnapshotInput.value='';shippingCalcText.textContent=msg||'Giao hàng từ cửa hàng 83-85 Thái Hà, Đống Đa, Hà Nội. Nhập địa chỉ đầy đủ để tính phí ship.';}
+async function calculateShipping(){if(!provinceNameInput.value||!wardNameInput.value||!addressDetail.value.trim()){resetShippingState();return;}const fullAddress=`${addressDetail.value.trim()}, ${wardNameInput.value}, ${provinceNameInput.value}`;fullAddressInput.value=fullAddress;customerAddressInput.value=fullAddress;shippingCalcText.textContent='Đang tính phí giao hàng...';try{const response=await fetch('/api/shipping/calculate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({address:fullAddress})});const payload=await response.json();if(!response.ok){resetShippingState(payload.message||'Không thể tính phí giao hàng.');return;}shippingDistanceKmInput.value=payload.distance_km;shippingDurationMinutesInput.value=payload.duration_minutes;shippingFeeInput.value=payload.shipping_fee;shippingProviderInput.value=payload.shipping_provider;shippingFormulaSnapshotInput.value=payload.shipping_formula_snapshot;shippingCalcText.textContent=`Khoảng cách: ${payload.distance_km}km • Thời gian dự kiến: ${payload.duration_minutes} phút • Phí ship: ${Number(payload.shipping_fee).toLocaleString('vi-VN')}đ • ${payload.shipping_formula_snapshot}`; }catch{resetShippingState('Lỗi kết nối API tính phí giao hàng.');}}
 function queueShippingCalc(){clearTimeout(shippingTimer);shippingTimer=setTimeout(calculateShipping,500);} 
 function setSelectLoading(selectEl, label){selectEl.innerHTML=`<option value="">${label}</option>`;selectEl.disabled=true;}
 function showAddressError(show){addressError.classList.toggle('d-none',!show);manualProvinceWrap.classList.toggle('d-none',!show);manualWardWrap.classList.toggle('d-none',!show);}
