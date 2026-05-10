@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.RegularExpressions;
 using System.Text;
 using System.Text.Json;
+using Microsoft.AspNetCore.WebUtilities;
 
 namespace Datn.PcStore.Services;
 
@@ -47,22 +48,27 @@ public class OpenRouteServiceProvider : IMapProvider
     {
         if (string.IsNullOrWhiteSpace(query)) return Array.Empty<AddressSuggestion>();
 
-        var body = new
-        {
-            text = query,
-            size = 6,
-            lang = "vi"
-        };
-
         const string endpoint = "https://api.openrouteservice.org/geocode/search";
-        using var request = new HttpRequestMessage(HttpMethod.Post, endpoint);
+        var requestUri = BuildGeocodeUri(endpoint, new Dictionary<string, string?>
+        {
+            ["api_key"] = _apiKey,
+            ["text"] = query,
+            ["size"] = "6",
+            ["lang"] = "vi"
+        });
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, requestUri);
         request.Headers.TryAddWithoutValidation("Authorization", _apiKey);
-        request.Content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json");
-        _logger.LogInformation("ORS request endpoint='{Endpoint}' query_sent='{QuerySent}' payload={@Payload}", endpoint, query, body);
+        _logger.LogInformation("ORS request endpoint='{Endpoint}' query_sent='{QuerySent}' request_uri='{RequestUri}'", endpoint, query, requestUri);
 
         using var response = await _httpClient.SendAsync(request, cancellationToken);
         _logger.LogInformation("ORS geocode/search status={StatusCode}", (int)response.StatusCode);
-        if (!response.IsSuccessStatusCode) return Array.Empty<AddressSuggestion>();
+        if (!response.IsSuccessStatusCode)
+        {
+            var failureBody = await response.Content.ReadAsStringAsync(cancellationToken);
+            _logger.LogWarning("ORS geocode/search failed status={StatusCode} query='{Query}' response_body='{ResponseBody}'", (int)response.StatusCode, query, failureBody);
+            return Array.Empty<AddressSuggestion>();
+        }
 
         await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
         using var json = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
@@ -90,21 +96,27 @@ public class OpenRouteServiceProvider : IMapProvider
 
     private static IReadOnlyList<string> BuildFallbackQueries(string normalizedQuery, string cleanedNoComma, string? provinceName)
     {
+        var normalizedFull = NormalizeAddressText(normalizedQuery);
+        var normalizedNoComma = NormalizeAddressText(cleanedNoComma);
         var removedDiacritics = RemoveDiacritics(cleanedNoComma);
-        var noHouseNumber = NormalizeQuery(Regex.Replace(cleanedNoComma, "^\\d+\\s*", string.Empty));
+        var noHouseNumber = NormalizeAddressText(Regex.Replace(normalizedNoComma, "^\\d+\\s*", string.Empty));
         var noHouseNumberAscii = NormalizeQuery(RemoveDiacritics(noHouseNumber));
-        var province = NormalizeQuery(provinceName ?? string.Empty);
+        var province = NormalizeAddressText(provinceName ?? string.Empty);
+        var normalizedProvince = RemoveDuplicatePhrase(province, "Thành phố Hà Nội");
+
+        var baseWithoutCountry = RemoveDuplicatePhrase(normalizedNoComma, "Vietnam");
+        var baseNoCommaNoProvinceDup = RemoveDuplicatePhrase(baseWithoutCountry, normalizedProvince);
         var candidates = new List<string>
         {
-            normalizedQuery,
-            $"{cleanedNoComma} {province} Vietnam",
-            $"{noHouseNumber} {province}",
+            normalizedFull,
+            ComposeAddress(baseNoCommaNoProvinceDup, normalizedProvince, "Vietnam"),
+            ComposeAddress(noHouseNumber, normalizedProvince),
             noHouseNumberAscii,
-            $"{noHouseNumberAscii} Vietnam",
-            cleanedNoComma,
-            removedDiacritics,
-            string.IsNullOrWhiteSpace(province) ? string.Empty : $"{cleanedNoComma}, {province}, Vietnam",
-            $"{cleanedNoComma} Vietnam",
+            ComposeAddress(noHouseNumberAscii, "Vietnam"),
+            baseNoCommaNoProvinceDup,
+            NormalizeAddressText(removedDiacritics),
+            string.IsNullOrWhiteSpace(normalizedProvince) ? string.Empty : ComposeAddress(baseNoCommaNoProvinceDup, normalizedProvince, "Vietnam"),
+            ComposeAddress(baseNoCommaNoProvinceDup, "Vietnam"),
             $"{noHouseNumberAscii} Ha Noi",
             noHouseNumber
         };
@@ -117,6 +129,52 @@ public class OpenRouteServiceProvider : IMapProvider
 
     private static string NormalizeQuery(string query)
         => Regex.Replace(query.Trim(), "\\s+", " ");
+
+    private static string NormalizeAddressText(string query)
+    {
+        if (string.IsNullOrWhiteSpace(query)) return string.Empty;
+        var normalized = NormalizeQuery(query)
+            .Replace("dươdng", "đường", StringComparison.OrdinalIgnoreCase)
+            .Replace("duong", "đường", StringComparison.OrdinalIgnoreCase);
+        normalized = RemoveDuplicatePhrase(normalized, "Vietnam Vietnam");
+        normalized = RemoveDuplicatePhrase(normalized, "Thành phố Hà Nội Thành phố Hà Nội");
+        return NormalizeQuery(normalized);
+    }
+
+    private static string ComposeAddress(params string[] parts)
+    {
+        var tokens = parts
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Select(NormalizeAddressText)
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .ToList();
+
+        var deduped = new List<string>();
+        foreach (var token in tokens)
+        {
+            if (deduped.Any(x => string.Equals(x, token, StringComparison.OrdinalIgnoreCase)))
+                continue;
+            deduped.Add(token);
+        }
+
+        return string.Join(" ", deduped);
+    }
+
+    private static string RemoveDuplicatePhrase(string source, string phrase)
+    {
+        if (string.IsNullOrWhiteSpace(source) || string.IsNullOrWhiteSpace(phrase)) return NormalizeQuery(source);
+        var pattern = Regex.Escape(phrase);
+        var duplicatePattern = $"(?:{pattern})(?:[\\s,]+{pattern})+";
+        return Regex.Replace(source, duplicatePattern, phrase, RegexOptions.IgnoreCase);
+    }
+
+    private static Uri BuildGeocodeUri(string endpoint, IReadOnlyDictionary<string, string?> query)
+    {
+        var queryValues = query
+            .Where(kv => !string.IsNullOrWhiteSpace(kv.Value))
+            .ToDictionary(kv => kv.Key, kv => kv.Value!);
+        return new Uri(QueryHelpers.AddQueryString(endpoint, queryValues));
+    }
 
     private static string RemoveDiacritics(string text)
     {
@@ -136,26 +194,38 @@ public class OpenRouteServiceProvider : IMapProvider
 
     public async Task<GeoPoint?> GeocodeAsync(string address, CancellationToken cancellationToken = default)
     {
-        var body = new
+        var normalizedAddress = NormalizeAddressText(address);
+        var requestUri = BuildGeocodeUri("https://api.openrouteservice.org/geocode/search", new Dictionary<string, string?>
         {
-            text = address,
-            size = 1,
-            boundary_country = new[] { "VN" },
-            lang = "vi"
-        };
+            ["api_key"] = _apiKey,
+            ["text"] = normalizedAddress,
+            ["size"] = "1",
+            ["boundary_country"] = "VN",
+            ["lang"] = "vi"
+        });
 
-        using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.openrouteservice.org/geocode/search");
+        using var request = new HttpRequestMessage(HttpMethod.Get, requestUri);
         request.Headers.TryAddWithoutValidation("Authorization", _apiKey);
-        request.Content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json");
 
         using var response = await _httpClient.SendAsync(request, cancellationToken);
-        _logger.LogInformation("ORS geocode status={StatusCode} query={Query}", (int)response.StatusCode, address);
-        if (!response.IsSuccessStatusCode) return null;
+        _logger.LogInformation("ORS geocode status={StatusCode} query={Query} request_uri='{RequestUri}'", (int)response.StatusCode, normalizedAddress, requestUri);
+        if (!response.IsSuccessStatusCode)
+        {
+            var failureBody = await response.Content.ReadAsStringAsync(cancellationToken);
+            _logger.LogWarning("ORS geocode failed status={StatusCode} query='{Query}' response_body='{ResponseBody}'", (int)response.StatusCode, normalizedAddress, failureBody);
+            return null;
+        }
 
         await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
         using var json = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
 
-        var first = json.RootElement.GetProperty("features").EnumerateArray().FirstOrDefault();
+        if (!json.RootElement.TryGetProperty("features", out var features) || features.GetArrayLength() == 0)
+        {
+            _logger.LogWarning("ORS geocode has no features for query='{Query}'", normalizedAddress);
+            return null;
+        }
+
+        var first = features.EnumerateArray().FirstOrDefault();
         if (first.ValueKind == JsonValueKind.Undefined) return null;
         var coordinates = first.GetProperty("geometry").GetProperty("coordinates");
         if (coordinates.GetArrayLength() < 2) return null;
