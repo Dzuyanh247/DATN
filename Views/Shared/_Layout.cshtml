@@ -3,6 +3,7 @@
 @inject ApplicationDbContext DbContext
 @{
     var menuCategories = await DbContext.Categories.OrderBy(c => c.CreatedAt).ToListAsync();
+    var categoryIdByName = menuCategories.ToDictionary(c => c.Name, c => c.Id, StringComparer.OrdinalIgnoreCase);
     var siteLogoUrl = ImageUrlHelper.ResolveImageUrl(await DbContext.SiteSettings.OrderBy(x => x.Id).Select(x => x.LogoUrl).FirstOrDefaultAsync(), string.Empty);
     var controllerName = ViewContext.RouteData.Values["controller"]?.ToString() ?? string.Empty;
     var actionName = ViewContext.RouteData.Values["action"]?.ToString() ?? string.Empty;
@@ -114,12 +115,12 @@ else
         <div class="container ttg-shell ttg-cat-row">
             <button class="ttg-cat-btn" type="button"><i class="bi bi-list"></i> DANH MỤC SẢN PHẨM</button>
             <div class="ttg-cat-nav" aria-label="Danh mục nổi bật">
-                <a class="ttg-cat-link" asp-controller="Products" asp-action="Index"><i class="bi bi-pc-display"></i>PC Gaming</a>
-                <a class="ttg-cat-link" asp-controller="Products" asp-action="Index"><i class="bi bi-cpu"></i>Workstation</a>
-                <a class="ttg-cat-link" asp-controller="Products" asp-action="Index"><i class="bi bi-gpu-card"></i>AMD Gaming</a>
-                <a class="ttg-cat-link" asp-controller="Products" asp-action="Index"><i class="bi bi-device-ssd"></i>PC Mini</a>
-                <a class="ttg-cat-link" asp-controller="Products" asp-action="Index"><i class="bi bi-briefcase"></i>PC Văn Phòng</a>
-                <a class="ttg-cat-link" asp-controller="Products" asp-action="Index"><i class="bi bi-memory"></i>Linh kiện</a>
+                <a class="ttg-cat-link" asp-controller="Products" asp-action="Index" asp-route-categoryId="@(categoryIdByName.GetValueOrDefault("PC Gaming"))" asp-route-categorySlug="pc-gaming"><i class="bi bi-pc-display"></i>PC Gaming</a>
+                <a class="ttg-cat-link" asp-controller="Products" asp-action="Index" asp-route-categoryId="@(categoryIdByName.GetValueOrDefault("Workstation"))" asp-route-categorySlug="workstation"><i class="bi bi-cpu"></i>Workstation</a>
+                <a class="ttg-cat-link" asp-controller="Products" asp-action="Index" asp-route-categoryId="@(categoryIdByName.GetValueOrDefault("AMD Gaming"))" asp-route-categorySlug="amd-gaming"><i class="bi bi-gpu-card"></i>AMD Gaming</a>
+                <a class="ttg-cat-link" asp-controller="Products" asp-action="Index" asp-route-categoryId="@(categoryIdByName.GetValueOrDefault("PC Mini"))" asp-route-categorySlug="pc-mini"><i class="bi bi-device-ssd"></i>PC Mini</a>
+                <a class="ttg-cat-link" asp-controller="Products" asp-action="Index" asp-route-categoryId="@(categoryIdByName.GetValueOrDefault("PC Văn Phòng"))" asp-route-categorySlug="pc-van-phong"><i class="bi bi-briefcase"></i>PC Văn Phòng</a>
+                <a class="ttg-cat-link" asp-controller="Products" asp-action="Index" asp-route-categoryId="@(categoryIdByName.GetValueOrDefault("Linh kiện"))" asp-route-categorySlug="linh-kien"><i class="bi bi-memory"></i>Linh kiện</a>
             </div>
         </div>
     </div>

@@ -16,6 +16,15 @@ public class ProductsController : Controller
 
         if (!string.IsNullOrWhiteSpace(vm.Keyword))
             query = query.Where(p => p.Name.Contains(vm.Keyword));
+        if (!vm.CategoryId.HasValue && !string.IsNullOrWhiteSpace(vm.CategorySlug))
+        {
+            var normalizedSlug = vm.CategorySlug.Trim().ToLowerInvariant();
+            vm.CategoryId = await _db.Categories
+                .Where(c => c.Name.ToLower().Replace(" ", "-") == normalizedSlug)
+                .Select(c => (int?)c.Id)
+                .FirstOrDefaultAsync();
+        }
+
         if (vm.CategoryId.HasValue)
             query = query.Where(p => p.CategoryId == vm.CategoryId.Value);
         if (!string.IsNullOrWhiteSpace(vm.Brand))

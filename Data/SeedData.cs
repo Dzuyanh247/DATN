@@ -35,16 +35,27 @@ public static class SeedData
             await db.SaveChangesAsync();
         }
 
-        if (!await db.Categories.AnyAsync())
+        var requiredCategories = new[]
         {
-            db.Categories.AddRange(
-                new Category { Name = "PC Gaming", IconClass = "bi bi-pc-display" },
-                new Category { Name = "Laptop", IconClass = "bi bi-laptop" },
-                new Category { Name = "Màn hình", IconClass = "bi bi-display" },
-                new Category { Name = "Linh kiện", IconClass = "bi bi-cpu" }
-            );
-            await db.SaveChangesAsync();
+            new Category { Name = "PC Gaming", IconClass = "bi bi-pc-display" },
+            new Category { Name = "AMD Gaming", IconClass = "bi bi-gpu-card" },
+            new Category { Name = "Workstation", IconClass = "bi bi-cpu" },
+            new Category { Name = "PC Mini", IconClass = "bi bi-device-ssd" },
+            new Category { Name = "PC Văn Phòng", IconClass = "bi bi-briefcase" },
+            new Category { Name = "Linh kiện", IconClass = "bi bi-memory" },
+            new Category { Name = "Laptop", IconClass = "bi bi-laptop" },
+            new Category { Name = "Màn hình", IconClass = "bi bi-display" }
+        };
+
+        foreach (var category in requiredCategories)
+        {
+            if (!await db.Categories.AnyAsync(c => c.Name == category.Name))
+            {
+                db.Categories.Add(category);
+            }
         }
+
+        await db.SaveChangesAsync();
 
         if (!await db.Banners.AnyAsync())
         {
@@ -96,8 +107,7 @@ public static class SeedData
 
         if (!await db.Products.AnyAsync())
         {
-            var pcCategoryId = await db.Categories.Where(c => c.Name == "PC Gaming").Select(c => c.Id).FirstAsync();
-            var laptopCategoryId = await db.Categories.Where(c => c.Name == "Laptop").Select(c => c.Id).FirstAsync();
+            var categoryMap = await db.Categories.ToDictionaryAsync(c => c.Name, c => c.Id);
 
             var products = new List<Product>
             {
@@ -111,7 +121,7 @@ public static class SeedData
                     DiscountPrice = 23990000,
                     SalePrice =23990000,
                     StockQuantity = 5,
-                    CategoryId = pcCategoryId,
+                    CategoryId = categoryMap["PC Gaming"],
                     ThumbnailImage = "https://res.cloudinary.com/demo/image/upload/v1312461204/sample.jpg",
                     ShortDescription = "PC gaming tầm trung, chiến game 2K.",
                     Description = "Cấu hình gồm i5 + RTX 4060.",
@@ -130,13 +140,93 @@ public static class SeedData
                 },
                 new()
                 {
+                    Name = "PC AMD R7 7800X3D RTX 4070",
+                    Slug = "pc-amd-r7-7800x3d-rtx4070",
+                    ProductCode = "AMDG1",
+                    Brand = "KKSHOP",
+                    Price = 34990000,
+                    StockQuantity = 4,
+                    CategoryId = categoryMap["AMD Gaming"],
+                    ThumbnailImage = "https://res.cloudinary.com/demo/image/upload/v1312461204/flower.jpg",
+                    ShortDescription = "PC gaming CPU AMD hiệu năng cao.",
+                    Description = "Tối ưu FPS cho game AAA và eSports.",
+                    DetailDescription = "Ryzen 7 7800X3D kết hợp RTX 4070.",
+                    Specifications = "Ryzen 7 7800X3D | RAM 32GB DDR5 | SSD 1TB",
+                    WarrantyMonths = 36,
+                    WarrantyDuration = "36 tháng",
+                    ComponentType = "PC",
+                    IsInStock = true,
+                    IsActive = true
+                },
+                new()
+                {
+                    Name = "Workstation W5 RTX 4080",
+                    Slug = "workstation-w5-rtx4080",
+                    ProductCode = "WORK5",
+                    Brand = "KKSHOP",
+                    Price = 52990000,
+                    StockQuantity = 3,
+                    CategoryId = categoryMap["Workstation"],
+                    ThumbnailImage = "https://res.cloudinary.com/demo/image/upload/v1312461204/couple.jpg",
+                    ShortDescription = "Máy trạm cho render, CAD, AI.",
+                    Description = "Đáp ứng workload dựng hình và machine learning.",
+                    DetailDescription = "CPU đa nhân + RTX 4080 + RAM lớn.",
+                    Specifications = "Core i9 | RAM 64GB | RTX 4080 | SSD 2TB",
+                    WarrantyMonths = 36,
+                    WarrantyDuration = "36 tháng",
+                    ComponentType = "PC",
+                    IsInStock = true,
+                    IsActive = true
+                },
+                new()
+                {
+                    Name = "PC Mini M2",
+                    Slug = "pc-mini-m2",
+                    ProductCode = "MINI2",
+                    Brand = "KKSHOP",
+                    Price = 12990000,
+                    StockQuantity = 7,
+                    CategoryId = categoryMap["PC Mini"],
+                    ThumbnailImage = "https://res.cloudinary.com/demo/image/upload/v1312461204/animals.jpg",
+                    ShortDescription = "PC mini nhỏ gọn tiết kiệm diện tích.",
+                    Description = "Phù hợp bàn làm việc nhỏ và quầy dịch vụ.",
+                    DetailDescription = "Thiết kế mini-ITX yên tĩnh, dễ bố trí.",
+                    Specifications = "Core i5 | RAM 16GB | SSD 512GB",
+                    WarrantyMonths = 24,
+                    WarrantyDuration = "24 tháng",
+                    ComponentType = "PC",
+                    IsInStock = true,
+                    IsActive = true
+                },
+                new()
+                {
+                    Name = "CPU AMD Ryzen 5 7600",
+                    Slug = "cpu-amd-ryzen-5-7600",
+                    ProductCode = "CPU7600",
+                    Brand = "AMD",
+                    Price = 5490000,
+                    StockQuantity = 20,
+                    CategoryId = categoryMap["Linh kiện"],
+                    ThumbnailImage = "https://res.cloudinary.com/demo/image/upload/v1312461204/sample.jpg",
+                    ShortDescription = "CPU AMD thế hệ mới cho gaming.",
+                    Description = "6 nhân 12 luồng, socket AM5.",
+                    DetailDescription = "Phù hợp build gaming/office cân bằng.",
+                    Specifications = "6C/12T | Boost 5.1GHz | AM5",
+                    WarrantyMonths = 36,
+                    WarrantyDuration = "36 tháng",
+                    ComponentType = "CPU",
+                    IsInStock = true,
+                    IsActive = true
+                },
+                new()
+                {
                     Name = "Laptop Swift 14",
                     Slug = "laptop-swift-14",
                     ProductCode = "LAP14",
                     Brand = "Aster",
                     Price = 18990000,
                     StockQuantity = 8,
-                    CategoryId = laptopCategoryId,
+                    CategoryId = categoryMap["PC Văn Phòng"],
                     ThumbnailImage = "https://res.cloudinary.com/demo/image/upload/v1312461204/animals.jpg",
                     ShortDescription = "Laptop văn phòng mỏng nhẹ.",
                     Description = "Phù hợp sinh viên và dân công sở.",

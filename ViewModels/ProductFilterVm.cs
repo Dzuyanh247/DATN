@@ -6,6 +6,7 @@ public class ProductFilterVm
 {
     public string? Keyword { get; set; }
     public int? CategoryId { get; set; }
+    public string? CategorySlug { get; set; }
     public string? Brand { get; set; }
     public decimal? MinPrice { get; set; }
     public decimal? MaxPrice { get; set; }
