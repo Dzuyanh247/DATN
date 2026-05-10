@@ -5,62 +5,53 @@ namespace Datn.PcStore.Services;
 
 public interface IShippingService
 {
-    Task<ShippingQuote> CalculateAsync(string fullAddress, string provinceName, string districtName, string wardName, CancellationToken cancellationToken = default);
+    Task<ShippingQuote> CalculateAsync(int districtId, string wardCode, string provinceName, string districtName, string wardName, int totalWeightGram, int length, int width, int height, CancellationToken cancellationToken = default);
 }
 
 public class ShippingService : IShippingService
 {
     private readonly ILogger<ShippingService> _logger;
     private readonly ApplicationDbContext _db;
-    private readonly IRouteService _routeService;
     private readonly IShippingFeeCalculator _shippingFeeCalculator;
-    private readonly IMapProvider _mapProvider;
+    private readonly IGhnShippingService _ghnShippingService;
 
-    public ShippingService(
-        ApplicationDbContext db,
-        IRouteService routeService,
-        IShippingFeeCalculator shippingFeeCalculator,
-        IMapProvider mapProvider,
-        ILogger<ShippingService> logger)
+    public ShippingService(ApplicationDbContext db, IShippingFeeCalculator shippingFeeCalculator, IGhnShippingService ghnShippingService, ILogger<ShippingService> logger)
     {
         _db = db;
         _logger = logger;
-        _routeService = routeService;
         _shippingFeeCalculator = shippingFeeCalculator;
-        _mapProvider = mapProvider;
+        _ghnShippingService = ghnShippingService;
     }
 
-    public async Task<ShippingQuote> CalculateAsync(string fullAddress, string provinceName, string districtName, string wardName, CancellationToken cancellationToken = default)
+    public async Task<ShippingQuote> CalculateAsync(int districtId, string wardCode, string provinceName, string districtName, string wardName, int totalWeightGram, int length, int width, int height, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(fullAddress))
-            throw new InvalidOperationException("Vui lòng nhập địa chỉ chi tiết để tính phí giao hàng.");
-
         var config = await _db.ShippingConfigs.FirstOrDefaultAsync(x => x.IsActive, cancellationToken)
             ?? throw new InvalidOperationException("Chưa cấu hình phí giao hàng.");
 
-        _logger.LogInformation("ShippingService calculate without geocode province={Province} district={District} ward={Ward}", provinceName, districtName, wardName);
-        var feeBreakdown = _shippingFeeCalculator.Calculate(0, config);
+        _logger.LogInformation("Shipping calculate province={Province} district={District} ward={Ward} districtId={DistrictId} wardCode={WardCode}", provinceName, districtName, wardName, districtId, wardCode);
 
+        var ghn = await _ghnShippingService.CalculateFeeAsync(districtId, wardCode, totalWeightGram, length, width, height, cancellationToken);
+        if (ghn.Success && ghn.ShippingFee >= 0)
+        {
+            return new ShippingQuote
+            {
+                ShippingFee = ghn.ShippingFee,
+                Provider = "GHN",
+                FormulaSnapshot = $"GHN total={ghn.Total ?? ghn.ShippingFee:N0}; service_fee={ghn.ServiceFee?.ToString() ?? "n/a"}; insurance_fee={ghn.InsuranceFee?.ToString() ?? "n/a"}",
+                GhnTotal = ghn.Total,
+                GhnServiceFee = ghn.ServiceFee,
+                GhnInsuranceFee = ghn.InsuranceFee,
+                GhnLeadTime = ghn.LeadTime
+            };
+        }
+
+        var fallback = _shippingFeeCalculator.Calculate(config.BaseDistanceKm, config);
+        _logger.LogWarning("GHN fee failed, using fallback fee={Fee} reason={Reason}", fallback.Fee, ghn.ErrorMessage);
         return new ShippingQuote
         {
-            DestinationLatitude = 0,
-            DestinationLongitude = 0,
-            DistanceKm = 0,
-            DurationMinutes = 0,
-            ShippingFee = feeBreakdown.Fee,
-            Provider = "CONFIG_FLAT",
-            FormulaSnapshot = feeBreakdown.FormulaSnapshot
+            ShippingFee = fallback.Fee,
+            Provider = "CONFIG_FALLBACK",
+            FormulaSnapshot = fallback.FormulaSnapshot
         };
-    }
-
-    private static GeoPoint NormalizeCoordinate(GeoPoint point)
-    {
-        var lat = point.Latitude;
-        var lng = point.Longitude;
-        if (Math.Abs(lat) > 90 && Math.Abs(lat) <= 9000000000d) lat /= 10000000d;
-        if (Math.Abs(lng) > 180 && Math.Abs(lng) <= 18000000000d) lng /= 10000000d;
-        if (lat is < -90 or > 90 || lng is < -180 or > 180)
-            throw new InvalidOperationException("Tọa độ giao hàng không hợp lệ.");
-        return new GeoPoint(lat, lng);
     }
 }
