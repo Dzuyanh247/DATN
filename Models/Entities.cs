@@ -190,10 +190,10 @@ public class Article : BaseEntity
 
 public class ShippingConfig : BaseEntity
 {
-    public decimal BaseDistanceKm { get; set; } = 3;
-    public decimal BaseFee { get; set; } = 15000;
-    public decimal ExtraFeePerKm { get; set; } = 5000;
-    public decimal MaxDistanceKm { get; set; } = 15;
+    public decimal BaseDistanceKm { get; set; } = 3m;
+    public decimal BaseFee { get; set; } = 15000m;
+    public decimal ExtraFeePerKm { get; set; } = 5000m;
+    public decimal MaxDistanceKm { get; set; } = 15m;
     public bool Active { get; set; } = true;
 }
 
