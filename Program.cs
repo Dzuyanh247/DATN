@@ -137,6 +137,56 @@ BEGIN
     ALTER TABLE ShopLocations ADD IsDefault BIT NOT NULL DEFAULT 1;
 END");
 
+    await db.Database.ExecuteSqlRawAsync(@"IF COL_LENGTH('ShippingConfigs', 'UpdatedAt') IS NOT NULL
+BEGIN
+    UPDATE ShippingConfigs SET UpdatedAt = SYSUTCDATETIME() WHERE UpdatedAt IS NULL;
+
+    IF EXISTS (
+        SELECT 1
+        FROM sys.default_constraints dc
+        JOIN sys.columns c ON c.default_object_id = dc.object_id
+        JOIN sys.tables t ON t.object_id = c.object_id
+        WHERE t.name = 'ShippingConfigs' AND c.name = 'UpdatedAt'
+    )
+    BEGIN
+        DECLARE @SqlDropShippingUpdatedAt NVARCHAR(MAX);
+        SELECT @SqlDropShippingUpdatedAt = 'ALTER TABLE ShippingConfigs DROP CONSTRAINT ' + QUOTENAME(dc.name)
+        FROM sys.default_constraints dc
+        JOIN sys.columns c ON c.default_object_id = dc.object_id
+        JOIN sys.tables t ON t.object_id = c.object_id
+        WHERE t.name = 'ShippingConfigs' AND c.name = 'UpdatedAt';
+        EXEC sp_executesql @SqlDropShippingUpdatedAt;
+    END
+
+    ALTER TABLE ShippingConfigs ALTER COLUMN UpdatedAt DATETIME2 NOT NULL;
+    ALTER TABLE ShippingConfigs ADD CONSTRAINT DF_ShippingConfigs_UpdatedAt DEFAULT GETUTCDATE() FOR UpdatedAt;
+END");
+
+    await db.Database.ExecuteSqlRawAsync(@"IF COL_LENGTH('ShopLocations', 'UpdatedAt') IS NOT NULL
+BEGIN
+    UPDATE ShopLocations SET UpdatedAt = SYSUTCDATETIME() WHERE UpdatedAt IS NULL;
+
+    IF EXISTS (
+        SELECT 1
+        FROM sys.default_constraints dc
+        JOIN sys.columns c ON c.default_object_id = dc.object_id
+        JOIN sys.tables t ON t.object_id = c.object_id
+        WHERE t.name = 'ShopLocations' AND c.name = 'UpdatedAt'
+    )
+    BEGIN
+        DECLARE @SqlDropShopUpdatedAt NVARCHAR(MAX);
+        SELECT @SqlDropShopUpdatedAt = 'ALTER TABLE ShopLocations DROP CONSTRAINT ' + QUOTENAME(dc.name)
+        FROM sys.default_constraints dc
+        JOIN sys.columns c ON c.default_object_id = dc.object_id
+        JOIN sys.tables t ON t.object_id = c.object_id
+        WHERE t.name = 'ShopLocations' AND c.name = 'UpdatedAt';
+        EXEC sp_executesql @SqlDropShopUpdatedAt;
+    END
+
+    ALTER TABLE ShopLocations ALTER COLUMN UpdatedAt DATETIME2 NOT NULL;
+    ALTER TABLE ShopLocations ADD CONSTRAINT DF_ShopLocations_UpdatedAt DEFAULT GETUTCDATE() FOR UpdatedAt;
+END");
+
     await db.Database.ExecuteSqlRawAsync(@"IF NOT EXISTS (SELECT 1 FROM ShippingConfigs)
 BEGIN
     INSERT INTO ShippingConfigs(BaseDistanceKm, BaseFee, ExtraFeePerKm, MaxDistanceKm, FreeShippingDistanceKm, IsActive, CreatedAt, UpdatedAt)
