@@ -1,5 +1,6 @@
 using Datn.PcStore.Services;
 using Microsoft.AspNetCore.Mvc;
+using System.Text.Json.Serialization;
 
 namespace Datn.PcStore.Controllers;
 
@@ -19,10 +20,26 @@ public class ShippingController : ControllerBase
     }
 
     [HttpPost("calculate")]
-    public async Task<IActionResult> Calculate([FromBody] ShippingCalculateRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> Calculate([FromBody] ShippingCalculateRequest? request, CancellationToken cancellationToken)
     {
-        if (request == null || string.IsNullOrWhiteSpace(request.Address))
-            return BadRequest(new { success = false, message = "Địa chỉ giao hàng là bắt buộc." });
+        if (request == null)
+            return BadRequest(new { success = false, message = "Payload không hợp lệ.", errors = new { request = new[] { "Request body trống hoặc sai định dạng JSON." } } });
+
+        request.NormalizeAliases();
+        _logger.LogInformation("Shipping calculate request body {@Request}", request);
+
+        var validationErrors = new Dictionary<string, string[]>();
+        if (string.IsNullOrWhiteSpace(request.Address) && string.IsNullOrWhiteSpace(request.FullAddress) && string.IsNullOrWhiteSpace(request.AddressDetail))
+            validationErrors["address"] = new[] { "Địa chỉ giao hàng là bắt buộc." };
+
+        if ((!request.Latitude.HasValue || !request.Longitude.HasValue) && (string.IsNullOrWhiteSpace(request.WardName) || string.IsNullOrWhiteSpace(request.ProvinceName)))
+            validationErrors["location"] = new[] { "Thiếu thông tin phường/xã hoặc tỉnh/thành để định vị địa chỉ." };
+
+        if (validationErrors.Count > 0)
+        {
+            _logger.LogWarning("Shipping calculate validation errors {@Errors}", validationErrors);
+            return BadRequest(new { success = false, message = "Dữ liệu tính phí giao hàng không hợp lệ.", errors = validationErrors });
+        }
 
         try
         {
@@ -34,7 +51,7 @@ public class ShippingController : ControllerBase
                     : request.FullAddress;
             }
 
-            var quote = await _shippingService.CalculateAsync(fallbackAddress ?? request.Address, request.Latitude, request.Longitude, cancellationToken);
+            var quote = await _shippingService.CalculateAsync(fallbackAddress ?? request.Address ?? string.Empty, request.Latitude, request.Longitude, cancellationToken);
             return Ok(new
             {
                 success = true,
@@ -49,7 +66,8 @@ public class ShippingController : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { success = false, message = ex.Message });
+            _logger.LogWarning(ex, "Shipping calculate failed due to invalid operation. request={@Request}", request);
+            return BadRequest(new { success = false, message = ex.Message, errors = new { exception = new[] { ex.Message } } });
         }
         catch (Exception)
         {
@@ -87,11 +105,24 @@ public class ShippingController : ControllerBase
 
 public class ShippingCalculateRequest
 {
-    public string Address { get; set; } = string.Empty;
+    public string? Address { get; set; }
     public string? AddressDetail { get; set; }
     public string? FullAddress { get; set; }
     public string? ProvinceName { get; set; }
     public string? WardName { get; set; }
+
+    [JsonPropertyName("ward")]
+    public string? Ward { get; set; }
+
+    [JsonPropertyName("provinceCity")]
+    public string? ProvinceCity { get; set; }
+
     public double? Latitude { get; set; }
     public double? Longitude { get; set; }
+
+    public void NormalizeAliases()
+    {
+        WardName ??= Ward;
+        ProvinceName ??= ProvinceCity;
+    }
 }
