@@ -23,6 +23,12 @@
     <input type="hidden" name="WardCode" id="wardCode" />
     <input type="hidden" name="WardName" id="wardName" />
 
+    <input type="hidden" name="ShippingDistanceKm" id="shippingDistanceKm" />
+    <input type="hidden" name="ShippingDurationMinutes" id="shippingDurationMinutes" />
+    <input type="hidden" name="ShippingFee" id="shippingFeeInput" />
+    <input type="hidden" name="ShippingProvider" id="shippingProvider" />
+    <input type="hidden" name="ShippingFormulaSnapshot" id="shippingFormulaSnapshot" />
+
     <div class="mb-3">
         <label class="form-label">Tỉnh/Thành phố*</label>
         <select class="form-select" id="provinceSelect" required>
@@ -40,6 +46,11 @@
     <div class="mb-3"><label class="form-label">Địa chỉ nhận hàng*</label><input class="form-control" id="addressDetail" name="AddressDetail" value="@Model.AddressDetail" required /></div>
     <div class="mb-3"><label class="form-label">Ghi chú</label><textarea class="form-control" rows="3" name="Note">@Model.Note</textarea></div>
     <small class="text-danger d-none" id="addressError">Không tải được danh sách địa chỉ hoặc thiếu thông tin địa chỉ.</small>
+
+    <div class="alert alert-info">
+        <div><strong>Chính sách phí ship:</strong> 15.000đ cho 3km đầu, từ km tiếp theo cộng 5.000đ/km (tối đa 15km).</div>
+        <div id="shippingCalcText" class="mt-2 text-muted">Nhập địa chỉ đầy đủ để tính khoảng cách và phí ship tự động.</div>
+    </div>
 
     <button class="btn btn-danger mt-3">Đặt hàng</button>
 </form>
@@ -59,11 +70,23 @@ const checkoutForm = document.getElementById('checkoutForm');
 const manualProvinceWrap = document.getElementById('manualProvinceWrap');
 const manualWardWrap = document.getElementById('manualWardWrap');
 const API_BASE = 'https://provinces.open-api.vn/api/v2';
+
+const shippingDistanceKmInput = document.getElementById('shippingDistanceKm');
+const shippingDurationMinutesInput = document.getElementById('shippingDurationMinutes');
+const shippingFeeInput = document.getElementById('shippingFeeInput');
+const shippingProviderInput = document.getElementById('shippingProvider');
+const shippingFormulaSnapshotInput = document.getElementById('shippingFormulaSnapshot');
+const shippingCalcText = document.getElementById('shippingCalcText');
+let shippingTimer;
+function resetShippingState(msg){shippingDistanceKmInput.value='';shippingDurationMinutesInput.value='';shippingFeeInput.value='';shippingProviderInput.value='';shippingFormulaSnapshotInput.value='';shippingCalcText.textContent=msg||'Nhập địa chỉ đầy đủ để tính khoảng cách và phí ship tự động.';}
+async function calculateShipping(){if(!provinceNameInput.value||!wardNameInput.value||!addressDetail.value.trim()){resetShippingState();return;}const fullAddress=`${addressDetail.value.trim()}, ${wardNameInput.value}, ${provinceNameInput.value}`;fullAddressInput.value=fullAddress;customerAddressInput.value=fullAddress;shippingCalcText.textContent='Đang tính phí giao hàng...';try{const response=await fetch('/api/shipping/calculate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({address:fullAddress})});const payload=await response.json();if(!response.ok){resetShippingState(payload.message||'Không thể tính phí giao hàng.');return;}shippingDistanceKmInput.value=payload.distance_km;shippingDurationMinutesInput.value=payload.duration_minutes;shippingFeeInput.value=payload.shipping_fee;shippingProviderInput.value=payload.shipping_provider;shippingFormulaSnapshotInput.value=payload.shipping_formula_snapshot;shippingCalcText.textContent=`Khoảng cách: ${payload.distance_km}km • Thời gian dự kiến: ${payload.duration_minutes} phút • Phí ship: ${Number(payload.shipping_fee).toLocaleString('vi-VN')}đ`; }catch{resetShippingState('Lỗi kết nối API tính phí giao hàng.');}}
+function queueShippingCalc(){clearTimeout(shippingTimer);shippingTimer=setTimeout(calculateShipping,500);} 
 function setSelectLoading(selectEl, label){selectEl.innerHTML=`<option value="">${label}</option>`;selectEl.disabled=true;}
 function showAddressError(show){addressError.classList.toggle('d-none',!show);manualProvinceWrap.classList.toggle('d-none',!show);manualWardWrap.classList.toggle('d-none',!show);}
 async function loadProvinces(){try{showAddressError(false);setSelectLoading(provinceSelect,'Đang tải Tỉnh/Thành phố...');const response=await fetch(`${API_BASE}/p`);if(!response.ok) throw new Error();const provinces=await response.json();provinceSelect.innerHTML='<option value="">Chọn Tỉnh/Thành phố</option>';provinces.forEach((p)=>provinceSelect.insertAdjacentHTML('beforeend',`<option value="${p.code}" data-name="${p.name}">${p.name}</option>`));provinceSelect.disabled=false;}catch{showAddressError(true);setSelectLoading(provinceSelect,'Không tải được Tỉnh/Thành phố');}}
 provinceSelect.addEventListener('change',async function(){const o=provinceSelect.options[provinceSelect.selectedIndex];provinceCodeInput.value=o.value||'';provinceNameInput.value=o.dataset.name||'';wardCodeInput.value='';wardNameInput.value='';wardSelect.innerHTML='<option value="">Chọn Phường/Xã</option>';if(!provinceCodeInput.value){wardSelect.disabled=true;return;}try{setSelectLoading(wardSelect,'Đang tải Phường/Xã...');const response=await fetch(`${API_BASE}/p/${provinceCodeInput.value}?depth=2`);if(!response.ok) throw new Error();const provinceDetail=await response.json();wardSelect.innerHTML='<option value="">Chọn Phường/Xã</option>';(provinceDetail.wards??[]).forEach((w)=>wardSelect.insertAdjacentHTML('beforeend',`<option value="${w.code}" data-name="${w.name}">${w.name}</option>`));wardSelect.disabled=false;}catch{showAddressError(true);wardSelect.disabled=true;}});
-wardSelect.addEventListener('change',function(){const o=wardSelect.options[wardSelect.selectedIndex];wardCodeInput.value=o.value||'';wardNameInput.value=o.dataset.name||'';});
-checkoutForm.addEventListener('submit',function(e){if(!provinceCodeInput.value||!wardCodeInput.value||!addressDetail.value.trim()){e.preventDefault();showAddressError(true);return;}const fullAddress=`${addressDetail.value.trim()}, ${wardNameInput.value}, ${provinceNameInput.value}`;fullAddressInput.value=fullAddress;customerAddressInput.value=fullAddress;});
+wardSelect.addEventListener('change',function(){const o=wardSelect.options[wardSelect.selectedIndex];wardCodeInput.value=o.value||'';wardNameInput.value=o.dataset.name||'';queueShippingCalc();});
+addressDetail.addEventListener('input',queueShippingCalc);
+checkoutForm.addEventListener('submit',function(e){if(!provinceCodeInput.value||!wardCodeInput.value||!addressDetail.value.trim()){e.preventDefault();showAddressError(true);return;}if(!shippingFeeInput.value){e.preventDefault();shippingCalcText.textContent='Vui lòng chờ hệ thống tính phí ship hoặc kiểm tra lại địa chỉ.';return;}const fullAddress=`${addressDetail.value.trim()}, ${wardNameInput.value}, ${provinceNameInput.value}`;fullAddressInput.value=fullAddress;customerAddressInput.value=fullAddress;});
 loadProvinces();
 </script>

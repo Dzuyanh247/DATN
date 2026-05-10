@@ -24,6 +24,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<Article> Articles => Set<Article>();
     public DbSet<Feedback> Feedbacks => Set<Feedback>();
     public DbSet<SiteSetting> SiteSettings => Set<SiteSetting>();
+    public DbSet<ShippingConfig> ShippingConfigs => Set<ShippingConfig>();
+    public DbSet<ShopLocation> ShopLocations => Set<ShopLocation>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -67,6 +69,21 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<Order>()
             .Property(x => x.TotalAmount)
             .HasPrecision(18, 2);
+        modelBuilder.Entity<Order>()
+            .Property(x => x.ShippingFee)
+            .HasPrecision(18, 2);
+        modelBuilder.Entity<ShippingConfig>()
+            .Property(x => x.BaseDistanceKm)
+            .HasPrecision(8, 2);
+        modelBuilder.Entity<ShippingConfig>()
+            .Property(x => x.MaxDistanceKm)
+            .HasPrecision(8, 2);
+        modelBuilder.Entity<ShippingConfig>()
+            .Property(x => x.BaseFee)
+            .HasPrecision(18, 2);
+        modelBuilder.Entity<ShippingConfig>()
+            .Property(x => x.ExtraFeePerKm)
+            .HasPrecision(18, 2);
         modelBuilder.Entity<OrderDetail>()
             .Property(x => x.UnitPrice)
             .HasPrecision(18, 2);
@@ -87,3 +104,4 @@ public class ApplicationDbContext : DbContext
         });
     }
 }
+

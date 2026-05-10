@@ -22,6 +22,11 @@ public class CartViewVm
     public decimal DiscountAmount { get; set; }
     public decimal TotalAmount => Math.Max(Subtotal - DiscountAmount, 0);
     public string? VoucherCode { get; set; }
+    public double ShippingDistanceKm { get; set; }
+    public int ShippingDurationMinutes { get; set; }
+    public decimal ShippingFee { get; set; }
+    public string? ShippingProvider { get; set; }
+    public string? ShippingFormulaSnapshot { get; set; }
 }
 
 public class CheckoutRequestVm
@@ -40,4 +45,9 @@ public class CheckoutRequestVm
     public string FullAddress { get; set; } = string.Empty;
     public string? Note { get; set; }
     public string? VoucherCode { get; set; }
+    public double ShippingDistanceKm { get; set; }
+    public int ShippingDurationMinutes { get; set; }
+    public decimal ShippingFee { get; set; }
+    public string? ShippingProvider { get; set; }
+    public string? ShippingFormulaSnapshot { get; set; }
 }

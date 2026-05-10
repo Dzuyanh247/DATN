@@ -64,6 +64,8 @@ public class OrdersController : Controller
         var userId = User.Identity?.IsAuthenticated == true ? int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!) : (int?)null;
         var cart = await _cartService.GetCartAsync(userId);
         if (!cart.Items.Any()) ModelState.AddModelError(string.Empty, "Không thể đặt hàng khi giỏ hàng trống.");
+        if (vm.ShippingFee <= 0 || vm.ShippingDistanceKm <= 0) ModelState.AddModelError(string.Empty, "Vui lòng tính phí giao hàng trước khi đặt hàng.");
+
         if (!ModelState.IsValid)
         {
             return View(vm);
@@ -105,7 +107,12 @@ public class OrdersController : Controller
                 VoucherCode = vm.VoucherCode,
                 SubtotalAmount = subtotal,
                 DiscountAmount = discount,
-                TotalAmount = subtotal - discount,
+                ShippingDistanceKm = vm.ShippingDistanceKm,
+                ShippingDurationMinutes = vm.ShippingDurationMinutes,
+                ShippingFee = vm.ShippingFee,
+                ShippingProvider = vm.ShippingProvider,
+                ShippingFormulaSnapshot = vm.ShippingFormulaSnapshot,
+                TotalAmount = subtotal - discount + vm.ShippingFee,
                 PaymentMethod = "COD",
                 Status = OrderStatus.Pending,
                 Details = detailRows
