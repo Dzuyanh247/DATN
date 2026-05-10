@@ -6,6 +6,8 @@ public record RouteMetrics(decimal DistanceKm, int DurationMinutes);
 
 public class ShippingQuote
 {
+    public double DestinationLatitude { get; set; }
+    public double DestinationLongitude { get; set; }
     public decimal DistanceKm { get; set; }
     public int DurationMinutes { get; set; }
     public decimal ShippingFee { get; set; }
