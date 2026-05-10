@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.RegularExpressions;
 using System.Text;
 using System.Text.Json;
 
@@ -8,10 +9,12 @@ public class OpenRouteServiceProvider : IMapProvider
 {
     private readonly HttpClient _httpClient;
     private readonly string _apiKey;
+    private readonly ILogger<OpenRouteServiceProvider> _logger;
 
-    public OpenRouteServiceProvider(HttpClient httpClient, IConfiguration configuration)
+    public OpenRouteServiceProvider(HttpClient httpClient, IConfiguration configuration, ILogger<OpenRouteServiceProvider> logger)
     {
         _httpClient = httpClient;
+        _logger = logger;
         _apiKey = configuration["OPENROUTESERVICE_API_KEY"]
             ?? configuration["OpenRouteService:ApiKey"]
             ?? throw new InvalidOperationException("Thiếu cấu hình OPENROUTESERVICE_API_KEY.");
@@ -20,6 +23,23 @@ public class OpenRouteServiceProvider : IMapProvider
     public string ProviderName => "OpenRouteService";
 
     public async Task<IReadOnlyList<AddressSuggestion>> SearchAddressesAsync(string query, string? provinceName = null, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(query)) return Array.Empty<AddressSuggestion>();
+
+        var normalizedQuery = NormalizeQuery(query);
+        _logger.LogInformation("ORS autocomplete request query='{Query}' normalized='{NormalizedQuery}' province='{Province}'", query, normalizedQuery, provinceName);
+
+        var primary = await SearchInternalAsync(normalizedQuery, provinceName, cancellationToken);
+        if (primary.Count > 0) return primary;
+
+        var fallbackQuery = RemoveDiacritics(normalizedQuery);
+        if (string.Equals(fallbackQuery, normalizedQuery, StringComparison.Ordinal)) return primary;
+
+        _logger.LogInformation("ORS autocomplete fallback query='{FallbackQuery}'", fallbackQuery);
+        return await SearchInternalAsync(fallbackQuery, provinceName, cancellationToken);
+    }
+
+    private async Task<IReadOnlyList<AddressSuggestion>> SearchInternalAsync(string query, string? provinceName, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(query)) return Array.Empty<AddressSuggestion>();
 
@@ -39,6 +59,7 @@ public class OpenRouteServiceProvider : IMapProvider
         request.Content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json");
 
         using var response = await _httpClient.SendAsync(request, cancellationToken);
+        _logger.LogInformation("ORS autocomplete status={StatusCode}", (int)response.StatusCode);
         if (!response.IsSuccessStatusCode) return Array.Empty<AddressSuggestion>();
 
         await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
@@ -46,6 +67,7 @@ public class OpenRouteServiceProvider : IMapProvider
 
         var results = new List<AddressSuggestion>();
         if (!json.RootElement.TryGetProperty("features", out var features)) return results;
+        _logger.LogInformation("ORS autocomplete feature_count={FeatureCount}", features.GetArrayLength());
 
         foreach (var feature in features.EnumerateArray())
         {
@@ -62,12 +84,34 @@ public class OpenRouteServiceProvider : IMapProvider
 
         if (!string.IsNullOrWhiteSpace(provinceName) && provinceName.Contains("Hà Nội", StringComparison.OrdinalIgnoreCase))
         {
-            return results
+            var sorted = results
                 .OrderByDescending(x => x.DisplayName.Contains("Hà Nội", StringComparison.OrdinalIgnoreCase))
                 .ToList();
+            _logger.LogInformation("ORS autocomplete mapped_suggestions_count={Count}", sorted.Count);
+            return sorted;
         }
 
+        _logger.LogInformation("ORS autocomplete mapped_suggestions_count={Count}", results.Count);
         return results;
+    }
+
+    private static string NormalizeQuery(string query)
+        => Regex.Replace(query.Trim(), "\\s+", " ");
+
+    private static string RemoveDiacritics(string text)
+    {
+        var normalizedString = text.Normalize(NormalizationForm.FormD);
+        var sb = new StringBuilder();
+        foreach (var c in normalizedString)
+        {
+            var unicodeCategory = CharUnicodeInfo.GetUnicodeCategory(c);
+            if (unicodeCategory != UnicodeCategory.NonSpacingMark)
+                sb.Append(c);
+        }
+
+        return sb.ToString().Normalize(NormalizationForm.FormC)
+            .Replace('đ', 'd')
+            .Replace('Đ', 'D');
     }
 
     public async Task<GeoPoint?> GeocodeAsync(string address, CancellationToken cancellationToken = default)

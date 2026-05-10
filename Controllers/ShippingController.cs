@@ -9,11 +9,13 @@ public class ShippingController : ControllerBase
 {
     private readonly IShippingService _shippingService;
     private readonly IMapProvider _mapProvider;
+    private readonly ILogger<ShippingController> _logger;
 
-    public ShippingController(IShippingService shippingService, IMapProvider mapProvider)
+    public ShippingController(IShippingService shippingService, IMapProvider mapProvider, ILogger<ShippingController> logger)
     {
         _shippingService = shippingService;
         _mapProvider = mapProvider;
+        _logger = logger;
     }
 
     [HttpPost("calculate")]
@@ -58,20 +60,26 @@ public class ShippingController : ControllerBase
     [HttpGet("autocomplete")]
     public async Task<IActionResult> Autocomplete([FromQuery] string query, [FromQuery] string? provinceName, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(query) || query.Trim().Length < 3)
+        var normalizedQuery = string.Join(" ", (query ?? string.Empty).Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries));
+        if (string.IsNullOrWhiteSpace(normalizedQuery) || normalizedQuery.Length < 3)
             return Ok(new { success = true, items = Array.Empty<object>() });
 
         try
         {
-            var items = await _mapProvider.SearchAddressesAsync(query, provinceName, cancellationToken);
+            _logger.LogInformation("Shipping autocomplete query='{Query}' province='{Province}'", normalizedQuery, provinceName);
+            var items = await _mapProvider.SearchAddressesAsync(normalizedQuery, provinceName, cancellationToken);
+            var mapped = items.Select(x => new { label = x.DisplayName, latitude = x.Latitude, longitude = x.Longitude }).ToList();
+            _logger.LogInformation("Shipping autocomplete mapped_suggestions_count={Count}", mapped.Count);
+
             return Ok(new
             {
                 success = true,
-                items = items.Select(x => new { display_name = x.DisplayName, lat = x.Latitude, lon = x.Longitude, full_address = x.FullAddress })
+                items = mapped
             });
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogError(ex, "Shipping autocomplete failed for query='{Query}'", normalizedQuery);
             return StatusCode(500, new { success = false, message = "Không thể tính phí giao hàng lúc này. Vui lòng thử lại." });
         }
     }
