@@ -12,7 +12,10 @@ public class ShippingController : ControllerBase
     private readonly IMapProvider _mapProvider;
     private readonly ILogger<ShippingController> _logger;
 
-    public ShippingController(IShippingService shippingService, IMapProvider mapProvider, ILogger<ShippingController> logger)
+    public ShippingController(
+        IShippingService shippingService,
+        IMapProvider mapProvider,
+        ILogger<ShippingController> logger)
     {
         _shippingService = shippingService;
         _mapProvider = mapProvider;
@@ -20,31 +23,55 @@ public class ShippingController : ControllerBase
     }
 
     [HttpPost("calculate")]
-    public async Task<IActionResult> Calculate([FromBody] ShippingCalculateRequest? request, CancellationToken cancellationToken)
+    public async Task<IActionResult> Calculate(
+        [FromBody] ShippingCalculateRequest? request,
+        CancellationToken cancellationToken)
     {
         if (request == null)
+        {
             return Ok(new { success = false, message = "Payload không hợp lệ." });
+        }
 
         request.NormalizeAliases();
         _logger.LogInformation("Shipping calculate payload {@Request}", request);
 
-        if (string.IsNullOrWhiteSpace(request.Address) && string.IsNullOrWhiteSpace(request.FullAddress) && string.IsNullOrWhiteSpace(request.AddressDetail))
+        if (string.IsNullOrWhiteSpace(request.Address)
+            && string.IsNullOrWhiteSpace(request.FullAddress)
+            && string.IsNullOrWhiteSpace(request.AddressDetail))
+        {
             return Ok(new { success = false, message = "Địa chỉ giao hàng là bắt buộc." });
+        }
 
         var fullAddress = request.FullAddress;
         if (string.IsNullOrWhiteSpace(fullAddress))
         {
-            fullAddress = NormalizeAddress(string.Join(", ", new[] { request.AddressDetail, request.WardName, request.ProvinceName, "Vietnam" }
-                .Where(x => !string.IsNullOrWhiteSpace(x))));
+            fullAddress = NormalizeAddress(
+                string.Join(", ", new[] { request.AddressDetail, request.WardName, request.ProvinceName, "Vietnam" }
+                    .Where(x => !string.IsNullOrWhiteSpace(x))));
         }
 
         var hasCoordinates = request.Latitude.HasValue && request.Longitude.HasValue;
-        _logger.LogInformation("Shipping calculate hasCoordinates={HasCoordinates} fallbackAddress='{Address}'", hasCoordinates, fullAddress);
+        _logger.LogInformation(
+            "Shipping calculate hasCoordinates={HasCoordinates} fallbackAddress='{Address}'",
+            hasCoordinates,
+            fullAddress);
 
         try
         {
-            var quote = await _shippingService.CalculateAsync(NormalizeAddress(fullAddress ?? request.Address ?? string.Empty), request.ProvinceName, request.WardName, request.Latitude, request.Longitude, cancellationToken);
-            _logger.LogInformation("Shipping calculate success distanceKm={DistanceKm} durationMinutes={DurationMinutes} fee={Fee}", quote.DistanceKm, quote.DurationMinutes, quote.ShippingFee);
+            var quote = await _shippingService.CalculateAsync(
+                NormalizeAddress(fullAddress ?? request.Address ?? string.Empty),
+                request.ProvinceName,
+                request.WardName,
+                request.Latitude,
+                request.Longitude,
+                cancellationToken);
+
+            _logger.LogInformation(
+                "Shipping calculate success distanceKm={DistanceKm} durationMinutes={DurationMinutes} fee={Fee}",
+                quote.DistanceKm,
+                quote.DurationMinutes,
+                quote.ShippingFee);
+
             return Ok(new
             {
                 success = true,
@@ -55,7 +82,7 @@ public class ShippingController : ControllerBase
                 durationMinutes = quote.DurationMinutes,
                 shippingFee = quote.ShippingFee,
                 shippingProvider = quote.Provider,
-                formula = quote.FormulaSnapshot
+                formula = quote.FormulaSnapshot,
             });
         }
         catch (InvalidOperationException ex)
@@ -71,40 +98,83 @@ public class ShippingController : ControllerBase
     }
 
     [HttpGet("autocomplete")]
-    public async Task<IActionResult> Autocomplete([FromQuery] string query, [FromQuery] string? wardName, [FromQuery] string? provinceName, CancellationToken cancellationToken)
+    public async Task<IActionResult> Autocomplete(
+        [FromQuery] string query,
+        [FromQuery] string? wardName,
+        [FromQuery] string? provinceName,
+        CancellationToken cancellationToken)
     {
-        var normalizedQuery = string.Join(" ", (query ?? string.Empty).Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries));
-        _logger.LogInformation("Shipping autocomplete frontend_query_received='{Query}' ward='{Ward}' province='{Province}'", normalizedQuery, wardName, provinceName);
+        var normalizedQuery = string.Join(
+            " ",
+            (query ?? string.Empty)
+                .Trim()
+                .Split(' ', StringSplitOptions.RemoveEmptyEntries));
+
+        _logger.LogInformation(
+            "Shipping autocomplete frontend_query_received='{Query}' ward='{Ward}' province='{Province}'",
+            normalizedQuery,
+            wardName,
+            provinceName);
+
         if (string.IsNullOrWhiteSpace(normalizedQuery) || normalizedQuery.Length < 3)
+        {
             return Ok(new { success = true, suggestions = Array.Empty<object>() });
+        }
 
         try
         {
-            var composedQuery = NormalizeAddress(string.Join(", ", new[] { normalizedQuery, wardName, provinceName, "Vietnam" }.Where(x => !string.IsNullOrWhiteSpace(x))));
-            _logger.LogInformation("Shipping autocomplete backend query='{Query}' ward='{Ward}' province='{Province}'", composedQuery, wardName, provinceName);
+            var composedQuery = NormalizeAddress(
+                string.Join(", ", new[] { normalizedQuery, wardName, provinceName, "Vietnam" }
+                    .Where(x => !string.IsNullOrWhiteSpace(x))));
+
+            _logger.LogInformation(
+                "Shipping autocomplete backend query='{Query}' ward='{Ward}' province='{Province}'",
+                composedQuery,
+                wardName,
+                provinceName);
+
             var searchResult = await _mapProvider.SearchAddressesAsync(composedQuery, provinceName, cancellationToken);
-            var mapped = searchResult.Suggestions.Select(x => new { label = x.DisplayName, latitude = x.Latitude, longitude = x.Longitude }).ToList();
-            _logger.LogInformation("Shipping autocomplete suggestions_count={Count} query_used='{QueryUsed}'", mapped.Count, searchResult.QueryUsed);
+            var mapped = searchResult.Suggestions
+                .Select(x => new { label = x.DisplayName, latitude = x.Latitude, longitude = x.Longitude })
+                .ToList();
+
+            _logger.LogInformation(
+                "Shipping autocomplete suggestions_count={Count} query_used='{QueryUsed}'",
+                mapped.Count,
+                searchResult.QueryUsed);
 
             return Ok(new { success = true, suggestions = mapped });
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Shipping autocomplete failed for query='{Query}'", normalizedQuery);
-            return Ok(new { success = false, message = "Không thể gợi ý địa chỉ lúc này. Vui lòng thử lại.", suggestions = Array.Empty<object>() });
+            return Ok(new
+            {
+                success = false,
+                message = "Không thể gợi ý địa chỉ lúc này. Vui lòng thử lại.",
+                suggestions = Array.Empty<object>(),
+            });
         }
     }
-}
 
-private static string NormalizeAddress(string raw)
-    => System.Text.RegularExpressions.Regex.Replace((raw ?? string.Empty).Replace(",,", ","), "\\s*,\\s*", ", ").Trim(',', ' ');
+    private static string NormalizeAddress(string raw)
+    {
+        return System.Text.RegularExpressions.Regex
+            .Replace((raw ?? string.Empty).Replace(",,", ","), "\\s*,\\s*", ", ")
+            .Trim(',', ' ');
+    }
+}
 
 public class ShippingCalculateRequest
 {
     public string? Address { get; set; }
+
     public string? AddressDetail { get; set; }
+
     public string? FullAddress { get; set; }
+
     public string? ProvinceName { get; set; }
+
     public string? WardName { get; set; }
 
     [JsonPropertyName("ward")]
@@ -114,6 +184,7 @@ public class ShippingCalculateRequest
     public string? ProvinceCity { get; set; }
 
     public double? Latitude { get; set; }
+
     public double? Longitude { get; set; }
 
     public void NormalizeAliases()
