@@ -27,9 +27,9 @@ builder.Services.AddSession();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ICartService, CartService>();
 builder.Services.AddScoped<IProductImageStorageService, ProductImageStorageService>();
-builder.Services.AddHttpClient<IMapProvider, OpenStreetMapProvider>(client =>
+builder.Services.AddHttpClient<IMapProvider, OpenRouteServiceProvider>(client =>
 {
-    client.DefaultRequestHeaders.UserAgent.ParseAdd("DATN-PC-Store/1.0");
+    client.Timeout = TimeSpan.FromSeconds(8);
 });
 builder.Services.AddScoped<IGeocodingService, GeocodingService>();
 builder.Services.AddScoped<IRouteService, RouteService>();
