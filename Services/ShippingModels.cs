@@ -15,10 +15,18 @@ public class ShippingQuote
     public decimal ShippingFee { get; set; }
     public string Provider { get; set; } = string.Empty;
     public string FormulaSnapshot { get; set; } = string.Empty;
+    public decimal? GhnTotal { get; set; }
+    public decimal? GhnServiceFee { get; set; }
+    public decimal? GhnInsuranceFee { get; set; }
+    public long? GhnLeadTime { get; set; }
 }
 
 public class ShippingFeeBreakdown
 {
     public decimal Fee { get; set; }
     public string FormulaSnapshot { get; set; } = string.Empty;
+    public decimal? GhnTotal { get; set; }
+    public decimal? GhnServiceFee { get; set; }
+    public decimal? GhnInsuranceFee { get; set; }
+    public long? GhnLeadTime { get; set; }
 }

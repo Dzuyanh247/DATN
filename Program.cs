@@ -37,6 +37,12 @@ builder.Services.AddScoped<IGeocodingService, GeocodingService>();
 builder.Services.AddScoped<IRouteService, RouteService>();
 builder.Services.AddScoped<IShippingFeeCalculator, ShippingFeeCalculator>();
 builder.Services.AddScoped<IShippingService, ShippingService>();
+builder.Services.AddHttpClient<IGhnShippingService, GhnShippingService>((sp, client) =>
+{
+    var options = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<GhnOptions>>().Value;
+    client.BaseAddress = new Uri(options.BaseUrl.TrimEnd('/') + "/");
+    client.Timeout = TimeSpan.FromSeconds(10);
+});
 builder.Services.AddHttpClient<IGhnAddressService, GhnAddressService>((sp, client) =>
 {
     var options = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<GhnOptions>>().Value;
