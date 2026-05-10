@@ -7,6 +7,8 @@
         OrderStatus.Delivering => "Đang giao hàng",
         OrderStatus.Completed => "Đã giao hàng",
         OrderStatus.Cancelled => "Đã hủy",
+        OrderStatus.PendingConfirmation => "Chờ xác nhận",
+        OrderStatus.PendingPayment => "Chờ thanh toán",
         _ => status.ToString()
     };
 }

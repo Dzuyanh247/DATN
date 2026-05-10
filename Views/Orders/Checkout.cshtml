@@ -15,6 +15,13 @@
     <div class="mb-3"><label class="form-label">Họ tên*</label><input class="form-control" name="CustomerName" value="@Model.CustomerName" required /></div>
     <div class="mb-3"><label class="form-label">Số điện thoại*</label><input class="form-control" name="CustomerPhone" value="@Model.CustomerPhone" required /></div>
     <div class="mb-3"><label class="form-label">Email</label><input class="form-control" name="CustomerEmail" value="@Model.CustomerEmail" /></div>
+    <div class="mb-3">
+        <label class="form-label">Phương thức thanh toán*</label>
+        <select class="form-select" name="PaymentMethod" required>
+            <option value="COD" selected="@(Model.PaymentMethod == "COD")">Thanh toán khi nhận hàng (COD)</option>
+            <option value="BANK_TRANSFER" selected="@(Model.PaymentMethod == "BANK_TRANSFER")">Chuyển khoản ngân hàng</option>
+        </select>
+    </div>
 
     <input type="hidden" name="CustomerAddress" id="customerAddress" />
     <input type="hidden" name="FullAddress" id="fullAddress" />

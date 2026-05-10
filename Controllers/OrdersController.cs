@@ -69,6 +69,8 @@ public class OrdersController : Controller
         if (!cart.Items.Any()) ModelState.AddModelError(string.Empty, "Không thể đặt hàng khi giỏ hàng trống.");
         if (vm.ShippingFee < 0 || string.IsNullOrWhiteSpace(vm.ShippingProvider))
             ModelState.AddModelError(string.Empty, "Vui lòng tính phí giao hàng hợp lệ trước khi đặt hàng.");
+        if (vm.PaymentMethod != "COD" && vm.PaymentMethod != "BANK_TRANSFER")
+            ModelState.AddModelError(nameof(vm.PaymentMethod), "Phương thức thanh toán không hợp lệ.");
 
 
         if (!ModelState.IsValid)
@@ -118,8 +120,9 @@ public class OrdersController : Controller
                 ShippingProvider = vm.ShippingProvider,
                 ShippingFormulaSnapshot = vm.ShippingFormulaSnapshot,
                 TotalAmount = subtotal - discount + vm.ShippingFee,
-                PaymentMethod = "COD",
-                Status = OrderStatus.Pending,
+                PaymentMethod = vm.PaymentMethod,
+                PaymentStatus = vm.PaymentMethod == "BANK_TRANSFER" ? "WAITING_PAYMENT" : "UNPAID",
+                Status = vm.PaymentMethod == "BANK_TRANSFER" ? OrderStatus.PendingPayment : OrderStatus.PendingConfirmation,
                 Details = detailRows
             };
 
@@ -133,10 +136,19 @@ public class OrdersController : Controller
 
             _db.Orders.Add(order);
             await _db.SaveChangesAsync();
+            if (order.PaymentMethod == "BANK_TRANSFER")
+            {
+                order.TransferContent = $"DH{order.Id}";
+                await _db.SaveChangesAsync();
+            }
             HttpContext.Session.SetInt32("LastOrderId", order.Id);
             await _cartService.ClearCartAsync(userId);
             await tx.CommitAsync();
             TempData["SuccessMessage"] = "Đặt hàng thành công!";
+            if (order.PaymentMethod == "BANK_TRANSFER")
+            {
+                return RedirectToAction(nameof(BankTransfer), new { id = order.Id });
+            }
             return RedirectToAction(nameof(Success), new { id = order.Id });
         }
         catch (Exception ex)
@@ -245,4 +257,25 @@ public class OrdersController : Controller
         if (order == null) return NotFound();
         return View(order);
     }
+
+    public async Task<IActionResult> BankTransfer(int id)
+    {
+        var order = await _db.Orders.Include(x => x.Details).FirstOrDefaultAsync(x => x.Id == id);
+        if (order == null) return NotFound();
+        return View(order);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ConfirmTransferred(int id)
+    {
+        var order = await _db.Orders.FirstOrDefaultAsync(x => x.Id == id);
+        if (order == null) return NotFound();
+        if (order.PaymentMethod != "BANK_TRANSFER") return BadRequest();
+        order.PaymentStatus = "WAITING_CONFIRMATION";
+        await _db.SaveChangesAsync();
+        TempData["SuccessMessage"] = "Đã ghi nhận xác nhận thanh toán của bạn.";
+        return RedirectToAction(nameof(Detail), new { id });
+    }
+
 }

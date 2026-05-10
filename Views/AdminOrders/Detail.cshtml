@@ -7,6 +7,8 @@
         OrderStatus.Delivering => "Đang giao hàng",
         OrderStatus.Completed => "Đã giao hàng",
         OrderStatus.Cancelled => "Đã hủy",
+        OrderStatus.PendingConfirmation => "Chờ xác nhận",
+        OrderStatus.PendingPayment => "Chờ thanh toán",
         _ => status.ToString()
     };
 }
@@ -17,6 +19,7 @@
         <div><b>Khách:</b> @Model.ReceiverName (@Model.ReceiverPhone)</div>
         <div><b>Địa chỉ:</b> @Model.ShippingAddress</div>
         <div><b>Thanh toán:</b> @Model.PaymentMethod</div>
+        <div><b>Trạng thái thanh toán:</b> @Model.PaymentStatus</div>
         <div><b>Tổng tiền:</b> <span class="text-danger fw-bold">@Model.TotalAmount.ToString("N0") đ</span></div>
     </div>
 </div>
@@ -34,4 +37,14 @@
     }
     </tbody>
 </table>
+
+@if (Model.PaymentMethod == "BANK_TRANSFER" && Model.PaymentStatus == "WAITING_CONFIRMATION")
+{
+    <form asp-action="ConfirmBankTransfer" method="post" class="mb-3">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="id" value="@Model.Id" />
+        <button class="btn btn-success">Xác nhận đã nhận tiền</button>
+    </form>
+}
+
 <a class="btn btn-outline-secondary" asp-action="Index">Quay lại danh sách</a>
