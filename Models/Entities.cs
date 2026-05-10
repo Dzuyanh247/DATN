@@ -112,6 +112,11 @@ public class Order : BaseEntity
     [MaxLength(500)] public string? Note { get; set; }
     public decimal SubtotalAmount { get; set; }
     public decimal DiscountAmount { get; set; }
+    public double ShippingDistanceKm { get; set; }
+    public int ShippingDurationMinutes { get; set; }
+    public decimal ShippingFee { get; set; }
+    [MaxLength(100)] public string? ShippingProvider { get; set; }
+    [MaxLength(300)] public string? ShippingFormulaSnapshot { get; set; }
     [MaxLength(50)] public string? VoucherCode { get; set; }
     public ICollection<OrderDetail> Details { get; set; } = new List<OrderDetail>();
 }
@@ -181,6 +186,24 @@ public class Article : BaseEntity
     public string Content { get; set; } = string.Empty;
 }
 
+
+
+public class ShippingConfig : BaseEntity
+{
+    public decimal BaseDistanceKm { get; set; } = 3;
+    public decimal BaseFee { get; set; } = 15000;
+    public decimal ExtraFeePerKm { get; set; } = 5000;
+    public decimal MaxDistanceKm { get; set; } = 15;
+    public bool Active { get; set; } = true;
+}
+
+public class ShopLocation : BaseEntity
+{
+    [MaxLength(120)] public string ShopName { get; set; } = string.Empty;
+    [MaxLength(250)] public string Address { get; set; } = string.Empty;
+    public double Latitude { get; set; }
+    public double Longitude { get; set; }
+}
 
 public class SiteSetting : BaseEntity
 {
