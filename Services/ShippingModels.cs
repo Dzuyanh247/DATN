@@ -12,3 +12,9 @@ public class ShippingQuote
     public string Provider { get; set; } = string.Empty;
     public string FormulaSnapshot { get; set; } = string.Empty;
 }
+
+public class ShippingFeeBreakdown
+{
+    public decimal Fee { get; set; }
+    public string FormulaSnapshot { get; set; } = string.Empty;
+}

@@ -31,6 +31,9 @@ builder.Services.AddHttpClient<IMapProvider, OpenStreetMapProvider>(client =>
 {
     client.DefaultRequestHeaders.UserAgent.ParseAdd("DATN-PC-Store/1.0");
 });
+builder.Services.AddScoped<IGeocodingService, GeocodingService>();
+builder.Services.AddScoped<IRouteService, RouteService>();
+builder.Services.AddScoped<IShippingFeeCalculator, ShippingFeeCalculator>();
 builder.Services.AddScoped<IShippingService, ShippingService>();
 
 var app = builder.Build();
@@ -79,7 +82,8 @@ BEGIN
         BaseFee DECIMAL(18,2) NOT NULL DEFAULT 15000,
         ExtraFeePerKm DECIMAL(18,2) NOT NULL DEFAULT 5000,
         MaxDistanceKm DECIMAL(8,2) NOT NULL DEFAULT 15,
-        Active BIT NOT NULL DEFAULT 1,
+        FreeShippingDistanceKm DECIMAL(8,2) NOT NULL DEFAULT 0,
+        IsActive BIT NOT NULL DEFAULT 1,
         CreatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
         UpdatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
     );
@@ -93,6 +97,7 @@ BEGIN
         Address NVARCHAR(250) NOT NULL,
         Latitude FLOAT NOT NULL,
         Longitude FLOAT NOT NULL,
+        IsDefault BIT NOT NULL DEFAULT 1,
         CreatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
         UpdatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
     );
@@ -119,11 +124,40 @@ BEGIN
     ALTER TABLE Orders ADD ShippingFormulaSnapshot NVARCHAR(300) NULL;
 END");
 
+    await db.Database.ExecuteSqlRawAsync(@"IF COL_LENGTH('ShippingConfigs', 'FreeShippingDistanceKm') IS NULL
+BEGIN
+    ALTER TABLE ShippingConfigs ADD FreeShippingDistanceKm DECIMAL(8,2) NOT NULL DEFAULT 0;
+END");
+    await db.Database.ExecuteSqlRawAsync(@"IF COL_LENGTH('ShippingConfigs', 'IsActive') IS NULL
+BEGIN
+    ALTER TABLE ShippingConfigs ADD IsActive BIT NOT NULL DEFAULT 1;
+END");
+    await db.Database.ExecuteSqlRawAsync(@"IF COL_LENGTH('ShopLocations', 'IsDefault') IS NULL
+BEGIN
+    ALTER TABLE ShopLocations ADD IsDefault BIT NOT NULL DEFAULT 1;
+END");
+
     await db.Database.ExecuteSqlRawAsync(@"IF NOT EXISTS (SELECT 1 FROM ShippingConfigs)
 BEGIN
-    INSERT INTO ShippingConfigs(BaseDistanceKm, BaseFee, ExtraFeePerKm, MaxDistanceKm, Active, CreatedAt, UpdatedAt)
-    VALUES (3,15000,5000,15,1,SYSUTCDATETIME(),SYSUTCDATETIME());
+    INSERT INTO ShippingConfigs(BaseDistanceKm, BaseFee, ExtraFeePerKm, MaxDistanceKm, FreeShippingDistanceKm, IsActive, CreatedAt, UpdatedAt)
+    VALUES (3,15000,5000,15,2,1,SYSUTCDATETIME(),SYSUTCDATETIME());
 END");
+
+    var mapProvider = scope.ServiceProvider.GetRequiredService<IMapProvider>();
+    if (!await db.ShopLocations.AnyAsync())
+    {
+        const string shopAddress = "83-85 Thái Hà, Đống Đa, Hà Nội";
+        var point = await mapProvider.GeocodeAsync(shopAddress) ?? new GeoPoint(21.012763, 105.821866);
+        db.ShopLocations.Add(new Datn.PcStore.Models.ShopLocation
+        {
+            ShopName = "Cửa hàng chính",
+            Address = shopAddress,
+            Latitude = point.Latitude,
+            Longitude = point.Longitude,
+            IsDefault = true
+        });
+        await db.SaveChangesAsync();
+    }
 
     await SeedData.InitializeAsync(db);
 }

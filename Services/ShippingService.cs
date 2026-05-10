@@ -1,5 +1,4 @@
 using Datn.PcStore.Data;
-using Datn.PcStore.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace Datn.PcStore.Services;
@@ -12,47 +11,46 @@ public interface IShippingService
 public class ShippingService : IShippingService
 {
     private readonly ApplicationDbContext _db;
+    private readonly IGeocodingService _geocodingService;
+    private readonly IRouteService _routeService;
+    private readonly IShippingFeeCalculator _shippingFeeCalculator;
     private readonly IMapProvider _mapProvider;
 
-    public ShippingService(ApplicationDbContext db, IMapProvider mapProvider)
+    public ShippingService(
+        ApplicationDbContext db,
+        IGeocodingService geocodingService,
+        IRouteService routeService,
+        IShippingFeeCalculator shippingFeeCalculator,
+        IMapProvider mapProvider)
     {
         _db = db;
+        _geocodingService = geocodingService;
+        _routeService = routeService;
+        _shippingFeeCalculator = shippingFeeCalculator;
         _mapProvider = mapProvider;
     }
 
     public async Task<ShippingQuote> CalculateAsync(string shippingAddress, CancellationToken cancellationToken = default)
     {
-        var config = await _db.ShippingConfigs.FirstOrDefaultAsync(x => x.Active, cancellationToken)
+        if (string.IsNullOrWhiteSpace(shippingAddress))
+            throw new InvalidOperationException("Vui lòng nhập địa chỉ chi tiết để tính phí giao hàng.");
+
+        var config = await _db.ShippingConfigs.FirstOrDefaultAsync(x => x.IsActive, cancellationToken)
             ?? throw new InvalidOperationException("Chưa cấu hình phí giao hàng.");
-        var shop = await _db.ShopLocations.FirstOrDefaultAsync(cancellationToken)
-            ?? throw new InvalidOperationException("Chưa cấu hình vị trí cửa hàng.");
+        var shop = await _db.ShopLocations.FirstOrDefaultAsync(x => x.IsDefault, cancellationToken)
+            ?? throw new InvalidOperationException("Không lấy được tọa độ shop.");
 
-        var destination = await _mapProvider.GeocodeAsync(shippingAddress, cancellationToken)
-            ?? throw new InvalidOperationException("Không xác định được tọa độ địa chỉ nhận hàng.");
-
-        var metrics = await _mapProvider.GetRouteMetricsAsync(new GeoPoint(shop.Latitude, shop.Longitude), destination, cancellationToken)
-            ?? throw new InvalidOperationException("Không tính được khoảng cách giao hàng.");
-
-        if (metrics.DistanceKm > config.MaxDistanceKm)
-        {
-            throw new InvalidOperationException("Địa chỉ nằm ngoài phạm vi hỗ trợ giao hàng");
-        }
-
-        decimal shippingFee = config.BaseFee;
-        if (metrics.DistanceKm > config.BaseDistanceKm)
-        {
-            var extraDistance = metrics.DistanceKm - config.BaseDistanceKm;
-            var billedExtraDistance = decimal.Ceiling(extraDistance);
-            shippingFee += billedExtraDistance * config.ExtraFeePerKm;
-        }
+        var destination = await _geocodingService.GeocodeAsync(shippingAddress, cancellationToken);
+        var metrics = await _routeService.GetRouteMetricsAsync(new GeoPoint(shop.Latitude, shop.Longitude), destination, cancellationToken);
+        var feeBreakdown = _shippingFeeCalculator.Calculate(metrics.DistanceKm, config);
 
         return new ShippingQuote
         {
             DistanceKm = metrics.DistanceKm,
             DurationMinutes = metrics.DurationMinutes,
-            ShippingFee = shippingFee,
+            ShippingFee = feeBreakdown.Fee,
             Provider = _mapProvider.ProviderName,
-            FormulaSnapshot = $"{config.BaseFee:N0}đ/{config.BaseDistanceKm}km đầu, +{config.ExtraFeePerKm:N0}đ/km tiếp theo, tối đa {config.MaxDistanceKm}km"
+            FormulaSnapshot = feeBreakdown.FormulaSnapshot
         };
     }
 }
