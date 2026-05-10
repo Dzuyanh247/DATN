@@ -5,7 +5,7 @@ namespace Datn.PcStore.Services;
 
 public interface IShippingService
 {
-    Task<ShippingQuote> CalculateAsync(string shippingAddress, double? latitude = null, double? longitude = null, CancellationToken cancellationToken = default);
+    Task<ShippingQuote> CalculateAsync(string shippingAddress, string? provinceName = null, string? wardName = null, double? latitude = null, double? longitude = null, CancellationToken cancellationToken = default);
 }
 
 public class ShippingService : IShippingService
@@ -33,7 +33,7 @@ public class ShippingService : IShippingService
         _mapProvider = mapProvider;
     }
 
-    public async Task<ShippingQuote> CalculateAsync(string shippingAddress, double? latitude = null, double? longitude = null, CancellationToken cancellationToken = default)
+    public async Task<ShippingQuote> CalculateAsync(string shippingAddress, string? provinceName = null, string? wardName = null, double? latitude = null, double? longitude = null, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(shippingAddress))
             throw new InvalidOperationException("Vui lòng nhập địa chỉ chi tiết để tính phí giao hàng.");
@@ -54,10 +54,12 @@ public class ShippingService : IShippingService
         else
         {
             _logger.LogInformation("ShippingService fallback geocode address='{Address}'", shippingAddress);
-            destination = await _geocodingService.GeocodeAsync(shippingAddress, cancellationToken);
+            destination = await _geocodingService.GeocodeAsync(shippingAddress, provinceName, wardName, cancellationToken);
             _logger.LogInformation("ShippingService geocode result lat={Lat} lng={Lng}", destination.Latitude, destination.Longitude);
         }
-        var metrics = await _routeService.GetRouteMetricsAsync(new GeoPoint(shop.Latitude, shop.Longitude), destination, cancellationToken);
+        var origin = NormalizeCoordinate(new GeoPoint(shop.Latitude, shop.Longitude));
+        destination = NormalizeCoordinate(destination);
+        var metrics = await _routeService.GetRouteMetricsAsync(origin, destination, cancellationToken);
         _logger.LogInformation("ShippingService route result distanceKm={DistanceKm} durationMinutes={DurationMinutes}", metrics.DistanceKm, metrics.DurationMinutes);
         var feeBreakdown = _shippingFeeCalculator.Calculate(metrics.DistanceKm, config);
 
@@ -74,5 +76,16 @@ public class ShippingService : IShippingService
 
         _logger.LogInformation("ShippingService final fee={Fee} formula={Formula}", quote.ShippingFee, quote.FormulaSnapshot);
         return quote;
+    }
+
+    private static GeoPoint NormalizeCoordinate(GeoPoint point)
+    {
+        var lat = point.Latitude;
+        var lng = point.Longitude;
+        if (Math.Abs(lat) > 90 && Math.Abs(lat) <= 9000000000d) lat /= 10000000d;
+        if (Math.Abs(lng) > 180 && Math.Abs(lng) <= 18000000000d) lng /= 10000000d;
+        if (lat is < -90 or > 90 || lng is < -180 or > 180)
+            throw new InvalidOperationException("Tọa độ giao hàng không hợp lệ.");
+        return new GeoPoint(lat, lng);
     }
 }

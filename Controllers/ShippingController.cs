@@ -34,8 +34,8 @@ public class ShippingController : ControllerBase
         var fullAddress = request.FullAddress;
         if (string.IsNullOrWhiteSpace(fullAddress))
         {
-            fullAddress = string.Join(", ", new[] { request.AddressDetail, request.WardName, request.ProvinceName, "Vietnam" }
-                .Where(x => !string.IsNullOrWhiteSpace(x)));
+            fullAddress = NormalizeAddress(string.Join(", ", new[] { request.AddressDetail, request.WardName, request.ProvinceName, "Vietnam" }
+                .Where(x => !string.IsNullOrWhiteSpace(x))));
         }
 
         var hasCoordinates = request.Latitude.HasValue && request.Longitude.HasValue;
@@ -43,7 +43,7 @@ public class ShippingController : ControllerBase
 
         try
         {
-            var quote = await _shippingService.CalculateAsync(fullAddress ?? request.Address ?? string.Empty, request.Latitude, request.Longitude, cancellationToken);
+            var quote = await _shippingService.CalculateAsync(NormalizeAddress(fullAddress ?? request.Address ?? string.Empty), request.ProvinceName, request.WardName, request.Latitude, request.Longitude, cancellationToken);
             _logger.LogInformation("Shipping calculate success distanceKm={DistanceKm} durationMinutes={DurationMinutes} fee={Fee}", quote.DistanceKm, quote.DurationMinutes, quote.ShippingFee);
             return Ok(new
             {
@@ -80,7 +80,7 @@ public class ShippingController : ControllerBase
 
         try
         {
-            var composedQuery = string.Join(", ", new[] { normalizedQuery, wardName, provinceName, "Vietnam" }.Where(x => !string.IsNullOrWhiteSpace(x)));
+            var composedQuery = NormalizeAddress(string.Join(", ", new[] { normalizedQuery, wardName, provinceName, "Vietnam" }.Where(x => !string.IsNullOrWhiteSpace(x))));
             _logger.LogInformation("Shipping autocomplete backend query='{Query}' ward='{Ward}' province='{Province}'", composedQuery, wardName, provinceName);
             var searchResult = await _mapProvider.SearchAddressesAsync(composedQuery, provinceName, cancellationToken);
             var mapped = searchResult.Suggestions.Select(x => new { label = x.DisplayName, latitude = x.Latitude, longitude = x.Longitude }).ToList();
@@ -95,6 +95,9 @@ public class ShippingController : ControllerBase
         }
     }
 }
+
+private static string NormalizeAddress(string raw)
+    => System.Text.RegularExpressions.Regex.Replace((raw ?? string.Empty).Replace(",,", ","), "\\s*,\\s*", ", ").Trim(',', ' ');
 
 public class ShippingCalculateRequest
 {
