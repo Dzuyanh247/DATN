@@ -22,44 +22,44 @@ public class OpenRouteServiceProvider : IMapProvider
 
     public string ProviderName => "OpenRouteService";
 
-    public async Task<IReadOnlyList<AddressSuggestion>> SearchAddressesAsync(string query, string? provinceName = null, CancellationToken cancellationToken = default)
+    public async Task<AddressSearchResult> SearchAddressesAsync(string query, string? provinceName = null, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(query)) return Array.Empty<AddressSuggestion>();
+        if (string.IsNullOrWhiteSpace(query)) return new AddressSearchResult(string.Empty, Array.Empty<AddressSuggestion>());
 
         var normalizedQuery = NormalizeQuery(query);
-        _logger.LogInformation("ORS autocomplete request query='{Query}' normalized='{NormalizedQuery}' province='{Province}'", query, normalizedQuery, provinceName);
+        var cleanedNoComma = NormalizeQuery(normalizedQuery.Replace(",", " "));
+        _logger.LogInformation("ORS address search raw_query='{RawQuery}' normalized_query='{NormalizedQuery}' province='{Province}'", query, normalizedQuery, provinceName);
 
-        var primary = await SearchInternalAsync(normalizedQuery, provinceName, cancellationToken);
-        if (primary.Count > 0) return primary;
+        var fallbackQueries = BuildFallbackQueries(normalizedQuery, cleanedNoComma);
+        foreach (var candidate in fallbackQueries)
+        {
+            var suggestions = await SearchInternalAsync(candidate, cancellationToken);
+            if (suggestions.Count > 0)
+                return new AddressSearchResult(candidate, suggestions);
+        }
 
-        var fallbackQuery = RemoveDiacritics(normalizedQuery);
-        if (string.Equals(fallbackQuery, normalizedQuery, StringComparison.Ordinal)) return primary;
-
-        _logger.LogInformation("ORS autocomplete fallback query='{FallbackQuery}'", fallbackQuery);
-        return await SearchInternalAsync(fallbackQuery, provinceName, cancellationToken);
+        return new AddressSearchResult(fallbackQueries.LastOrDefault() ?? normalizedQuery, Array.Empty<AddressSuggestion>());
     }
 
-    private async Task<IReadOnlyList<AddressSuggestion>> SearchInternalAsync(string query, string? provinceName, CancellationToken cancellationToken)
+    private async Task<IReadOnlyList<AddressSuggestion>> SearchInternalAsync(string query, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(query)) return Array.Empty<AddressSuggestion>();
 
-        var cityHint = provinceName?.Trim();
-        var text = string.IsNullOrWhiteSpace(cityHint) ? query : $"{query}, {cityHint}";
         var body = new
         {
-            text,
+            text = query,
             size = 6,
-            layers = new[] { "address", "street", "venue", "locality" },
-            boundary_country = new[] { "VN" },
             lang = "vi"
         };
 
-        using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.openrouteservice.org/geocode/autocomplete");
+        const string endpoint = "https://api.openrouteservice.org/geocode/search";
+        using var request = new HttpRequestMessage(HttpMethod.Post, endpoint);
         request.Headers.TryAddWithoutValidation("Authorization", _apiKey);
         request.Content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json");
+        _logger.LogInformation("ORS request endpoint='{Endpoint}' query_sent='{QuerySent}' payload={@Payload}", endpoint, query, body);
 
         using var response = await _httpClient.SendAsync(request, cancellationToken);
-        _logger.LogInformation("ORS autocomplete status={StatusCode}", (int)response.StatusCode);
+        _logger.LogInformation("ORS geocode/search status={StatusCode}", (int)response.StatusCode);
         if (!response.IsSuccessStatusCode) return Array.Empty<AddressSuggestion>();
 
         await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
@@ -67,7 +67,7 @@ public class OpenRouteServiceProvider : IMapProvider
 
         var results = new List<AddressSuggestion>();
         if (!json.RootElement.TryGetProperty("features", out var features)) return results;
-        _logger.LogInformation("ORS autocomplete feature_count={FeatureCount}", features.GetArrayLength());
+        _logger.LogInformation("ORS geocode/search feature_count={FeatureCount}", features.GetArrayLength());
 
         foreach (var feature in features.EnumerateArray())
         {
@@ -82,17 +82,28 @@ public class OpenRouteServiceProvider : IMapProvider
             results.Add(new AddressSuggestion(label, lat, lon, label));
         }
 
-        if (!string.IsNullOrWhiteSpace(provinceName) && provinceName.Contains("Hà Nội", StringComparison.OrdinalIgnoreCase))
-        {
-            var sorted = results
-                .OrderByDescending(x => x.DisplayName.Contains("Hà Nội", StringComparison.OrdinalIgnoreCase))
-                .ToList();
-            _logger.LogInformation("ORS autocomplete mapped_suggestions_count={Count}", sorted.Count);
-            return sorted;
-        }
-
-        _logger.LogInformation("ORS autocomplete mapped_suggestions_count={Count}", results.Count);
+        _logger.LogInformation("ORS geocode/search mapped_suggestions_count={Count}", results.Count);
         return results;
+    }
+
+    private static IReadOnlyList<string> BuildFallbackQueries(string normalizedQuery, string cleanedNoComma)
+    {
+        var removedDiacritics = RemoveDiacritics(cleanedNoComma);
+        var noHouseNumber = NormalizeQuery(Regex.Replace(cleanedNoComma, "^\\d+\\s*", string.Empty));
+        var candidates = new List<string>
+        {
+            normalizedQuery,
+            cleanedNoComma,
+            removedDiacritics,
+            $"{cleanedNoComma} Vietnam",
+            $"{cleanedNoComma} Ha Noi Vietnam",
+            noHouseNumber
+        };
+        return candidates
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Select(NormalizeQuery)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
     }
 
     private static string NormalizeQuery(string query)

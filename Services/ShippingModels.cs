@@ -4,6 +4,7 @@ public record GeoPoint(double Latitude, double Longitude);
 
 public record RouteMetrics(decimal DistanceKm, int DurationMinutes);
 public record AddressSuggestion(string DisplayName, double Latitude, double Longitude, string FullAddress);
+public record AddressSearchResult(string QueryUsed, IReadOnlyList<AddressSuggestion> Suggestions);
 
 public class ShippingQuote
 {
