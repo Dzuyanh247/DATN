@@ -53,11 +53,13 @@ public class OrdersController : Controller
 
         if (string.IsNullOrWhiteSpace(vm.ProvinceName))
             ModelState.AddModelError(nameof(vm.ProvinceName), "Tỉnh/Thành phố là bắt buộc.");
+        if (string.IsNullOrWhiteSpace(vm.DistrictName))
+            ModelState.AddModelError(nameof(vm.DistrictName), "Quận/Huyện là bắt buộc.");
         if (string.IsNullOrWhiteSpace(vm.WardName))
             ModelState.AddModelError(nameof(vm.WardName), "Phường/Xã là bắt buộc.");
 
         vm.FullAddress = string.IsNullOrWhiteSpace(vm.FullAddress)
-            ? $"{vm.AddressDetail}, {vm.WardName}, {vm.ProvinceName}"
+            ? $"{vm.AddressDetail}, {vm.WardName}, {vm.DistrictName}, {vm.ProvinceName}, Vietnam"
             : vm.FullAddress;
         vm.ShippingFullAddress = string.IsNullOrWhiteSpace(vm.ShippingFullAddress) ? vm.FullAddress : vm.ShippingFullAddress;
         vm.CustomerAddress = vm.FullAddress; // Keep old flow/database field compatible
@@ -67,10 +69,7 @@ public class OrdersController : Controller
         if (!cart.Items.Any()) ModelState.AddModelError(string.Empty, "Không thể đặt hàng khi giỏ hàng trống.");
         if (vm.ShippingDistanceKm <= 0 || vm.ShippingFee <= 0 || string.IsNullOrWhiteSpace(vm.ShippingProvider))
             ModelState.AddModelError(string.Empty, "Vui lòng tính phí giao hàng hợp lệ trước khi đặt hàng.");
-        if (!vm.ShippingLatitude.HasValue || !vm.ShippingLongitude.HasValue)
-            ModelState.AddModelError(string.Empty, "Vui lòng chọn địa chỉ gợi ý hoặc nhập địa chỉ rõ ràng để xác định vị trí giao hàng.");
-        if (!vm.IsAddressConfirmed && string.IsNullOrWhiteSpace(vm.ShippingProvider))
-            ModelState.AddModelError(string.Empty, "Địa chỉ giao hàng chưa được xác nhận.");
+
 
         if (!ModelState.IsValid)
         {
@@ -102,7 +101,7 @@ public class OrdersController : Controller
                 CustomerEmail = vm.CustomerEmail,
                 ShippingAddress = vm.CustomerAddress,
                 CustomerProvince = vm.ProvinceName,
-                CustomerDistrict = vm.WardName,
+                CustomerDistrict = vm.DistrictName,
                 ProvinceCode = vm.ProvinceCode,
                 ProvinceName = vm.ProvinceName,
                 WardCode = vm.WardCode,

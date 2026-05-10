@@ -19,6 +19,8 @@
     <input type="hidden" name="CustomerAddress" id="customerAddress" />
     <input type="hidden" name="FullAddress" id="fullAddress" />
     <input type="hidden" name="ProvinceCode" id="provinceCode" />
+    <input type="hidden" name="DistrictCode" id="districtCode" />
+    <input type="hidden" name="DistrictName" id="districtName" />
     <input type="hidden" name="ProvinceName" id="provinceName" />
     <input type="hidden" name="WardCode" id="wardCode" />
     <input type="hidden" name="WardName" id="wardName" />
@@ -33,6 +35,12 @@
         <label class="form-label">Tỉnh/Thành phố*</label>
         <select class="form-select" id="provinceSelect" required>
             <option value="">Chọn Tỉnh/Thành phố</option>
+        </select>
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Quận/Huyện*</label>
+        <select class="form-select" id="districtSelect" required disabled>
+            <option value="">Chọn Quận/Huyện</option>
         </select>
     </div>
     <div class="mb-3">
@@ -56,63 +64,19 @@
 </form>
 
 <script>
-const provinceSelect = document.getElementById('provinceSelect');
-const wardSelect = document.getElementById('wardSelect');
-const addressDetail = document.getElementById('addressDetail');
-const addressError = document.getElementById('addressError');
-const provinceCodeInput = document.getElementById('provinceCode');
-const provinceNameInput = document.getElementById('provinceName');
-const wardCodeInput = document.getElementById('wardCode');
-const wardNameInput = document.getElementById('wardName');
-const fullAddressInput = document.getElementById('fullAddress');
-const customerAddressInput = document.getElementById('customerAddress');
-const checkoutForm = document.getElementById('checkoutForm');
-const manualProvinceWrap = document.getElementById('manualProvinceWrap');
-const manualWardWrap = document.getElementById('manualWardWrap');
-const API_BASE = 'https://provinces.open-api.vn/api/v2';
-
-const shippingDistanceKmInput = document.getElementById('shippingDistanceKm');
-const shippingDurationMinutesInput = document.getElementById('shippingDurationMinutes');
-const shippingFeeInput = document.getElementById('shippingFeeInput');
-const shippingProviderInput = document.getElementById('shippingProvider');
-const shippingFormulaSnapshotInput = document.getElementById('shippingFormulaSnapshot');
-const shippingCalcText = document.getElementById('shippingCalcText');
-
-addressDetail.insertAdjacentHTML('afterend', '<input type="hidden" id="shippingLatitude" name="ShippingLatitude" /><input type="hidden" id="shippingLongitude" name="ShippingLongitude" /><input type="hidden" id="shippingFullAddress" name="ShippingFullAddress" /><input type="hidden" id="isAddressConfirmed" name="IsAddressConfirmed" value="false" /><div id="addressAutocompleteState" class="small text-muted mt-1"></div><div id="addressAutocompleteList" class="list-group mt-1"></div>');
-const shippingLatitudeInput = document.getElementById('shippingLatitude');
-const shippingLongitudeInput = document.getElementById('shippingLongitude');
-const shippingFullAddressInput = document.getElementById('shippingFullAddress');
-const isAddressConfirmedInput = document.getElementById('isAddressConfirmed');
-const autocompleteState = document.getElementById('addressAutocompleteState');
-const autocompleteList = document.getElementById('addressAutocompleteList');
-
-let shippingTimer;
-let autocompleteTimer;
-let selectedSuggestion = null;
-let autocompleteRequestId = 0;
-
-function buildAddressQuery(){
-  const city = (provinceNameInput.value || '').trim();
-  const ward = wardNameInput.value?.trim() || '';
-  const detail = addressDetail.value || '';
-  return [detail, ward, city || provinceNameInput.value, 'Vietnam'].filter(Boolean).map(x=>x.trim()).filter(Boolean).filter((x,i,a)=>a.findIndex(y=>y.toLowerCase()===x.toLowerCase())===i).join(', ').replace(/,+/g,',').replace(/\s*,\s*/g,', ').trim().replace(/,$/,'');
-}
-function resetShippingState(msg){shippingDistanceKmInput.value='';shippingDurationMinutesInput.value='';shippingFeeInput.value='';shippingProviderInput.value='';shippingFormulaSnapshotInput.value='';shippingCalcText.textContent=msg||'Giao hàng từ cửa hàng 83-85 Thái Hà, Đống Đa, Hà Nội. Nhập địa chỉ đầy đủ để tính phí ship.';checkoutForm.querySelector('button[type=submit],button:not([type])').disabled=true;}
-function setAddressConfirmed(confirmed){isAddressConfirmedInput.value=confirmed?'true':'false'; if(confirmed){autocompleteState.textContent='Đã xác định vị trí giao hàng.';autocompleteState.className='small text-success mt-1';}}
-function parseCoordinate(value){if(value===null||value===undefined||value===''){return null;}const parsed=parseFloat(value);return Number.isFinite(parsed)?parsed:null;}
-function getBackendErrorMessage(payload){if(!payload){return 'Không thể tính phí giao hàng.';}if(payload.message){return payload.message;}if(payload.errors){const firstKey=Object.keys(payload.errors)[0];if(firstKey&&Array.isArray(payload.errors[firstKey])&&payload.errors[firstKey].length){return payload.errors[firstKey][0];}}return 'Không thể tính phí giao hàng.';}
-async function calculateShipping(){const rawAddressInput=addressDetail.value||'';const detail=rawAddressInput.trim();if(!provinceNameInput.value||!wardNameInput.value||!detail){resetShippingState();return;}if(detail.length<3){resetShippingState('Vui lòng nhập địa chỉ chi tiết hơn.');return;}const query=buildAddressQuery();fullAddressInput.value=query;customerAddressInput.value=query;shippingCalcText.textContent='Đang tính phí giao hàng...';let lat=null,lng=null,payloadAddress=query;if(selectedSuggestion){lat=parseCoordinate(selectedSuggestion.latitude);lng=parseCoordinate(selectedSuggestion.longitude);payloadAddress=selectedSuggestion.label||query;}const requestPayload={address:query,addressDetail:rawAddressInput,ward:wardNameInput.value,provinceCity:provinceNameInput.value,fullAddress:payloadAddress,latitude:lat,longitude:lng};if((provinceNameInput.value||'').toLowerCase().includes('hà nội')&& (requestPayload.fullAddress||'').toLowerCase().includes('hồ chí minh')){resetShippingState('Địa chỉ không thuộc khu vực đã chọn.');return;}console.log('[shipping] calculate payload',requestPayload);try{const response=await fetch('/api/shipping/calculate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(requestPayload)});const payload=await response.json();if(payload.success===false){resetShippingState(getBackendErrorMessage(payload));return;}shippingLatitudeInput.value=payload.destinationLatitude??'';shippingLongitudeInput.value=payload.destinationLongitude??'';shippingDistanceKmInput.value=payload.distanceKm??'';shippingDurationMinutesInput.value=payload.durationMinutes??'';shippingFeeInput.value=payload.shippingFee??'';shippingProviderInput.value=payload.shippingProvider??'';shippingFormulaSnapshotInput.value=payload.formula??'';setAddressConfirmed(true);checkoutForm.querySelector('button[type=submit],button:not([type])').disabled=false;shippingCalcText.textContent=`Khoảng cách: ${payload.distanceKm}km • Thời gian dự kiến: ${payload.durationMinutes} phút • Phí giao hàng: ${Number(payload.shippingFee).toLocaleString('vi-VN')}đ • ${payload.formula} • Chính sách free ship áp dụng theo cấu hình hiện tại.`;}catch{resetShippingState('Không thể tính phí giao hàng lúc này. Vui lòng thử lại.');}}
-function queueShippingCalc(){clearTimeout(shippingTimer);shippingTimer=setTimeout(calculateShipping,700);} 
-function setSelectLoading(selectEl, label){selectEl.innerHTML=`<option value="">${label}</option>`;selectEl.disabled=true;}
-function showAddressError(show){addressError.classList.toggle('d-none',!show);manualProvinceWrap.classList.toggle('d-none',!show);manualWardWrap.classList.toggle('d-none',!show);}
-function renderSuggestions(items){autocompleteList.innerHTML='';if(!items.length){autocompleteState.textContent='Không tìm thấy địa chỉ phù hợp.';autocompleteState.className='small text-warning mt-1';selectedSuggestion=null;return;}autocompleteState.textContent='Chọn một địa chỉ phù hợp từ danh sách gợi ý.';autocompleteState.className='small text-muted mt-1';items.forEach((item)=>{const button=document.createElement('button');button.type='button';button.className='list-group-item list-group-item-action';button.textContent=item.label;button.addEventListener('click',()=>{const lat=parseCoordinate(item.latitude);const lng=parseCoordinate(item.longitude);selectedSuggestion=item;shippingLatitudeInput.value=lat??'';shippingLongitudeInput.value=lng??'';shippingFullAddressInput.value=item.label||'';console.log('[shipping] selected suggestion',selectedSuggestion);setAddressConfirmed(lat!==null&&lng!==null);autocompleteList.innerHTML='';queueShippingCalc();});autocompleteList.appendChild(button);});}
-async function fetchAutocomplete(){const requestId=++autocompleteRequestId;const rawAddressInput=addressDetail.value||'';const detail=rawAddressInput.trim().replace(/\s+/g,' ');if(detail.length<3){autocompleteList.innerHTML='';autocompleteState.textContent='';selectedSuggestion=null;return;}autocompleteState.textContent='Đang tìm địa chỉ...';autocompleteState.className='small text-muted mt-1';const frontendQuery=detail;console.log('[shipping] autocomplete query frontend',{rawAddressInput,query:frontendQuery,ward:wardNameInput.value,province:provinceNameInput.value,requestId});try{const response=await fetch(`/api/shipping/autocomplete?query=${encodeURIComponent(frontendQuery)}&wardName=${encodeURIComponent((wardNameInput.value||'').trim())}&provinceName=${encodeURIComponent((provinceNameInput.value||'').trim())}`);const payload=await response.json();if(requestId!==autocompleteRequestId){return;}if(payload?.success===false){throw new Error(payload?.message||'autocomplete_failed');}const suggestions=Array.isArray(payload?.suggestions)?payload.suggestions:[];renderSuggestions(suggestions);}catch{if(requestId!==autocompleteRequestId){return;}autocompleteList.innerHTML='';autocompleteState.textContent='Không thể tìm địa chỉ lúc này. Vui lòng thử lại.';autocompleteState.className='small text-warning mt-1';}}
-function queueAutocomplete(){clearTimeout(autocompleteTimer);setAddressConfirmed(false);selectedSuggestion=null;shippingLatitudeInput.value='';shippingLongitudeInput.value='';shippingFullAddressInput.value='';resetShippingState();autocompleteTimer=setTimeout(fetchAutocomplete,550);} 
-
-async function loadProvinces(){try{showAddressError(false);setSelectLoading(provinceSelect,'Đang tải Tỉnh/Thành phố...');const response=await fetch(`${API_BASE}/p`);if(!response.ok) throw new Error();const provinces=await response.json();provinceSelect.innerHTML='<option value="">Chọn Tỉnh/Thành phố</option>';provinces.forEach((p)=>provinceSelect.insertAdjacentHTML('beforeend',`<option value="${p.code}" data-name="${p.name}">${p.name}</option>`));provinceSelect.disabled=false;}catch{showAddressError(true);setSelectLoading(provinceSelect,'Không tải được Tỉnh/Thành phố');}}
-provinceSelect.addEventListener('change',async function(){const o=provinceSelect.options[provinceSelect.selectedIndex];provinceCodeInput.value=o.value||'';provinceNameInput.value=o.dataset.name||'';wardCodeInput.value='';wardNameInput.value='';wardSelect.innerHTML='<option value="">Chọn Phường/Xã</option>';if(!provinceCodeInput.value){wardSelect.disabled=true;return;}try{setSelectLoading(wardSelect,'Đang tải Phường/Xã...');const response=await fetch(`${API_BASE}/p/${provinceCodeInput.value}?depth=2`);if(!response.ok) throw new Error();const provinceDetail=await response.json();wardSelect.innerHTML='<option value="">Chọn Phường/Xã</option>';(provinceDetail.wards??[]).forEach((w)=>wardSelect.insertAdjacentHTML('beforeend',`<option value="${w.code}" data-name="${w.name}">${w.name}</option>`));wardSelect.disabled=false;}catch{showAddressError(true);wardSelect.disabled=true;}});
-wardSelect.addEventListener('change',function(){const o=wardSelect.options[wardSelect.selectedIndex];wardCodeInput.value=o.value||'';wardNameInput.value=o.dataset.name||'';queueAutocomplete();queueShippingCalc();});
-addressDetail.addEventListener('input',()=>{queueAutocomplete();queueShippingCalc();});
-checkoutForm.addEventListener('submit',function(e){if(!provinceCodeInput.value||!wardCodeInput.value||!addressDetail.value.trim()){e.preventDefault();showAddressError(true);return;}if(!shippingFeeInput.value||!shippingLatitudeInput.value||!shippingLongitudeInput.value){e.preventDefault();shippingCalcText.textContent='Vui lòng chờ hệ thống tính phí ship hoặc kiểm tra lại địa chỉ.';return;}const fullAddress=buildAddressQuery();fullAddressInput.value=fullAddress;customerAddressInput.value=fullAddress;});
+const provinceSelect=document.getElementById('provinceSelect');const districtSelect=document.getElementById('districtSelect');const wardSelect=document.getElementById('wardSelect');const addressDetail=document.getElementById('addressDetail');
+const provinceCodeInput=document.getElementById('provinceCode');const provinceNameInput=document.getElementById('provinceName');const districtCodeInput=document.getElementById('districtCode');const districtNameInput=document.getElementById('districtName');const wardCodeInput=document.getElementById('wardCode');const wardNameInput=document.getElementById('wardName');
+const fullAddressInput=document.getElementById('fullAddress');const customerAddressInput=document.getElementById('customerAddress');const checkoutForm=document.getElementById('checkoutForm');
+const shippingDistanceKmInput=document.getElementById('shippingDistanceKm');const shippingDurationMinutesInput=document.getElementById('shippingDurationMinutes');const shippingFeeInput=document.getElementById('shippingFeeInput');const shippingProviderInput=document.getElementById('shippingProvider');const shippingFormulaSnapshotInput=document.getElementById('shippingFormulaSnapshot');const shippingCalcText=document.getElementById('shippingCalcText');
+async function api(url){const r=await fetch(url);const p=await r.json();if(!p.success)throw new Error(p.message||'Lỗi');return p.data||[];}
+function setLoading(el,msg){el.innerHTML=`<option value="">${msg}</option>`;el.disabled=true;}
+function buildAddress(){return [addressDetail.value.trim(),wardNameInput.value,districtNameInput.value,provinceNameInput.value,'Vietnam'].filter(Boolean).join(', ')}
+async function loadProvinces(){setLoading(provinceSelect,'Đang tải...');const data=await api('/api/shipping/provinces');provinceSelect.innerHTML='<option value="">Chọn Tỉnh/Thành phố</option>';data.forEach(x=>provinceSelect.insertAdjacentHTML('beforeend',`<option value="${x.id}" data-name="${x.name}">${x.name}</option>`));provinceSelect.disabled=false;}
+provinceSelect.onchange=async()=>{const o=provinceSelect.options[provinceSelect.selectedIndex];provinceCodeInput.value=o.value||'';provinceNameInput.value=o.dataset.name||'';districtCodeInput.value='';districtNameInput.value='';wardCodeInput.value='';wardNameInput.value='';setLoading(districtSelect,'Đang tải...');setLoading(wardSelect,'Chọn Phường/Xã');if(!provinceCodeInput.value)return;const data=await api(`/api/shipping/districts?provinceId=${provinceCodeInput.value}`);districtSelect.innerHTML='<option value="">Chọn Quận/Huyện</option>';data.forEach(x=>districtSelect.insertAdjacentHTML('beforeend',`<option value="${x.id}" data-name="${x.name}">${x.name}</option>`));districtSelect.disabled=false;};
+districtSelect.onchange=async()=>{const o=districtSelect.options[districtSelect.selectedIndex];districtCodeInput.value=o.value||'';districtNameInput.value=o.dataset.name||'';wardCodeInput.value='';wardNameInput.value='';setLoading(wardSelect,'Đang tải...');if(!districtCodeInput.value)return;const data=await api(`/api/shipping/wards?districtId=${districtCodeInput.value}`);wardSelect.innerHTML='<option value="">Chọn Phường/Xã</option>';data.forEach(x=>wardSelect.insertAdjacentHTML('beforeend',`<option value="${x.code}" data-name="${x.name}">${x.name}</option>`));wardSelect.disabled=false;};
+wardSelect.onchange=()=>{const o=wardSelect.options[wardSelect.selectedIndex];wardCodeInput.value=o.value||'';wardNameInput.value=o.dataset.name||'';};
+async function calculateShipping(){if(!provinceCodeInput.value||!districtCodeInput.value||!wardCodeInput.value||!addressDetail.value.trim())return;const payload={fullName:document.querySelector('input[name="CustomerName"]').value,phone:document.querySelector('input[name="CustomerPhone"]').value,email:document.querySelector('input[name="CustomerEmail"]').value,provinceId:Number(provinceCodeInput.value),provinceName:provinceNameInput.value,districtId:Number(districtCodeInput.value),districtName:districtNameInput.value,wardCode:wardCodeInput.value,wardName:wardNameInput.value,addressDetail:addressDetail.value};const res=await fetch('/api/shipping/calculate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const p=await res.json();if(!p.success){shippingCalcText.textContent=p.message;return;}shippingDistanceKmInput.value=p.distanceKm??0;shippingDurationMinutesInput.value=p.durationMinutes??0;shippingFeeInput.value=p.shippingFee??0;shippingProviderInput.value=p.shippingProvider??'';shippingFormulaSnapshotInput.value=p.formula??'';shippingCalcText.textContent=`Phí giao hàng: ${Number(p.shippingFee).toLocaleString('vi-VN')}đ`;}
+addressDetail.onchange=calculateShipping;wardSelect.onchange=()=>{const o=wardSelect.options[wardSelect.selectedIndex];wardCodeInput.value=o.value||'';wardNameInput.value=o.dataset.name||'';calculateShipping();};
+checkoutForm.addEventListener('submit',e=>{if(!provinceCodeInput.value||!districtCodeInput.value||!wardCodeInput.value||!addressDetail.value.trim()){e.preventDefault();return;}const full=buildAddress();fullAddressInput.value=full;customerAddressInput.value=full;});
 loadProvinces();
 </script>
