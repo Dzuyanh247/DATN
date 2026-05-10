@@ -80,19 +80,21 @@ public class ShippingController : ControllerBase
     {
         var normalizedQuery = string.Join(" ", (query ?? string.Empty).Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries));
         if (string.IsNullOrWhiteSpace(normalizedQuery) || normalizedQuery.Length < 3)
-            return Ok(new { success = true, items = Array.Empty<object>() });
+            return Ok(new { success = true, queryUsed = normalizedQuery, count = 0, suggestions = Array.Empty<object>() });
 
         try
         {
             _logger.LogInformation("Shipping autocomplete query='{Query}' province='{Province}'", normalizedQuery, provinceName);
-            var items = await _mapProvider.SearchAddressesAsync(normalizedQuery, provinceName, cancellationToken);
-            var mapped = items.Select(x => new { label = x.DisplayName, latitude = x.Latitude, longitude = x.Longitude }).ToList();
+            var searchResult = await _mapProvider.SearchAddressesAsync(normalizedQuery, provinceName, cancellationToken);
+            var mapped = searchResult.Suggestions.Select(x => new { label = x.DisplayName, latitude = x.Latitude, longitude = x.Longitude }).ToList();
             _logger.LogInformation("Shipping autocomplete mapped_suggestions_count={Count}", mapped.Count);
 
             return Ok(new
             {
                 success = true,
-                items = mapped
+                queryUsed = searchResult.QueryUsed,
+                count = mapped.Count,
+                suggestions = mapped
             });
         }
         catch (Exception ex)
