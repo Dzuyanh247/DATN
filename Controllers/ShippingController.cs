@@ -42,12 +42,10 @@ public class ShippingController : ControllerBase
             return Ok(new { success = false, message = "Địa chỉ giao hàng là bắt buộc." });
         }
 
-        var fullAddress = request.FullAddress;
-        if (string.IsNullOrWhiteSpace(fullAddress))
+        var fullAddress = AddressQueryHelper.BuildNormalizedAddress(request.FullAddress, request.WardName, request.ProvinceName);
+        if (string.IsNullOrWhiteSpace(request.FullAddress))
         {
-            fullAddress = NormalizeAddress(
-                string.Join(", ", new[] { request.AddressDetail, request.WardName, request.ProvinceName, "Vietnam" }
-                    .Where(x => !string.IsNullOrWhiteSpace(x))));
+            fullAddress = AddressQueryHelper.BuildNormalizedAddress(request.AddressDetail, request.WardName, request.ProvinceName);
         }
 
         var hasCoordinates = request.Latitude.HasValue && request.Longitude.HasValue;
@@ -56,10 +54,18 @@ public class ShippingController : ControllerBase
             hasCoordinates,
             fullAddress);
 
+        if (hasCoordinates && (request.Latitude is < -90 or > 90 || request.Longitude is < -180 or > 180))
+            return Ok(new { success = false, message = "Tọa độ không hợp lệ." });
+
+        var provinceFold = AddressQueryHelper.Fold(request.ProvinceName);
+        var fullFold = AddressQueryHelper.Fold(request.FullAddress ?? request.Address ?? string.Empty);
+        if (provinceFold.Contains("ha noi") && fullFold.Contains("ho chi minh"))
+            return Ok(new { success = false, message = "Không tìm thấy địa chỉ phù hợp trong khu vực đã chọn" });
+
         try
         {
             var quote = await _shippingService.CalculateAsync(
-                NormalizeAddress(fullAddress ?? request.Address ?? string.Empty),
+                AddressQueryHelper.NormalizeSegment(fullAddress ?? request.Address ?? string.Empty),
                 request.ProvinceName,
                 request.WardName,
                 request.Latitude,
@@ -123,9 +129,7 @@ public class ShippingController : ControllerBase
 
         try
         {
-            var composedQuery = NormalizeAddress(
-                string.Join(", ", new[] { normalizedQuery, wardName, provinceName, "Vietnam" }
-                    .Where(x => !string.IsNullOrWhiteSpace(x))));
+            var composedQuery = AddressQueryHelper.BuildNormalizedAddress(normalizedQuery, wardName, provinceName);
 
             _logger.LogInformation(
                 "Shipping autocomplete backend query='{Query}' ward='{Ward}' province='{Province}'",
