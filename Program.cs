@@ -60,7 +60,7 @@ app.MapControllerRoute(
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    db.Database.EnsureCreated();
+    db.Database.Migrate();
 
     await db.Database.ExecuteSqlRawAsync(@"IF COL_LENGTH('SiteSettings', 'DealSectionBackgroundUrl') IS NULL
 BEGIN
@@ -77,6 +77,7 @@ END");
 
     var auditTables = new[]
     {
+        "Banners",
         "Categories",
         "Products",
         "Articles",
