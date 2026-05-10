@@ -47,8 +47,9 @@ public class ShippingController : ControllerBase
             if (!request.Latitude.HasValue || !request.Longitude.HasValue)
             {
                 fallbackAddress = string.IsNullOrWhiteSpace(request.FullAddress)
-                    ? string.Join(", ", new[] { request.AddressDetail, request.WardName, request.ProvinceName, "Việt Nam" }.Where(x => !string.IsNullOrWhiteSpace(x)))
+                    ? string.Join(", ", new[] { request.AddressDetail, request.WardName, request.ProvinceName, "Vietnam" }.Where(x => !string.IsNullOrWhiteSpace(x)))
                     : request.FullAddress;
+                _logger.LogInformation("Shipping calculate geocode fallback with fullAddress='{FallbackAddress}' (lat/lng missing)", fallbackAddress);
             }
 
             var quote = await _shippingService.CalculateAsync(fallbackAddress ?? request.Address ?? string.Empty, request.Latitude, request.Longitude, cancellationToken);
