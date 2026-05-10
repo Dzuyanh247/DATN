@@ -74,6 +74,7 @@ public class ShippingController : ControllerBase
     public async Task<IActionResult> Autocomplete([FromQuery] string query, [FromQuery] string? wardName, [FromQuery] string? provinceName, CancellationToken cancellationToken)
     {
         var normalizedQuery = string.Join(" ", (query ?? string.Empty).Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries));
+        _logger.LogInformation("Shipping autocomplete frontend_query_received='{Query}' ward='{Ward}' province='{Province}'", normalizedQuery, wardName, provinceName);
         if (string.IsNullOrWhiteSpace(normalizedQuery) || normalizedQuery.Length < 3)
             return Ok(new { success = true, suggestions = Array.Empty<object>() });
 

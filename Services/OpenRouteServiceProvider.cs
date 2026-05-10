@@ -34,6 +34,7 @@ public class OpenRouteServiceProvider : IMapProvider
         _logger.LogInformation("ORS fallback query candidates count={Count}", fallbackQueries.Count);
         foreach (var candidate in fallbackQueries)
         {
+            _logger.LogInformation("ORS autocomplete trying_query='{Query}'", candidate);
             var suggestions = await SearchInternalAsync(candidate, cancellationToken);
             if (suggestions.Count > 0)
                 return new AddressSearchResult(candidate, suggestions);
@@ -91,15 +92,20 @@ public class OpenRouteServiceProvider : IMapProvider
     {
         var removedDiacritics = RemoveDiacritics(cleanedNoComma);
         var noHouseNumber = NormalizeQuery(Regex.Replace(cleanedNoComma, "^\\d+\\s*", string.Empty));
+        var noHouseNumberAscii = NormalizeQuery(RemoveDiacritics(noHouseNumber));
         var province = NormalizeQuery(provinceName ?? string.Empty);
         var candidates = new List<string>
         {
             normalizedQuery,
+            $"{cleanedNoComma} {province} Vietnam",
+            $"{noHouseNumber} {province}",
+            noHouseNumberAscii,
+            $"{noHouseNumberAscii} Vietnam",
             cleanedNoComma,
             removedDiacritics,
             string.IsNullOrWhiteSpace(province) ? string.Empty : $"{cleanedNoComma}, {province}, Vietnam",
             $"{cleanedNoComma} Vietnam",
-            $"{cleanedNoComma} Ha Noi Vietnam",
+            $"{noHouseNumberAscii} Ha Noi",
             noHouseNumber
         };
         return candidates
