@@ -41,6 +41,7 @@ public class Product : BaseEntity
     public decimal? SalePrice { get; set; }
     public int StockQuantity { get; set; }
     [MaxLength(1000)] public string ThumbnailImage { get; set; } = string.Empty;
+    [MaxLength(1000)] public string SourceUrl { get; set; } = string.Empty;
     [MaxLength(500)] public string ShortDescription { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public string DetailDescription { get; set; } = string.Empty;

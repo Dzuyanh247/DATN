@@ -94,6 +94,7 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<User>().HasIndex(x => x.Username).IsUnique();
         modelBuilder.Entity<Product>().HasIndex(x => x.ProductCode).IsUnique();
         modelBuilder.Entity<Product>().HasIndex(x => x.Slug).IsUnique();
+        modelBuilder.Entity<Product>().HasIndex(x => x.SourceUrl);
 
         modelBuilder.Entity<Category>()
             .HasOne(c => c.ParentCategory)
