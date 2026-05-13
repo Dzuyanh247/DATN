@@ -1,0 +1,3 @@
+Name,Price,ImageUrl,ProductUrl,Category,Brand,Warranty,Stock,Description
+AMD Ryzen 5 7600,4890000,https://example.com/cpu7600.jpg,https://example.com/cpu7600,CPU,AMD,36 tháng,12,CPU 6 nhân 12 luồng
+MSI B650M Mortar,4290000,https://example.com/b650m.jpg,https://example.com/b650m,Mainboard,MSI,36 tháng,8,Mainboard AM5
