@@ -17,6 +17,7 @@ public class BuildPcController : Controller
     private readonly ApplicationDbContext _db;
     private readonly ICartService _cartService;
     private readonly BuildCompatibilityService _compatibilityService;
+    private readonly ILogger<BuildPcController> _logger;
 
     private static readonly (string Type, string Display)[] ComponentOrder =
     [
@@ -31,11 +32,12 @@ public class BuildPcController : Controller
         ("MONITOR", "MÀN HÌNH")
     ];
 
-    public BuildPcController(ApplicationDbContext db, ICartService cartService, BuildCompatibilityService compatibilityService)
+    public BuildPcController(ApplicationDbContext db, ICartService cartService, BuildCompatibilityService compatibilityService, ILogger<BuildPcController> logger)
     {
         _db = db;
         _cartService = cartService;
         _compatibilityService = compatibilityService;
+        _logger = logger;
     }
 
     [HttpGet("")]
@@ -48,16 +50,22 @@ public class BuildPcController : Controller
     [HttpGet("products")]
     public async Task<IActionResult> GetProductsByComponent(string type, string? keyword, string? sort)
     {
-        var products = await QueryProductsByType(type);
+        var normalizedType = NormalizeType(type);
+        var products = await QueryProductsByType(normalizedType);
         if (!string.IsNullOrWhiteSpace(keyword)) products = products.Where(x => x.Name.Contains(keyword)).ToList();
         products = sort == "price_desc" ? products.OrderByDescending(x => x.Price).ToList() : products.OrderBy(x => x.Price).ToList();
+
+        _logger.LogInformation("Build PC products for type {Type}: {Count} item(s)", normalizedType, products.Count);
+
         var result = products.Select(p => new BuildProductOptionViewModel
         {
             Id = p.Id,
             Name = p.Name,
             ImageUrl = p.ThumbnailImage,
             Price = p.DiscountPrice ?? p.SalePrice ?? p.Price,
-            StockQuantity = p.StockQuantity
+            CategoryName = p.Category?.Name ?? string.Empty,
+            StockQuantity = p.StockQuantity,
+            Warranty = p.WarrantyDuration ?? (p.WarrantyMonths > 0 ? $"{p.WarrantyMonths} tháng" : string.Empty)
         }).ToList();
         return Json(result);
     }
@@ -136,8 +144,6 @@ public class BuildPcController : Controller
 
     private async Task<List<Product>> QueryProductsByType(string type)
     {
-        type = type.ToUpperInvariant();
-
         var products = await _db.Products
             .Include(x => x.Category)
             .Where(x => x.IsActive && x.IsInStock)
@@ -152,10 +158,20 @@ public class BuildPcController : Controller
     {
         var cat = p.Category?.Name ?? string.Empty;
         var comp = p.ComponentType ?? string.Empty;
-        var source = $"{cat} {comp}".ToLowerInvariant();
+        var name = p.Name ?? string.Empty;
+        var source = $"{cat} {comp} {name}".ToLowerInvariant();
         return type switch
         {
-            "CPU" => source.Contains("cpu") || source.Contains("vi xử lý"),
+            "CPU" => comp.Equals("CPU", StringComparison.OrdinalIgnoreCase)
+                     || cat.Contains("cpu", StringComparison.OrdinalIgnoreCase)
+                     || name.Contains("cpu", StringComparison.OrdinalIgnoreCase)
+                     || name.Contains("intel", StringComparison.OrdinalIgnoreCase)
+                     || name.Contains("ryzen", StringComparison.OrdinalIgnoreCase)
+                     || name.Contains("core i3", StringComparison.OrdinalIgnoreCase)
+                     || name.Contains("core i5", StringComparison.OrdinalIgnoreCase)
+                     || name.Contains("core i7", StringComparison.OrdinalIgnoreCase)
+                     || name.Contains("core i9", StringComparison.OrdinalIgnoreCase)
+                     || source.Contains("vi xử lý"),
             "MAINBOARD" => source.Contains("mainboard") || source.Contains("bo mạch chủ"),
             "RAM" => source.Contains("ram"),
             "GPU" => source.Contains("vga") || source.Contains("card đồ họa") || source.Contains("gpu"),
@@ -165,6 +181,21 @@ public class BuildPcController : Controller
             "CASE" => source.Contains("case") || source.Contains("vỏ case"),
             "MONITOR" => source.Contains("màn hình") || source.Contains("monitor"),
             _ => false
+        };
+    }
+
+    private static string NormalizeType(string? type)
+    {
+        var value = (type ?? string.Empty).Trim().ToUpperInvariant();
+        return value switch
+        {
+            "CARD ĐỒ HỌA" => "GPU",
+            "Ổ CỨNG" => "STORAGE",
+            "NGUỒN" => "PSU",
+            "TẢN NHIỆT" => "COOLER",
+            "VỎ CASE" => "CASE",
+            "MÀN HÌNH" => "MONITOR",
+            _ => value
         };
     }
 
