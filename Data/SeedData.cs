@@ -249,6 +249,39 @@ public static class SeedData
             await db.SaveChangesAsync();
         }
 
+        var cpuCount = await db.Products.CountAsync(p => p.IsActive && (
+            (p.ComponentType ?? string.Empty).ToLower().Contains("cpu")
+            || (p.Name ?? string.Empty).ToLower().Contains("cpu")
+            || (p.Name ?? string.Empty).ToLower().Contains("intel")
+            || (p.Name ?? string.Empty).ToLower().Contains("ryzen")
+            || (p.Name ?? string.Empty).ToLower().Contains("core i3")
+            || (p.Name ?? string.Empty).ToLower().Contains("core i5")
+            || (p.Name ?? string.Empty).ToLower().Contains("core i7")
+            || (p.Name ?? string.Empty).ToLower().Contains("core i9")
+        ));
+
+        if (cpuCount < 5)
+        {
+            var categoryMap = await db.Categories.ToDictionaryAsync(c => c.Name, c => c.Id);
+            var linhKienCategoryId = categoryMap["Linh kiện"];
+            var cpuProducts = new List<Product>
+            {
+                new() { Name = "CPU Intel Core i3-14100F", Slug = "cpu-intel-core-i3-14100f", ProductCode = "CPU-I3-14100F", Brand = "Intel", Price = 2990000, StockQuantity = 12, CategoryId = linhKienCategoryId, ThumbnailImage = "https://res.cloudinary.com/demo/image/upload/v1312461204/sample.jpg", ShortDescription = "CPU Intel phổ thông", Description = "4 nhân 8 luồng", DetailDescription = "Phù hợp gaming/esport", Specifications = "Core i3-14100F", WarrantyMonths = 36, WarrantyDuration = "36 tháng", ComponentType = "CPU", IsInStock = true, IsActive = true },
+                new() { Name = "CPU Intel Core i5-14600K", Slug = "cpu-intel-core-i5-14600k", ProductCode = "CPU-I5-14600K", Brand = "Intel", Price = 7890000, StockQuantity = 9, CategoryId = linhKienCategoryId, ThumbnailImage = "https://res.cloudinary.com/demo/image/upload/v1312461204/flower.jpg", ShortDescription = "CPU Intel tầm trung", Description = "Hiệu năng cao cho game", DetailDescription = "Core i5 thế hệ 14", Specifications = "Core i5-14600K", WarrantyMonths = 36, WarrantyDuration = "36 tháng", ComponentType = "CPU", IsInStock = true, IsActive = true },
+                new() { Name = "CPU Intel Core i7-14700K", Slug = "cpu-intel-core-i7-14700k", ProductCode = "CPU-I7-14700K", Brand = "Intel", Price = 10990000, StockQuantity = 7, CategoryId = linhKienCategoryId, ThumbnailImage = "https://res.cloudinary.com/demo/image/upload/v1312461204/animals.jpg", ShortDescription = "CPU Intel cao cấp", Description = "Tối ưu đa nhiệm", DetailDescription = "Core i7 thế hệ 14", Specifications = "Core i7-14700K", WarrantyMonths = 36, WarrantyDuration = "36 tháng", ComponentType = "CPU", IsInStock = true, IsActive = true },
+                new() { Name = "CPU AMD Ryzen 5 7500F", Slug = "cpu-amd-ryzen-5-7500f", ProductCode = "CPU-R5-7500F", Brand = "AMD", Price = 4190000, StockQuantity = 15, CategoryId = linhKienCategoryId, ThumbnailImage = "https://res.cloudinary.com/demo/image/upload/v1312461204/couple.jpg", ShortDescription = "CPU AMD gaming", Description = "6 nhân 12 luồng", DetailDescription = "Giá tốt cho AM5", Specifications = "Ryzen 5 7500F", WarrantyMonths = 36, WarrantyDuration = "36 tháng", ComponentType = "CPU", IsInStock = true, IsActive = true },
+                new() { Name = "CPU AMD Ryzen 7 7800X3D", Slug = "cpu-amd-ryzen-7-7800x3d", ProductCode = "CPU-R7-7800X3D", Brand = "AMD", Price = 9990000, StockQuantity = 6, CategoryId = linhKienCategoryId, ThumbnailImage = "https://res.cloudinary.com/demo/image/upload/v1312461204/sample.jpg", ShortDescription = "CPU AMD cao cấp", Description = "Tối ưu gaming 3D V-Cache", DetailDescription = "Hiệu năng game hàng đầu", Specifications = "Ryzen 7 7800X3D", WarrantyMonths = 36, WarrantyDuration = "36 tháng", ComponentType = "CPU", IsInStock = true, IsActive = true }
+            };
+
+            var existingSlugs = await db.Products.Select(p => p.Slug).ToHashSetAsync();
+            var productsToInsert = cpuProducts.Where(p => !existingSlugs.Contains(p.Slug)).ToList();
+            if (productsToInsert.Count > 0)
+            {
+                db.Products.AddRange(productsToInsert);
+                await db.SaveChangesAsync();
+            }
+        }
+
         if (!await db.SiteSettings.AnyAsync())
         {
             db.SiteSettings.Add(new SiteSetting
