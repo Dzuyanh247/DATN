@@ -39,9 +39,9 @@ public class BuildPcController : Controller
     }
 
     [HttpGet("")]
-    public async Task<IActionResult> Index()
+    public IActionResult Index()
     {
-        var vm = await BuildViewModelAsync();
+        var vm = BuildViewModel();
         return View(vm);
     }
 
@@ -49,8 +49,8 @@ public class BuildPcController : Controller
     public async Task<IActionResult> GetProductsByComponent(string type, string? keyword, string? sort)
     {
         var products = await QueryProductsByType(type);
-        if (!string.IsNullOrWhiteSpace(keyword)) products = products.Where(x => x.Name.Contains(keyword));
-        products = sort == "price_desc" ? products.OrderByDescending(x => x.Price) : products.OrderBy(x => x.Price);
+        if (!string.IsNullOrWhiteSpace(keyword)) products = products.Where(x => x.Name.Contains(keyword)).ToList();
+        products = sort == "price_desc" ? products.OrderByDescending(x => x.Price).ToList() : products.OrderBy(x => x.Price).ToList();
         var result = products.Select(p => new BuildProductOptionViewModel
         {
             Id = p.Id,
@@ -122,7 +122,7 @@ public class BuildPcController : Controller
         return File(Encoding.UTF8.GetBytes(sb.ToString()), "text/csv", "buildpc-config.csv");
     }
 
-    private async Task<BuildPcViewModel> BuildViewModelAsync()
+    private BuildPcViewModel BuildViewModel()
     {
         var selected = GetSelectedFromSession();
         var vm = new BuildPcViewModel();
