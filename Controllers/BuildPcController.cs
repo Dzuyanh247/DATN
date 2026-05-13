@@ -137,8 +137,15 @@ public class BuildPcController : Controller
     private async Task<List<Product>> QueryProductsByType(string type)
     {
         type = type.ToUpperInvariant();
-        var query = _db.Products.Include(x => x.Category).Where(x => x.IsActive && x.IsInStock);
-        return await query.Where(p => MatchType(type, p)).ToListAsync();
+
+        var products = await _db.Products
+            .Include(x => x.Category)
+            .Where(x => x.IsActive && x.IsInStock)
+            .ToListAsync();
+
+        return products
+            .Where(p => MatchType(type, p))
+            .ToList();
     }
 
     private static bool MatchType(string type, Product p)
