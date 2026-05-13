@@ -273,7 +273,8 @@ public static class SeedData
                 new() { Name = "CPU AMD Ryzen 7 7800X3D", Slug = "cpu-amd-ryzen-7-7800x3d", ProductCode = "CPU-R7-7800X3D", Brand = "AMD", Price = 9990000, StockQuantity = 6, CategoryId = linhKienCategoryId, ThumbnailImage = "https://res.cloudinary.com/demo/image/upload/v1312461204/sample.jpg", ShortDescription = "CPU AMD cao cấp", Description = "Tối ưu gaming 3D V-Cache", DetailDescription = "Hiệu năng game hàng đầu", Specifications = "Ryzen 7 7800X3D", WarrantyMonths = 36, WarrantyDuration = "36 tháng", ComponentType = "CPU", IsInStock = true, IsActive = true }
             };
 
-            var existingSlugs = await db.Products.Select(p => p.Slug).ToHashSetAsync();
+            var existingSlugs = (await db.Products.Select(p => p.Slug).ToListAsync())
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
             var productsToInsert = cpuProducts.Where(p => !existingSlugs.Contains(p.Slug)).ToList();
             if (productsToInsert.Count > 0)
             {
