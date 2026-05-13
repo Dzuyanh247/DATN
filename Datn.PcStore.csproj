@@ -13,4 +13,9 @@
     </PackageReference>
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.8" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="Tools/**/*.cs" />
+    <None Include="Tools/**/*.cs" />
+  </ItemGroup>
 </Project>
