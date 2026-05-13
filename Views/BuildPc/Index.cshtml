@@ -1,43 +1,67 @@
-@model Datn.PcStore.ViewModels.BuildPcVm
-<h3>Build PC</h3>
-@if (TempData["Err"] != null) { <div class="alert alert-danger">@TempData["Err"]</div> }
-@if (TempData["Ok"] != null) { <div class="alert alert-success">@TempData["Ok"]</div> }
-<form method="post" asp-action="Index" class="row g-3">
-    @foreach (var item in Model.Components)
-    {
-        <div class="col-md-6">
-            <label class="form-label fw-semibold">@item.Key</label>
-            <select class="form-select" name="selected[@item.Key]">
-                <option value="">-- Chọn @item.Key --</option>
-                @foreach (var p in item.Value)
-                {
-                    var isSelected = Model.Selected.TryGetValue(item.Key, out var id) && id == p.Id;
-                    if (isSelected)
+@model Datn.PcStore.ViewModels.BuildPcViewModel
+@{
+    ViewData["Title"] = "Build PC";
+}
+<link rel="stylesheet" href="~/css/buildpc.css" />
+
+<div class="buildpc-wrap" id="buildpcArea">
+    <nav class="buildpc-breadcrumb">Trang chủ &gt; Xây dựng máy tính - tạo máy tính</nav>
+    <h2 class="buildpc-title">CHỌN LINH KIỆN XÂY DỰNG CẤU HÌNH</h2>
+    <div class="buildpc-header">
+        <button class="btn btn-danger" id="btnReset">LÀM MỚI</button>
+        <div>Chi phí dự tính: <span class="total-price" id="topTotal">@Model.TotalPrice.ToString("N0") đ</span></div>
+    </div>
+
+    <div class="buildpc-table">
+        @for (int i = 0; i < Model.Components.Count; i++)
+        {
+            var c = Model.Components[i];
+            <div class="build-row" data-type="@c.Type">
+                <div class="build-col-index">@(i + 1). @c.DisplayName</div>
+                <div class="build-col-content">
+                    @if (c.Selected == null)
                     {
-                        <option value="@p.Id" selected>@p.Name - @((p.DiscountPrice ??  p.Price).ToString("N0")) đ</option>
+                        <button class="btn btn-select" data-type="@c.Type">+ Chọn @c.DisplayName</button>
                     }
                     else
                     {
-                        <option value="@p.Id">@p.Name - @((p.DiscountPrice ??  p.Price).ToString("N0")) đ</option>
+                        <div class="selected-item">
+                            <img src="@c.Selected.ImageUrl" alt="@c.Selected.ProductName" />
+                            <div>
+                                <div class="name">@c.Selected.ProductName</div>
+                                <div class="price">@c.Selected.Price.ToString("N0") đ</div>
+                            </div>
+                            <button class="btn btn-sm btn-outline-danger btn-remove" data-type="@c.Type">Xóa</button>
+                            <button class="btn btn-sm btn-select" data-type="@c.Type">Đổi</button>
+                        </div>
                     }
-                }
-            </select>
-        </div>
-    }
-    <div class="col-12"><button class="btn btn-outline-primary">Kiểm tra tương thích</button></div>
-</form>
+                </div>
+            </div>
+        }
+    </div>
 
-<div class="alert @(Model.IsCompatible ? "alert-success" : "alert-warning") mt-3">@Model.CompatibilityMessage</div>
-<h5>Tổng tạm tính: <span class="text-danger">@Model.TotalPrice.ToString("N0") đ</span></h5>
-<div class="d-flex flex-wrap gap-2">
-    <form method="post" asp-action="AddConfigToCart">
-        @foreach (var item in Model.Selected){<input type="hidden" name="selected[@item.Key]" value="@item.Value" />}
-        <button class="btn btn-warning" @(Model.TotalPrice <= 0 ? "disabled" : null)>Thêm cấu hình vào giỏ hàng</button>
-    </form>
-
-    <form method="post" asp-action="SaveConfig" class="d-flex gap-2">
-        @foreach (var item in Model.Selected){<input type="hidden" name="selected[@item.Key]" value="@item.Value" />}
-        <input class="form-control" style="max-width:260px" name="configName" placeholder="Tên cấu hình (tuỳ chọn)" />
-        <button class="btn btn-outline-success" @(Model.TotalPrice <= 0 ? "disabled" : null)>Lưu cấu hình</button>
-    </form>
+    <div class="buildpc-footer">Tổng chi phí: <span class="total-price" id="bottomTotal">@Model.TotalPrice.ToString("N0") đ</span></div>
+    <div class="buildpc-actions">
+        <button class="btn btn-outline-secondary" id="btnCapture">TẢI ẢNH CẤU HÌNH</button>
+        <a class="btn btn-outline-secondary" asp-action="ExportCsv">TẢI FILE EXCEL CẤU HÌNH</a>
+        <button class="btn btn-outline-secondary" onclick="window.print()">XEM &amp; IN</button>
+        <form method="post" asp-action="AddBuildToCart"><button class="btn btn-cart">THÊM VÀO GIỎ HÀNG</button></form>
+    </div>
 </div>
+
+<div class="modal fade" id="pickModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Chọn linh kiện</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <div class="d-flex gap-2 mb-3"><input id="searchKeyword" class="form-control" placeholder="Tìm kiếm..." /><select id="sortPrice" class="form-select" style="max-width:220px"><option value="price_asc">Giá tăng dần</option><option value="price_desc">Giá giảm dần</option></select></div>
+        <div id="productList"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+@section Scripts {
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="~/js/buildpc.js"></script>
+}

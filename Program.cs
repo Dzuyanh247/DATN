@@ -30,6 +30,7 @@ builder.Services.Configure<ShopAddressOptions>(builder.Configuration.GetSection(
 builder.Services.AddSession();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ICartService, CartService>();
+builder.Services.AddScoped<BuildCompatibilityService>();
 builder.Services.AddScoped<IProductImageStorageService, ProductImageStorageService>();
 builder.Services.AddHttpClient<IMapProvider, OpenRouteServiceProvider>(client =>
 {
