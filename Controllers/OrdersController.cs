@@ -25,7 +25,7 @@ public class OrdersController : Controller
     private static string ToOrderCode(int orderId) => $"DH{orderId:D6}";
 
     [HttpGet("/Checkout")]
-    public IActionResult Checkout()
+    public async Task<IActionResult> Checkout()
     {
         var vm = new CheckoutRequestVm();
         if (User.Identity?.IsAuthenticated == true)
@@ -33,6 +33,8 @@ public class OrdersController : Controller
             vm.CustomerName = User.FindFirstValue(ClaimTypes.Name) ?? string.Empty;
         }
 
+        var userId = User.Identity?.IsAuthenticated == true ? int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!) : (int?)null;
+        ViewBag.Cart = await _cartService.GetCartAsync(userId);
         return View(vm);
     }
 
@@ -75,6 +77,7 @@ public class OrdersController : Controller
 
         if (!ModelState.IsValid)
         {
+            ViewBag.Cart = cart;
             return View(vm);
         }
 
@@ -157,6 +160,7 @@ public class OrdersController : Controller
             _logger.LogError(ex, "Checkout failed for user {UserId}", userId);
             ModelState.AddModelError(string.Empty, "Không thể đặt hàng lúc này. Vui lòng kiểm tra tồn kho hoặc thử lại sau.");
             TempData["ErrorMessage"] = "Không thể đặt hàng, vui lòng kiểm tra thông tin và thử lại.";
+            ViewBag.Cart = cart;
             return View(vm);
         }
     }
