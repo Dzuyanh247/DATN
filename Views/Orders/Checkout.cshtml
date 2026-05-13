@@ -1,89 +1,137 @@
 @model Datn.PcStore.ViewModels.CheckoutRequestVm
+@using Datn.PcStore.ViewModels
 @{
-    ViewData["Title"] = "Checkout";
+    ViewData["Title"] = "Thanh toán";
+    var cart = ViewBag.Cart as CartViewVm;
+    var hasCart = cart?.Items?.Any() == true;
+    decimal subtotal = cart?.TotalAmount ?? 0;
 }
+<link rel="stylesheet" href="~/css/cart.css" />
 
-<h3 class="mb-3">Thông tin đặt hàng</h3>
-@if (TempData["ErrorMessage"] != null)
-{
-    <div class="alert alert-danger">@TempData["ErrorMessage"]</div>
-}
-<form method="post" action="/Checkout" class="card p-3" id="checkoutForm">
-    @Html.AntiForgeryToken()
-    <div asp-validation-summary="All" class="text-danger"></div>
+<div class="checkout-page">
+    <div class="checkout-container">
+        <div class="checkout-breadcrumb">Trang chủ &gt; <strong>Thông tin giỏ hàng</strong></div>
 
-    <div class="mb-3"><label class="form-label">Họ tên*</label><input class="form-control" name="CustomerName" value="@Model.CustomerName" required /></div>
-    <div class="mb-3"><label class="form-label">Số điện thoại*</label><input class="form-control" name="CustomerPhone" value="@Model.CustomerPhone" required /></div>
-    <div class="mb-3"><label class="form-label">Email</label><input class="form-control" name="CustomerEmail" value="@Model.CustomerEmail" /></div>
-    <div class="mb-3">
-        <label class="form-label">Phương thức thanh toán*</label>
-        <select class="form-select" name="PaymentMethod" required>
-            <option value="COD" selected="@(Model.PaymentMethod == "COD")">Thanh toán khi nhận hàng (COD)</option>
-            <option value="BANK_TRANSFER" selected="@(Model.PaymentMethod == "BANK_TRANSFER")">Chuyển khoản ngân hàng</option>
-        </select>
+        <section class="panel mb-3">
+            <div class="panel-header d-flex justify-content-between align-items-center">
+                <h1 class="m-0">Giỏ hàng</h1>
+                @if (hasCart)
+                {
+                    <form method="post" asp-controller="Cart" asp-action="Clear">
+                        @Html.AntiForgeryToken()
+                        <button class="btn-clear-all" type="submit">Xóa toàn bộ giỏ hàng</button>
+                    </form>
+                }
+            </div>
+
+            @if (!hasCart)
+            {
+                <div class="p-3">Giỏ hàng của bạn đang trống. <a asp-controller="Products" asp-action="Index">Quay lại mua hàng</a></div>
+            }
+            else
+            {
+                @foreach (var i in cart!.Items)
+                {
+                    var img = ImageUrlHelper.ResolveImageUrl(i.ProductImage, "/images/placeholders/product-placeholder.png");
+                    <div class="cart-row">
+                        <div class="product-col">
+                            <img src="@img" class="cart-product-image" onerror="this.onerror=null;this.src='/images/placeholders/product-placeholder.png';" />
+                            <div>
+                                <div class="name">@i.ProductName</div>
+                                <div class="warranty">Bảo hành: @i.Warranty</div>
+                            </div>
+                        </div>
+                        <div class="price-col">@i.UnitPrice.ToString("N0") VNĐ</div>
+                        <div class="qty-col">
+                            <form method="post" asp-controller="Cart" asp-action="Update" class="qty-form">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="cartItemId" value="@i.CartItemId" />
+                                <div class="qty-box">
+                                    <button type="button" onclick="stepQty(this,-1)">-</button>
+                                    <input name="quantity" value="@i.Quantity" min="1" max="@i.StockQuantity" />
+                                    <button type="button" onclick="stepQty(this,1)">+</button>
+                                </div>
+                                <button class="btn-update">Cập nhật</button>
+                            </form>
+                        </div>
+                        <div class="line-col">@i.LineTotal.ToString("N0") VNĐ</div>
+                        <div class="remove-col">
+                            <form method="post" asp-controller="Cart" asp-action="Remove">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="cartItemId" value="@i.CartItemId" />
+                                <button class="btn-remove" type="submit">✕</button>
+                            </form>
+                        </div>
+                    </div>
+                }
+                <div class="cart-total">Tổng tiền: <span>@subtotal.ToString("N0") VNĐ</span></div>
+            }
+        </section>
+
+        @if (hasCart)
+        {
+            <form method="post" action="/Checkout" id="checkoutForm">
+                @Html.AntiForgeryToken()
+                <div asp-validation-summary="All" class="text-danger"></div>
+
+                <div class="checkout-grid">
+                    <section class="panel">
+                        <div class="panel-header">THÔNG TIN NGƯỜI MUA</div>
+                        <div class="panel-body">
+                            <label>Họ tên*</label><input class="ui-input" name="CustomerName" value="@Model.CustomerName" required />
+                            <label>SĐT*</label><input class="ui-input" name="CustomerPhone" value="@Model.CustomerPhone" required />
+                            <label>Email*</label><input class="ui-input" type="email" name="CustomerEmail" value="@Model.CustomerEmail" required />
+                            <label>Địa chỉ*</label><textarea class="ui-input" id="addressDetail" name="AddressDetail" required>@Model.AddressDetail</textarea>
+                            <label>Tỉnh/Thành phố*</label><select class="ui-input" id="provinceSelect" required><option value="">Chọn Tỉnh/Thành phố</option></select>
+                            <label>Quận/Huyện*</label><select class="ui-input" id="districtSelect" required disabled><option value="">Chọn Quận/Huyện</option></select>
+                            <label>Phường/Xã*</label><select class="ui-input" id="wardSelect" required disabled><option value="">Chọn Phường/Xã</option></select>
+                            <label>Ghi chú</label><textarea class="ui-input" rows="3" name="Note">@Model.Note</textarea>
+                        </div>
+                    </section>
+
+                    <section class="panel">
+                        <div class="panel-header">TỔNG TIỀN</div>
+                        <div class="panel-body">
+                            <div class="voucher-row"><input class="ui-input" name="VoucherCode" placeholder="Mã voucher" value="@Model.VoucherCode" /><button type="button" class="voucher-btn">Chọn mã voucher</button></div>
+                            <div class="sum-row"><span>Tổng cộng</span><strong>@subtotal.ToString("N0") VNĐ</strong></div>
+                            <div class="sum-row"><span>Giảm giá Voucher</span><strong>0 VNĐ</strong></div>
+                            <div class="sum-row final"><span>Thành tiền</span><strong>@subtotal.ToString("N0") VNĐ</strong></div>
+                            <small>(Giá đã bao gồm VAT)</small>
+                            <div class="mt-3"><input type="checkbox" id="termsCheck" required /> <label for="termsCheck">Tôi đã đọc và đồng ý với các Điều kiện giao dịch chung của website</label></div>
+                            <div class="mt-3"><label>Phương thức thanh toán*</label><select class="ui-input" name="PaymentMethod" required><option value="COD" selected="@(Model.PaymentMethod == "COD")">Thanh toán khi nhận hàng (COD)</option><option value="BANK_TRANSFER" selected="@(Model.PaymentMethod == "BANK_TRANSFER")">Chuyển khoản ngân hàng</option></select></div>
+                        </div>
+                    </section>
+                </div>
+
+                <div class="action-grid">
+                    <button type="button" class="action-btn dark" onclick="window.print()">IN BÁO GIÁ</button>
+                    <button type="button" class="action-btn blue" disabled>TẢI FILE EXCEL</button>
+                    <button type="submit" class="action-btn red">ĐẶT HÀNG</button>
+                    <button type="button" class="action-btn dark">TRẢ GÓP QUA HỒ SƠ</button>
+                    <button type="submit" class="action-btn red">MUA NGAY</button>
+                    <button type="button" class="action-btn blue">TRẢ GÓP QUA THẺ</button>
+                </div>
+
+                <input type="hidden" name="CustomerAddress" id="customerAddress" />
+                <input type="hidden" name="FullAddress" id="fullAddress" />
+                <input type="hidden" name="ProvinceCode" id="provinceCode" />
+                <input type="hidden" name="DistrictCode" id="districtCode" />
+                <input type="hidden" name="DistrictName" id="districtName" />
+                <input type="hidden" name="ProvinceName" id="provinceName" />
+                <input type="hidden" name="WardCode" id="wardCode" />
+                <input type="hidden" name="WardName" id="wardName" />
+                <input type="hidden" name="ShippingDistanceKm" id="shippingDistanceKm" />
+                <input type="hidden" name="ShippingDurationMinutes" id="shippingDurationMinutes" />
+                <input type="hidden" name="ShippingFee" id="shippingFeeInput" />
+                <input type="hidden" name="ShippingProvider" id="shippingProvider" />
+                <input type="hidden" name="ShippingFormulaSnapshot" id="shippingFormulaSnapshot" />
+                <input type="hidden" name="ManualProvince" value="@Model.ManualProvince" />
+                <input type="hidden" name="ManualWard" value="@Model.ManualWard" />
+            </form>
+        }
     </div>
-
-    <input type="hidden" name="CustomerAddress" id="customerAddress" />
-    <input type="hidden" name="FullAddress" id="fullAddress" />
-    <input type="hidden" name="ProvinceCode" id="provinceCode" />
-    <input type="hidden" name="DistrictCode" id="districtCode" />
-    <input type="hidden" name="DistrictName" id="districtName" />
-    <input type="hidden" name="ProvinceName" id="provinceName" />
-    <input type="hidden" name="WardCode" id="wardCode" />
-    <input type="hidden" name="WardName" id="wardName" />
-
-    <input type="hidden" name="ShippingDistanceKm" id="shippingDistanceKm" />
-    <input type="hidden" name="ShippingDurationMinutes" id="shippingDurationMinutes" />
-    <input type="hidden" name="ShippingFee" id="shippingFeeInput" />
-    <input type="hidden" name="ShippingProvider" id="shippingProvider" />
-    <input type="hidden" name="ShippingFormulaSnapshot" id="shippingFormulaSnapshot" />
-
-    <div class="mb-3">
-        <label class="form-label">Tỉnh/Thành phố*</label>
-        <select class="form-select" id="provinceSelect" required>
-            <option value="">Chọn Tỉnh/Thành phố</option>
-        </select>
-    </div>
-    <div class="mb-3">
-        <label class="form-label">Quận/Huyện*</label>
-        <select class="form-select" id="districtSelect" required disabled>
-            <option value="">Chọn Quận/Huyện</option>
-        </select>
-    </div>
-    <div class="mb-3">
-        <label class="form-label">Phường/Xã*</label>
-        <select class="form-select" id="wardSelect" required disabled>
-            <option value="">Chọn Phường/Xã</option>
-        </select>
-    </div>
-    <div class="mb-3 d-none" id="manualProvinceWrap"><label class="form-label">Tỉnh/Thành phố*</label><input class="form-control" name="ManualProvince" value="@Model.ManualProvince" /></div>
-    <div class="mb-3 d-none" id="manualWardWrap"><label class="form-label">Phường/Xã*</label><input class="form-control" name="ManualWard" value="@Model.ManualWard" /></div>
-    <div class="mb-3"><label class="form-label">Địa chỉ chi tiết*</label><input class="form-control" id="addressDetail" name="AddressDetail" value="@Model.AddressDetail" placeholder="Nhập số nhà, tên đường, ngõ/ngách..." required /></div>
-    <div class="mb-3"><label class="form-label">Ghi chú</label><textarea class="form-control" rows="3" name="Note">@Model.Note</textarea></div>
-    <small class="text-danger d-none" id="addressError">Không tải được danh sách địa chỉ hoặc thiếu thông tin địa chỉ.</small>
-
-    <div class="alert alert-info">
-        <div><strong>Chính sách phí ship:</strong> Phí giao hàng được tính tự động qua GHN. Đơn trong phạm vi 10km được miễn phí vận chuyển. Khu vực ngoài 10km sẽ áp dụng phí theo kết quả từ GHN</div>
-        <div id="shippingCalcText" class="mt-2 text-muted">Phí giao hàng sẽ được tính sau khi chọn địa chỉ nhận hàng.</div>
-    </div>
-
-    <button class="btn btn-danger mt-3">Đặt hàng</button>
-</form>
-
+</div>
 <script>
-const provinceSelect=document.getElementById('provinceSelect');const districtSelect=document.getElementById('districtSelect');const wardSelect=document.getElementById('wardSelect');const addressDetail=document.getElementById('addressDetail');
-const provinceCodeInput=document.getElementById('provinceCode');const provinceNameInput=document.getElementById('provinceName');const districtCodeInput=document.getElementById('districtCode');const districtNameInput=document.getElementById('districtName');const wardCodeInput=document.getElementById('wardCode');const wardNameInput=document.getElementById('wardName');
-const fullAddressInput=document.getElementById('fullAddress');const customerAddressInput=document.getElementById('customerAddress');const checkoutForm=document.getElementById('checkoutForm');
-const shippingDistanceKmInput=document.getElementById('shippingDistanceKm');const shippingDurationMinutesInput=document.getElementById('shippingDurationMinutes');const shippingFeeInput=document.getElementById('shippingFeeInput');const shippingProviderInput=document.getElementById('shippingProvider');const shippingFormulaSnapshotInput=document.getElementById('shippingFormulaSnapshot');const shippingCalcText=document.getElementById('shippingCalcText');shippingFeeInput.value='';
-async function api(url){const r=await fetch(url);const p=await r.json();if(!p.success)throw new Error(p.message||'Lỗi');return p.data||[];}
-function setLoading(el,msg){el.innerHTML=`<option value="">${msg}</option>`;el.disabled=true;}
-function buildAddress(){return [addressDetail.value.trim(),wardNameInput.value,districtNameInput.value,provinceNameInput.value,'Vietnam'].filter(Boolean).join(', ')}
-async function loadProvinces(){setLoading(provinceSelect,'Đang tải...');const data=await api('/api/shipping/provinces');provinceSelect.innerHTML='<option value="">Chọn Tỉnh/Thành phố</option>';data.forEach(x=>provinceSelect.insertAdjacentHTML('beforeend',`<option value="${x.id}" data-name="${x.name}">${x.name}</option>`));provinceSelect.disabled=false;}
-provinceSelect.onchange=async()=>{const o=provinceSelect.options[provinceSelect.selectedIndex];provinceCodeInput.value=o.value||'';provinceNameInput.value=o.dataset.name||'';districtCodeInput.value='';districtNameInput.value='';wardCodeInput.value='';wardNameInput.value='';setLoading(districtSelect,'Đang tải...');setLoading(wardSelect,'Chọn Phường/Xã');if(!provinceCodeInput.value)return;const data=await api(`/api/shipping/districts?provinceId=${provinceCodeInput.value}`);districtSelect.innerHTML='<option value="">Chọn Quận/Huyện</option>';data.forEach(x=>districtSelect.insertAdjacentHTML('beforeend',`<option value="${x.id}" data-name="${x.name}">${x.name}</option>`));districtSelect.disabled=false;};
-districtSelect.onchange=async()=>{const o=districtSelect.options[districtSelect.selectedIndex];districtCodeInput.value=o.value||'';districtNameInput.value=o.dataset.name||'';wardCodeInput.value='';wardNameInput.value='';setLoading(wardSelect,'Đang tải...');if(!districtCodeInput.value)return;const data=await api(`/api/shipping/wards?districtId=${districtCodeInput.value}`);wardSelect.innerHTML='<option value="">Chọn Phường/Xã</option>';data.forEach(x=>wardSelect.insertAdjacentHTML('beforeend',`<option value="${x.code}" data-name="${x.name}">${x.name}</option>`));wardSelect.disabled=false;};
-wardSelect.onchange=()=>{const o=wardSelect.options[wardSelect.selectedIndex];wardCodeInput.value=o.value||'';wardNameInput.value=o.dataset.name||'';};
-async function calculateShipping(){if(!provinceCodeInput.value||!districtCodeInput.value||!wardCodeInput.value||!addressDetail.value.trim()){shippingCalcText.textContent='Phí giao hàng sẽ được tính sau khi chọn địa chỉ nhận hàng.';shippingFeeInput.value='';return;}const payload={fullName:document.querySelector('input[name="CustomerName"]').value,phone:document.querySelector('input[name="CustomerPhone"]').value,email:document.querySelector('input[name="CustomerEmail"]').value,provinceId:Number(provinceCodeInput.value),provinceName:provinceNameInput.value,districtId:Number(districtCodeInput.value),districtName:districtNameInput.value,wardCode:wardCodeInput.value,wardName:wardNameInput.value,addressDetail:addressDetail.value};const res=await fetch('/api/shipping/calculate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const p=await res.json();if(!p.success){shippingCalcText.textContent=p.message||'Không thể tính phí giao hàng lúc này';shippingFeeInput.value='';shippingProviderInput.value='';return;}shippingDistanceKmInput.value=p.distanceKm??0;shippingDurationMinutesInput.value=p.durationMinutes??0;shippingFeeInput.value=p.shippingFee??0;shippingProviderInput.value=p.shippingProvider??'';shippingFormulaSnapshotInput.value=p.formula??'';shippingCalcText.textContent=p.isFreeShipping?'Phí giao hàng: Miễn phí':`Phí giao hàng: ${Number(p.shippingFee).toLocaleString('vi-VN')}đ`;}
-addressDetail.onchange=calculateShipping;wardSelect.onchange=()=>{const o=wardSelect.options[wardSelect.selectedIndex];wardCodeInput.value=o.value||'';wardNameInput.value=o.dataset.name||'';calculateShipping();};
-checkoutForm.addEventListener('submit',e=>{if(!provinceCodeInput.value||!districtCodeInput.value||!wardCodeInput.value||!addressDetail.value.trim()){e.preventDefault();return;}const full=buildAddress();fullAddressInput.value=full;customerAddressInput.value=full;});
-loadProvinces();
+function stepQty(btn, step){const input=btn.parentElement.querySelector('input[name="quantity"]');const min=parseInt(input.min||'1');const max=parseInt(input.max||'9999');const next=Math.max(min,Math.min(max,(parseInt(input.value||'1')+step)));input.value=next;btn.closest('form').submit();}
 </script>
+<script src="~/js/checkout.js"></script>
