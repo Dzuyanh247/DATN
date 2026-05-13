@@ -99,17 +99,17 @@
                             <small>(Giá đã bao gồm VAT)</small>
                             <div class="mt-3"><input type="checkbox" id="termsCheck" required /> <label for="termsCheck">Tôi đã đọc và đồng ý với các Điều kiện giao dịch chung của website</label></div>
                             <div class="mt-3"><label>Phương thức thanh toán*</label><select class="ui-input" name="PaymentMethod" required><option value="COD" selected="@(Model.PaymentMethod == "COD")">Thanh toán khi nhận hàng (COD)</option><option value="BANK_TRANSFER" selected="@(Model.PaymentMethod == "BANK_TRANSFER")">Chuyển khoản ngân hàng</option></select></div>
+
+                            <div class="action-grid">
+                                <button type="button" class="action-btn dark" onclick="window.print()">IN BÁO GIÁ</button>
+                                <button type="button" class="action-btn dark" disabled>TẢI FILE EXCEL</button>
+                                <button type="submit" class="action-btn red">ĐẶT HÀNG</button>
+                                <button type="button" class="action-btn navy">TRẢ GÓP QUA HỒ SƠ</button>
+                                <button type="submit" class="action-btn red">MUA NGAY</button>
+                                <button type="button" class="action-btn blue">TRẢ GÓP QUA THẺ</button>
+                            </div>
                         </div>
                     </section>
-                </div>
-
-                <div class="action-grid">
-                    <button type="button" class="action-btn dark" onclick="window.print()">IN BÁO GIÁ</button>
-                    <button type="button" class="action-btn blue" disabled>TẢI FILE EXCEL</button>
-                    <button type="submit" class="action-btn red">ĐẶT HÀNG</button>
-                    <button type="button" class="action-btn dark">TRẢ GÓP QUA HỒ SƠ</button>
-                    <button type="submit" class="action-btn red">MUA NGAY</button>
-                    <button type="button" class="action-btn blue">TRẢ GÓP QUA THẺ</button>
                 </div>
 
                 <input type="hidden" name="CustomerAddress" id="customerAddress" />
@@ -129,6 +129,15 @@
                 <input type="hidden" name="ManualWard" value="@Model.ManualWard" />
             </form>
         }
+
+        <section class="service-cards">
+            <div class="service-grid">
+                <div class="service-item"><i class="bi bi-shield-check"></i><div><div class="title">Cam kết chính hãng</div><div class="sub">Sản phẩm đảm bảo nguồn gốc rõ ràng</div></div></div>
+                <div class="service-item"><i class="bi bi-truck"></i><div><div class="title">Giao hàng nhanh</div><div class="sub">Hỗ trợ giao hỏa tốc nội thành</div></div></div>
+                <div class="service-item"><i class="bi bi-arrow-repeat"></i><div><div class="title">Đổi trả linh hoạt</div><div class="sub">Hỗ trợ đổi trả theo chính sách</div></div></div>
+                <div class="service-item"><i class="bi bi-headset"></i><div><div class="title">Hỗ trợ tận tâm</div><div class="sub">Tư vấn kỹ thuật 24/7</div></div></div>
+            </div>
+        </section>
     </div>
 </div>
 <script>
