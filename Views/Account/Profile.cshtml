@@ -1,4 +1,4 @@
-@model Datn.PcStore.ViewModels.AccountProfileVm
+@model Datn.PcStore.ViewModels.AccountSettingsViewModel
 @{
     ViewData["Title"] = "Thông tin tài khoản";
 }
@@ -7,10 +7,10 @@
     <div class="card-header"><h4 class="mb-0">A. Xem thông tin tài khoản</h4></div>
     <div class="card-body">
         <dl class="row mb-0">
-            <dt class="col-sm-3">Họ tên</dt><dd class="col-sm-9">@Model.FullName</dd>
+            <dt class="col-sm-3">Họ tên</dt><dd class="col-sm-9">@Model.Profile.FullName</dd>
             <dt class="col-sm-3">Username</dt><dd class="col-sm-9">@Model.Username</dd>
-            <dt class="col-sm-3">Email</dt><dd class="col-sm-9">@Model.Email</dd>
-            <dt class="col-sm-3">Số điện thoại</dt><dd class="col-sm-9">@(string.IsNullOrWhiteSpace(Model.Phone) ? "Chưa cập nhật" : Model.Phone)</dd>
+            <dt class="col-sm-3">Email</dt><dd class="col-sm-9">@Model.Profile.Email</dd>
+            <dt class="col-sm-3">Số điện thoại</dt><dd class="col-sm-9">@(string.IsNullOrWhiteSpace(Model.Profile.PhoneNumber) ? "Chưa cập nhật" : Model.Profile.PhoneNumber)</dd>
             <dt class="col-sm-3">Địa chỉ</dt><dd class="col-sm-9">@(string.IsNullOrWhiteSpace(Model.Address) ? "Chưa cập nhật" : Model.Address)</dd>
             <dt class="col-sm-3">Ngày tạo</dt><dd class="col-sm-9">@Model.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</dd>
             <dt class="col-sm-3">Trạng thái</dt><dd class="col-sm-9">@(Model.IsActive ? "Đang hoạt động" : "Đã khóa")</dd>
@@ -24,23 +24,27 @@
 <div class="card shadow-sm mb-3">
     <div class="card-header"><h4 class="mb-0">B. Cập nhật thông tin cá nhân</h4></div>
     <div class="card-body">
-        <form asp-action="Profile" method="post">
+        @if (TempData["ProfileMessage"] is string profileMessage)
+        {
+            <div class="alert alert-success">@profileMessage</div>
+        }
+        <form asp-action="UpdateProfile" method="post">
             @Html.AntiForgeryToken()
-            <div asp-validation-summary="All" class="text-danger"></div>
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
             <div class="mb-3">
-                <label asp-for="FullName" class="form-label"></label>
-                <input asp-for="FullName" class="form-control" />
-                <span asp-validation-for="FullName" class="text-danger"></span>
+                <label asp-for="Profile.FullName" class="form-label"></label>
+                <input asp-for="Profile.FullName" class="form-control" />
+                <span asp-validation-for="Profile.FullName" class="text-danger"></span>
             </div>
             <div class="mb-3">
-                <label asp-for="Phone" class="form-label">Số điện thoại</label>
-                <input asp-for="Phone" class="form-control" />
-                <span asp-validation-for="Phone" class="text-danger"></span>
+                <label asp-for="Profile.PhoneNumber" class="form-label">Số điện thoại</label>
+                <input asp-for="Profile.PhoneNumber" class="form-control" />
+                <span asp-validation-for="Profile.PhoneNumber" class="text-danger"></span>
             </div>
             <div class="mb-3">
-                <label asp-for="Email" class="form-label">Gmail/Email</label>
-                <input asp-for="Email" class="form-control" />
-                <span asp-validation-for="Email" class="text-danger"></span>
+                <label asp-for="Profile.Email" class="form-label">Gmail/Email</label>
+                <input asp-for="Profile.Email" class="form-control" />
+                <span asp-validation-for="Profile.Email" class="text-danger"></span>
             </div>
             <button type="submit" class="btn btn-primary">Lưu thông tin</button>
         </form>
@@ -50,8 +54,13 @@
 <div class="card shadow-sm">
     <div class="card-header"><h4 class="mb-0">C. Đổi mật khẩu</h4></div>
     <div class="card-body">
+        @if (TempData["PasswordMessage"] is string passwordMessage)
+        {
+            <div class="alert alert-success">@passwordMessage</div>
+        }
         <form asp-action="ChangePassword" method="post">
             @Html.AntiForgeryToken()
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
             <div class="mb-3">
                 <label asp-for="ChangePassword.CurrentPassword" class="form-label">Mật khẩu hiện tại</label>
                 <input asp-for="ChangePassword.CurrentPassword" class="form-control" />
@@ -63,9 +72,9 @@
                 <span asp-validation-for="ChangePassword.NewPassword" class="text-danger"></span>
             </div>
             <div class="mb-3">
-                <label asp-for="ChangePassword.ConfirmNewPassword" class="form-label">Nhập lại mật khẩu mới</label>
-                <input asp-for="ChangePassword.ConfirmNewPassword" class="form-control" />
-                <span asp-validation-for="ChangePassword.ConfirmNewPassword" class="text-danger"></span>
+                <label asp-for="ChangePassword.ConfirmPassword" class="form-label">Nhập lại mật khẩu mới</label>
+                <input asp-for="ChangePassword.ConfirmPassword" class="form-control" />
+                <span asp-validation-for="ChangePassword.ConfirmPassword" class="text-danger"></span>
             </div>
             <button type="submit" class="btn btn-warning">Đổi mật khẩu</button>
         </form>
