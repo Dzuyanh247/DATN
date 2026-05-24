@@ -118,12 +118,15 @@ public class AccountController : Controller
         var user = await _db.Users.FirstOrDefaultAsync(x => x.Id == userId);
         if (user == null) return NotFound();
 
-        var vm = new AccountProfileVm
+        var vm = new AccountSettingsViewModel
         {
-            FullName = user.FullName,
+            Profile = new AccountProfileViewModel
+            {
+                FullName = user.FullName,
+                Email = user.Email,
+                PhoneNumber = user.Phone ?? string.Empty
+            },
             Username = user.Username,
-            Email = user.Email,
-            Phone = user.Phone ?? string.Empty,
             Address = string.IsNullOrWhiteSpace(user.Address) ? null : user.Address,
             IsActive = user.IsActive,
             CreatedAt = user.CreatedAt
@@ -135,27 +138,24 @@ public class AccountController : Controller
     [Authorize]
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Profile(AccountProfileVm vm)
+    public async Task<IActionResult> UpdateProfile([Bind(Prefix = "Profile")] AccountProfileViewModel vm)
     {
         var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         var user = await _db.Users.FirstOrDefaultAsync(x => x.Id == userId);
         if (user == null)
         {
             ModelState.AddModelError(string.Empty, "Không tìm thấy tài khoản người dùng.");
-            return View(vm);
+            return RedirectToAction(nameof(Profile));
         }
 
-        if (!string.IsNullOrWhiteSpace(vm.Phone) && !System.Text.RegularExpressions.Regex.IsMatch(vm.Phone, "^(0|\\+84)[0-9]{9,10}$"))
+        if (!string.IsNullOrWhiteSpace(vm.PhoneNumber) && !System.Text.RegularExpressions.Regex.IsMatch(vm.PhoneNumber, "^(0|\\+84)[0-9]{9,10}$"))
         {
-            ModelState.AddModelError(nameof(vm.Phone), "Số điện thoại không hợp lệ.");
+            ModelState.AddModelError(nameof(vm.PhoneNumber), "Số điện thoại không hợp lệ.");
         }
 
         if (!ModelState.IsValid)
         {
-            vm.Username = user.Username;
-            vm.IsActive = user.IsActive;
-            vm.CreatedAt = user.CreatedAt;
-            return View(vm);
+            return View("Profile", await BuildProfileVmAsync(user, vm));
         }
 
         var normalizedEmail = vm.Email.Trim();
@@ -163,27 +163,24 @@ public class AccountController : Controller
         if (existingByEmail != null)
         {
             ModelState.AddModelError(nameof(vm.Email), "Email đã được sử dụng bởi tài khoản khác.");
-            vm.Username = user.Username;
-            vm.IsActive = user.IsActive;
-            vm.CreatedAt = user.CreatedAt;
-            return View(vm);
+            return View("Profile", await BuildProfileVmAsync(user, vm));
         }
 
         user.FullName = vm.FullName.Trim();
-        user.Phone = vm.Phone.Trim();
+        user.Phone = vm.PhoneNumber.Trim();
         user.Email = normalizedEmail;
         user.Username = normalizedEmail;
         await _db.SaveChangesAsync();
         await RefreshAuthClaimsAsync(user);
 
-        TempData["SuccessMessage"] = "Cập nhật thông tin tài khoản thành công.";
+        TempData["ProfileMessage"] = "Cập nhật thông tin thành công";
         return RedirectToAction(nameof(Profile));
     }
 
     [Authorize]
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ChangePassword(ChangePasswordVm vm)
+    public async Task<IActionResult> ChangePassword([Bind(Prefix = "ChangePassword")] ChangePasswordViewModel vm)
     {
         var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         var user = await _db.Users.FirstOrDefaultAsync(x => x.Id == userId);
@@ -195,37 +192,40 @@ public class AccountController : Controller
 
         if (!ModelState.IsValid)
         {
-            var profileVm = await BuildProfileVmAsync(user, vm);
+            var profileVm = await BuildProfileVmAsync(user, changePasswordVm: vm);
             return View("Profile", profileVm);
         }
 
         if (!_authService.VerifyPassword(vm.CurrentPassword, user.PasswordHash))
         {
             ModelState.AddModelError(nameof(vm.CurrentPassword), "Mật khẩu hiện tại không đúng.");
-            var profileVm = await BuildProfileVmAsync(user, vm);
+            var profileVm = await BuildProfileVmAsync(user, changePasswordVm: vm);
             return View("Profile", profileVm);
         }
 
         user.PasswordHash = _authService.HashPassword(vm.NewPassword);
         await _db.SaveChangesAsync();
         await RefreshAuthClaimsAsync(user);
-        TempData["SuccessMessage"] = "Đổi mật khẩu thành công.";
+        TempData["PasswordMessage"] = "Đổi mật khẩu thành công.";
         return RedirectToAction(nameof(Profile));
     }
 
-    private async Task<AccountProfileVm> BuildProfileVmAsync(User user, ChangePasswordVm? changePasswordVm = null)
+    private async Task<AccountSettingsViewModel> BuildProfileVmAsync(User user, AccountProfileViewModel? profileVm = null, ChangePasswordViewModel? changePasswordVm = null)
     {
         await Task.CompletedTask;
-        return new AccountProfileVm
+        return new AccountSettingsViewModel
         {
-            FullName = user.FullName,
+            Profile = profileVm ?? new AccountProfileViewModel
+            {
+                FullName = user.FullName,
+                Email = user.Email,
+                PhoneNumber = user.Phone ?? string.Empty
+            },
             Username = user.Username,
-            Email = user.Email,
-            Phone = user.Phone ?? string.Empty,
             Address = string.IsNullOrWhiteSpace(user.Address) ? null : user.Address,
             IsActive = user.IsActive,
             CreatedAt = user.CreatedAt,
-            ChangePassword = changePasswordVm ?? new ChangePasswordVm()
+            ChangePassword = changePasswordVm ?? new ChangePasswordViewModel()
         };
     }
 

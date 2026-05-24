@@ -17,7 +17,7 @@ public class LoginVm
     [Required] public string Password { get; set; } = string.Empty;
 }
 
-public class AccountProfileVm
+public class AccountProfileViewModel
 {
     [Required(ErrorMessage = "Vui lòng nhập họ tên")]
     public string FullName { get; set; } = string.Empty;
@@ -26,14 +26,10 @@ public class AccountProfileVm
     [EmailAddress(ErrorMessage = "Email không đúng định dạng")]
     public string Email { get; set; } = string.Empty;
     [Required(ErrorMessage = "Vui lòng nhập số điện thoại")]
-    public string Phone { get; set; } = string.Empty;
-    public string? Address { get; set; }
-    public bool IsActive { get; set; }
-    public DateTime CreatedAt { get; set; }
-    public ChangePasswordVm ChangePassword { get; set; } = new();
+    public string PhoneNumber { get; set; } = string.Empty;
 }
 
-public class ChangePasswordVm
+public class ChangePasswordViewModel
 {
     [Required(ErrorMessage = "Vui lòng nhập mật khẩu hiện tại")]
     [DataType(DataType.Password)]
@@ -47,5 +43,15 @@ public class ChangePasswordVm
     [Required(ErrorMessage = "Vui lòng nhập lại mật khẩu mới")]
     [Compare(nameof(NewPassword), ErrorMessage = "Nhập lại mật khẩu mới không khớp")]
     [DataType(DataType.Password)]
-    public string ConfirmNewPassword { get; set; } = string.Empty;
+    public string ConfirmPassword { get; set; } = string.Empty;
+}
+
+public class AccountSettingsViewModel
+{
+    public AccountProfileViewModel Profile { get; set; } = new();
+    public ChangePasswordViewModel ChangePassword { get; set; } = new();
+    public string Username { get; set; } = string.Empty;
+    public string? Address { get; set; }
+    public bool IsActive { get; set; }
+    public DateTime CreatedAt { get; set; }
 }
