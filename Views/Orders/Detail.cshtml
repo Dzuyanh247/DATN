@@ -15,13 +15,13 @@
 }
 @{
     var nowUtc = DateTime.UtcNow;
-    var isOnlinePending = Model.Status == OrderStatus.PendingPayment
-        && Model.PaymentMethod == "BANK_TRANSFER"
-        && Model.PaymentStatus == "WAITING_PAYMENT"
-        && Model.PaymentExpireAt.HasValue
-        && Model.PaymentExpireAt.Value > nowUtc;
-    var isExpiredPayment = Model.Status == OrderStatus.Expired
-        || (Model.PaymentExpireAt.HasValue && Model.PaymentExpireAt.Value <= nowUtc && Model.PaymentMethod == "BANK_TRANSFER");
+    var isCod = Model.PaymentMethod == "COD";
+    var isBankTransfer = Model.PaymentMethod == "BANK_TRANSFER";
+    var isPendingPayment = Model.Status == OrderStatus.PendingPayment;
+    var isAwaitingConfirmation = Model.Status == OrderStatus.PendingConfirmation;
+    var isExpiredPayment = !isCod && isPendingPayment && Model.PaymentExpireAt.HasValue && Model.PaymentExpireAt.Value <= nowUtc;
+    var canShowCountdown = !isCod && isPendingPayment && Model.PaymentExpireAt.HasValue && Model.PaymentExpireAt.Value > nowUtc;
+    var isPaid = Model.PaymentStatus == "PAID";
 }
 <h3>Chi tiết đơn hàng @($"DH{Model.Id:D6}")</h3>
 <p><strong>Ngày đặt:</strong> @Model.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</p>
@@ -31,20 +31,44 @@
 <p><strong>Phương thức thanh toán:</strong> @Model.PaymentMethod</p>
 <p><strong>Tổng tiền:</strong> @Model.TotalAmount.ToString("N0") đ</p>
 
-@if (Model.PaymentMethod == "BANK_TRANSFER")
+@if (isAwaitingConfirmation)
 {
-    <div class="alert @(isOnlinePending ? "alert-warning" : isExpiredPayment ? "alert-danger" : "alert-success")">
-        <div><strong>Trạng thái thanh toán:</strong> @(isOnlinePending ? "Chờ thanh toán" : isExpiredPayment ? "Đơn hàng đã hết hạn thanh toán" : "Đã thanh toán/đã xác nhận")</div>
+    <div class="alert alert-warning">
+        Bạn đã gửi xác nhận thanh toán. Đơn hàng đang chờ admin kiểm tra.
+    </div>
+}
+else if (isExpiredPayment)
+{
+    <div class="alert alert-danger">Đơn hàng đã hết hạn thanh toán.</div>
+}
+else if (isPendingPayment)
+{
+    <div class="alert alert-info">
+        <div><strong>Trạng thái thanh toán:</strong> Chờ thanh toán</div>
         <div><strong>Hạn thanh toán:</strong> @(Model.PaymentExpireAt.HasValue ? Model.PaymentExpireAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss") : "-")</div>
-        @if (isOnlinePending)
+        @if (canShowCountdown)
         {
             <div><strong>Thời gian còn lại:</strong> <span id="payment-countdown" data-expire-utc="@Model.PaymentExpireAt!.Value.ToString("O")">--:--:--</span></div>
-            <form asp-action="PayNow" asp-route-id="@Model.Id" method="post" class="mt-2">
-                @Html.AntiForgeryToken()
-                <button class="btn btn-warning text-dark">Thanh toán ngay</button>
-            </form>
+            @if (isBankTransfer)
+            {
+                <form asp-action="ConfirmTransferred" asp-route-id="@Model.Id" method="post" class="mt-2">
+                    @Html.AntiForgeryToken()
+                    <button class="btn btn-warning text-dark">Tôi đã thanh toán</button>
+                </form>
+            }
+            else if (!isCod)
+            {
+                <form asp-action="PayNow" asp-route-id="@Model.Id" method="post" class="mt-2">
+                    @Html.AntiForgeryToken()
+                    <button class="btn btn-warning text-dark">Thanh toán ngay</button>
+                </form>
+            }
         }
     </div>
+}
+@if (isBankTransfer)
+{
+    <div class="small text-muted mb-2">Vui lòng chuyển khoản đúng nội dung để admin kiểm tra nhanh hơn.</div>
 }
 <table class="table table-bordered">
     <thead><tr><th>Sản phẩm</th><th>Đơn giá</th><th>Số lượng</th><th>Thành tiền</th></tr></thead>
@@ -62,7 +86,7 @@
     </tbody>
 </table>
 
-@if (isOnlinePending)
+@if (canShowCountdown)
 {
     <script>
         (() => {

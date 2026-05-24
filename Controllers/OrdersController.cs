@@ -414,7 +414,9 @@ public class OrdersController : Controller
             TempData["ErrorMessage"] = "Đơn hàng đã hết hạn thanh toán nên không thể xác nhận chuyển khoản.";
             return RedirectToAction(nameof(Checkout));
         }
+        order.Status = OrderStatus.PendingConfirmation;
         order.PaymentStatus = "WAITING_CONFIRMATION";
+        order.PaidAt ??= DateTime.UtcNow;
         await _db.SaveChangesAsync();
         TempData["SuccessMessage"] = "Đã ghi nhận xác nhận thanh toán của bạn.";
         return RedirectToAction(nameof(Detail), new { id });

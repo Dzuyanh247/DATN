@@ -69,19 +69,13 @@ public class AdminOrdersController : Controller
             {
                 order.PaymentExpireAt = now.AddHours(2);
             }
-
-            if (order.PaymentStatus is "PAID" or "EXPIRED" or "UNPAID")
-            {
-                order.PaymentStatus = "WAITING_PAYMENT";
-            }
+            order.PaymentStatus = "WAITING_PAYMENT";
+            order.PaidAt = null;
         }
 
-        if (status is OrderStatus.Processing or OrderStatus.Delivering or OrderStatus.Completed)
+        if (status == OrderStatus.PendingConfirmation)
         {
-            if (order.PaymentStatus == "WAITING_PAYMENT")
-            {
-                order.PaymentStatus = "WAITING_CONFIRMATION";
-            }
+            order.PaymentStatus = "WAITING_CONFIRMATION";
         }
 
         await _db.SaveChangesAsync();
