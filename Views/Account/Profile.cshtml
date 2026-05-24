@@ -1,0 +1,23 @@
+@model Datn.PcStore.ViewModels.AccountProfileVm
+@{
+    ViewData["Title"] = "Thông tin tài khoản";
+}
+
+<div class="card shadow-sm">
+    <div class="card-header"><h4 class="mb-0">Thông tin tài khoản</h4></div>
+    <div class="card-body">
+        <dl class="row mb-0">
+            <dt class="col-sm-3">Họ tên</dt><dd class="col-sm-9">@Model.FullName</dd>
+            <dt class="col-sm-3">Username</dt><dd class="col-sm-9">@Model.Username</dd>
+            <dt class="col-sm-3">Email</dt><dd class="col-sm-9">@Model.Email</dd>
+            <dt class="col-sm-3">Số điện thoại</dt><dd class="col-sm-9">@(string.IsNullOrWhiteSpace(Model.Phone) ? "Chưa cập nhật" : Model.Phone)</dd>
+            <dt class="col-sm-3">Địa chỉ</dt><dd class="col-sm-9">@(string.IsNullOrWhiteSpace(Model.Address) ? "Chưa cập nhật" : Model.Address)</dd>
+            <dt class="col-sm-3">Ngày tạo</dt><dd class="col-sm-9">@Model.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</dd>
+            <dt class="col-sm-3">Trạng thái</dt><dd class="col-sm-9">@(Model.IsActive ? "Đang hoạt động" : "Đã khóa")</dd>
+        </dl>
+    </div>
+    <div class="card-footer d-flex gap-2">
+        <a class="btn btn-outline-primary" asp-action="ChangePassword">Đổi mật khẩu</a>
+        <a class="btn btn-outline-secondary" asp-controller="Home" asp-action="Index">Về trang chủ</a>
+    </div>
+</div>

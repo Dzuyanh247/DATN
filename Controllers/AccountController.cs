@@ -4,6 +4,7 @@ using Datn.PcStore.Data;
 using Datn.PcStore.Models;
 using Datn.PcStore.Services;
 using Datn.PcStore.ViewModels;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -108,4 +109,58 @@ public class AccountController : Controller
     }
 
     public IActionResult AccessDenied() => View();
+
+    [Authorize]
+    [HttpGet]
+    public async Task<IActionResult> Profile()
+    {
+        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var user = await _db.Users.FirstOrDefaultAsync(x => x.Id == userId);
+        if (user == null) return NotFound();
+
+        var vm = new AccountProfileVm
+        {
+            FullName = user.FullName,
+            Username = user.Username,
+            Email = user.Email,
+            Phone = string.IsNullOrWhiteSpace(user.Phone) ? null : user.Phone,
+            Address = string.IsNullOrWhiteSpace(user.Address) ? null : user.Address,
+            IsActive = user.IsActive,
+            CreatedAt = user.CreatedAt
+        };
+
+        return View(vm);
+    }
+
+    [Authorize]
+    [HttpGet]
+    public IActionResult ChangePassword() => View(new ChangePasswordVm());
+
+    [Authorize]
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ChangePassword(ChangePasswordVm vm)
+    {
+        if (!ModelState.IsValid) return View(vm);
+
+        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var user = await _db.Users.FirstOrDefaultAsync(x => x.Id == userId);
+        if (user == null)
+        {
+            ModelState.AddModelError(string.Empty, "Không tìm thấy tài khoản người dùng.");
+            return View(vm);
+        }
+
+        if (!_authService.VerifyPassword(vm.CurrentPassword, user.PasswordHash))
+        {
+            ModelState.AddModelError(nameof(vm.CurrentPassword), "Mật khẩu hiện tại không đúng.");
+            return View(vm);
+        }
+
+        user.PasswordHash = _authService.HashPassword(vm.NewPassword);
+        await _db.SaveChangesAsync();
+
+        TempData["SuccessMessage"] = "Đổi mật khẩu thành công.";
+        return RedirectToAction(nameof(ChangePassword));
+    }
 }
