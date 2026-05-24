@@ -60,8 +60,8 @@ public class OrdersController : Controller
         var vm = new CheckoutRequestVm();
         if (User.Identity?.IsAuthenticated == true)
         {
-            var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-            var user = await _db.Users.FirstOrDefaultAsync(x => x.Id == userId);
+            var loggedInUserId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var user = await _db.Users.FirstOrDefaultAsync(x => x.Id == loggedInUserId);
             if (user != null)
             {
                 vm.CustomerName = user.FullName;
