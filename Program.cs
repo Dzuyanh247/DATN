@@ -342,5 +342,5 @@ INNER JOIN sys.tables t ON t.object_id = c.object_id
 WHERE t.name = 'Products'
   AND c.name IN ('IsHotSale', 'IsDailyDeal', 'IsPromotion', 'PromotionStartDate', 'PromotionEndDate')
 ORDER BY c.name;").ToListAsync();
-    Console.WriteLine($"[DB] Products promotion columns present: {string.Join(', ', promotionColumns)}");
+    Console.WriteLine($"[DB] Products promotion columns present: {string.Join(", ", promotionColumns)}");
 }
