@@ -3,8 +3,8 @@
     ViewData["Title"] = "Thông tin tài khoản";
 }
 
-<div class="card shadow-sm">
-    <div class="card-header"><h4 class="mb-0">Thông tin tài khoản</h4></div>
+<div class="card shadow-sm mb-3">
+    <div class="card-header"><h4 class="mb-0">A. Xem thông tin tài khoản</h4></div>
     <div class="card-body">
         <dl class="row mb-0">
             <dt class="col-sm-3">Họ tên</dt><dd class="col-sm-9">@Model.FullName</dd>
@@ -16,8 +16,58 @@
             <dt class="col-sm-3">Trạng thái</dt><dd class="col-sm-9">@(Model.IsActive ? "Đang hoạt động" : "Đã khóa")</dd>
         </dl>
     </div>
-    <div class="card-footer d-flex gap-2">
-        <a class="btn btn-outline-primary" asp-action="ChangePassword">Đổi mật khẩu</a>
+    <div class="card-footer">
         <a class="btn btn-outline-secondary" asp-controller="Home" asp-action="Index">Về trang chủ</a>
+    </div>
+</div>
+
+<div class="card shadow-sm mb-3">
+    <div class="card-header"><h4 class="mb-0">B. Cập nhật thông tin cá nhân</h4></div>
+    <div class="card-body">
+        <form asp-action="Profile" method="post">
+            @Html.AntiForgeryToken()
+            <div asp-validation-summary="All" class="text-danger"></div>
+            <div class="mb-3">
+                <label asp-for="FullName" class="form-label"></label>
+                <input asp-for="FullName" class="form-control" />
+                <span asp-validation-for="FullName" class="text-danger"></span>
+            </div>
+            <div class="mb-3">
+                <label asp-for="Phone" class="form-label">Số điện thoại</label>
+                <input asp-for="Phone" class="form-control" />
+                <span asp-validation-for="Phone" class="text-danger"></span>
+            </div>
+            <div class="mb-3">
+                <label asp-for="Email" class="form-label">Gmail/Email</label>
+                <input asp-for="Email" class="form-control" />
+                <span asp-validation-for="Email" class="text-danger"></span>
+            </div>
+            <button type="submit" class="btn btn-primary">Lưu thông tin</button>
+        </form>
+    </div>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-header"><h4 class="mb-0">C. Đổi mật khẩu</h4></div>
+    <div class="card-body">
+        <form asp-action="ChangePassword" method="post">
+            @Html.AntiForgeryToken()
+            <div class="mb-3">
+                <label asp-for="ChangePassword.CurrentPassword" class="form-label">Mật khẩu hiện tại</label>
+                <input asp-for="ChangePassword.CurrentPassword" class="form-control" />
+                <span asp-validation-for="ChangePassword.CurrentPassword" class="text-danger"></span>
+            </div>
+            <div class="mb-3">
+                <label asp-for="ChangePassword.NewPassword" class="form-label">Mật khẩu mới</label>
+                <input asp-for="ChangePassword.NewPassword" class="form-control" />
+                <span asp-validation-for="ChangePassword.NewPassword" class="text-danger"></span>
+            </div>
+            <div class="mb-3">
+                <label asp-for="ChangePassword.ConfirmNewPassword" class="form-label">Nhập lại mật khẩu mới</label>
+                <input asp-for="ChangePassword.ConfirmNewPassword" class="form-control" />
+                <span asp-validation-for="ChangePassword.ConfirmNewPassword" class="text-danger"></span>
+            </div>
+            <button type="submit" class="btn btn-warning">Đổi mật khẩu</button>
+        </form>
     </div>
 </div>

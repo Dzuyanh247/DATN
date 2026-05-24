@@ -123,7 +123,7 @@ public class AccountController : Controller
             FullName = user.FullName,
             Username = user.Username,
             Email = user.Email,
-            Phone = string.IsNullOrWhiteSpace(user.Phone) ? null : user.Phone,
+            Phone = user.Phone ?? string.Empty,
             Address = string.IsNullOrWhiteSpace(user.Address) ? null : user.Address,
             IsActive = user.IsActive,
             CreatedAt = user.CreatedAt
@@ -133,16 +133,10 @@ public class AccountController : Controller
     }
 
     [Authorize]
-    [HttpGet]
-    public IActionResult ChangePassword() => View(new ChangePasswordVm());
-
-    [Authorize]
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ChangePassword(ChangePasswordVm vm)
+    public async Task<IActionResult> Profile(AccountProfileVm vm)
     {
-        if (!ModelState.IsValid) return View(vm);
-
         var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         var user = await _db.Users.FirstOrDefaultAsync(x => x.Id == userId);
         if (user == null)
@@ -151,16 +145,101 @@ public class AccountController : Controller
             return View(vm);
         }
 
+        if (!string.IsNullOrWhiteSpace(vm.Phone) && !System.Text.RegularExpressions.Regex.IsMatch(vm.Phone, "^(0|\\+84)[0-9]{9,10}$"))
+        {
+            ModelState.AddModelError(nameof(vm.Phone), "Số điện thoại không hợp lệ.");
+        }
+
+        if (!ModelState.IsValid)
+        {
+            vm.Username = user.Username;
+            vm.IsActive = user.IsActive;
+            vm.CreatedAt = user.CreatedAt;
+            return View(vm);
+        }
+
+        var normalizedEmail = vm.Email.Trim();
+        var existingByEmail = await _db.Users.FirstOrDefaultAsync(x => x.Email == normalizedEmail && x.Id != userId);
+        if (existingByEmail != null)
+        {
+            ModelState.AddModelError(nameof(vm.Email), "Email đã được sử dụng bởi tài khoản khác.");
+            vm.Username = user.Username;
+            vm.IsActive = user.IsActive;
+            vm.CreatedAt = user.CreatedAt;
+            return View(vm);
+        }
+
+        user.FullName = vm.FullName.Trim();
+        user.Phone = vm.Phone.Trim();
+        user.Email = normalizedEmail;
+        user.Username = normalizedEmail;
+        await _db.SaveChangesAsync();
+        await RefreshAuthClaimsAsync(user);
+
+        TempData["SuccessMessage"] = "Cập nhật thông tin tài khoản thành công.";
+        return RedirectToAction(nameof(Profile));
+    }
+
+    [Authorize]
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ChangePassword(ChangePasswordVm vm)
+    {
+        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var user = await _db.Users.FirstOrDefaultAsync(x => x.Id == userId);
+        if (user == null)
+        {
+            TempData["ErrorMessage"] = "Không tìm thấy tài khoản người dùng.";
+            return RedirectToAction(nameof(Profile));
+        }
+
+        if (!ModelState.IsValid)
+        {
+            var profileVm = await BuildProfileVmAsync(user, vm);
+            return View("Profile", profileVm);
+        }
+
         if (!_authService.VerifyPassword(vm.CurrentPassword, user.PasswordHash))
         {
             ModelState.AddModelError(nameof(vm.CurrentPassword), "Mật khẩu hiện tại không đúng.");
-            return View(vm);
+            var profileVm = await BuildProfileVmAsync(user, vm);
+            return View("Profile", profileVm);
         }
 
         user.PasswordHash = _authService.HashPassword(vm.NewPassword);
         await _db.SaveChangesAsync();
-
+        await RefreshAuthClaimsAsync(user);
         TempData["SuccessMessage"] = "Đổi mật khẩu thành công.";
-        return RedirectToAction(nameof(ChangePassword));
+        return RedirectToAction(nameof(Profile));
+    }
+
+    private async Task<AccountProfileVm> BuildProfileVmAsync(User user, ChangePasswordVm? changePasswordVm = null)
+    {
+        await Task.CompletedTask;
+        return new AccountProfileVm
+        {
+            FullName = user.FullName,
+            Username = user.Username,
+            Email = user.Email,
+            Phone = user.Phone ?? string.Empty,
+            Address = string.IsNullOrWhiteSpace(user.Address) ? null : user.Address,
+            IsActive = user.IsActive,
+            CreatedAt = user.CreatedAt,
+            ChangePassword = changePasswordVm ?? new ChangePasswordVm()
+        };
+    }
+
+    private async Task RefreshAuthClaimsAsync(User user)
+    {
+        var claims = new List<Claim>
+        {
+            new(ClaimTypes.NameIdentifier, user.Id.ToString()),
+            new(ClaimTypes.Name, user.FullName),
+            new(ClaimTypes.Email, user.Email),
+            new("username", user.Username),
+            new(ClaimTypes.Role, user.Role?.Name ?? "Customer")
+        };
+        var identity = new ClaimsIdentity(claims, AuthSchemes.PcStoreCookie);
+        await HttpContext.SignInAsync(AuthSchemes.PcStoreCookie, new ClaimsPrincipal(identity));
     }
 }
