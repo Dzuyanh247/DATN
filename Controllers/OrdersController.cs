@@ -12,6 +12,9 @@ namespace Datn.PcStore.Controllers;
 public class OrdersController : Controller
 {
     private static readonly TimeSpan PendingPaymentTtl = TimeSpan.FromHours(2);
+
+    private static bool IsOrderExpired(Order order, DateTime now)
+        => IsPendingPaymentOrder(order) && order.PaymentExpireAt.HasValue && order.PaymentExpireAt.Value <= now;
     private readonly ApplicationDbContext _db;
     private readonly ICartService _cartService;
     private readonly ILogger<OrdersController> _logger;
@@ -33,7 +36,7 @@ public class OrdersController : Controller
     private async Task<bool> ExpireOrderIfNeededAsync(Order order)
     {
         var now = DateTime.UtcNow;
-        if (!IsPendingPaymentOrder(order) || order.PaymentExpireAt == null || order.PaymentExpireAt > now)
+        if (!IsOrderExpired(order, now))
         {
             return false;
         }
@@ -248,6 +251,10 @@ public class OrdersController : Controller
         if (lastOrderId != id) return RedirectToAction(nameof(Tracking), new { id });
 
         var order = await _db.Orders.Include(x => x.Details).FirstOrDefaultAsync(x => x.Id == id);
+        if (order != null)
+        {
+            await ExpireOrderIfNeededAsync(order);
+        }
         if (order == null) return NotFound();
 
         if (order.UserId.HasValue)
@@ -265,6 +272,7 @@ public class OrdersController : Controller
     {
         var order = await _db.Orders.Include(x => x.Details).FirstOrDefaultAsync(x => x.Id == id);
         if (order == null) return NotFound();
+        await ExpireOrderIfNeededAsync(order);
 
         if (order.UserId.HasValue)
         {
@@ -327,6 +335,10 @@ public class OrdersController : Controller
     {
         var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         var orders = await _db.Orders.Include(o => o.Details).ThenInclude(d => d.Product).Where(o => o.UserId == userId).OrderByDescending(o => o.CreatedAt).ToListAsync();
+        foreach (var order in orders)
+        {
+            await ExpireOrderIfNeededAsync(order);
+        }
         return View(orders);
     }
 
@@ -336,7 +348,44 @@ public class OrdersController : Controller
         var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         var order = await _db.Orders.Include(x => x.Details).FirstOrDefaultAsync(x => x.Id == id && x.UserId == userId);
         if (order == null) return NotFound();
+        await ExpireOrderIfNeededAsync(order);
         return View(order);
+    }
+
+    [HttpPost("/Order/PayNow/{id:int}")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> PayNow(int id)
+    {
+        var order = await _db.Orders.FirstOrDefaultAsync(x => x.Id == id);
+        if (order == null) return NotFound();
+
+        var isAdmin = User.IsInRole("Admin");
+        if (order.UserId.HasValue)
+        {
+            if (User.Identity?.IsAuthenticated != true) return Forbid();
+            var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            if (order.UserId.Value != userId && !isAdmin) return Forbid();
+        }
+        else if (!isAdmin && HttpContext.Session.GetInt32("LastOrderId") != order.Id)
+        {
+            TempData["ErrorMessage"] = "Bạn không có quyền thanh toán đơn hàng này.";
+            return RedirectToAction(nameof(TrackingLookup));
+        }
+
+        await ExpireOrderIfNeededAsync(order);
+        if (order.Status == OrderStatus.Expired)
+        {
+            TempData["ErrorMessage"] = "Đơn hàng đã hết hạn thanh toán.";
+            return RedirectToAction(nameof(Tracking), new { id = order.Id });
+        }
+
+        if (!IsPendingPaymentOrder(order))
+        {
+            TempData["ErrorMessage"] = "Đơn hàng không ở trạng thái chờ thanh toán hợp lệ.";
+            return RedirectToAction(nameof(Tracking), new { id = order.Id });
+        }
+
+        return RedirectToAction(nameof(BankTransfer), new { id = order.Id });
     }
 
     public async Task<IActionResult> BankTransfer(int id)
