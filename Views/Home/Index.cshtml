@@ -7,6 +7,15 @@ var dealSectionBackground = ImageUrlHelper.ResolveImageUrl(Model.SiteSettings?.D
     var fallbackBanner = "/images/banners/banner_main1.png";
 }
 
+@{
+    var dealHotProducts = Model.DailyDealProducts
+        .Concat(Model.HotSaleProducts)
+        .GroupBy(p => p.Id)
+        .Select(g => g.First())
+        .Take(6)
+        .ToList();
+}
+
 <div class="ttg-home">
 @{
     var mainBanners = Model.Banners.Where(b => b.Position == "MainBanner" && !string.IsNullOrWhiteSpace(b.ImageUrl)).OrderBy(b => b.SortOrder).ToList();
@@ -41,22 +50,18 @@ var dealSectionBackground = ImageUrlHelper.ResolveImageUrl(Model.SiteSettings?.D
     }
 }
 
-@if (Model.DailyDealProducts.Any())
-{
-    <partial name="_ProductSection" model='Tuple.Create("Deal hot mỗi ngày", Model.DailyDealProducts, dealSectionBackground)' />
-}
-@if (Model.PromotionProducts.Any())
-{
-    <partial name="_ProductSection" model='Tuple.Create("Khuyến mãi hot", Model.PromotionProducts, hotPromotionBackground)' />
-}
-@if (Model.HotSaleProducts.Any())
-{
-    <partial name="_ProductSection" model='Tuple.Create("HOT SALE", Model.HotSaleProducts, hotPromotionBackground)' />
-}
+<partial name="_ProductSection" model='Tuple.Create("Deal hot mỗi ngày", dealHotProducts, dealSectionBackground)' />
 <partial name="_ProductSection" model='Tuple.Create("PC GAMING", Model.PcGamingProducts, string.Empty)' />
+<partial name="_ProductSection" model='Tuple.Create("PC WORKSTATION 2D 3D", Model.WorkstationProducts, string.Empty)' />
+<partial name="_ProductSection" model='Tuple.Create("PC AMD GAMING", Model.AmdGamingProducts, string.Empty)' />
+<partial name="_ProductSection" model='Tuple.Create("PC MINI", Model.PcMiniProducts, string.Empty)' />
+<partial name="_ProductSection" model='Tuple.Create("PC VĂN PHÒNG", Model.OfficePcProducts, string.Empty)' />
 <partial name="_ProductSection" model='Tuple.Create("LAPTOP", Model.LaptopProducts, string.Empty)' />
 <partial name="_ProductSection" model='Tuple.Create("MÀN HÌNH", Model.MonitorProducts, string.Empty)' />
 <partial name="_ProductSection" model='Tuple.Create("LINH KIỆN", Model.ComponentProducts, string.Empty)' />
+<partial name="_ProductSection" model='Tuple.Create("Khuyến mãi hot", Model.PromotionProducts, hotPromotionBackground)' />
+
+<div id="ttg-product-preview" class="ttg-product-preview" aria-hidden="true"></div>
 </div>
 
 @section Scripts {
@@ -69,5 +74,40 @@ var dealSectionBackground = ImageUrlHelper.ResolveImageUrl(Model.SiteSettings?.D
             pagination: { el: '.swiper-pagination', clickable: true },
             navigation: { nextEl: '.swiper-button-next', prevEl: '.swiper-button-prev' }
         });
+
+        (() => {
+            if (window.innerWidth < 768) return;
+            const cards = document.querySelectorAll('.ttg-product-image-wrap');
+            const popup = document.getElementById('ttg-product-preview');
+            if (!cards.length || !popup) return;
+            const esc = (s) => (s || '').toString().replace(/[&<>"']/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
+            const showPopup = (card) => {
+                const d = card.dataset;
+                const lines = [
+                    d.ppPrice ? `<div class="ttg-pp-price">${esc(d.ppPrice)}</div>` : '',
+                    d.ppOldPrice ? `<div class="ttg-pp-old">${esc(d.ppOldPrice)}</div>` : '',
+                    d.ppWarranty ? `<div><b>Bảo hành:</b> ${esc(d.ppWarranty)}</div>` : '',
+                    d.ppStock ? `<div><b>Tình trạng:</b> ${esc(d.ppStock)}</div>` : '',
+                    d.ppDesc ? `<div><b>Mô tả:</b> ${esc(d.ppDesc)}</div>` : '',
+                    d.ppSpec ? `<div><b>Thông số:</b> ${esc(d.ppSpec)}</div>` : '',
+                    d.ppPromo ? `<div><b>Khuyến mãi:</b> ${esc(d.ppPromo)}</div>` : ''
+                ].filter(Boolean).join('');
+                popup.innerHTML = `<div class="ttg-pp-header">${esc(d.ppName || '')}</div><div class="ttg-pp-body">${lines}</div>`;
+                popup.classList.add('show');
+                const rect = card.getBoundingClientRect();
+                const ppRect = popup.getBoundingClientRect();
+                const gap = 10;
+                let left = rect.right + gap;
+                if (left + ppRect.width > window.innerWidth - 10) left = rect.left - ppRect.width - gap;
+                let top = rect.top;
+                if (top + ppRect.height > window.innerHeight - 10) top = Math.max(10, window.innerHeight - ppRect.height - 10);
+                popup.style.left = `${left + window.scrollX}px`;
+                popup.style.top = `${top + window.scrollY}px`;
+            };
+            cards.forEach((card) => {
+                card.addEventListener('mouseenter', () => showPopup(card));
+                card.addEventListener('mouseleave', () => popup.classList.remove('show'));
+            });
+        })();
     </script>
 }

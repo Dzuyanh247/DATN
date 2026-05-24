@@ -25,7 +25,11 @@ public class HomeController : Controller
             PcGamingProducts = await GetByCategoryNameAsync("PC Gaming"),
             LaptopProducts = await GetByCategoryNameAsync("Laptop"),
             MonitorProducts = await GetByCategoryNameAsync("Màn hình"),
-            ComponentProducts = await GetByCategoryNameAsync("Linh kiện")
+            ComponentProducts = await GetByCategoryNameAsync("Linh kiện"),
+            WorkstationProducts = await GetByCategoryNameAsync("Workstation"),
+            AmdGamingProducts = await GetByCategoryNameAsync("AMD Gaming"),
+            PcMiniProducts = await GetByCategoryNameAsync("PC Mini"),
+            OfficePcProducts = await GetByCategoryNameAsync("PC Văn Phòng")
         };
 
         ViewBag.Categories = categories;
@@ -35,7 +39,16 @@ public class HomeController : Controller
     private async Task<List<Models.Product>> GetByCategoryNameAsync(string categoryName)
     {
         var categoryId = await _db.Categories.Where(c => c.Name == categoryName).Select(c => c.Id).FirstOrDefaultAsync();
-        return await _db.Products.Include(p => p.ProductImages).Where(p => p.CategoryId == categoryId).OrderByDescending(p => p.CreatedAt).Take(8).ToListAsync();
+        if (categoryId == 0)
+        {
+            return new List<Models.Product>();
+        }
+
+        return await _db.Products.Include(p => p.ProductImages)
+            .Where(p => p.IsActive && p.CategoryId == categoryId)
+            .OrderByDescending(p => p.CreatedAt)
+            .Take(6)
+            .ToListAsync();
     }
 
 }
