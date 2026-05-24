@@ -14,4 +14,8 @@ public class HomeIndexVm
     public List<Product> LaptopProducts { get; set; } = new();
     public List<Product> MonitorProducts { get; set; } = new();
     public List<Product> ComponentProducts { get; set; } = new();
+    public List<Product> WorkstationProducts { get; set; } = new();
+    public List<Product> AmdGamingProducts { get; set; } = new();
+    public List<Product> PcMiniProducts { get; set; } = new();
+    public List<Product> OfficePcProducts { get; set; } = new();
 }

@@ -7,7 +7,15 @@
         ?? Model.ThumbnailImage, "/images/banners/banner_main1.png");
 }
 <div class="ttg-product-card">
-    <a asp-controller="Products" asp-action="Detail" asp-route-id="@Model.Id" class="ttg-product-image-wrap text-decoration-none">
+    <a asp-controller="Products" asp-action="Detail" asp-route-id="@Model.Id" class="ttg-product-image-wrap text-decoration-none"
+       data-pp-name="@Model.Name"
+       data-pp-price="@finalPrice.ToString("N0") VNĐ"
+       data-pp-old-price="@(finalPrice < Model.Price ? $"{Model.Price:N0} VNĐ" : string.Empty)"
+       data-pp-stock="@(Model.IsInStock ? "Còn hàng" : "Hết hàng")"
+       data-pp-warranty="@(string.IsNullOrWhiteSpace(Model.WarrantyDuration) ? (Model.WarrantyMonths > 0 ? $"{Model.WarrantyMonths} tháng" : string.Empty) : Model.WarrantyDuration)"
+       data-pp-desc="@(string.IsNullOrWhiteSpace(Model.ShortDescription) ? Model.Description : Model.ShortDescription)"
+       data-pp-spec="@Model.Specifications"
+       data-pp-promo="@(string.IsNullOrWhiteSpace(Model.DetailDescription) ? string.Empty : Model.DetailDescription)">
         <img src="@image" class="ttg-product-image" alt="@Model.Name" onerror="this.onerror=null;this.src='/images/banners/banner_main1.png';" />
         @if (discount > 0)
         {
