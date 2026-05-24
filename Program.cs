@@ -2,6 +2,7 @@ using Datn.PcStore.Data;
 using Datn.PcStore.Services;
 using Datn.PcStore.Constants;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Data.SqlClient;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -58,6 +59,10 @@ builder.Services.AddHttpClient<IGhnAddressService, GhnAddressService>((sp, clien
     }
 });
 
+
+var defaultConnection = builder.Configuration.GetConnectionString("DefaultConnection") ?? string.Empty;
+var csBuilder = new SqlConnectionStringBuilder(defaultConnection);
+Console.WriteLine($"[DB] Environment: {builder.Environment.EnvironmentName}; Server: {csBuilder.DataSource}; Database: {csBuilder.InitialCatalog}");
 
 var app = builder.Build();
 
