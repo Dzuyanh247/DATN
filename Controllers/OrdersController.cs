@@ -11,6 +11,7 @@ namespace Datn.PcStore.Controllers;
 
 public class OrdersController : Controller
 {
+    private static readonly TimeSpan PendingPaymentTtl = TimeSpan.FromHours(2);
     private readonly ApplicationDbContext _db;
     private readonly ICartService _cartService;
     private readonly ILogger<OrdersController> _logger;
@@ -23,6 +24,35 @@ public class OrdersController : Controller
     }
 
     private static string ToOrderCode(int orderId) => $"DH{orderId:D6}";
+
+    private static bool IsPendingPaymentOrder(Order order)
+        => order.Status == OrderStatus.PendingPayment
+           && order.PaymentMethod == "BANK_TRANSFER"
+           && order.PaymentStatus == "WAITING_PAYMENT";
+
+    private async Task<bool> ExpireOrderIfNeededAsync(Order order)
+    {
+        var now = DateTime.UtcNow;
+        if (!IsPendingPaymentOrder(order) || order.PaymentExpireAt == null || order.PaymentExpireAt > now)
+        {
+            return false;
+        }
+
+        order.Status = OrderStatus.Expired;
+        order.PaymentStatus = "EXPIRED";
+
+        var details = await _db.OrderDetails.Where(x => x.OrderId == order.Id).ToListAsync();
+        foreach (var detail in details)
+        {
+            var product = await _db.Products.FirstOrDefaultAsync(x => x.Id == detail.ProductId);
+            if (product == null) continue;
+            product.StockQuantity += detail.Quantity;
+            product.IsInStock = product.StockQuantity > 0;
+        }
+
+        await _db.SaveChangesAsync();
+        return true;
+    }
 
     [HttpGet("/Checkout")]
     public async Task<IActionResult> Checkout()
@@ -97,7 +127,42 @@ public class OrdersController : Controller
                 detailRows.Add(new OrderDetail { ProductId = product.Id, Quantity = item.Quantity, UnitPrice = unitPrice, ProductName = product.Name, ProductImage = product.ThumbnailImage, Warranty = product.WarrantyDuration, TotalPrice = lineTotal });
             }
 
+            if (vm.PaymentMethod == "BANK_TRANSFER")
+            {
+                Order? existingPending;
+                if (userId.HasValue)
+                {
+                    existingPending = await _db.Orders
+                        .Where(x => x.UserId == userId
+                                    && x.PaymentMethod == "BANK_TRANSFER"
+                                    && x.Status == OrderStatus.PendingPayment
+                                    && x.PaymentStatus == "WAITING_PAYMENT")
+                        .OrderByDescending(x => x.CreatedAt)
+                        .FirstOrDefaultAsync();
+                }
+                else
+                {
+                    var pendingId = HttpContext.Session.GetInt32("LastPendingPaymentOrderId");
+                    existingPending = pendingId.HasValue
+                        ? await _db.Orders.FirstOrDefaultAsync(x => x.Id == pendingId.Value)
+                        : null;
+                }
+
+                if (existingPending != null)
+                {
+                    var expired = await ExpireOrderIfNeededAsync(existingPending);
+                    if (!expired)
+                    {
+                        TempData["InfoMessage"] = $"Bạn có đơn hàng chờ thanh toán {ToOrderCode(existingPending.Id)}. Vui lòng tiếp tục thanh toán trước khi tạo đơn mới.";
+                        return RedirectToAction(nameof(BankTransfer), new { id = existingPending.Id });
+                    }
+                }
+            }
+
             var discount = 0m;
+            var paymentExpireAt = vm.PaymentMethod == "BANK_TRANSFER"
+                ? DateTime.UtcNow.Add(PendingPaymentTtl)
+                : (DateTime?)null;
             var order = new Order
             {
                 UserId = userId,
@@ -126,6 +191,7 @@ public class OrdersController : Controller
                 PaymentMethod = vm.PaymentMethod,
                 PaymentStatus = vm.PaymentMethod == "BANK_TRANSFER" ? "WAITING_PAYMENT" : "UNPAID",
                 Status = vm.PaymentMethod == "BANK_TRANSFER" ? OrderStatus.PendingPayment : OrderStatus.PendingConfirmation,
+                PaymentExpireAt = paymentExpireAt,
                 Details = detailRows
             };
 
@@ -143,9 +209,13 @@ public class OrdersController : Controller
             {
                 order.TransferContent = $"DH{order.Id}";
                 await _db.SaveChangesAsync();
+                HttpContext.Session.SetInt32("LastPendingPaymentOrderId", order.Id);
             }
             HttpContext.Session.SetInt32("LastOrderId", order.Id);
-            await _cartService.ClearCartAsync(userId);
+            if (order.PaymentMethod != "BANK_TRANSFER")
+            {
+                await _cartService.ClearCartAsync(userId);
+            }
             await tx.CommitAsync();
             TempData["SuccessMessage"] = "Đặt hàng thành công!";
             if (order.PaymentMethod == "BANK_TRANSFER")
@@ -266,6 +336,12 @@ public class OrdersController : Controller
     {
         var order = await _db.Orders.Include(x => x.Details).FirstOrDefaultAsync(x => x.Id == id);
         if (order == null) return NotFound();
+        await ExpireOrderIfNeededAsync(order);
+        if (order.Status == OrderStatus.Expired)
+        {
+            TempData["ErrorMessage"] = "Đơn hàng đã hết hạn thanh toán (quá 2 giờ). Vui lòng đặt lại đơn hàng.";
+            return RedirectToAction(nameof(Checkout));
+        }
         return View(order);
     }
 
@@ -276,6 +352,12 @@ public class OrdersController : Controller
         var order = await _db.Orders.FirstOrDefaultAsync(x => x.Id == id);
         if (order == null) return NotFound();
         if (order.PaymentMethod != "BANK_TRANSFER") return BadRequest();
+        await ExpireOrderIfNeededAsync(order);
+        if (order.Status == OrderStatus.Expired)
+        {
+            TempData["ErrorMessage"] = "Đơn hàng đã hết hạn thanh toán nên không thể xác nhận chuyển khoản.";
+            return RedirectToAction(nameof(Checkout));
+        }
         order.PaymentStatus = "WAITING_CONFIRMATION";
         await _db.SaveChangesAsync();
         TempData["SuccessMessage"] = "Đã ghi nhận xác nhận thanh toán của bạn.";

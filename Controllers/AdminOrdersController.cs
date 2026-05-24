@@ -49,6 +49,16 @@ public class AdminOrdersController : Controller
         order.PaymentStatus = "PAID";
         order.Status = OrderStatus.Processing;
         order.PaidAt = DateTime.UtcNow;
+
+        if (order.UserId.HasValue)
+        {
+            var cart = await _db.Carts.Include(x => x.Items).FirstOrDefaultAsync(x => x.UserId == order.UserId.Value);
+            if (cart != null && cart.Items.Any())
+            {
+                _db.CartItems.RemoveRange(cart.Items);
+            }
+        }
+
         await _db.SaveChangesAsync();
         return RedirectToAction(nameof(Detail), new { id });
     }
