@@ -45,6 +45,11 @@ public class AdminProductsController : Controller
             Price = vm.Price,
             DiscountPrice = vm.DiscountPrice,
             SalePrice = vm.DiscountPrice,
+            IsHotSale = vm.IsHotSale,
+            IsDailyDeal = vm.IsDailyDeal,
+            IsPromotion = vm.IsPromotion,
+            PromotionStartDate = vm.PromotionStartDate,
+            PromotionEndDate = vm.PromotionEndDate,
             StockQuantity = vm.StockQuantity,
             WarrantyMonths = vm.WarrantyMonths,
             WarrantyDuration = $"{vm.WarrantyMonths} tháng",
@@ -93,6 +98,11 @@ public class AdminProductsController : Controller
         product.Price = vm.Price;
         product.DiscountPrice = vm.DiscountPrice;
         product.SalePrice = vm.DiscountPrice;
+        product.IsHotSale = vm.IsHotSale;
+        product.IsDailyDeal = vm.IsDailyDeal;
+        product.IsPromotion = vm.IsPromotion;
+        product.PromotionStartDate = vm.PromotionStartDate;
+        product.PromotionEndDate = vm.PromotionEndDate;
         product.StockQuantity = vm.StockQuantity;
         product.WarrantyMonths = vm.WarrantyMonths;
         product.WarrantyDuration = $"{vm.WarrantyMonths} tháng";
@@ -137,6 +147,8 @@ public class AdminProductsController : Controller
         var vm = new AdminProductUpsertVm(); await PopulateCategoriesAsync(vm); if (!productId.HasValue) return vm;
         var product = await _db.Products.Include(p => p.ProductImages).FirstOrDefaultAsync(x => x.Id == productId.Value); if (product == null) return null;
         vm.Id = product.Id; vm.Name = product.Name; vm.Price = product.Price; vm.DiscountPrice = product.DiscountPrice ?? product.SalePrice;
+        vm.IsHotSale = product.IsHotSale; vm.IsDailyDeal = product.IsDailyDeal; vm.IsPromotion = product.IsPromotion;
+        vm.PromotionStartDate = product.PromotionStartDate; vm.PromotionEndDate = product.PromotionEndDate;
         vm.StockQuantity = product.StockQuantity; vm.WarrantyMonths = product.WarrantyMonths > 0 ? product.WarrantyMonths : 12; vm.CategoryId = product.CategoryId;
         vm.Description = string.IsNullOrWhiteSpace(product.Description) ? product.DetailDescription : product.Description; vm.Specifications = product.Specifications; vm.IsActive = product.IsActive;
         vm.ThumbnailImageUrl = product.ThumbnailImage;

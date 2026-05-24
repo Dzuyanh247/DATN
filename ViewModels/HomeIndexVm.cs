@@ -7,7 +7,8 @@ public class HomeIndexVm
     public List<Category> Categories { get; set; } = new();
     public List<Banner> Banners { get; set; } = new();
     public SiteSetting? SiteSettings { get; set; }
-    public List<Product> FeaturedProducts { get; set; } = new();
+    public List<Product> HotSaleProducts { get; set; } = new();
+    public List<Product> DailyDealProducts { get; set; } = new();
     public List<Product> PromotionProducts { get; set; } = new();
     public List<Product> PcGamingProducts { get; set; } = new();
     public List<Product> LaptopProducts { get; set; } = new();

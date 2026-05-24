@@ -20,6 +20,11 @@ public class AdminProductUpsertVm
 
     [Range(0, 999999999)]
     public decimal? DiscountPrice { get; set; }
+    public bool IsHotSale { get; set; }
+    public bool IsDailyDeal { get; set; }
+    public bool IsPromotion { get; set; }
+    public DateTime? PromotionStartDate { get; set; }
+    public DateTime? PromotionEndDate { get; set; }
 
     [Range(0, 999999999)]
     public int StockQuantity { get; set; }
