@@ -18,7 +18,8 @@
         if (o.PaymentStatus == "PAID") return "Đã thanh toán";
         if (o.PaymentStatus == "EXPIRED" || o.Status == OrderStatus.Expired) return "Hết hạn";
         if (o.Status == OrderStatus.Cancelled) return "Đã hủy";
-        if (o.PaymentStatus == "WAITING_PAYMENT" || o.PaymentStatus == "WAITING_CONFIRMATION") return "Chờ thanh toán";
+        if (o.PaymentStatus == "WAITING_PAYMENT") return "Chờ thanh toán";
+        if (o.PaymentStatus == "WAITING_CONFIRMATION") return "Chờ admin xác nhận";
         return "Chưa thanh toán";
     }
 }
