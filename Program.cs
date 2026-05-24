@@ -95,6 +95,11 @@ BEGIN
     ALTER TABLE SiteSettings ADD HotPromotionBackgroundUrl NVARCHAR(1000) NULL;
 END");
 
+    await db.Database.ExecuteSqlRawAsync(@"IF COL_LENGTH('Orders', 'PaymentExpireAt') IS NULL
+BEGIN
+    ALTER TABLE Orders ADD PaymentExpireAt datetime2 NULL;
+END");
+
 
 
 

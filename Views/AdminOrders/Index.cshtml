@@ -9,17 +9,29 @@
         OrderStatus.Cancelled => "Đã hủy",
         OrderStatus.PendingConfirmation => "Chờ xác nhận",
         OrderStatus.PendingPayment => "Chờ thanh toán",
+        OrderStatus.Expired => "Hết hạn",
         _ => status.ToString()
     };
+
+    string PaymentLabel(Order o)
+    {
+        if (o.PaymentStatus == "PAID") return "Đã thanh toán";
+        if (o.PaymentStatus == "EXPIRED" || o.Status == OrderStatus.Expired) return "Hết hạn";
+        if (o.Status == OrderStatus.Cancelled) return "Đã hủy";
+        if (o.PaymentStatus == "WAITING_PAYMENT" || o.PaymentStatus == "WAITING_CONFIRMATION") return "Chờ thanh toán";
+        return "Chưa thanh toán";
+    }
 }
 <h3>Quản lý đơn hàng</h3>
 <table class="table table-striped align-middle">
-    <thead><tr><th>Mã</th><th>Khách</th><th>Tổng tiền</th><th>Trạng thái</th><th>Cập nhật</th><th></th></tr></thead>
+    <thead><tr><th>Mã</th><th>Khách</th><th>Tổng tiền</th><th>Trạng thái đơn</th><th>Thanh toán</th><th>Hạn TT</th><th>Cập nhật</th><th></th></tr></thead>
     <tbody>
     @foreach (var o in Model)
     {
         <tr>
             <td>@($"DH{o.Id:D6}")</td><td>@o.ReceiverName</td><td>@o.TotalAmount.ToString("N0") đ</td><td>@Label(o.Status)</td>
+            <td>@PaymentLabel(o)</td>
+            <td>@(o.PaymentExpireAt.HasValue ? o.PaymentExpireAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm") : "-")</td>
             <td>
                 <form method="post" asp-action="UpdateStatus" class="d-flex gap-2">
                     <input type="hidden" name="id" value="@o.Id" />

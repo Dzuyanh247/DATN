@@ -12,9 +12,34 @@ public class AdminOrdersController : Controller
     private readonly ApplicationDbContext _db;
     public AdminOrdersController(ApplicationDbContext db) => _db = db;
 
+    private async Task ExpirePendingOrdersAsync(List<Order> orders)
+    {
+        var now = DateTime.UtcNow;
+        var changed = false;
+        foreach (var order in orders)
+        {
+            if (order.Status == OrderStatus.PendingPayment
+                && order.PaymentMethod == "BANK_TRANSFER"
+                && order.PaymentStatus == "WAITING_PAYMENT"
+                && order.PaymentExpireAt.HasValue
+                && order.PaymentExpireAt.Value <= now)
+            {
+                order.Status = OrderStatus.Expired;
+                order.PaymentStatus = "EXPIRED";
+                changed = true;
+            }
+        }
+
+        if (changed)
+        {
+            await _db.SaveChangesAsync();
+        }
+    }
+
     public async Task<IActionResult> Index()
     {
         var orders = await _db.Orders.Include(o => o.User).OrderByDescending(o => o.CreatedAt).ToListAsync();
+        await ExpirePendingOrdersAsync(orders);
         return View(orders);
     }
 

@@ -9,8 +9,18 @@
         OrderStatus.Cancelled => "Đã hủy",
         OrderStatus.PendingConfirmation => "Chờ xác nhận",
         OrderStatus.PendingPayment => "Chờ thanh toán",
+        OrderStatus.Expired => "Hết hạn",
         _ => status.ToString()
     };
+
+    string PaymentLabel(Order o)
+    {
+        if (o.PaymentStatus == "PAID") return "Đã thanh toán";
+        if (o.PaymentStatus == "EXPIRED" || o.Status == OrderStatus.Expired) return "Hết hạn";
+        if (o.Status == OrderStatus.Cancelled) return "Đã hủy";
+        if (o.PaymentStatus == "WAITING_PAYMENT" || o.PaymentStatus == "WAITING_CONFIRMATION") return "Chờ thanh toán";
+        return "Chưa thanh toán";
+    }
 }
 <h3>Chi tiết đơn @($"DH{Model.Id:D6}")</h3>
 <div class="card mb-3">
@@ -19,7 +29,8 @@
         <div><b>Khách:</b> @Model.ReceiverName (@Model.ReceiverPhone)</div>
         <div><b>Địa chỉ:</b> @Model.ShippingAddress</div>
         <div><b>Thanh toán:</b> @Model.PaymentMethod</div>
-        <div><b>Trạng thái thanh toán:</b> @Model.PaymentStatus</div>
+        <div><b>Trạng thái thanh toán:</b> @PaymentLabel(Model)</div>
+        <div><b>Hạn thanh toán:</b> @(Model.PaymentExpireAt.HasValue ? Model.PaymentExpireAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm") : "-")</div>
         <div><b>Tổng tiền:</b> <span class="text-danger fw-bold">@Model.TotalAmount.ToString("N0") đ</span></div>
     </div>
 </div>
