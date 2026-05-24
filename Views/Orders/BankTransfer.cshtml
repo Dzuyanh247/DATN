@@ -9,6 +9,10 @@
 
 <h3>Thanh toán chuyển khoản cho đơn @($"DH{Model.Id:D6}")</h3>
 <div class="card p-3">
+    @if (Model.PaymentExpireAt.HasValue)
+    {
+        <p><strong>Hạn thanh toán:</strong> @Model.PaymentExpireAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</p>
+    }
     <p><strong>Ngân hàng:</strong> @bankName</p>
     <p><strong>Số tài khoản:</strong> @accountNumber</p>
     <p><strong>Chủ tài khoản:</strong> @accountName</p>

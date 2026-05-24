@@ -89,7 +89,7 @@ public class CartItem : BaseEntity
     public int Quantity { get; set; }
 }
 
-public enum OrderStatus { Pending = 1, Processing, Delivering, Completed, Cancelled, PendingConfirmation, PendingPayment }
+public enum OrderStatus { Pending = 1, Processing, Delivering, Completed, Cancelled, PendingConfirmation, PendingPayment, Expired }
 
 public class Order : BaseEntity
 {
@@ -122,6 +122,7 @@ public class Order : BaseEntity
     [MaxLength(100)] public string? ShippingProvider { get; set; }
     [MaxLength(300)] public string? ShippingFormulaSnapshot { get; set; }
     [MaxLength(50)] public string? VoucherCode { get; set; }
+    public DateTime? PaymentExpireAt { get; set; }
     public ICollection<OrderDetail> Details { get; set; } = new List<OrderDetail>();
 }
 
