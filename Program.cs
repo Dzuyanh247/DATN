@@ -2,6 +2,7 @@ using Datn.PcStore.Data;
 using Datn.PcStore.Services;
 using Datn.PcStore.Constants;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Data.SqlClient;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -59,6 +60,10 @@ builder.Services.AddHttpClient<IGhnAddressService, GhnAddressService>((sp, clien
 });
 
 
+var defaultConnection = builder.Configuration.GetConnectionString("DefaultConnection") ?? string.Empty;
+var csBuilder = new SqlConnectionStringBuilder(defaultConnection);
+Console.WriteLine($"[DB] Environment: {builder.Environment.EnvironmentName}; Server: {csBuilder.DataSource}; Database: {csBuilder.InitialCatalog}");
+
 var app = builder.Build();
 
 if (!app.Environment.IsDevelopment())
@@ -84,6 +89,42 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     db.Database.Migrate();
+
+    var currentDatabaseName = await db.Database.SqlQueryRaw<string>("SELECT DB_NAME() AS [Value]").SingleAsync();
+    Console.WriteLine($"[DB] SQL DB_NAME(): {currentDatabaseName}");
+
+    await db.Database.ExecuteSqlRawAsync(@"IF COL_LENGTH('Products', 'IsHotSale') IS NULL
+BEGIN
+    ALTER TABLE Products ADD IsHotSale bit NOT NULL CONSTRAINT DF_Products_IsHotSale DEFAULT(0);
+END
+
+IF COL_LENGTH('Products', 'IsDailyDeal') IS NULL
+BEGIN
+    ALTER TABLE Products ADD IsDailyDeal bit NOT NULL CONSTRAINT DF_Products_IsDailyDeal DEFAULT(0);
+END
+
+IF COL_LENGTH('Products', 'IsPromotion') IS NULL
+BEGIN
+    ALTER TABLE Products ADD IsPromotion bit NOT NULL CONSTRAINT DF_Products_IsPromotion DEFAULT(0);
+END
+
+IF COL_LENGTH('Products', 'PromotionStartDate') IS NULL
+BEGIN
+    ALTER TABLE Products ADD PromotionStartDate datetime2 NULL;
+END
+
+IF COL_LENGTH('Products', 'PromotionEndDate') IS NULL
+BEGIN
+    ALTER TABLE Products ADD PromotionEndDate datetime2 NULL;
+END");
+
+    var promotionColumns = await db.Database.SqlQueryRaw<string>(@"SELECT c.name AS [Value]
+FROM sys.columns c
+INNER JOIN sys.tables t ON t.object_id = c.object_id
+WHERE t.name = 'Products'
+  AND c.name IN ('IsHotSale', 'IsDailyDeal', 'IsPromotion', 'PromotionStartDate', 'PromotionEndDate')
+ORDER BY c.name;").ToListAsync();
+    Console.WriteLine($"[DB] Products promotion columns present: {string.Join(', ', promotionColumns)}");
 
     await db.Database.ExecuteSqlRawAsync(@"IF COL_LENGTH('SiteSettings', 'DealSectionBackgroundUrl') IS NULL
 BEGIN
