@@ -12,14 +12,16 @@ public class HomeController : Controller
 
     public async Task<IActionResult> Index()
     {
+        var utcNow = DateTime.UtcNow;
         var categories = await _db.Categories.OrderBy(c => c.Name).ToListAsync();
         var vm = new HomeIndexVm
         {
             Categories = categories,
             SiteSettings = await _db.SiteSettings.OrderBy(x => x.Id).FirstOrDefaultAsync(),
             Banners = await _db.Banners.Where(b => b.IsActive).OrderBy(b => b.SortOrder).ToListAsync(),
-            FeaturedProducts = await _db.Products.Include(p => p.ProductImages).Where(p => p.IsActive).OrderByDescending(p => p.CreatedAt).Take(6).ToListAsync(),
-            PromotionProducts = await _db.Products.Include(p => p.ProductImages).Where(p => p.IsActive && (p.DiscountPrice.HasValue || p.SalePrice.HasValue)).OrderByDescending(p => p.CreatedAt).Take(6).ToListAsync(),
+            HotSaleProducts = await _db.Products.Include(p => p.ProductImages).Where(p => p.IsActive && p.IsHotSale && (!p.PromotionStartDate.HasValue || p.PromotionStartDate <= utcNow) && (!p.PromotionEndDate.HasValue || p.PromotionEndDate >= utcNow)).OrderByDescending(p => p.CreatedAt).Take(6).ToListAsync(),
+            DailyDealProducts = await _db.Products.Include(p => p.ProductImages).Where(p => p.IsActive && p.IsDailyDeal && (!p.PromotionStartDate.HasValue || p.PromotionStartDate <= utcNow) && (!p.PromotionEndDate.HasValue || p.PromotionEndDate >= utcNow)).OrderByDescending(p => p.CreatedAt).Take(6).ToListAsync(),
+            PromotionProducts = await _db.Products.Include(p => p.ProductImages).Where(p => p.IsActive && p.IsPromotion && (!p.PromotionStartDate.HasValue || p.PromotionStartDate <= utcNow) && (!p.PromotionEndDate.HasValue || p.PromotionEndDate >= utcNow)).OrderByDescending(p => p.CreatedAt).Take(6).ToListAsync(),
             PcGamingProducts = await GetByCategoryNameAsync("PC Gaming"),
             LaptopProducts = await GetByCategoryNameAsync("Laptop"),
             MonitorProducts = await GetByCategoryNameAsync("Màn hình"),
@@ -35,4 +37,5 @@ public class HomeController : Controller
         var categoryId = await _db.Categories.Where(c => c.Name == categoryName).Select(c => c.Id).FirstOrDefaultAsync();
         return await _db.Products.Include(p => p.ProductImages).Where(p => p.CategoryId == categoryId).OrderByDescending(p => p.CreatedAt).Take(8).ToListAsync();
     }
+
 }

@@ -41,8 +41,18 @@ var dealSectionBackground = ImageUrlHelper.ResolveImageUrl(Model.SiteSettings?.D
     }
 }
 
-<partial name="_ProductSection" model='Tuple.Create("Sản phẩm nổi bật", Model.FeaturedProducts, dealSectionBackground)' />
-<partial name="_ProductSection" model='Tuple.Create("Khuyến mãi hot", Model.PromotionProducts, hotPromotionBackground)' />
+@if (Model.DailyDealProducts.Any())
+{
+    <partial name="_ProductSection" model='Tuple.Create("Deal hot mỗi ngày", Model.DailyDealProducts, dealSectionBackground)' />
+}
+@if (Model.PromotionProducts.Any())
+{
+    <partial name="_ProductSection" model='Tuple.Create("Khuyến mãi hot", Model.PromotionProducts, hotPromotionBackground)' />
+}
+@if (Model.HotSaleProducts.Any())
+{
+    <partial name="_ProductSection" model='Tuple.Create("HOT SALE", Model.HotSaleProducts, hotPromotionBackground)' />
+}
 <partial name="_ProductSection" model='Tuple.Create("PC GAMING", Model.PcGamingProducts, string.Empty)' />
 <partial name="_ProductSection" model='Tuple.Create("LAPTOP", Model.LaptopProducts, string.Empty)' />
 <partial name="_ProductSection" model='Tuple.Create("MÀN HÌNH", Model.MonitorProducts, string.Empty)' />

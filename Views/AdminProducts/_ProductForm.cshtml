@@ -43,6 +43,16 @@
                         <span asp-validation-for="DiscountPrice" class="text-danger"></span>
                     </div>
                     <div class="col-md-6">
+                        <label asp-for="PromotionStartDate" class="form-label">Ngày bắt đầu khuyến mãi</label>
+                        <input asp-for="PromotionStartDate" type="datetime-local" class="form-control" />
+                        <span asp-validation-for="PromotionStartDate" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="PromotionEndDate" class="form-label">Ngày kết thúc khuyến mãi</label>
+                        <input asp-for="PromotionEndDate" type="datetime-local" class="form-control" />
+                        <span asp-validation-for="PromotionEndDate" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6">
                         <label asp-for="WarrantyMonths" class="form-label">Bảo hành (tháng)</label>
                         <input asp-for="WarrantyMonths" class="form-control" min="0" />
                         <span asp-validation-for="WarrantyMonths" class="text-danger"></span>
@@ -51,6 +61,23 @@
                         <div class="form-check">
                             <input asp-for="IsActive" class="form-check-input" />
                             <label asp-for="IsActive" class="form-check-label">Trạng thái đang kinh doanh</label>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label d-block mb-2">Hiển thị trang chủ</label>
+                        <div class="d-flex flex-column gap-2">
+                            <div class="form-check">
+                                <input asp-for="IsHotSale" class="form-check-input" />
+                                <label asp-for="IsHotSale" class="form-check-label">Hiển thị ở HOT SALE</label>
+                            </div>
+                            <div class="form-check">
+                                <input asp-for="IsDailyDeal" class="form-check-input" />
+                                <label asp-for="IsDailyDeal" class="form-check-label">Hiển thị ở Deal hot mỗi ngày</label>
+                            </div>
+                            <div class="form-check">
+                                <input asp-for="IsPromotion" class="form-check-input" />
+                                <label asp-for="IsPromotion" class="form-check-label">Hiển thị ở Khuyến mãi hot</label>
+                            </div>
                         </div>
                     </div>
                 </div>
