@@ -38,8 +38,18 @@
     </div>
 </form>
 
-<table class="table table-striped align-middle">
-    <thead><tr><th>Ảnh</th><th>Tên</th><th>Danh mục</th><th>Giá</th><th>Tồn kho</th><th>Trạng thái</th><th></th></tr></thead>
+<table class="table table-striped align-middle admin-products-table">
+    <thead>
+        <tr>
+            <th class="admin-col-image">Ảnh</th>
+            <th class="admin-col-name">Tên</th>
+            <th class="admin-col-category">Danh mục</th>
+            <th class="admin-col-price text-center">Giá</th>
+            <th class="admin-col-stock text-center">Tồn kho</th>
+            <th class="admin-col-status text-center">Trạng thái</th>
+            <th class="admin-actions">Thao tác</th>
+        </tr>
+    </thead>
     <tbody>
     @foreach (var p in Model)
     {
@@ -47,12 +57,14 @@
                     ?? p.ProductImages.OrderBy(x => x.SortOrder).FirstOrDefault()?.ImageUrl
                     ?? p.ThumbnailImage, "/images/no-image.png");
         <tr>
-            <td><img src="@thumb" style="width:72px; height:72px; object-fit:cover;" class="rounded" onerror="this.onerror=null;this.src='/images/no-image.png';" /></td>
-            <td>@p.Name</td>
-            <td>@p.Category?.Name</td>
-            <td>@((p.DiscountPrice ?? p.SalePrice ?? p.Price).ToString("N0")) đ</td>
-            <td>@p.StockQuantity</td>
-            <td>
+            <td class="admin-col-image">
+                <img src="@thumb" class="rounded admin-product-thumb" alt="@p.Name" onerror="this.onerror=null;this.src='/images/no-image.png';" />
+            </td>
+            <td class="admin-col-name"><span class="admin-product-name">@p.Name</span></td>
+            <td class="admin-col-category">@p.Category?.Name</td>
+            <td class="admin-col-price text-center">@((p.DiscountPrice ?? p.SalePrice ?? p.Price).ToString("N0")) đ</td>
+            <td class="admin-col-stock text-center">@p.StockQuantity</td>
+            <td class="admin-col-status text-center">
                 @if (p.IsActive)
                 {
                     <span class="badge bg-success">Hiển thị</span>
@@ -62,14 +74,16 @@
                     <span class="badge bg-secondary">Ẩn</span>
                 }
             </td>
-            <td class="d-flex gap-2">
-                <a class="btn btn-sm btn-outline-info" asp-controller="Products" asp-action="Detail" asp-route-id="@p.Id">Xem</a>
-                <a class="btn btn-sm btn-outline-primary" asp-action="Edit" asp-route-id="@p.Id">Sửa</a>
-                <form method="post" asp-action="Delete" onsubmit="return confirm('Xác nhận xóa sản phẩm?');">
+            <td class="admin-actions">
+                <div class="admin-action-buttons">
+                    <a class="btn btn-sm btn-outline-info" asp-controller="Products" asp-action="Detail" asp-route-id="@p.Id">Xem</a>
+                    <a class="btn btn-sm btn-outline-primary" asp-action="Edit" asp-route-id="@p.Id">Sửa</a>
+                    <form method="post" asp-action="Delete" onsubmit="return confirm('Xác nhận xóa sản phẩm?');">
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="id" value="@p.Id" />
                     <button class="btn btn-sm btn-outline-danger">Xóa</button>
-                </form>
+                    </form>
+                </div>
             </td>
         </tr>
     }
