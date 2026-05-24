@@ -128,6 +128,8 @@ public class Order : BaseEntity
     [MaxLength(300)] public string? ShippingFormulaSnapshot { get; set; }
     [MaxLength(50)] public string? VoucherCode { get; set; }
     public DateTime? PaymentExpireAt { get; set; }
+    [MaxLength(500)] public string? PaymentUrl { get; set; }
+    [MaxLength(100)] public string? PaymentTransactionId { get; set; }
     public ICollection<OrderDetail> Details { get; set; } = new List<OrderDetail>();
 }
 

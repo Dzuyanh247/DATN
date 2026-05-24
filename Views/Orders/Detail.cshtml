@@ -13,6 +13,16 @@
         _ => status.ToString()
     };
 }
+@{
+    var nowUtc = DateTime.UtcNow;
+    var isOnlinePending = Model.Status == OrderStatus.PendingPayment
+        && Model.PaymentMethod == "BANK_TRANSFER"
+        && Model.PaymentStatus == "WAITING_PAYMENT"
+        && Model.PaymentExpireAt.HasValue
+        && Model.PaymentExpireAt.Value > nowUtc;
+    var isExpiredPayment = Model.Status == OrderStatus.Expired
+        || (Model.PaymentExpireAt.HasValue && Model.PaymentExpireAt.Value <= nowUtc && Model.PaymentMethod == "BANK_TRANSFER");
+}
 <h3>Chi tiết đơn hàng @($"DH{Model.Id:D6}")</h3>
 <p><strong>Ngày đặt:</strong> @Model.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</p>
 <p><strong>Trạng thái:</strong> @StatusLabel(Model.Status)</p>
@@ -20,6 +30,22 @@
 <p><strong>Địa chỉ giao hàng:</strong> @Model.ShippingAddress</p>
 <p><strong>Phương thức thanh toán:</strong> @Model.PaymentMethod</p>
 <p><strong>Tổng tiền:</strong> @Model.TotalAmount.ToString("N0") đ</p>
+
+@if (Model.PaymentMethod == "BANK_TRANSFER")
+{
+    <div class="alert @(isOnlinePending ? "alert-warning" : isExpiredPayment ? "alert-danger" : "alert-success")">
+        <div><strong>Trạng thái thanh toán:</strong> @(isOnlinePending ? "Chờ thanh toán" : isExpiredPayment ? "Đơn hàng đã hết hạn thanh toán" : "Đã thanh toán/đã xác nhận")</div>
+        <div><strong>Hạn thanh toán:</strong> @(Model.PaymentExpireAt.HasValue ? Model.PaymentExpireAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss") : "-")</div>
+        @if (isOnlinePending)
+        {
+            <div><strong>Thời gian còn lại:</strong> <span id="payment-countdown" data-expire-utc="@Model.PaymentExpireAt!.Value.ToString("O")">--:--:--</span></div>
+            <form asp-action="PayNow" asp-route-id="@Model.Id" method="post" class="mt-2">
+                @Html.AntiForgeryToken()
+                <button class="btn btn-warning text-dark">Thanh toán ngay</button>
+            </form>
+        }
+    </div>
+}
 <table class="table table-bordered">
     <thead><tr><th>Sản phẩm</th><th>Đơn giá</th><th>Số lượng</th><th>Thành tiền</th></tr></thead>
     <tbody>
@@ -35,3 +61,28 @@
     }
     </tbody>
 </table>
+
+@if (isOnlinePending)
+{
+    <script>
+        (() => {
+            const el = document.getElementById('payment-countdown');
+            if (!el) return;
+            const expire = new Date(el.dataset.expireUtc).getTime();
+            const pad = n => String(n).padStart(2, '0');
+            const tick = () => {
+                const diff = Math.max(0, expire - Date.now());
+                const totalSec = Math.floor(diff / 1000);
+                const h = Math.floor(totalSec / 3600);
+                const m = Math.floor((totalSec % 3600) / 60);
+                const s = totalSec % 60;
+                el.textContent = `${pad(h)}:${pad(m)}:${pad(s)}`;
+                if (diff <= 0) {
+                    location.reload();
+                }
+            };
+            tick();
+            setInterval(tick, 1000);
+        })();
+    </script>
+}

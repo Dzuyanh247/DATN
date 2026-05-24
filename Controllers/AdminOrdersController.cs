@@ -61,6 +61,29 @@ public class AdminOrdersController : Controller
         var order = await _db.Orders.FindAsync(id);
         if (order == null) return NotFound();
         order.Status = status;
+
+        if (status == OrderStatus.PendingPayment && order.PaymentMethod == "BANK_TRANSFER")
+        {
+            var now = DateTime.UtcNow;
+            if (!order.PaymentExpireAt.HasValue || order.PaymentExpireAt.Value <= now)
+            {
+                order.PaymentExpireAt = now.AddHours(2);
+            }
+
+            if (order.PaymentStatus is "PAID" or "EXPIRED" or "UNPAID")
+            {
+                order.PaymentStatus = "WAITING_PAYMENT";
+            }
+        }
+
+        if (status is OrderStatus.Processing or OrderStatus.Delivering or OrderStatus.Completed)
+        {
+            if (order.PaymentStatus == "WAITING_PAYMENT")
+            {
+                order.PaymentStatus = "WAITING_CONFIRMATION";
+            }
+        }
+
         await _db.SaveChangesAsync();
         return RedirectToAction(nameof(Index));
     }
