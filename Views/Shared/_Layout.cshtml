@@ -72,7 +72,6 @@ else
             @if (User.Identity?.IsAuthenticated == true)
             {
                 <a class="text-light text-decoration-none" asp-controller="Account" asp-action="Profile">Thông tin tài khoản</a>
-                <a class="text-light text-decoration-none" asp-controller="Account" asp-action="ChangePassword">Đổi mật khẩu</a>
                 <a class="text-light text-decoration-none" asp-controller="Orders" asp-action="MyOrders">Đơn hàng</a>
                 @if (User.IsInRole("Admin"))
                 {
