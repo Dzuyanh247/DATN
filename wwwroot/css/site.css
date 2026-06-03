@@ -329,3 +329,235 @@
         font-size: 24px;
     }
 }
+
+.compare-floating-bar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1080;
+    pointer-events: none;
+}
+
+.compare-floating-card {
+    pointer-events: auto;
+    margin: 0 auto 14px;
+    padding: 12px 14px;
+    border: 1px solid rgba(220, 53, 69, .18);
+    border-radius: 18px;
+    background: rgba(255, 255, 255, .96);
+    backdrop-filter: blur(8px);
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 14px;
+    align-items: center;
+}
+
+.compare-floating-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: #dc3545;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.compare-floating-products {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.compare-floating-item {
+    min-width: 0;
+    border: 1px solid #eee;
+    border-radius: 12px;
+    padding: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #fff;
+}
+
+.compare-floating-item img {
+    width: 42px;
+    height: 42px;
+    border-radius: 8px;
+    object-fit: cover;
+    background: #f8f9fa;
+}
+
+.compare-floating-item span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 600;
+}
+
+.compare-floating-placeholder {
+    color: #6c757d;
+    border-style: dashed;
+}
+
+.compare-floating-actions {
+    display: inline-flex;
+    gap: 8px;
+    white-space: nowrap;
+}
+
+.compare-page {
+    --compare-border: #e9ecef;
+}
+
+.compare-title {
+    font-weight: 900;
+    letter-spacing: .03em;
+}
+
+.compare-table-card {
+    overflow: visible;
+}
+
+.compare-table-responsive {
+    max-height: calc(100vh - 150px);
+}
+
+.compare-table {
+    min-width: 760px;
+}
+
+.compare-table th,
+.compare-table td {
+    border-color: var(--compare-border);
+    vertical-align: middle;
+}
+
+.compare-sticky-head {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: #fff;
+    box-shadow: 0 2px 0 rgba(0, 0, 0, .04);
+}
+
+.compare-spec-col {
+    width: 22%;
+    background: #f8f9fa !important;
+    color: #495057;
+    text-transform: uppercase;
+    font-size: .82rem;
+    letter-spacing: .04em;
+}
+
+.compare-product-col {
+    width: 39%;
+    background: #fff !important;
+}
+
+.compare-product-head {
+    display: flex;
+    gap: 14px;
+    align-items: center;
+}
+
+.compare-product-head img {
+    width: 96px;
+    height: 96px;
+    border-radius: 14px;
+    object-fit: contain;
+    background: #f8f9fa;
+    border: 1px solid #f1f3f5;
+}
+
+.compare-product-name {
+    color: #212529;
+    font-weight: 800;
+    text-decoration: none;
+}
+
+.compare-product-name:hover {
+    color: #dc3545;
+}
+
+.compare-price {
+    color: #dc3545;
+    font-size: 1.1rem;
+    font-weight: 900;
+    margin-top: 6px;
+}
+
+.compare-old-price {
+    color: #adb5bd;
+    font-size: .9rem;
+    text-decoration: line-through;
+}
+
+.compare-empty-product {
+    min-height: 96px;
+    border: 1px dashed #ced4da;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: #6c757d;
+}
+
+.compare-spec-label {
+    background: #f8f9fa !important;
+    font-weight: 800;
+    color: #343a40;
+}
+
+.compare-mobile-info-row {
+    display: none;
+}
+
+@media (max-width: 991px) {
+    .compare-floating-card {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .compare-floating-actions {
+        justify-content: stretch;
+    }
+
+    .compare-floating-actions .btn {
+        flex: 1;
+    }
+}
+
+@media (max-width: 767px) {
+    body {
+        padding-bottom: 150px;
+    }
+
+    .compare-floating-card {
+        margin-bottom: 8px;
+        border-radius: 14px;
+    }
+
+    .compare-floating-products {
+        grid-template-columns: 1fr;
+    }
+
+    .compare-table {
+        min-width: 620px;
+    }
+
+    .compare-product-head {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .compare-product-head img {
+        width: 74px;
+        height: 74px;
+    }
+
+    .compare-mobile-info-row {
+        display: table-row;
+    }
+}

@@ -26,6 +26,10 @@
     <div class="ttg-price">@finalPrice.ToString("N0") VNĐ</div>
     <div class="ttg-old-price">@(finalPrice < Model.Price ? $"{Model.Price:N0} VNĐ" : "")</div>
     <span class="ttg-stock">@(Model.IsInStock ? "Còn hàng" : "Hết hàng")</span>
+    <form method="get" asp-controller="Compare" asp-action="Add" asp-route-productId="@Model.Id" class="mt-2">
+        <input type="hidden" name="returnUrl" value="@($"{Context.Request.Path}{Context.Request.QueryString}")" />
+        <button class="btn btn-outline-danger w-100" type="submit"><i class="bi bi-columns-gap"></i> So sánh</button>
+    </form>
     @if (Model.IsInStock)
     {
         <form method="post" asp-controller="Cart" asp-action="Add" class="mt-2">

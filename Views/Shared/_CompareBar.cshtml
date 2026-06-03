@@ -1,0 +1,51 @@
+@model IReadOnlyList<Product>
+@{
+    var compareProducts = Model ?? Array.Empty<Product>();
+    var currentReturnUrl = $"{Context.Request.Path}{Context.Request.QueryString}";
+}
+
+@if (compareProducts.Any())
+{
+    <div class="compare-floating-bar shadow-lg" role="region" aria-label="Danh sách so sánh sản phẩm">
+        <div class="container ttg-shell">
+            <div class="compare-floating-card">
+                <div class="compare-floating-title">
+                    <i class="bi bi-columns-gap"></i>
+                    <span>Đang so sánh:</span>
+                </div>
+                <div class="compare-floating-products">
+                    @foreach (var product in compareProducts)
+                    {
+                        var image = ImageUrlHelper.ResolveImageUrl(product.ProductImages.FirstOrDefault(x => x.IsPrimary)?.ImageUrl
+                            ?? product.ProductImages.OrderBy(x => x.SortOrder).FirstOrDefault()?.ImageUrl
+                            ?? product.ThumbnailImage, "/images/no-image.png");
+                        <div class="compare-floating-item">
+                            <img src="@image" alt="@product.Name" onerror="this.onerror=null;this.src='/images/no-image.png';" />
+                            <span title="@product.Name">@product.Name</span>
+                            <form method="post" asp-controller="Compare" asp-action="Remove" class="d-inline">
+                                <input type="hidden" name="productId" value="@product.Id" />
+                                <input type="hidden" name="returnUrl" value="@currentReturnUrl" />
+                                <button type="submit" class="btn btn-sm btn-link text-danger p-0" aria-label="Xóa @product.Name khỏi danh sách so sánh">
+                                    <i class="bi bi-x-circle"></i>
+                                </button>
+                            </form>
+                        </div>
+                    }
+                    @for (var i = compareProducts.Count; i < 2; i++)
+                    {
+                        <div class="compare-floating-item compare-floating-placeholder">
+                            <i class="bi bi-plus-circle"></i>
+                            <span>Chọn thêm sản phẩm</span>
+                        </div>
+                    }
+                </div>
+                <div class="compare-floating-actions">
+                    <a asp-controller="Compare" asp-action="Index" class="btn btn-danger @(compareProducts.Count < 2 ? "disabled" : string.Empty)" aria-disabled="@(compareProducts.Count < 2)">
+                        So sánh ngay
+                    </a>
+                    <a asp-controller="Compare" asp-action="Clear" asp-route-returnUrl="@currentReturnUrl" class="btn btn-outline-secondary">Xóa tất cả</a>
+                </div>
+            </div>
+        </div>
+    </div>
+}
