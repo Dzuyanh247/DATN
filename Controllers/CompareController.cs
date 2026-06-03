@@ -1,8 +1,8 @@
-using System.Text.Json;
 using System.Text.RegularExpressions;
 using Datn.PcStore.Data;
 using Datn.PcStore.Helpers;
 using Datn.PcStore.Models;
+using Datn.PcStore.Services;
 using Datn.PcStore.ViewModels;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -12,10 +12,9 @@ namespace Datn.PcStore.Controllers;
 [Route("[controller]")]
 public class CompareController : Controller
 {
-    private const string SessionKey = "CompareProductIds";
     private static readonly string[] PreferredSpecOrder =
     {
-        "CPU", "GPU", "RAM", "SSD", "Mainboard", "PSU", "Màn hình", "Case", "Bảo hành"
+        "CPU", "GPU", "RAM", "SSD", "Mainboard", "PSU/Nguồn", "Case", "Bảo hành"
     };
 
     private static readonly Dictionary<string, string[]> SpecAliases = new(StringComparer.OrdinalIgnoreCase)
@@ -25,20 +24,24 @@ public class CompareController : Controller
         ["RAM"] = new[] { "ram", "memory", "bộ nhớ", "bo nho", "ddr" },
         ["SSD"] = new[] { "ssd", "hdd", "ổ cứng", "o cung", "storage", "nvme" },
         ["Mainboard"] = new[] { "mainboard", "main", "motherboard", "bo mạch chủ", "bo mach chu", "b760", "z790", "h610", "b650", "x670" },
-        ["PSU"] = new[] { "psu", "nguồn", "nguon", "power", "watt", "650w", "750w" },
-        ["Màn hình"] = new[] { "màn hình", "man hinh", "monitor", "display" },
+        ["PSU/Nguồn"] = new[] { "psu", "nguồn", "nguon", "power", "watt", "650w", "750w" },
         ["Case"] = new[] { "case", "vỏ", "vo may", "vỏ máy" },
         ["Bảo hành"] = new[] { "bảo hành", "bao hanh", "warranty" }
     };
 
     private readonly ApplicationDbContext _db;
+    private readonly ICompareService _compareService;
 
-    public CompareController(ApplicationDbContext db) => _db = db;
+    public CompareController(ApplicationDbContext db, ICompareService compareService)
+    {
+        _db = db;
+        _compareService = compareService;
+    }
 
     [HttpGet("")]
     public async Task<IActionResult> Index()
     {
-        var products = await GetSelectedProductsAsync();
+        var products = await _compareService.GetProductsAsync();
         var compareProducts = products.Select(BuildCompareProduct).ToList();
 
         var labels = compareProducts
@@ -72,34 +75,28 @@ public class CompareController : Controller
             return RedirectToSafeReturnUrl(returnUrl);
         }
 
-        var ids = GetCompareIds();
-        if (!ids.Contains(productId))
+        if (_compareService.Contains(productId))
         {
-            if (ids.Count >= 2)
-            {
-                TempData["ErrorMessage"] = "Bạn chỉ có thể so sánh tối đa 2 sản phẩm.";
-                return RedirectToSafeReturnUrl(returnUrl);
-            }
-
-            ids.Add(productId);
-            SaveCompareIds(ids);
-            TempData["SuccessMessage"] = "Đã thêm sản phẩm vào danh sách so sánh.";
-        }
-        else
-        {
-            TempData["SuccessMessage"] = "Sản phẩm đã có trong danh sách so sánh.";
+            TempData["InfoMessage"] = "Sản phẩm đã nằm trong danh sách so sánh.";
+            return RedirectToSafeReturnUrl(returnUrl);
         }
 
+        if (_compareService.GetIds().Count >= CompareSessionService.MaxCompareProducts)
+        {
+            TempData["ErrorMessage"] = "Bạn chỉ có thể so sánh tối đa 2 sản phẩm. Hãy xóa một sản phẩm trước.";
+            return RedirectToSafeReturnUrl(returnUrl);
+        }
+
+        _compareService.Add(productId);
+        TempData["SuccessMessage"] = "Đã thêm sản phẩm vào danh sách so sánh.";
         return RedirectToSafeReturnUrl(returnUrl);
     }
 
     [HttpPost("Remove")]
     public IActionResult Remove(int productId, string? returnUrl = null)
     {
-        var ids = GetCompareIds();
-        if (ids.Remove(productId))
+        if (_compareService.Remove(productId))
         {
-            SaveCompareIds(ids);
             TempData["SuccessMessage"] = "Đã xóa sản phẩm khỏi danh sách so sánh.";
         }
 
@@ -109,25 +106,12 @@ public class CompareController : Controller
     [HttpGet("Clear")]
     public IActionResult Clear(string? returnUrl = null)
     {
-        HttpContext.Session.Remove(SessionKey);
+        _compareService.Clear();
         TempData["SuccessMessage"] = "Đã xóa danh sách so sánh.";
         return RedirectToSafeReturnUrl(returnUrl);
     }
 
-    private async Task<List<Product>> GetSelectedProductsAsync()
-    {
-        var ids = GetCompareIds();
-        if (ids.Count == 0) return new List<Product>();
-
-        var products = await _db.Products
-            .Include(p => p.ProductImages.OrderBy(i => i.SortOrder))
-            .Where(p => ids.Contains(p.Id) && p.IsActive)
-            .ToListAsync();
-
-        return ids.Select(id => products.FirstOrDefault(p => p.Id == id)).Where(p => p != null).Cast<Product>().ToList();
-    }
-
-    private CompareProductVm BuildCompareProduct(Product product)
+    private static CompareProductVm BuildCompareProduct(Product product)
     {
         var imageUrl = ImageUrlHelper.ResolveImageUrl(
             product.ProductImages.FirstOrDefault(x => x.IsPrimary)?.ImageUrl
@@ -222,24 +206,6 @@ public class CompareController : Controller
         var index = Array.FindIndex(PreferredSpecOrder, x => x.Equals(label, StringComparison.OrdinalIgnoreCase));
         return index >= 0 ? index : PreferredSpecOrder.Length;
     }
-
-    private List<int> GetCompareIds()
-    {
-        var raw = HttpContext.Session.GetString(SessionKey);
-        if (string.IsNullOrWhiteSpace(raw)) return new List<int>();
-
-        try
-        {
-            return JsonSerializer.Deserialize<List<int>>(raw)?.Distinct().Take(2).ToList() ?? new List<int>();
-        }
-        catch (JsonException)
-        {
-            return new List<int>();
-        }
-    }
-
-    private void SaveCompareIds(List<int> ids)
-        => HttpContext.Session.SetString(SessionKey, JsonSerializer.Serialize(ids.Distinct().Take(2).ToList()));
 
     private IActionResult RedirectToSafeReturnUrl(string? returnUrl)
     {

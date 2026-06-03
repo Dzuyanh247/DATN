@@ -1,0 +1,60 @@
+@model IReadOnlyList<Product>
+@{
+    var compareProducts = Model ?? Array.Empty<Product>();
+    var currentReturnUrl = $"{Context.Request.Path}{Context.Request.QueryString}";
+}
+
+@if (compareProducts.Any())
+{
+    <div class="compare-tray shadow-lg" role="region" aria-label="Danh sách so sánh sản phẩm">
+        <div class="container ttg-shell">
+            <div class="compare-tray-card">
+                <div class="compare-tray-title">
+                    <i class="bi bi-columns-gap"></i>
+                    <span>Đang so sánh</span>
+                    <span class="badge rounded-pill text-bg-light">@compareProducts.Count/2</span>
+                </div>
+                <div class="compare-tray-products">
+                    @foreach (var product in compareProducts)
+                    {
+                        var image = ImageUrlHelper.ResolveImageUrl(product.ProductImages.FirstOrDefault(x => x.IsPrimary)?.ImageUrl
+                            ?? product.ProductImages.OrderBy(x => x.SortOrder).FirstOrDefault()?.ImageUrl
+                            ?? product.ThumbnailImage, "/images/no-image.png");
+                        <div class="compare-tray-item">
+                            <img src="@image" alt="@product.Name" onerror="this.onerror=null;this.src='/images/no-image.png';" />
+                            <a asp-controller="Products" asp-action="Detail" asp-route-id="@product.Id" title="@product.Name">@product.Name</a>
+                            <form method="post" asp-controller="Compare" asp-action="Remove" class="d-inline">
+                                <input type="hidden" name="productId" value="@product.Id" />
+                                <input type="hidden" name="returnUrl" value="@currentReturnUrl" />
+                                <button type="submit" class="btn btn-sm btn-link text-danger p-0" aria-label="Xóa @product.Name khỏi danh sách so sánh">
+                                    <i class="bi bi-x-circle"></i>
+                                </button>
+                            </form>
+                        </div>
+                    }
+                    @for (var i = compareProducts.Count; i < 2; i++)
+                    {
+                        <div class="compare-tray-item compare-tray-placeholder">
+                            <i class="bi bi-plus-circle"></i>
+                            <span>Chọn thêm 1 sản phẩm</span>
+                        </div>
+                    }
+                </div>
+                <div class="compare-tray-actions">
+                    @if (compareProducts.Count >= 2)
+                    {
+                        <a asp-controller="Compare" asp-action="Index" class="btn btn-danger btn-sm">So sánh ngay</a>
+                    }
+                    else
+                    {
+                        <span class="d-inline-block" tabindex="0" data-bs-toggle="tooltip" title="Vui lòng chọn thêm 1 sản phẩm để so sánh.">
+                            <a class="btn btn-danger btn-sm disabled" aria-disabled="true">So sánh ngay</a>
+                        </span>
+                        <small class="compare-tray-hint">Vui lòng chọn thêm 1 sản phẩm để so sánh.</small>
+                    }
+                    <a asp-controller="Compare" asp-action="Clear" asp-route-returnUrl="@currentReturnUrl" class="btn btn-outline-secondary btn-sm">Xóa tất cả</a>
+                </div>
+            </div>
+        </div>
+    </div>
+}
