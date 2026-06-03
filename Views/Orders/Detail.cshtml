@@ -30,6 +30,9 @@
 <p><strong>Địa chỉ giao hàng:</strong> @Model.ShippingAddress</p>
 <p><strong>Phương thức thanh toán:</strong> @Model.PaymentMethod</p>
 <p><strong>Tổng tiền:</strong> @Model.TotalAmount.ToString("N0") đ</p>
+<div class="mb-3">
+    <a asp-action="Quotation" asp-route-orderId="@Model.Id" class="btn btn-sm btn-danger">In báo giá</a>
+</div>
 
 @if (isAwaitingConfirmation)
 {

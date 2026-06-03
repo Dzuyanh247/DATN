@@ -22,9 +22,12 @@
         <img src="@qrData" alt="QR chuyển khoản" style="max-width:280px" class="img-thumbnail" />
     </div>
 
-    <form asp-action="ConfirmTransferred" method="post">
-        @Html.AntiForgeryToken()
-        <input type="hidden" name="id" value="@Model.Id" />
-        <button class="btn btn-primary">Tôi đã thanh toán</button>
-    </form>
+    <div class="d-flex flex-wrap gap-2">
+        <form asp-action="ConfirmTransferred" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="id" value="@Model.Id" />
+            <button class="btn btn-primary">Tôi đã thanh toán</button>
+        </form>
+        <a asp-action="Quotation" asp-route-orderId="@Model.Id" class="btn btn-danger">In báo giá</a>
+    </div>
 </div>

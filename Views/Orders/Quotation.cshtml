@@ -1,0 +1,85 @@
+@model QuotationViewModel
+@using System.Globalization
+@{
+    ViewData["Title"] = $"Báo giá {Model.OrderCode}";
+    var viCulture = CultureInfo.GetCultureInfo("vi-VN");
+}
+<link rel="stylesheet" href="~/css/quotation.css" />
+
+<div class="quotation-page">
+    <section class="quotation-sheet">
+        <header class="quotation-header">
+            <div class="quotation-logo" aria-label="Logo TTGSHOP">
+                <div class="logo-mark">TTG</div>
+                <div class="logo-text">TTGSHOP</div>
+            </div>
+            <div class="store-info">
+                <h1>TTGSHOP</h1>
+                <p><strong>HÀ NỘI:</strong> Số 83-85 Thái Hà, Trung Liệt, Đống Đa, Hà Nội</p>
+                <p><strong>TP.HCM:</strong> Số 83A Cửu Long, Phường 15, Quận 10, TP Hồ Chí Minh</p>
+                <p><strong>Hotline:</strong> 098.688.0497</p>
+                <p><strong>Email:</strong> phamxuandong123@gmail.com</p>
+            </div>
+        </header>
+
+        <h2 class="quotation-title">BẢNG BÁO GIÁ SẢN PHẨM</h2>
+        <div class="quotation-date">Ngày báo giá: @Model.QuotationDate.ToString("dd/MM/yyyy")</div>
+
+        <section class="customer-info" aria-label="Thông tin khách hàng">
+            <div><span>Ông/bà:</span> <strong>@Model.CustomerName</strong></div>
+            <div><span>Đơn vị:</span></div>
+            <div><span>Địa chỉ:</span> @Model.CustomerAddress</div>
+            <div><span>Điện thoại:</span> @Model.CustomerPhone</div>
+            <div><span>Email:</span> @Model.CustomerEmail</div>
+            <div><span>Fax:</span></div>
+        </section>
+
+        <p class="quotation-intro">TTG xin trân trọng gửi tới quý khách hàng bảng chào giá sau:</p>
+
+        <table class="quotation-table">
+            <thead>
+                <tr>
+                    <th>Mã sản phẩm</th>
+                    <th>Hình ảnh</th>
+                    <th>Tên sản phẩm</th>
+                    <th>Số lượng</th>
+                    <th>Đơn giá</th>
+                    <th>Bảo hành</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model.Items)
+                {
+                    var img = ImageUrlHelper.ResolveImageUrl(item.ProductImage, "/images/placeholders/product-placeholder.png");
+                    <tr>
+                        <td class="product-code">@item.ProductCode</td>
+                        <td class="product-image-cell">
+                            <img src="@img" alt="@item.ProductName" onerror="this.onerror=null;this.src='/images/placeholders/product-placeholder.png';" />
+                        </td>
+                        <td class="product-name">
+                            <strong>@item.ProductName</strong>
+                            @if (!string.IsNullOrWhiteSpace(item.Warranty))
+                            {
+                                <span>Bảo hành: @item.Warranty</span>
+                            }
+                        </td>
+                        <td class="text-center">@item.Quantity</td>
+                        <td class="text-end">@item.UnitPrice.ToString("N0", viCulture)</td>
+                        <td class="text-center">@item.Warranty</td>
+                    </tr>
+                }
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="4" class="total-label">Tổng cộng</td>
+                    <td colspan="2" class="total-amount">@Model.TotalAmount.ToString("N0", viCulture) đ</td>
+                </tr>
+            </tfoot>
+        </table>
+
+        <div class="quotation-actions print-hidden">
+            <a class="btn-buy" asp-controller="Products" asp-action="Index">Đặt mua</a>
+            <button class="btn-print" type="button" onclick="window.print()">In đơn hàng</button>
+        </div>
+    </section>
+</div>
