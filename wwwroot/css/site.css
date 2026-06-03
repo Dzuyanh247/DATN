@@ -770,3 +770,26 @@
         flex-basis: 100%;
     }
 }
+
+.report-action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 38px;
+    border-radius: 6px;
+    font-weight: 600;
+}
+
+.report-action-btn--excel {
+    border: 1px solid #0f6b3d;
+    background: #0f6b3d;
+    color: #fff;
+}
+
+.report-action-btn--excel:hover,
+.report-action-btn--excel:focus {
+    border-color: #0b5430;
+    background: #0b5430;
+    color: #fff;
+}

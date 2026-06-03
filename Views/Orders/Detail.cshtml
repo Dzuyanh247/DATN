@@ -30,6 +30,7 @@
 <p><strong>Tổng tiền:</strong> @Model.TotalAmount.ToString("N0") đ</p>
 <div class="mb-3">
     <a asp-action="Quotation" asp-route-orderId="@Model.Id" class="btn btn-sm btn-danger">In báo giá</a>
+    <a asp-action="ExportExcel" asp-route-orderId="@Model.Id" class="btn btn-sm report-action-btn report-action-btn--excel"><i class="bi bi-file-earmark-spreadsheet"></i> Tải file Excel</a>
 </div>
 
 <div id="payment-status-panel">

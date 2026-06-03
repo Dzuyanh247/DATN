@@ -100,12 +100,8 @@
                             <div class="mt-3"><input type="checkbox" id="termsCheck" required /> <label for="termsCheck">Tôi đã đọc và đồng ý với các Điều kiện giao dịch chung của website</label></div>
                             <div class="mt-3"><label>Phương thức thanh toán*</label><select class="ui-input" name="PaymentMethod" required><option value="COD" selected="@(Model.PaymentMethod == "COD")">Thanh toán khi nhận hàng (COD)</option><option value="BANK_TRANSFER" selected="@(Model.PaymentMethod == "BANK_TRANSFER")">Chuyển khoản ngân hàng</option></select></div>
 
-                            <div class="action-grid">
-                                <button type="button" class="action-btn dark" disabled>TẢI FILE EXCEL</button>
-                                <button type="submit" class="action-btn red">ĐẶT HÀNG</button>
-                                <button type="button" class="action-btn navy">TRẢ GÓP QUA HỒ SƠ</button>
-                                <button type="submit" class="action-btn red">MUA NGAY</button>
-                                <button type="button" class="action-btn blue">TRẢ GÓP QUA THẺ</button>
+                            <div class="checkout-actions">
+                                <button type="submit" class="checkout-submit-btn">ĐẶT HÀNG</button>
                             </div>
                         </div>
                     </section>
