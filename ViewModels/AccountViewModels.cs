@@ -17,6 +17,34 @@ public class LoginVm
     [Required] public string Password { get; set; } = string.Empty;
 }
 
+
+public class ForgotPasswordViewModel
+{
+    [Required(ErrorMessage = "Vui lòng nhập email")]
+    [EmailAddress(ErrorMessage = "Email không đúng định dạng")]
+    public string Email { get; set; } = string.Empty;
+}
+
+public class VerifyResetCodeViewModel
+{
+    [Required(ErrorMessage = "Vui lòng nhập email")]
+    [EmailAddress(ErrorMessage = "Email không đúng định dạng")]
+    public string Email { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "Vui lòng nhập mã xác nhận")]
+    [RegularExpression("^[0-9]{6}$", ErrorMessage = "Mã xác nhận phải gồm 6 chữ số")]
+    public string Code { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "Vui lòng nhập mật khẩu mới")]
+    [DataType(DataType.Password)]
+    public string NewPassword { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "Vui lòng nhập lại mật khẩu mới")]
+    [Compare(nameof(NewPassword), ErrorMessage = "Nhập lại mật khẩu mới không khớp")]
+    [DataType(DataType.Password)]
+    public string ConfirmPassword { get; set; } = string.Empty;
+}
+
 public class AccountProfileViewModel
 {
     [Required(ErrorMessage = "Vui lòng nhập họ tên")]

@@ -1,0 +1,42 @@
+@model VerifyResetCodeViewModel
+
+<h3>Đặt lại mật khẩu</h3>
+@if (TempData["Ok"] is string okMessage)
+{
+    <div class="alert alert-success" role="alert">@okMessage</div>
+}
+@if (TempData["ErrorMessage"] is string errorMessage)
+{
+    <div class="alert alert-danger" role="alert">@errorMessage</div>
+}
+<form method="post" class="card p-3">
+    <div asp-validation-summary="All" class="text-danger"></div>
+    <div class="mb-3">
+        <label asp-for="Email" class="form-label">Email</label>
+        <input asp-for="Email" class="form-control" autocomplete="email" />
+        <span asp-validation-for="Email" class="text-danger"></span>
+    </div>
+    <div class="mb-3">
+        <label asp-for="Code" class="form-label">Mã xác nhận</label>
+        <input asp-for="Code" class="form-control" inputmode="numeric" maxlength="6" autocomplete="one-time-code" />
+        <span asp-validation-for="Code" class="text-danger"></span>
+    </div>
+    <div class="mb-3">
+        <label asp-for="NewPassword" class="form-label">Mật khẩu mới</label>
+        <input asp-for="NewPassword" type="password" class="form-control" autocomplete="new-password" />
+        <span asp-validation-for="NewPassword" class="text-danger"></span>
+    </div>
+    <div class="mb-3">
+        <label asp-for="ConfirmPassword" class="form-label">Nhập lại mật khẩu mới</label>
+        <input asp-for="ConfirmPassword" type="password" class="form-control" autocomplete="new-password" />
+        <span asp-validation-for="ConfirmPassword" class="text-danger"></span>
+    </div>
+    <div class="d-flex justify-content-between align-items-center gap-3">
+        <button class="btn btn-primary">Đổi mật khẩu</button>
+        <a asp-controller="Account" asp-action="Login" class="small">Quay lại đăng nhập</a>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
