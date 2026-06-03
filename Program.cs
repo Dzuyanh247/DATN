@@ -43,6 +43,7 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
 builder.Services.AddScoped<IAccountPasswordResetService, AccountPasswordResetService>();
 builder.Services.AddScoped<ICartService, CartService>();
+builder.Services.AddScoped<ICompareService, CompareSessionService>();
 builder.Services.AddScoped<BuildCompatibilityService>();
 builder.Services.AddScoped<IProductImageStorageService, ProductImageStorageService>();
 builder.Services.AddHttpClient<IMapProvider, OpenRouteServiceProvider>(client =>

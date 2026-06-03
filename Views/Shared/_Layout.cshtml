@@ -1,10 +1,13 @@
 @using Microsoft.EntityFrameworkCore
 @using Datn.PcStore.Data
 @inject ApplicationDbContext DbContext
+@inject ICompareService CompareService
 @{
     var menuCategories = await DbContext.Categories.OrderBy(c => c.CreatedAt).ToListAsync();
     var categoryIdByName = menuCategories.ToDictionary(c => c.Name, c => c.Id, StringComparer.OrdinalIgnoreCase);
     var siteLogoUrl = ImageUrlHelper.ResolveImageUrl(await DbContext.SiteSettings.OrderBy(x => x.Id).Select(x => x.LogoUrl).FirstOrDefaultAsync(), string.Empty);
+    var compareProducts = await CompareService.GetProductsAsync();
+    var compareCount = compareProducts.Count;
     var controllerName = ViewContext.RouteData.Values["controller"]?.ToString() ?? string.Empty;
     var actionName = ViewContext.RouteData.Values["action"]?.ToString() ?? string.Empty;
     var isAdminPage = controllerName.StartsWith("Admin") ||
@@ -24,7 +27,7 @@
     <link rel="stylesheet" href="~/css/home-redesign.css" />
     <link rel="stylesheet" href="~/css/admin.css" />
 </head>
-<body>
+<body class="@(compareCount > 0 ? "has-compare-tray" : string.Empty)">
 @if (isAdminPage)
 {
     <div class="admin-shell">
@@ -109,6 +112,7 @@ else
         <div class="ttg-header-actions">
             <a class="ttg-cta d-inline-flex align-items-center gap-2" href="tel:19006868"><span class="icon"><i class="bi bi-telephone"></i></span><span>Hotline<br><b>1900 6868</b></span></a>
             <a class="ttg-cta d-inline-flex align-items-center gap-2" asp-controller="BuildPc" asp-action="Index"><span class="icon"><i class="bi bi-tools"></i></span><span>Xây dựng<br><b>Cấu hình PC</b></span></a>
+            <a class="ttg-cta d-inline-flex align-items-center gap-2 position-relative" asp-controller="Compare" asp-action="Index"><span class="icon"><i class="bi bi-columns-gap"></i></span><span>So sánh<br><b>(@compareCount)</b></span></a>
             <a class="ttg-cta d-inline-flex align-items-center gap-2 position-relative" asp-controller="Cart" asp-action="Index"><span class="icon"><i class="bi bi-cart3"></i></span><span>Giỏ hàng</span><span id="cart-count-badge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill text-bg-danger">@await Component.InvokeAsync("CartCount")</span></a>
         </div>
     </div>
@@ -135,6 +139,13 @@ else
         </script>
     }
 
+    @if (TempData["InfoMessage"] != null)
+    {
+        <script>
+            window.__infoToastMessage = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(TempData["InfoMessage"]?.ToString()));
+        </script>
+    }
+
     @if (TempData["ErrorMessage"] != null)
     {
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
@@ -146,6 +157,7 @@ else
     @await Html.PartialAsync("_GlobalNotifications")
     @RenderBody()
 </div>
+@await Html.PartialAsync("_CompareTray", compareProducts)
 }
 
 <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1090;">
@@ -178,6 +190,8 @@ window.showGlobalToast=function(message,type){window.showToast(message,type||'su
 function u(c){const b=document.getElementById('cart-count-badge');if(!b)return;b.textContent=c;}
 document.querySelectorAll('form[action*="/Cart/Add"]').forEach(function(f){f.addEventListener('submit',async function(e){e.preventDefault();const d=new FormData(f);try{const r=await fetch(f.action,{method:'POST',headers:{'X-Requested-With':'XMLHttpRequest','Accept':'application/json'},body:d});const j=await r.json();if(!r.ok||!j.success){window.showGlobalToast((j&&j.message)||'Có lỗi khi thêm vào giỏ.','danger');return;}window.showGlobalToast(j.message||'Đã thêm sản phẩm vào giỏ hàng!','success');u(j.cartCount??0);}catch{window.showGlobalToast('Không thể kết nối máy chủ.','danger');}});});
 if(window.__successToastMessage){window.showGlobalToast(window.__successToastMessage,'success');}
+if(window.__infoToastMessage){window.showGlobalToast(window.__infoToastMessage,'info');}
+document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el){new bootstrap.Tooltip(el);});
 })();
 </script>
 <script src="~/js/tawk-chat.js"></script>

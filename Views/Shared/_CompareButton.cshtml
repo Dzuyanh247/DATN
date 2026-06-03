@@ -1,0 +1,22 @@
+@model Product
+@inject ICompareService CompareService
+@{
+    var selected = CompareService.Contains(Model.Id);
+    var currentReturnUrl = $"{Context.Request.Path}{Context.Request.QueryString}";
+}
+
+@if (selected)
+{
+    <a asp-controller="Compare" asp-action="Index" class="btn btn-sm btn-outline-secondary ttg-compare-btn is-selected" title="Sản phẩm đã nằm trong danh sách so sánh">
+        <i class="bi bi-check2-circle"></i> Đã chọn
+    </a>
+}
+else
+{
+    <form method="get" asp-controller="Compare" asp-action="Add" asp-route-productId="@Model.Id" class="ttg-compare-form">
+        <input type="hidden" name="returnUrl" value="@currentReturnUrl" />
+        <button class="btn btn-sm btn-outline-secondary ttg-compare-btn" type="submit">
+            <i class="bi bi-columns-gap"></i> So sánh
+        </button>
+    </form>
+}
