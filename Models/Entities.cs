@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Datn.PcStore.Models;
 
@@ -65,6 +66,12 @@ public class Product : BaseEntity
     public string Description { get; set; } = string.Empty;
     public string DetailDescription { get; set; } = string.Empty;
     public string Specifications { get; set; } = string.Empty;
+    [NotMapped]
+    public string TechnicalSpecifications
+    {
+        get => Specifications;
+        set => Specifications = value;
+    }
     public int WarrantyMonths { get; set; } = 12;
     [MaxLength(50)] public string WarrantyDuration { get; set; } = "12 tháng";
     public bool IsActive { get; set; } = true;

@@ -91,8 +91,41 @@
 
             <div class="apf-card">
                 <h5 class="apf-title">Thông số kỹ thuật</h5>
-                <textarea asp-for="Specifications" rows="10" class="form-control" placeholder="Mỗi dòng là một thông số. Ví dụ: CPU: Intel Core i5"></textarea>
-                <span asp-validation-for="Specifications" class="text-danger"></span>
+                <input type="hidden" asp-for="Specifications" />
+
+                <label for="component-spec-paste" class="form-label">Dán nhanh cấu hình từ bảng</label>
+                <textarea id="component-spec-paste" rows="6" class="form-control" placeholder="Dán nguyên bảng STT / Mô tả thiết bị / SL / BH từ TTGSHOP vào đây..."></textarea>
+                <div class="d-flex flex-wrap gap-2 mt-3 mb-3">
+                    <button type="button" class="btn btn-outline-primary" id="parse-component-specs">Tách cấu hình</button>
+                    <button type="button" class="btn btn-outline-secondary" id="add-component-spec-row">Thêm dòng</button>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle" id="component-spec-table">
+                        <thead>
+                            <tr>
+                                <th class="text-center" style="width:80px;">STT</th>
+                                <th>Mô tả thiết bị</th>
+                                <th class="text-center" style="width:90px;">SL</th>
+                                <th class="text-center" style="width:120px;">BH</th>
+                                <th class="text-center" style="width:100px;">Xóa dòng</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @for (var i = 0; i < Model.ComponentSpecs.Count; i++)
+                            {
+                                <tr>
+                                    <td><input class="form-control form-control-sm text-center js-spec-stt" type="number" min="1" name="ComponentSpecs[@i].Stt" value="@Model.ComponentSpecs[i].Stt" /></td>
+                                    <td><input class="form-control form-control-sm js-spec-description" name="ComponentSpecs[@i].Description" value="@Model.ComponentSpecs[i].Description" /></td>
+                                    <td><input class="form-control form-control-sm text-center js-spec-quantity" type="number" min="1" name="ComponentSpecs[@i].Quantity" value="@Model.ComponentSpecs[i].Quantity" /></td>
+                                    <td><input class="form-control form-control-sm text-center js-spec-warranty" name="ComponentSpecs[@i].Warranty" value="@Model.ComponentSpecs[i].Warranty" /></td>
+                                    <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger js-remove-component-spec">Xóa</button></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                <div class="form-text">Khi lưu, danh sách linh kiện trong bảng sẽ được lưu dạng JSON vào thông số kỹ thuật.</div>
             </div>
         </div>
 
@@ -154,6 +187,136 @@
 <partial name="_ValidationScriptsPartial" />
 
 <script>
+    (function () {
+        const pasteBox = document.getElementById('component-spec-paste');
+        const parseButton = document.getElementById('parse-component-specs');
+        const addButton = document.getElementById('add-component-spec-row');
+        const tableBody = document.querySelector('#component-spec-table tbody');
+        if (!pasteBox || !parseButton || !addButton || !tableBody) return;
+
+        function trimField(value) {
+            return (value || '').replace(/\s+/g, ' ').trim();
+        }
+
+        function isHeaderLine(line) {
+            const normalized = trimField(line).toLowerCase();
+            return normalized === 'stt mô tả thiết bị sl bh'
+                || normalized === 'stt mo ta thiet bi sl bh'
+                || (normalized.startsWith('stt ') && normalized.includes('mô tả') && normalized.includes(' sl') && normalized.endsWith('bh'));
+        }
+
+        window.parsePastedSpecs = function parsePastedSpecs(rawText) {
+            const result = [];
+            const lines = (rawText || '').split(/\r?\n/);
+            const fallbackRegex = /^\s*(\d+)\s+(.+?)\s+(\d+)\s+([0-9]+th|[0-9]+\s*tháng|[0-9]+)\s*$/i;
+
+            lines.forEach(line => {
+                if (!trimField(line) || isHeaderLine(line)) return;
+
+                let spec = null;
+                if (line.includes('	')) {
+                    const columns = line.split('	').map(trimField).filter(Boolean);
+                    if (columns.length >= 4 && !isHeaderLine(columns.join(' '))) {
+                        spec = {
+                            stt: parseInt(columns[0], 10) || result.length + 1,
+                            description: columns[1],
+                            quantity: parseInt(columns[2], 10) || 1,
+                            warranty: columns[3]
+                        };
+                    } else if (columns.length > 0) {
+                        const description = trimField(columns.slice(1).join(' ') || columns.join(' '));
+                        spec = { stt: result.length + 1, description, quantity: 1, warranty: '' };
+                    }
+                } else {
+                    const match = line.match(fallbackRegex);
+                    if (match) {
+                        spec = {
+                            stt: parseInt(match[1], 10) || result.length + 1,
+                            description: trimField(match[2]),
+                            quantity: parseInt(match[3], 10) || 1,
+                            warranty: trimField(match[4])
+                        };
+                    } else {
+                        const description = trimField(line.replace(/^\s*\d+\s+/, ''));
+                        if (description) spec = { stt: result.length + 1, description, quantity: 1, warranty: '' };
+                    }
+                }
+
+                if (spec && spec.description && !isHeaderLine(spec.description)) {
+                    result.push(spec);
+                }
+            });
+
+            return result;
+        };
+
+        function createInput(className, value, type) {
+            const input = document.createElement('input');
+            input.className = className;
+            input.value = value || '';
+            if (type) input.type = type;
+            if (type === 'number') input.min = '1';
+            return input;
+        }
+
+        function addRow(spec) {
+            const row = document.createElement('tr');
+            const sttCell = document.createElement('td');
+            const descriptionCell = document.createElement('td');
+            const quantityCell = document.createElement('td');
+            const warrantyCell = document.createElement('td');
+            const removeCell = document.createElement('td');
+
+            sttCell.appendChild(createInput('form-control form-control-sm text-center js-spec-stt', spec?.stt || tableBody.children.length + 1, 'number'));
+            descriptionCell.appendChild(createInput('form-control form-control-sm js-spec-description', spec?.description || '', 'text'));
+            quantityCell.appendChild(createInput('form-control form-control-sm text-center js-spec-quantity', spec?.quantity || 1, 'number'));
+            warrantyCell.appendChild(createInput('form-control form-control-sm text-center js-spec-warranty', spec?.warranty || '', 'text'));
+
+            removeCell.className = 'text-center';
+            const removeButton = document.createElement('button');
+            removeButton.type = 'button';
+            removeButton.className = 'btn btn-sm btn-outline-danger js-remove-component-spec';
+            removeButton.textContent = 'Xóa';
+            removeCell.appendChild(removeButton);
+
+            row.append(sttCell, descriptionCell, quantityCell, warrantyCell, removeCell);
+            tableBody.appendChild(row);
+            reindexRows();
+        }
+
+        function reindexRows() {
+            Array.from(tableBody.querySelectorAll('tr')).forEach((row, index) => {
+                row.querySelector('.js-spec-stt').name = `ComponentSpecs[${index}].Stt`;
+                row.querySelector('.js-spec-description').name = `ComponentSpecs[${index}].Description`;
+                row.querySelector('.js-spec-quantity').name = `ComponentSpecs[${index}].Quantity`;
+                row.querySelector('.js-spec-warranty').name = `ComponentSpecs[${index}].Warranty`;
+            });
+        }
+
+        function renderRows(specs) {
+            tableBody.innerHTML = '';
+            specs.forEach(addRow);
+            reindexRows();
+        }
+
+        parseButton.addEventListener('click', function () {
+            renderRows(window.parsePastedSpecs(pasteBox.value));
+        });
+
+        addButton.addEventListener('click', function () {
+            addRow({ stt: tableBody.children.length + 1, description: '', quantity: 1, warranty: '' });
+        });
+
+        tableBody.addEventListener('click', function (event) {
+            const button = event.target.closest('.js-remove-component-spec');
+            if (!button) return;
+            button.closest('tr')?.remove();
+            reindexRows();
+        });
+
+        reindexRows();
+    })();
+
     (function () {
         const list = document.getElementById('existing-image-list');
         const orderContainer = document.getElementById('existing-image-order-container');
