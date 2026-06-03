@@ -3,6 +3,7 @@ using Datn.PcStore.Services;
 using Datn.PcStore.Constants;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Data.SqlClient;
+using Microsoft.AspNetCore.Identity;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -28,8 +29,19 @@ builder.Services.AddMemoryCache();
 builder.Services.Configure<GhnOptions>(builder.Configuration.GetSection("GHN"));
 builder.Services.Configure<ShippingPolicyOptions>(builder.Configuration.GetSection("ShippingPolicy"));
 builder.Services.Configure<ShopAddressOptions>(builder.Configuration.GetSection("ShopAddress"));
+builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
+builder.Services.Configure<IdentityOptions>(options =>
+{
+    options.Password.RequiredLength = 6;
+    options.Password.RequireDigit = false;
+    options.Password.RequireLowercase = false;
+    options.Password.RequireUppercase = false;
+    options.Password.RequireNonAlphanumeric = false;
+});
 builder.Services.AddSession();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
+builder.Services.AddScoped<IAccountPasswordResetService, AccountPasswordResetService>();
 builder.Services.AddScoped<ICartService, CartService>();
 builder.Services.AddScoped<BuildCompatibilityService>();
 builder.Services.AddScoped<IProductImageStorageService, ProductImageStorageService>();

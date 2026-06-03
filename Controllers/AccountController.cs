@@ -1,4 +1,6 @@
 using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
 using Datn.PcStore.Constants;
 using Datn.PcStore.Data;
 using Datn.PcStore.Models;
@@ -16,12 +18,24 @@ public class AccountController : Controller
     private readonly ApplicationDbContext _db;
     private readonly IAuthService _authService;
     private readonly ICartService _cartService;
+    private readonly IEmailSender _emailSender;
+    private readonly IAccountPasswordResetService _passwordResetService;
+    private readonly ILogger<AccountController> _logger;
 
-    public AccountController(ApplicationDbContext db, IAuthService authService, ICartService cartService)
+    public AccountController(
+        ApplicationDbContext db,
+        IAuthService authService,
+        ICartService cartService,
+        IEmailSender emailSender,
+        IAccountPasswordResetService passwordResetService,
+        ILogger<AccountController> logger)
     {
         _db = db;
         _authService = authService;
         _cartService = cartService;
+        _emailSender = emailSender;
+        _passwordResetService = passwordResetService;
+        _logger = logger;
     }
 
     [HttpGet]
@@ -64,6 +78,133 @@ public class AccountController : Controller
 
     [HttpGet]
     public IActionResult Login() => View();
+
+    [HttpGet]
+    public IActionResult ForgotPassword() => View(new ForgotPasswordViewModel());
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ForgotPassword(ForgotPasswordViewModel vm)
+    {
+        if (!ModelState.IsValid) return View(vm);
+
+        var normalizedEmail = vm.Email.Trim();
+        var user = await _db.Users.FirstOrDefaultAsync(x => x.Email == normalizedEmail);
+        if (user != null)
+        {
+            var now = DateTime.UtcNow;
+            var activeOtps = await _db.PasswordResetOtps
+                .Where(x => x.UserId == user.Id && !x.IsUsed)
+                .ToListAsync();
+
+            foreach (var oldOtp in activeOtps)
+            {
+                oldOtp.IsUsed = true;
+                oldOtp.UsedAt = now;
+            }
+
+            var code = RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6");
+            _db.PasswordResetOtps.Add(new PasswordResetOtp
+            {
+                UserId = user.Id,
+                Email = normalizedEmail,
+                CodeHash = HashOtp(normalizedEmail, code),
+                ExpiresAt = now.AddMinutes(10),
+                IsUsed = false,
+                CreatedAt = now
+            });
+            await _db.SaveChangesAsync();
+
+            var plainTextMessage = $"Mã xác nhận đặt lại mật khẩu KKSHOP của bạn là {code}. Mã có hiệu lực 10 phút.";
+            var htmlMessage = $"<p>Xin chào {System.Net.WebUtility.HtmlEncode(user.FullName)},</p>"
+                + $"<p>Mã xác nhận đặt lại mật khẩu KKSHOP của bạn là <strong>{code}</strong>.</p>"
+                + "<p>Mã có hiệu lực 10 phút. Vui lòng không chia sẻ mã này với bất kỳ ai.</p>";
+
+            try
+            {
+                await _emailSender.SendEmailAsync(
+                    normalizedEmail,
+                    "Mã xác nhận đặt lại mật khẩu KKSHOP",
+                    htmlMessage,
+                    plainTextMessage);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Không thể gửi OTP đặt lại mật khẩu tới {Email}.", normalizedEmail);
+            }
+        }
+
+        TempData["Ok"] = "Nếu email tồn tại trong hệ thống, mã xác nhận đã được gửi.";
+        TempData["ResetEmail"] = normalizedEmail;
+        return RedirectToAction(nameof(VerifyResetCode));
+    }
+
+    [HttpGet]
+    public IActionResult VerifyResetCode()
+    {
+        return View(new VerifyResetCodeViewModel
+        {
+            Email = TempData.Peek("ResetEmail") as string ?? string.Empty
+        });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> VerifyResetCode(VerifyResetCodeViewModel vm)
+    {
+        if (!ModelState.IsValid) return View(vm);
+
+        var normalizedEmail = vm.Email.Trim();
+        var codeHash = HashOtp(normalizedEmail, vm.Code.Trim());
+        var user = await _db.Users.FirstOrDefaultAsync(x => x.Email == normalizedEmail);
+        if (user == null)
+        {
+            ModelState.AddModelError(nameof(vm.Code), "Mã xác nhận không hợp lệ.");
+            return View(vm);
+        }
+
+        var otp = await _db.PasswordResetOtps
+            .Where(x => x.UserId == user.Id && x.CodeHash == codeHash)
+            .OrderByDescending(x => x.CreatedAt)
+            .FirstOrDefaultAsync();
+
+        if (otp == null)
+        {
+            ModelState.AddModelError(nameof(vm.Code), "Mã xác nhận không hợp lệ. Vui lòng kiểm tra và thử lại.");
+            return View(vm);
+        }
+
+        if (otp.IsUsed)
+        {
+            ModelState.AddModelError(nameof(vm.Code), "Mã xác nhận đã được sử dụng. Vui lòng yêu cầu mã mới.");
+            return View(vm);
+        }
+
+        if (otp.ExpiresAt < DateTime.UtcNow)
+        {
+            ModelState.AddModelError(nameof(vm.Code), "Mã xác nhận đã hết hạn");
+            return View(vm);
+        }
+
+        var token = await _passwordResetService.GeneratePasswordResetTokenAsync(user);
+        var resetResult = await _passwordResetService.ResetPasswordAsync(user, token, vm.NewPassword);
+        if (!resetResult.Succeeded)
+        {
+            foreach (var error in resetResult.Errors)
+            {
+                ModelState.AddModelError(nameof(vm.NewPassword), error.Description);
+            }
+
+            return View(vm);
+        }
+
+        otp.IsUsed = true;
+        otp.UsedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        TempData["Ok"] = "Đổi mật khẩu thành công, vui lòng đăng nhập lại.";
+        return RedirectToAction(nameof(Login));
+    }
 
     [HttpPost]
     public async Task<IActionResult> Login(LoginVm vm)
@@ -244,4 +385,11 @@ public class AccountController : Controller
         var identity = new ClaimsIdentity(claims, AuthSchemes.PcStoreCookie);
         await HttpContext.SignInAsync(AuthSchemes.PcStoreCookie, new ClaimsPrincipal(identity));
     }
+    private static string HashOtp(string email, string code)
+    {
+        var normalizedEmail = email.Trim().ToUpperInvariant();
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes($"{normalizedEmail}:{code}:KKSHOP_PASSWORD_RESET_OTP"));
+        return Convert.ToHexString(bytes);
+    }
+
 }

@@ -26,6 +26,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<SiteSetting> SiteSettings => Set<SiteSetting>();
     public DbSet<ShippingConfig> ShippingConfigs => Set<ShippingConfig>();
     public DbSet<ShopLocation> ShopLocations => Set<ShopLocation>();
+    public DbSet<PasswordResetOtp> PasswordResetOtps => Set<PasswordResetOtp>();
 
 
     public override int SaveChanges()
@@ -89,6 +90,21 @@ public class ApplicationDbContext : DbContext
                     .HasDefaultValueSql("GETUTCDATE()");
             }
         }
+
+
+        modelBuilder.Entity<PasswordResetOtp>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Email).HasMaxLength(120).IsRequired();
+            entity.Property(x => x.CodeHash).HasMaxLength(128).IsRequired();
+            entity.Property(x => x.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
+            entity.HasOne(x => x.User)
+                .WithMany(x => x.PasswordResetOtps)
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(x => new { x.UserId, x.IsUsed, x.ExpiresAt });
+            entity.HasIndex(x => new { x.Email, x.CodeHash });
+        });
 
         modelBuilder.Entity<User>().HasIndex(x => x.Email).IsUnique();
         modelBuilder.Entity<User>().HasIndex(x => x.Username).IsUnique();
