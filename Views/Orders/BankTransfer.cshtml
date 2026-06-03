@@ -5,6 +5,7 @@
     const string accountNumber = "0375570025";
     const string accountName = "CONG TY TNHH KKSHOP";
     var qrData = $"https://img.vietqr.io/image/970422-{accountNumber}-compact2.png?amount={(long)Model.TotalAmount}&addInfo={Model.TransferContent}&accountName={Uri.EscapeDataString(accountName)}";
+    var canPayNow = OrderStatusHelper.CanPayNow(Model, DateTime.UtcNow);
 }
 
 <h3>Thanh toán chuyển khoản cho đơn @($"DH{Model.Id:D6}")</h3>
@@ -12,6 +13,10 @@
     @if (Model.PaymentExpireAt.HasValue)
     {
         <p><strong>Hạn thanh toán:</strong> @Model.PaymentExpireAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</p>
+        @if (canPayNow)
+        {
+            <p><strong>Thời gian còn lại:</strong> <span id="payment-countdown" data-expire-utc="@Model.PaymentExpireAt.Value.ToString("O")">--:--:--</span></p>
+        }
     }
     <p><strong>Ngân hàng:</strong> @bankName</p>
     <p><strong>Số tài khoản:</strong> @accountNumber</p>
@@ -23,11 +28,35 @@
     </div>
 
     <div class="d-flex flex-wrap gap-2">
-        <form asp-action="ConfirmTransferred" method="post">
-            @Html.AntiForgeryToken()
-            <input type="hidden" name="id" value="@Model.Id" />
-            <button class="btn btn-primary">Tôi đã thanh toán</button>
-        </form>
+        @if (canPayNow)
+        {
+            <form asp-action="ConfirmTransferred" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="id" value="@Model.Id" />
+                <button class="btn btn-primary">Tôi đã thanh toán</button>
+            </form>
+        }
         <a asp-action="Quotation" asp-route-orderId="@Model.Id" class="btn btn-danger">In báo giá</a>
+        <a asp-action="Tracking" asp-route-id="@Model.Id" class="btn btn-outline-secondary">Theo dõi đơn hàng</a>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        (() => {
+            const countdownEl = document.getElementById('payment-countdown');
+            if (!countdownEl) return;
+            const expireAt = new Date(countdownEl.dataset.expireUtc).getTime();
+            const pad = n => String(n).padStart(2, '0');
+            function tick() {
+                const totalSec = Math.max(0, Math.floor((expireAt - Date.now()) / 1000));
+                const h = Math.floor(totalSec / 3600);
+                const m = Math.floor((totalSec % 3600) / 60);
+                const s = totalSec % 60;
+                countdownEl.textContent = totalSec > 0 ? `${pad(h)}:${pad(m)}:${pad(s)}` : 'Đã hết hạn';
+            }
+            tick();
+            window.setInterval(tick, 1000);
+        })();
+    </script>
+}

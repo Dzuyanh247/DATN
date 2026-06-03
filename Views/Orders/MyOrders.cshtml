@@ -1,27 +1,19 @@
 @model List<Order>
 @{
-    string StatusLabel(OrderStatus status) => status switch
-    {
-        OrderStatus.Pending => "Chờ xác nhận",
-        OrderStatus.Processing => "Đã xác nhận",
-        OrderStatus.Delivering => "Đang giao hàng",
-        OrderStatus.Completed => "Đã giao hàng",
-        OrderStatus.Cancelled => "Đã hủy",
-        OrderStatus.PendingConfirmation => "Chờ xác nhận",
-        OrderStatus.PendingPayment => "Chờ thanh toán",
-        _ => status.ToString()
-    };
+    ViewData["Title"] = "Đơn hàng của tôi";
 }
 <h3>Đơn hàng của tôi</h3>
 <table class="table table-bordered">
-    <thead><tr><th>Mã</th><th>Ngày</th><th>Trạng thái</th><th>Tổng tiền</th><th></th></tr></thead>
+    <thead><tr><th>Mã</th><th>Ngày</th><th>Trạng thái</th><th>Thanh toán</th><th>Hạn TT</th><th>Tổng tiền</th><th></th></tr></thead>
     <tbody>
     @foreach (var o in Model)
     {
         <tr>
             <td>@($"DH{o.Id:D6}")</td>
             <td>@o.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
-            <td>@StatusLabel(o.Status)</td>
+            <td>@OrderStatusHelper.Label(o.Status)</td>
+            <td>@OrderStatusHelper.PaymentLabel(o.PaymentStatus, o.Status)</td>
+            <td>@(o.PaymentExpireAt.HasValue ? o.PaymentExpireAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm") : "-")</td>
             <td>@o.TotalAmount.ToString("N0") đ</td>
             <td><a class="btn btn-sm btn-outline-primary" asp-action="Tracking" asp-route-id="@o.Id">Xem chi tiết</a></td>
         </tr>

@@ -1,37 +1,34 @@
 @model Order
 @{
-    string StatusLabel(OrderStatus status) => status switch
-    {
-        OrderStatus.Pending => "Chờ xác nhận",
-        OrderStatus.Processing => "Đã xác nhận",
-        OrderStatus.Delivering => "Đang giao hàng",
-        OrderStatus.Completed => "Đã giao hàng",
-        OrderStatus.Cancelled => "Đã hủy",
-        OrderStatus.PendingConfirmation => "Chờ xác nhận",
-        OrderStatus.PendingPayment => "Chờ thanh toán",
-        OrderStatus.Expired => "Hết hạn",
-        _ => status.ToString()
-    };
-
-    string PaymentLabel(Order o)
-    {
-        if (o.PaymentStatus == "PAID") return "Đã thanh toán";
-        if (o.PaymentStatus == "EXPIRED" || o.Status == OrderStatus.Expired) return "Hết hạn";
-        if (o.Status == OrderStatus.Cancelled) return "Đã hủy";
-        if (o.PaymentStatus == "WAITING_PAYMENT") return "Chờ thanh toán";
-        if (o.PaymentStatus == "WAITING_CONFIRMATION") return "Chờ admin xác nhận";
-        return "Chưa thanh toán";
-    }
+    ViewData["Title"] = $"Chi tiết đơn DH{Model.Id:D6}";
+    var nowUtc = DateTime.UtcNow;
+    var canPayNow = OrderStatusHelper.CanPayNow(Model, nowUtc);
+    var remaining = TimeSpan.FromSeconds(OrderStatusHelper.RemainingSeconds(Model, nowUtc));
 }
 <h3>Chi tiết đơn @($"DH{Model.Id:D6}")</h3>
 <div class="card mb-3">
     <div class="card-body">
-        <div><b>Trạng thái:</b> @StatusLabel(Model.Status)</div>
+        <div><b>Trạng thái:</b> @OrderStatusHelper.Label(Model.Status)</div>
         <div><b>Khách:</b> @Model.ReceiverName (@Model.ReceiverPhone)</div>
         <div><b>Địa chỉ:</b> @Model.ShippingAddress</div>
-        <div><b>Thanh toán:</b> @Model.PaymentMethod</div>
-        <div><b>Trạng thái thanh toán:</b> @PaymentLabel(Model)</div>
+        <div><b>Thanh toán:</b> @PaymentMethods.Label(Model.PaymentMethod)</div>
+        <div><b>Trạng thái thanh toán:</b> @OrderStatusHelper.PaymentLabel(Model.PaymentStatus, Model.Status)</div>
         <div><b>Hạn thanh toán:</b> @(Model.PaymentExpireAt.HasValue ? Model.PaymentExpireAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm") : "-")</div>
+        <div>
+            <b>Còn lại:</b>
+            @if (canPayNow)
+            {
+                <span>@remaining.ToString(@"hh\:mm\:ss")</span>
+            }
+            else if (OrderStatusHelper.IsExpiredPayment(Model, nowUtc))
+            {
+                <span class="text-danger">Hết hạn thanh toán</span>
+            }
+            else
+            {
+                <span>-</span>
+            }
+        </div>
         <div><b>Tổng tiền:</b> <span class="text-danger fw-bold">@Model.TotalAmount.ToString("N0") đ</span></div>
     </div>
 </div>
@@ -41,7 +38,7 @@
     @foreach (var d in Model.Details)
     {
         <tr>
-            <td>@d.Product?.Name</td>
+            <td>@(d.Product?.Name ?? d.ProductName)</td>
             <td>@d.Quantity</td>
             <td>@d.UnitPrice.ToString("N0") đ</td>
             <td>@((d.UnitPrice * d.Quantity).ToString("N0")) đ</td>
@@ -50,7 +47,7 @@
     </tbody>
 </table>
 
-@if (Model.PaymentMethod == "BANK_TRANSFER" && Model.PaymentStatus == "WAITING_CONFIRMATION")
+@if (Model.PaymentMethod == PaymentMethods.BankTransfer && Model.PaymentStatus == PaymentStatuses.PendingConfirmation)
 {
     <form asp-action="ConfirmBankTransfer" method="post" class="mb-3">
         @Html.AntiForgeryToken()
