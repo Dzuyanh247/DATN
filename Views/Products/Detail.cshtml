@@ -9,21 +9,11 @@
     var savings = Model.Price > finalPrice ? Model.Price - finalPrice : 0;
     var inStock = Model.StockQuantity > 0;
 
-    var descriptionLines = (string.IsNullOrWhiteSpace(Model.Description) ? Model.DetailDescription : Model.Description)
-        .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
-        .Select(x => x.Trim(' ', '-', '•', '\t'))
-        .Where(x => !string.IsNullOrWhiteSpace(x))
-        .ToList();
+    var descriptionLines = ProductSpecDisplayHelper.GetSafeTextLines(Model);
 
-    var componentSpecs = ProductComponentSpecHelper.TryDeserialize(Model.TechnicalSpecifications);
+    var componentSpecs = ProductSpecDisplayHelper.TryParseComponentSpecs(Model.TechnicalSpecifications);
     var hasComponentSpecs = componentSpecs.Any();
-    var specsLines = hasComponentSpecs
-        ? new List<string>()
-        : (Model.TechnicalSpecifications ?? string.Empty)
-            .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
-            .Select(x => x.Trim())
-            .Where(x => !string.IsNullOrWhiteSpace(x) && x != "1")
-            .ToList();
+    var specsLines = new List<string>();
 }
 
 <div class="product-detail-page">
@@ -175,15 +165,14 @@
         <div class="card border-0 shadow-sm mt-4">
             <div class="card-body">
                 <h5 class="mb-3">Sản phẩm liên quan</h5>
-                <ul class="mb-0">
+                <div class="row g-3">
                     @foreach (var p in suggestions)
                     {
-                        <li>
-                            <a asp-action="Detail" asp-route-id="@p.Id">@p.Name</a>
-                            - @p.Price.ToString("N0", new System.Globalization.CultureInfo("vi-VN")) đ
-                        </li>
+                        <div class="col-sm-6 col-lg-3">
+                            <partial name="_ProductCard" model="p" />
+                        </div>
                     }
-                </ul>
+                </div>
             </div>
         </div>
     }
