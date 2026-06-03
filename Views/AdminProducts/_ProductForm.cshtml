@@ -85,7 +85,7 @@
 
             <div class="apf-card mb-4">
                 <h5 class="apf-title">Mô tả sản phẩm</h5>
-                <textarea asp-for="Description" rows="8" class="form-control" placeholder="Mỗi dòng là một ý, frontend sẽ hiển thị dạng bullet list."></textarea>
+                <textarea asp-for="Description" rows="8" class="form-control" placeholder="Nhập mô tả sản phẩm"></textarea>
                 <span asp-validation-for="Description" class="text-danger"></span>
             </div>
 
@@ -93,10 +93,11 @@
                 <h5 class="apf-title">Thông số kỹ thuật</h5>
                 <input type="hidden" asp-for="Specifications" />
 
-                <label for="component-spec-paste" class="form-label">Dán nhanh cấu hình từ bảng</label>
-                <textarea id="component-spec-paste" rows="6" class="form-control" placeholder="Dán nguyên bảng STT / Mô tả thiết bị / SL / BH từ TTGSHOP vào đây..."></textarea>
+                <label for="component-spec-paste" class="form-label">Cấu hình sản phẩm</label>
+                <textarea id="component-spec-paste" rows="6" class="form-control" placeholder="Nhập hoặc dán cấu hình sản phẩm"></textarea>
+                <div class="form-text text-muted">Hệ thống hỗ trợ nhận diện cấu hình tự động.</div>
                 <div class="d-flex flex-wrap gap-2 mt-3 mb-3">
-                    <button type="button" class="btn btn-outline-primary" id="parse-component-specs">Tách cấu hình</button>
+                    <button type="button" class="btn btn-outline-primary" id="parse-component-specs">Nhận diện cấu hình</button>
                     <button type="button" class="btn btn-outline-secondary" id="add-component-spec-row">Thêm dòng</button>
                 </div>
 
@@ -104,10 +105,10 @@
                     <table class="table table-sm align-middle" id="component-spec-table">
                         <thead>
                             <tr>
-                                <th class="text-center" style="width:80px;">STT</th>
-                                <th>Mô tả thiết bị</th>
-                                <th class="text-center" style="width:90px;">SL</th>
-                                <th class="text-center" style="width:120px;">BH</th>
+                                <th class="text-center" style="width:80px;">Thứ tự</th>
+                                <th>Linh kiện / thông số</th>
+                                <th class="text-center" style="width:90px;">Số lượng</th>
+                                <th class="text-center" style="width:120px;">Bảo hành</th>
                                 <th class="text-center" style="width:100px;">Xóa dòng</th>
                             </tr>
                         </thead>
@@ -125,7 +126,7 @@
                         </tbody>
                     </table>
                 </div>
-                <div class="form-text">Khi lưu, danh sách linh kiện trong bảng sẽ được lưu dạng JSON vào thông số kỹ thuật.</div>
+                <div class="form-text text-muted">Kiểm tra và điều chỉnh thông tin cấu hình trước khi lưu.</div>
             </div>
         </div>
 
@@ -135,7 +136,7 @@
 
                 @if (isEdit)
                 {
-                    <div class="form-text mb-3">Nếu không chọn ảnh mới, hệ thống sẽ giữ nguyên ảnh hiện tại.</div>
+                    <div class="form-text text-muted mb-3">Nếu không chọn ảnh mới, hệ thống sẽ giữ nguyên ảnh hiện tại.</div>
                 }
 
                 @if (orderedImages.Any())
@@ -163,14 +164,14 @@
                     </div>
                 }
 
-                <label asp-for="ThumbnailImageUrl" class="form-label">Thumbnail URL</label>
-                <input asp-for="ThumbnailImageUrl" class="form-control" placeholder="https://..." />
-                <div class="form-text">Dán URL ảnh Cloudinary</div>
+                <label asp-for="ThumbnailImageUrl" class="form-label">Ảnh đại diện</label>
+                <input asp-for="ThumbnailImageUrl" class="form-control" placeholder="Nhập đường dẫn hình ảnh đại diện" />
+                <div class="form-text text-muted">Sử dụng hình ảnh rõ nét, đúng với sản phẩm.</div>
                 <span asp-validation-for="ThumbnailImageUrl" class="text-danger"></span>
 
-                <label asp-for="ProductImageUrlsText" class="form-label mt-3">Ảnh sản phẩm (nhiều URL)</label>
-                <textarea asp-for="ProductImageUrlsText" rows="4" class="form-control" placeholder="Mỗi dòng một URL, ví dụ: https://..."></textarea>
-                <div class="form-text">Dán URL ảnh Cloudinary</div>
+                <label asp-for="ProductImageUrlsText" class="form-label mt-3">Thư viện ảnh sản phẩm</label>
+                <textarea asp-for="ProductImageUrlsText" rows="4" class="form-control" placeholder="Thêm hình ảnh sản phẩm"></textarea>
+                <div class="form-text text-muted">Mỗi hình ảnh trên một dòng.</div>
                 <span asp-validation-for="ProductImageUrlsText" class="text-danger"></span>
 
                 <div id="existing-image-order-container"></div>
