@@ -1,4 +1,5 @@
 using Datn.PcStore.Data;
+using Datn.PcStore.Helpers;
 using Datn.PcStore.Models;
 using Datn.PcStore.ViewModels;
 using Microsoft.AspNetCore.Authorization;
@@ -57,7 +58,7 @@ public class AdminProductsController : Controller
             ShortDescription = BuildShortDescription(vm.Description),
             Description = vm.Description,
             DetailDescription = vm.Description,
-            Specifications = vm.Specifications,
+            TechnicalSpecifications = ProductComponentSpecHelper.Serialize(vm.ComponentSpecs),
             ComponentType = "Khác",
             IsActive = vm.IsActive,
             IsInStock = vm.StockQuantity > 0,
@@ -110,7 +111,7 @@ public class AdminProductsController : Controller
         product.ShortDescription = BuildShortDescription(vm.Description);
         product.Description = vm.Description;
         product.DetailDescription = vm.Description;
-        product.Specifications = vm.Specifications;
+        product.TechnicalSpecifications = ProductComponentSpecHelper.Serialize(vm.ComponentSpecs);
         product.IsActive = vm.IsActive;
         product.IsInStock = vm.StockQuantity > 0;
         product.Slug = BuildSlug(vm.Name);
@@ -150,7 +151,7 @@ public class AdminProductsController : Controller
         vm.IsHotSale = product.IsHotSale; vm.IsDailyDeal = product.IsDailyDeal; vm.IsPromotion = product.IsPromotion;
         vm.PromotionStartDate = product.PromotionStartDate; vm.PromotionEndDate = product.PromotionEndDate;
         vm.StockQuantity = product.StockQuantity; vm.WarrantyMonths = product.WarrantyMonths > 0 ? product.WarrantyMonths : 12; vm.CategoryId = product.CategoryId;
-        vm.Description = string.IsNullOrWhiteSpace(product.Description) ? product.DetailDescription : product.Description; vm.Specifications = product.Specifications; vm.IsActive = product.IsActive;
+        vm.Description = string.IsNullOrWhiteSpace(product.Description) ? product.DetailDescription : product.Description; vm.Specifications = product.TechnicalSpecifications; vm.ComponentSpecs = ProductComponentSpecHelper.ParseStored(product.TechnicalSpecifications); vm.IsActive = product.IsActive;
         vm.ThumbnailImageUrl = product.ThumbnailImage;
         var orderedImages = product.ProductImages.OrderBy(x => x.SortOrder).ToList(); vm.ExistingImageOrder = orderedImages.Select(x => x.Id).ToList();
         vm.ExistingImages = orderedImages.Select(x => new ProductImageItemVm { Id = x.Id, ImageUrl = x.ImageUrl, IsPrimary = x.IsPrimary, SortOrder = x.SortOrder }).ToList(); return vm; }

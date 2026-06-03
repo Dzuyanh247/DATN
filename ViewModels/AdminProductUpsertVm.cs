@@ -34,6 +34,7 @@ public class AdminProductUpsertVm
 
     public string Description { get; set; } = string.Empty;
     public string Specifications { get; set; } = string.Empty;
+    public List<ProductComponentSpecViewModel> ComponentSpecs { get; set; } = new();
 
     public bool IsActive { get; set; } = true;
 
@@ -58,4 +59,12 @@ public class ProductImageItemVm
     public string ImageUrl { get; set; } = string.Empty;
     public bool IsPrimary { get; set; }
     public int SortOrder { get; set; }
+}
+
+public class ProductComponentSpecViewModel
+{
+    public int Stt { get; set; }
+    public string Description { get; set; } = string.Empty;
+    public int Quantity { get; set; } = 1;
+    public string Warranty { get; set; } = string.Empty;
 }

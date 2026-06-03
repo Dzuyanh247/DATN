@@ -14,7 +14,7 @@ public class CompareController : Controller
 {
     private static readonly string[] PreferredSpecOrder =
     {
-        "CPU", "GPU", "RAM", "SSD", "Mainboard", "PSU/Nguồn", "Case", "Bảo hành"
+        "CPU", "RAM", "GPU", "SSD", "Mainboard", "PSU/Nguồn", "Case", "Tản nhiệt"
     };
 
     private static readonly Dictionary<string, string[]> SpecAliases = new(StringComparer.OrdinalIgnoreCase)
@@ -26,7 +26,7 @@ public class CompareController : Controller
         ["Mainboard"] = new[] { "mainboard", "main", "motherboard", "bo mạch chủ", "bo mach chu", "b760", "z790", "h610", "b650", "x670" },
         ["PSU/Nguồn"] = new[] { "psu", "nguồn", "nguon", "power", "watt", "650w", "750w" },
         ["Case"] = new[] { "case", "vỏ", "vo may", "vỏ máy" },
-        ["Bảo hành"] = new[] { "bảo hành", "bao hanh", "warranty" }
+        ["Tản nhiệt"] = new[] { "tản nhiệt", "tan nhiet", "cooler", "cooling", "aio", "fan cpu" }
     };
 
     private readonly ApplicationDbContext _db;
@@ -125,37 +125,41 @@ public class CompareController : Controller
     private static Dictionary<string, string> ParseSpecifications(Product product)
     {
         var specs = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        var text = string.Join('\n', new[] { product.Specifications, product.DetailDescription, product.Description }
+        var componentSpecs = ProductComponentSpecHelper.TryDeserialize(product.TechnicalSpecifications);
+
+        if (componentSpecs.Any())
+        {
+            foreach (var description in componentSpecs.Select(x => CleanSpecText(x.Description)).Where(x => !string.IsNullOrWhiteSpace(x)))
+            {
+                AddMatchedSpec(specs, description);
+            }
+
+            return specs;
+        }
+
+        var text = string.Join('\n', new[] { product.TechnicalSpecifications, product.DetailDescription, product.Description }
             .Where(x => !string.IsNullOrWhiteSpace(x)));
 
         var parts = Regex.Split(text, @"\r?\n|\||;|<br\s*/?>", RegexOptions.IgnoreCase)
             .Select(CleanSpecText)
-            .Where(x => !string.IsNullOrWhiteSpace(x) && x != "1")
+            .Where(x => !string.IsNullOrWhiteSpace(x) && x != "1" && !IsHeaderLine(x))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        var genericIndex = 1;
         foreach (var part in parts)
         {
-            var (label, value) = ExtractLabelValue(part);
-            if (string.IsNullOrWhiteSpace(label))
-            {
-                label = $"Thông số {genericIndex++}";
-                value = part;
-            }
-
-            if (!specs.ContainsKey(label))
-            {
-                specs[label] = string.IsNullOrWhiteSpace(value) ? part : value;
-            }
-        }
-
-        if (!string.IsNullOrWhiteSpace(product.WarrantyDuration) || product.WarrantyMonths > 0)
-        {
-            specs.TryAdd("Bảo hành", !string.IsNullOrWhiteSpace(product.WarrantyDuration) ? product.WarrantyDuration : $"{product.WarrantyMonths} tháng");
+            AddMatchedSpec(specs, part);
         }
 
         return specs;
+    }
+
+    private static void AddMatchedSpec(Dictionary<string, string> specs, string part)
+    {
+        var (label, value) = ExtractLabelValue(part);
+        if (string.IsNullOrWhiteSpace(label) || GetSpecSortOrder(label) >= PreferredSpecOrder.Length) return;
+
+        specs.TryAdd(label, string.IsNullOrWhiteSpace(value) ? part : value);
     }
 
     private static (string Label, string Value) ExtractLabelValue(string part)
@@ -199,7 +203,15 @@ public class CompareController : Controller
         => text.Contains(token, StringComparison.OrdinalIgnoreCase);
 
     private static string CleanSpecText(string value)
-        => Regex.Replace(value ?? string.Empty, "<.*?>", string.Empty).Trim(' ', '-', '•', '\t', '\r', '\n');
+        => Regex.Replace(Regex.Replace(value ?? string.Empty, "<.*?>", string.Empty), @"\s+", " ").Trim(' ', '-', '•', '\t', '\r', '\n');
+
+    private static bool IsHeaderLine(string value)
+    {
+        var normalized = Regex.Replace(value ?? string.Empty, @"\s+", " ").Trim().ToLowerInvariant();
+        return normalized == "stt mô tả thiết bị sl bh"
+            || normalized == "stt mo ta thiet bi sl bh"
+            || (normalized.StartsWith("stt ") && normalized.Contains("mô tả") && normalized.Contains(" sl") && normalized.EndsWith("bh"));
+    }
 
     private static int GetSpecSortOrder(string label)
     {

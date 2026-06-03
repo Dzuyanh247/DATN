@@ -1,3 +1,4 @@
+@using Datn.PcStore.Helpers
 @model Product
 @{
     var suggestions = ViewBag.UpgradeSuggestions as List<Product> ?? new();
@@ -14,11 +15,15 @@
         .Where(x => !string.IsNullOrWhiteSpace(x))
         .ToList();
 
-    var specsLines = (Model.Specifications ?? string.Empty)
-        .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
-        .Select(x => x.Trim())
-        .Where(x => !string.IsNullOrWhiteSpace(x) && x != "1")
-        .ToList();
+    var componentSpecs = ProductComponentSpecHelper.TryDeserialize(Model.TechnicalSpecifications);
+    var hasComponentSpecs = componentSpecs.Any();
+    var specsLines = hasComponentSpecs
+        ? new List<string>()
+        : (Model.TechnicalSpecifications ?? string.Empty)
+            .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+            .Select(x => x.Trim())
+            .Where(x => !string.IsNullOrWhiteSpace(x) && x != "1")
+            .ToList();
 }
 
 <div class="product-detail-page">
@@ -104,34 +109,63 @@
         </div>
     </div>
 
-    @if (specsLines.Any())
+    @if (hasComponentSpecs || specsLines.Any())
     {
         <div class="spec-card card border-0 shadow-sm mt-4">
             <div class="card-body p-0">
                 <div class="spec-header">THÔNG SỐ KỸ THUẬT</div>
-                <div class="table-responsive">
-                    <table class="table spec-table mb-0">
-                        <thead>
-                            <tr>
-                                <th class="text-center" style="width:70px;">STT</th>
-                                <th>Mô tả thiết bị</th>
-                                <th class="text-center" style="width:80px;">SL</th>
-                                <th class="text-center" style="width:120px;">BH</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @for (var i = 0; i < specsLines.Count; i++)
-                            {
+                @if (hasComponentSpecs)
+                {
+                    <div class="table-responsive">
+                        <table class="table spec-table mb-0">
+                            <thead>
                                 <tr>
-                                    <td class="text-center">@(i + 1)</td>
-                                    <td>@specsLines[i]</td>
-                                    <td class="text-center">1</td>
-                                    <td class="text-center">@(Model.WarrantyMonths > 0 ? $"{Model.WarrantyMonths}T" : string.Empty)</td>
+                                    <th class="text-center" style="width:70px;">STT</th>
+                                    <th>Mô tả thiết bị</th>
+                                    <th class="text-center" style="width:80px;">SL</th>
+                                    <th class="text-center" style="width:120px;">BH</th>
                                 </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
+                            </thead>
+                            <tbody>
+                                @foreach (var spec in componentSpecs)
+                                {
+                                    <tr>
+                                        <td class="text-center">@spec.Stt</td>
+                                        <td>@spec.Description</td>
+                                        <td class="text-center">@spec.Quantity</td>
+                                        <td class="text-center">@spec.Warranty</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table spec-table mb-0">
+                            <thead>
+                                <tr>
+                                    <th class="text-center" style="width:70px;">STT</th>
+                                    <th>Mô tả thiết bị</th>
+                                    <th class="text-center" style="width:80px;">SL</th>
+                                    <th class="text-center" style="width:120px;">BH</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @for (var i = 0; i < specsLines.Count; i++)
+                                {
+                                    <tr>
+                                        <td class="text-center">@(i + 1)</td>
+                                        <td>@specsLines[i]</td>
+                                        <td class="text-center">1</td>
+                                        <td class="text-center">@(Model.WarrantyMonths > 0 ? $"{Model.WarrantyMonths}T" : string.Empty)</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
             </div>
         </div>
     }
