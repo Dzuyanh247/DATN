@@ -1,0 +1,108 @@
+@model CompareIndexVm
+@{
+    ViewData["Title"] = "So sánh sản phẩm";
+    var culture = new System.Globalization.CultureInfo("vi-VN");
+}
+
+<div class="compare-page pb-5">
+    <div class="compare-hero text-center mb-4">
+        <div class="small text-uppercase text-danger fw-bold">PC Store</div>
+        <h1 class="compare-title mb-2">SO SÁNH SẢN PHẨM</h1>
+        <p class="text-muted mb-0">Đặt thông số kỹ thuật của 2 sản phẩm cạnh nhau để dễ đối chiếu.</p>
+    </div>
+
+    @if (!Model.Products.Any())
+    {
+        <div class="alert alert-info text-center">
+            Chưa có sản phẩm nào trong danh sách so sánh. Vui lòng quay lại danh sách sản phẩm để chọn 2 sản phẩm.
+        </div>
+        <div class="text-center">
+            <a asp-controller="Products" asp-action="Index" class="btn btn-primary">Chọn sản phẩm</a>
+        </div>
+    }
+    else
+    {
+        @if (!Model.HasEnoughProducts)
+        {
+            <div class="alert alert-warning d-flex align-items-center gap-2">
+                <i class="bi bi-info-circle"></i>
+                <span>Hãy chọn thêm 1 sản phẩm nữa để so sánh đầy đủ.</span>
+            </div>
+        }
+
+        <div class="compare-table-card card border-0 shadow-sm">
+            <div class="card-body p-0">
+                <div class="table-responsive compare-table-responsive">
+                    <table class="table compare-table mb-0 align-middle">
+                        <thead class="compare-sticky-head">
+                            <tr>
+                                <th class="compare-spec-col">Thông tin</th>
+                                @for (var i = 0; i < 2; i++)
+                                {
+                                    var product = Model.Products.ElementAtOrDefault(i);
+                                    <th class="compare-product-col">
+                                        @if (product != null)
+                                        {
+                                            <div class="compare-product-head">
+                                                <img src="@product.ImageUrl" alt="@product.Name" onerror="this.onerror=null;this.src='/images/no-image.png';" />
+                                                <div>
+                                                    <a asp-controller="Products" asp-action="Detail" asp-route-id="@product.Id" class="compare-product-name">@product.Name</a>
+                                                    <div class="compare-price">@product.Price.ToString("N0", culture) đ</div>
+                                                    @if (product.Price < product.OriginalPrice)
+                                                    {
+                                                        <div class="compare-old-price">@product.OriginalPrice.ToString("N0", culture) đ</div>
+                                                    }
+                                                </div>
+                                            </div>
+                                            <form method="post" asp-controller="Compare" asp-action="Remove" class="mt-2">
+                                                <input type="hidden" name="productId" value="@product.Id" />
+                                                <input type="hidden" name="returnUrl" value="/Compare" />
+                                                <button type="submit" class="btn btn-sm btn-outline-danger">Xóa khỏi so sánh</button>
+                                            </form>
+                                        }
+                                        else
+                                        {
+                                            <div class="compare-empty-product">
+                                                <i class="bi bi-plus-circle"></i>
+                                                <span>Chưa chọn sản phẩm</span>
+                                            </div>
+                                        }
+                                    </th>
+                                }
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="compare-mobile-info-row">
+                                <th>Giá</th>
+                                <td>@(Model.Products.ElementAtOrDefault(0) is { } productA ? $"{productA.Price.ToString("N0", culture)} đ" : "-")</td>
+                                <td>@(Model.Products.ElementAtOrDefault(1) is { } productB ? $"{productB.Price.ToString("N0", culture)} đ" : "-")</td>
+                            </tr>
+                            @if (Model.Rows.Any())
+                            {
+                                @foreach (var row in Model.Rows)
+                                {
+                                    <tr>
+                                        <th class="compare-spec-label">@row.Label</th>
+                                        <td>@row.ProductAValue</td>
+                                        <td>@row.ProductBValue</td>
+                                    </tr>
+                                }
+                            }
+                            else
+                            {
+                                <tr>
+                                    <td colspan="3" class="text-center text-muted py-4">Chưa có thông số kỹ thuật để hiển thị.</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex flex-wrap gap-2 justify-content-center mt-4">
+            <a asp-controller="Products" asp-action="Index" class="btn btn-primary">Chọn thêm sản phẩm</a>
+            <a asp-controller="Compare" asp-action="Clear" asp-route-returnUrl="/Products" class="btn btn-outline-secondary">Xóa danh sách so sánh</a>
+        </div>
+    }
+</div>

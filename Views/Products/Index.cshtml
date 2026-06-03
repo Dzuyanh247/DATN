@@ -19,3 +19,5 @@
         <div class="col-md-3"><partial name="_ProductCard" model="p" /></div>
     }
 </div>
+
+@await Html.PartialAsync("_CompareBar", ViewBag.CompareProducts as IReadOnlyList<Product> ?? Array.Empty<Product>())

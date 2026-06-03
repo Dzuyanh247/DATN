@@ -1,4 +1,6 @@
+using System.Text.Json;
 using Datn.PcStore.Data;
+using Datn.PcStore.Models;
 using Datn.PcStore.ViewModels;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -7,6 +9,7 @@ namespace Datn.PcStore.Controllers;
 
 public class ProductsController : Controller
 {
+    private const string CompareSessionKey = "CompareProductIds";
     private readonly ApplicationDbContext _db;
     public ProductsController(ApplicationDbContext db) => _db = db;
 
@@ -39,7 +42,34 @@ public class ProductsController : Controller
             .Include(p => p.ProductImages)
             .OrderByDescending(p => p.CreatedAt)
             .ToListAsync();
+
+        ViewBag.CompareProducts = await GetCompareProductsAsync();
         return View(vm);
+    }
+
+    private async Task<List<Product>> GetCompareProductsAsync()
+    {
+        var raw = HttpContext.Session.GetString(CompareSessionKey);
+        if (string.IsNullOrWhiteSpace(raw)) return new List<Product>();
+
+        List<int> ids;
+        try
+        {
+            ids = JsonSerializer.Deserialize<List<int>>(raw)?.Distinct().Take(2).ToList() ?? new List<int>();
+        }
+        catch (JsonException)
+        {
+            ids = new List<int>();
+        }
+
+        if (ids.Count == 0) return new List<Product>();
+
+        var products = await _db.Products
+            .Include(p => p.ProductImages.OrderBy(x => x.SortOrder))
+            .Where(p => ids.Contains(p.Id) && p.IsActive)
+            .ToListAsync();
+
+        return ids.Select(id => products.FirstOrDefault(p => p.Id == id)).Where(p => p != null).Cast<Product>().ToList();
     }
 
     public async Task<IActionResult> Detail(int id)
