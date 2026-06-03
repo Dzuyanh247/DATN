@@ -2,6 +2,7 @@ using Datn.PcStore.Data;
 using Datn.PcStore.Helpers;
 using Datn.PcStore.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace Datn.PcStore.Services;
 
@@ -19,10 +20,12 @@ public interface IOrderExpirationService
 public class OrderExpirationService : IOrderExpirationService
 {
     private readonly ApplicationDbContext _db;
+    private readonly ILogger<OrderExpirationService> _logger;
 
-    public OrderExpirationService(ApplicationDbContext db)
+    public OrderExpirationService(ApplicationDbContext db, ILogger<OrderExpirationService> logger)
     {
         _db = db;
+        _logger = logger;
     }
 
     public async Task<int> ExpirePendingPaymentOrdersAsync(CancellationToken cancellationToken = default)
@@ -48,7 +51,13 @@ public class OrderExpirationService : IOrderExpirationService
 
     public async Task<bool> ExpireOrderIfNeededAsync(Order order, CancellationToken cancellationToken = default)
     {
-        var utcNow = DateTime.UtcNow;
+        var utcNow = DateTimeHelper.UtcNow();
+        if (RestorePendingPaymentIfDeadlineStillValid(order, utcNow))
+        {
+            await _db.SaveChangesAsync(cancellationToken);
+            return false;
+        }
+
         if (!OrderStatusHelper.IsPendingPaymentOrder(order) || OrderStatusHelper.IsPaid(order))
         {
             return false;
@@ -64,6 +73,7 @@ public class OrderExpirationService : IOrderExpirationService
             return false;
         }
 
+        LogExpiration(order, utcNow, order.Status, PaymentStatuses.Expired);
         order.Status = OrderStatus.Expired;
         order.PaymentStatus = PaymentStatuses.Expired;
         await ReleaseReservedStockAsync(order, cancellationToken);
@@ -73,7 +83,7 @@ public class OrderExpirationService : IOrderExpirationService
 
     public void PreparePendingPayment(Order order, DateTime? utcNow = null, bool resetExpiredDeadline = false)
     {
-        var now = utcNow ?? DateTime.UtcNow;
+        var now = utcNow ?? DateTimeHelper.UtcNow();
         order.Status = OrderStatus.PendingPayment;
         order.PaymentStatus = PaymentStatuses.Pending;
         order.PaidAt = null;
@@ -88,14 +98,14 @@ public class OrderExpirationService : IOrderExpirationService
     {
         order.Status = OrderStatus.PendingConfirmation;
         order.PaymentStatus = PaymentStatuses.PendingConfirmation;
-        order.PaidAt ??= utcNow ?? DateTime.UtcNow;
+        order.PaidAt ??= utcNow ?? DateTimeHelper.UtcNow();
     }
 
     public void MarkPaidByAdmin(Order order, DateTime? utcNow = null)
     {
         order.PaymentStatus = PaymentStatuses.Paid;
         order.Status = OrderStatus.Processing;
-        order.PaidAt ??= utcNow ?? DateTime.UtcNow;
+        order.PaidAt ??= utcNow ?? DateTimeHelper.UtcNow();
     }
 
     public async Task MarkCancelledAsync(Order order, CancellationToken cancellationToken = default)
@@ -114,13 +124,69 @@ public class OrderExpirationService : IOrderExpirationService
 
     public async Task MarkExpiredAsync(Order order, CancellationToken cancellationToken = default)
     {
+        var utcNow = DateTimeHelper.UtcNow();
+        if (PaymentMethods.RequiresOnlinePayment(order.PaymentMethod)
+            && !OrderStatusHelper.IsPaid(order)
+            && order.PaymentExpireAt.HasValue
+            && order.PaymentExpireAt.Value > utcNow)
+        {
+            _logger.LogInformation(
+                "Skipped expiring order {OrderId} because payment deadline is still valid. PaymentExpireAt={PaymentExpireAt:o}, NowUsedForCompare={NowUsedForCompare:o}, DifferenceSeconds={DifferenceSeconds}",
+                order.Id,
+                order.PaymentExpireAt,
+                utcNow,
+                (order.PaymentExpireAt.Value - utcNow).TotalSeconds);
+            return;
+        }
+
         if (order.Status != OrderStatus.Expired && order.Status != OrderStatus.Cancelled)
         {
             await ReleaseReservedStockAsync(order, cancellationToken);
         }
 
+        LogExpiration(order, utcNow, order.Status, PaymentStatuses.Expired);
         order.Status = OrderStatus.Expired;
         order.PaymentStatus = PaymentStatuses.Expired;
+    }
+
+    private bool RestorePendingPaymentIfDeadlineStillValid(Order order, DateTime utcNow)
+    {
+        if (PaymentMethods.IsCod(order.PaymentMethod)
+            || OrderStatusHelper.IsPaid(order)
+            || !order.PaymentExpireAt.HasValue
+            || order.PaymentExpireAt.Value <= utcNow
+            || (order.Status != OrderStatus.Expired
+                && !string.Equals(order.PaymentStatus, PaymentStatuses.Expired, StringComparison.OrdinalIgnoreCase)))
+        {
+            return false;
+        }
+
+        _logger.LogInformation(
+            "Restoring order {OrderId} from premature expiration. CreatedAt={CreatedAt:o}, PaymentExpireAt={PaymentExpireAt:o}, NowUsedForCompare={NowUsedForCompare:o}, DifferenceSeconds={DifferenceSeconds}, OldStatus={OldStatus}, OldPaymentStatus={OldPaymentStatus}",
+            order.Id,
+            order.CreatedAt,
+            order.PaymentExpireAt,
+            utcNow,
+            (order.PaymentExpireAt.Value - utcNow).TotalSeconds,
+            order.Status,
+            order.PaymentStatus);
+
+        order.Status = OrderStatus.PendingPayment;
+        order.PaymentStatus = PaymentStatuses.Pending;
+        return true;
+    }
+
+    private void LogExpiration(Order order, DateTime utcNow, OrderStatus oldStatus, string newPaymentStatus)
+    {
+        _logger.LogInformation(
+            "Expiring order {OrderId}. CreatedAt={CreatedAt:o}, PaymentExpireAt={PaymentExpireAt:o}, NowUsedForCompare={NowUsedForCompare:o}, DifferenceSeconds={DifferenceSeconds}, OldStatus={OldStatus}, NewStatus={NewStatus}",
+            order.Id,
+            order.CreatedAt,
+            order.PaymentExpireAt,
+            utcNow,
+            order.PaymentExpireAt.HasValue ? (order.PaymentExpireAt.Value - utcNow).TotalSeconds : (double?)null,
+            oldStatus,
+            newPaymentStatus);
     }
 
     private static void EnsurePendingPaymentDeadline(Order order, DateTime utcNow)

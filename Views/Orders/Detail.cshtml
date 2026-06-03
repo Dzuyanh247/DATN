@@ -1,13 +1,16 @@
 @model Order
 @{
     ViewData["Title"] = $"Chi tiết đơn hàng DH{Model.Id:D6}";
-    var nowUtc = DateTime.UtcNow;
+    var nowUtc = DateTimeHelper.UtcNow();
     var isCod = PaymentMethods.IsCod(Model.PaymentMethod);
     var isBankTransfer = Model.PaymentMethod == PaymentMethods.BankTransfer;
     var isPendingPayment = OrderStatusHelper.IsPendingPaymentOrder(Model);
     var isAwaitingConfirmation = Model.Status == OrderStatus.PendingConfirmation && Model.PaymentStatus == PaymentStatuses.PendingConfirmation;
     var isExpiredPayment = OrderStatusHelper.IsExpiredPayment(Model, nowUtc);
     var canPayNow = OrderStatusHelper.CanPayNow(Model, nowUtc);
+    var remainingSeconds = ViewBag.PaymentRemainingSeconds is int serverRemainingSeconds
+        ? serverRemainingSeconds
+        : OrderStatusHelper.RemainingSeconds(Model, nowUtc);
     var phoneQuery = Context.Request.Query["phone"].ToString();
     var enableTrackingStatusPolling = ViewBag.EnableTrackingStatusPolling is bool trackingPollingEnabled
         ? trackingPollingEnabled
@@ -19,7 +22,7 @@
     }
 }
 <h3>Chi tiết đơn hàng @($"DH{Model.Id:D6}")</h3>
-<p><strong>Ngày đặt:</strong> @Model.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</p>
+<p><strong>Ngày đặt:</strong> @DateTimeHelper.FormatVietnam(Model.CreatedAt, "dd/MM/yyyy HH:mm")</p>
 <p><strong>Trạng thái:</strong> <span id="order-status-label" data-status="@Model.Status">@OrderStatusHelper.Label(Model.Status)</span></p>
 <p><strong>Người nhận:</strong> @Model.ReceiverName - @Model.ReceiverPhone</p>
 <p><strong>Địa chỉ giao hàng:</strong> @Model.ShippingAddress</p>
@@ -33,7 +36,7 @@
 @if (isCod)
 {
     <div class="alert alert-secondary" id="payment-status-alert" data-payment-state="cod">
-        Phương thức thanh toán: COD - thanh toán khi nhận hàng.
+        Thanh toán khi nhận hàng.
     </div>
 }
 else if (isAwaitingConfirmation)
@@ -47,19 +50,21 @@ else if (isExpiredPayment)
 {
     <div class="alert alert-danger" id="payment-status-alert" data-payment-state="expired">
         <div><strong>Trạng thái thanh toán:</strong> <span id="payment-status-label">@OrderStatusHelper.PaymentLabel(Model.PaymentStatus, Model.Status)</span></div>
-        <div>Đơn hàng đã hết hạn thanh toán.</div>
-        <a asp-controller="Products" asp-action="Index" class="btn btn-outline-light btn-sm mt-2">Tiếp tục mua sắm</a>
+        <div class="fw-semibold">Đơn hàng đã hết hạn thanh toán.</div>
+        <div><strong>Hạn thanh toán:</strong> @DateTimeHelper.FormatVietnam(Model.PaymentExpireAt)</div>
+        <div>Bạn có thể đặt lại sản phẩm hoặc tiếp tục mua sắm.</div>
     </div>
 }
 else if (isPendingPayment)
 {
-    <div class="alert alert-info" id="payment-status-alert" data-payment-state="waiting-payment">
+    <div class="alert alert-warning" id="payment-status-alert" data-payment-state="waiting-payment">
+        <div class="fw-semibold">Đơn hàng đang chờ thanh toán</div>
         <div><strong>Trạng thái thanh toán:</strong> <span id="payment-status-label">@OrderStatusHelper.PaymentLabel(Model.PaymentStatus, Model.Status)</span></div>
-        <div><strong>Hạn thanh toán:</strong> @(Model.PaymentExpireAt.HasValue ? Model.PaymentExpireAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss") : "-")</div>
+        <div><strong>Hạn thanh toán:</strong> @DateTimeHelper.FormatVietnam(Model.PaymentExpireAt)</div>
         @if (canPayNow)
         {
-            <div><strong>Thời gian còn lại:</strong> <span id="payment-countdown" data-expire-utc="@Model.PaymentExpireAt!.Value.ToString("O")">--:--:--</span></div>
-            <div class="mt-2">Vui lòng thanh toán trong thời gian còn lại để giữ đơn hàng.</div>
+            <div><strong>Thời gian còn lại:</strong> <span id="payment-countdown" data-remaining-seconds="@remainingSeconds">--:--:--</span></div>
+            <div class="mt-2" data-expire-only="true">Vui lòng thanh toán trong thời gian còn lại để giữ đơn hàng.</div>
             <div class="d-flex flex-wrap gap-2 mt-2" data-payment-action="true">
                 <form asp-action="PayNow" asp-route-id="@Model.Id" method="post">
                     @Html.AntiForgeryToken()
@@ -87,7 +92,7 @@ else
     </div>
 }
 </div>
-@if (isBankTransfer)
+@if (isBankTransfer && isPendingPayment && canPayNow)
 {
     <div class="small text-muted mb-2">Vui lòng chuyển khoản đúng nội dung để admin kiểm tra nhanh hơn.</div>
 }
@@ -107,6 +112,10 @@ else
     </tbody>
 </table>
 
+<div class="mt-3">
+    <a asp-controller="Products" asp-action="Index" class="btn btn-outline-primary">Tiếp tục mua sắm</a>
+</div>
+
 @section Scripts {
     <script>
         (() => {
@@ -118,7 +127,8 @@ else
             const paymentAlertEl = document.getElementById('payment-status-alert');
             const paymentStatusEl = document.getElementById('payment-status-label');
             const pad = n => String(n).padStart(2, '0');
-            let expireAt = countdownEl?.dataset.expireUtc ? new Date(countdownEl.dataset.expireUtc).getTime() : null;
+            let remainingSeconds = countdownEl ? Number.parseInt(countdownEl.dataset.remainingSeconds || '0', 10) : 0;
+            if (!Number.isFinite(remainingSeconds)) remainingSeconds = 0;
             let expirationSyncStarted = false;
 
             const statusLabels = {
@@ -158,10 +168,11 @@ else
                 }
                 if (paymentStatusEl) paymentStatusEl.textContent = paymentLabels.EXPIRED;
                 if (paymentAlertEl) {
-                    paymentAlertEl.classList.remove('alert-info', 'alert-warning');
+                    paymentAlertEl.classList.remove('alert-info', 'alert-warning', 'alert-light');
                     paymentAlertEl.classList.add('alert-danger');
                     paymentAlertEl.dataset.paymentState = 'expired';
                     paymentAlertEl.querySelectorAll('[data-payment-action]').forEach(el => el.remove());
+                    paymentAlertEl.querySelectorAll('[data-expire-only]').forEach(el => el.remove());
                     const message = 'Đơn hàng đã hết hạn thanh toán.';
                     if (!paymentAlertEl.textContent.includes(message)) {
                         paymentAlertEl.insertAdjacentHTML('afterbegin', `<div class="fw-semibold mb-1">${message}</div>`);
@@ -179,12 +190,10 @@ else
                 if (paymentStatusEl && data.paymentStatus) {
                     paymentStatusEl.textContent = paymentLabels[data.paymentStatus] || data.paymentStatus;
                 }
-                if (data.paymentExpireAt && countdownEl) {
-                    expireAt = new Date(data.paymentExpireAt).getTime();
-                    countdownEl.dataset.expireUtc = data.paymentExpireAt;
-                }
                 if (Number.isFinite(data.remainingSeconds) && countdownEl && data.status !== 'Expired' && data.paymentStatus !== 'EXPIRED') {
-                    updateCountdown(data.remainingSeconds);
+                    remainingSeconds = Math.max(0, data.remainingSeconds);
+                    countdownEl.dataset.remainingSeconds = remainingSeconds;
+                    updateCountdown(remainingSeconds);
                 }
                 if (data.status === 'Expired' || data.paymentStatus === 'EXPIRED' || (data.remainingSeconds <= 0 && countdownEl)) {
                     markExpired();
@@ -205,11 +214,11 @@ else
             }
 
             function tick() {
-                if (!countdownEl || !expireAt) return;
-                const diff = Math.max(0, expireAt - Date.now());
-                const totalSec = Math.floor(diff / 1000);
-                updateCountdown(totalSec);
-                if (diff <= 0) {
+                if (!countdownEl) return;
+                remainingSeconds = Math.max(0, remainingSeconds - 1);
+                countdownEl.dataset.remainingSeconds = remainingSeconds;
+                updateCountdown(remainingSeconds);
+                if (remainingSeconds <= 0) {
                     markExpired();
                     if (enableStatusPolling && !expirationSyncStarted) {
                         expirationSyncStarted = true;
@@ -218,8 +227,10 @@ else
                 }
             }
 
-            tick();
-            if (countdownEl) window.setInterval(tick, 1000);
+            if (countdownEl) {
+                updateCountdown(remainingSeconds);
+                window.setInterval(tick, 1000);
+            }
             if (enableStatusPolling) window.setInterval(fetchStatus, 30000);
         })();
     </script>

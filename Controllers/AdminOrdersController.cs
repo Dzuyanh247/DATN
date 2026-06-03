@@ -75,7 +75,7 @@ public class AdminOrdersController : Controller
                 if (PaymentMethods.RequiresOnlinePayment(order.PaymentMethod))
                 {
                     order.PaymentStatus = PaymentStatuses.Paid;
-                    order.PaidAt ??= DateTime.UtcNow;
+                    order.PaidAt ??= DateTimeHelper.UtcNow();
                 }
                 break;
             case OrderStatus.Completed:
@@ -83,7 +83,7 @@ public class AdminOrdersController : Controller
                 if (PaymentMethods.RequiresOnlinePayment(order.PaymentMethod))
                 {
                     order.PaymentStatus = PaymentStatuses.Paid;
-                    order.PaidAt ??= DateTime.UtcNow;
+                    order.PaidAt ??= DateTimeHelper.UtcNow();
                 }
                 break;
             case OrderStatus.Cancelled:
@@ -93,7 +93,8 @@ public class AdminOrdersController : Controller
                 await _orderExpirationService.ExpireOrderIfNeededAsync(order);
                 if (order.Status != OrderStatus.Expired)
                 {
-                    await _orderExpirationService.MarkExpiredAsync(order);
+                    TempData["ErrorMessage"] = "Không thể chuyển hết hạn thanh toán khi hạn thanh toán vẫn còn.";
+                    return RedirectToAction(nameof(Detail), new { id = order.Id });
                 }
                 break;
             default:

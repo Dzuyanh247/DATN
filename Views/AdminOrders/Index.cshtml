@@ -1,7 +1,7 @@
 @model IEnumerable<Order>
 @{
     ViewData["Title"] = "Quản lý đơn hàng";
-    var nowUtc = DateTime.UtcNow;
+    var nowUtc = DateTimeHelper.UtcNow();
 }
 <h3>Quản lý đơn hàng</h3>
 <table class="table table-striped align-middle">
@@ -17,7 +17,7 @@
             <td>@o.TotalAmount.ToString("N0") đ</td>
             <td>@OrderStatusHelper.Label(o.Status)</td>
             <td>@OrderStatusHelper.PaymentLabel(o.PaymentStatus, o.Status)</td>
-            <td>@(o.PaymentExpireAt.HasValue ? o.PaymentExpireAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm") : "-")</td>
+            <td>@(o.PaymentExpireAt.HasValue ? DateTimeHelper.FormatVietnam(o.PaymentExpireAt, "dd/MM/yyyy HH:mm") : "-")</td>
             <td>
                 @if (canPayNow)
                 {

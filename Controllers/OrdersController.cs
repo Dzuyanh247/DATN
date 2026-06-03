@@ -178,7 +178,7 @@ public class OrdersController : Controller
 
             var discount = 0m;
             var paymentExpireAt = vm.PaymentMethod == PaymentMethods.BankTransfer
-                ? DateTime.UtcNow.Add(OrderStatusHelper.PendingPaymentTimeToLive)
+                ? DateTimeHelper.UtcNow().Add(OrderStatusHelper.PendingPaymentTimeToLive)
                 : (DateTime?)null;
             var order = new Order
             {
@@ -350,6 +350,7 @@ public class OrdersController : Controller
         }
 
         await _orderExpirationService.ExpireOrderIfNeededAsync(order);
+        ViewBag.PaymentRemainingSeconds = OrderStatusHelper.RemainingSeconds(order, DateTimeHelper.UtcNow());
         ViewBag.EnableTrackingStatusPolling = true;
         return View("Detail", order);
     }
@@ -362,7 +363,7 @@ public class OrdersController : Controller
         if (!CanAccessOrderTracking(order, phone)) return Forbid();
 
         await _orderExpirationService.ExpireOrderIfNeededAsync(order);
-        var now = DateTime.UtcNow;
+        var now = DateTimeHelper.UtcNow();
 
         return Json(new
         {
@@ -424,6 +425,7 @@ public class OrdersController : Controller
         var order = await _db.Orders.Include(x => x.Details).FirstOrDefaultAsync(x => x.Id == id && x.UserId == userId);
         if (order == null) return NotFound();
         await _orderExpirationService.ExpireOrderIfNeededAsync(order);
+        ViewBag.PaymentRemainingSeconds = OrderStatusHelper.RemainingSeconds(order, DateTimeHelper.UtcNow());
         ViewBag.EnableTrackingStatusPolling = false;
         return View(order);
     }
@@ -448,13 +450,13 @@ public class OrdersController : Controller
         }
 
         await _orderExpirationService.ExpireOrderIfNeededAsync(order);
-        if (OrderStatusHelper.IsExpiredPayment(order, DateTime.UtcNow))
+        if (OrderStatusHelper.IsExpiredPayment(order, DateTimeHelper.UtcNow()))
         {
             TempData["ErrorMessage"] = "Đơn hàng đã hết hạn thanh toán.";
             return RedirectToAction(nameof(Tracking), new { id = order.Id });
         }
 
-        if (!OrderStatusHelper.CanPayNow(order, DateTime.UtcNow))
+        if (!OrderStatusHelper.CanPayNow(order, DateTimeHelper.UtcNow()))
         {
             TempData["ErrorMessage"] = "Đơn hàng không ở trạng thái chờ thanh toán hợp lệ.";
             return RedirectToAction(nameof(Tracking), new { id = order.Id });
@@ -474,11 +476,12 @@ public class OrdersController : Controller
         if (order == null) return NotFound();
         if (!CanAccessOrderTracking(order)) return Forbid();
         await _orderExpirationService.ExpireOrderIfNeededAsync(order);
-        if (OrderStatusHelper.IsExpiredPayment(order, DateTime.UtcNow))
+        if (OrderStatusHelper.IsExpiredPayment(order, DateTimeHelper.UtcNow()))
         {
             TempData["ErrorMessage"] = "Đơn hàng đã hết hạn thanh toán (quá 2 giờ). Vui lòng đặt lại đơn hàng.";
             return RedirectToAction(nameof(Checkout));
         }
+        ViewBag.PaymentRemainingSeconds = OrderStatusHelper.RemainingSeconds(order, DateTimeHelper.UtcNow());
         return View(order);
     }
 
@@ -491,7 +494,7 @@ public class OrdersController : Controller
         if (!CanAccessOrderTracking(order)) return Forbid();
         if (order.PaymentMethod != PaymentMethods.BankTransfer) return BadRequest();
         await _orderExpirationService.ExpireOrderIfNeededAsync(order);
-        if (OrderStatusHelper.IsExpiredPayment(order, DateTime.UtcNow))
+        if (OrderStatusHelper.IsExpiredPayment(order, DateTimeHelper.UtcNow()))
         {
             TempData["ErrorMessage"] = "Đơn hàng đã hết hạn thanh toán nên không thể xác nhận chuyển khoản.";
             return RedirectToAction(nameof(Checkout));
