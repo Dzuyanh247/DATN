@@ -510,6 +510,11 @@
     color: #343a40;
 }
 
+.compare-spec-value {
+    white-space: pre-line;
+    word-break: break-word;
+}
+
 .compare-mobile-info-row {
     display: none;
 }

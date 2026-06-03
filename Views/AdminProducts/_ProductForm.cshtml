@@ -215,8 +215,9 @@
                 if (!trimField(line) || isHeaderLine(line)) return;
 
                 let spec = null;
-                if (line.includes('	')) {
-                    const columns = line.split('	').map(trimField).filter(Boolean);
+                const separator = line.includes('	') ? '	' : (line.includes('|') ? '|' : null);
+                if (separator) {
+                    const columns = line.split(separator).map(trimField).filter(Boolean);
                     if (columns.length >= 4 && !isHeaderLine(columns.join(' '))) {
                         spec = {
                             stt: parseInt(columns[0], 10) || result.length + 1,
