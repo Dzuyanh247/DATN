@@ -124,7 +124,8 @@ public class AccountController : Controller
             {
                 FullName = user.FullName,
                 Email = user.Email,
-                PhoneNumber = user.Phone ?? string.Empty
+                PhoneNumber = user.Phone ?? string.Empty,
+                Address = user.Address ?? string.Empty
             },
             Username = user.Username,
             Address = string.IsNullOrWhiteSpace(user.Address) ? null : user.Address,
@@ -144,13 +145,13 @@ public class AccountController : Controller
         var user = await _db.Users.FirstOrDefaultAsync(x => x.Id == userId);
         if (user == null)
         {
-            ModelState.AddModelError(string.Empty, "Không tìm thấy tài khoản người dùng.");
+            TempData["ErrorMessage"] = "Không tìm thấy tài khoản người dùng.";
             return RedirectToAction(nameof(Profile));
         }
 
         if (!string.IsNullOrWhiteSpace(vm.PhoneNumber) && !System.Text.RegularExpressions.Regex.IsMatch(vm.PhoneNumber, "^(0|\\+84)[0-9]{9,10}$"))
         {
-            ModelState.AddModelError(nameof(vm.PhoneNumber), "Số điện thoại không hợp lệ.");
+            ModelState.AddModelError("Profile.PhoneNumber", "Số điện thoại không hợp lệ.");
         }
 
         if (!ModelState.IsValid)
@@ -162,14 +163,14 @@ public class AccountController : Controller
         var existingByEmail = await _db.Users.FirstOrDefaultAsync(x => x.Email == normalizedEmail && x.Id != userId);
         if (existingByEmail != null)
         {
-            ModelState.AddModelError(nameof(vm.Email), "Email đã được sử dụng bởi tài khoản khác.");
+            ModelState.AddModelError("Profile.Email", "Email đã được sử dụng bởi tài khoản khác.");
             return View("Profile", await BuildProfileVmAsync(user, vm));
         }
 
         user.FullName = vm.FullName.Trim();
         user.Phone = vm.PhoneNumber.Trim();
         user.Email = normalizedEmail;
-        user.Username = normalizedEmail;
+        user.Address = vm.Address?.Trim() ?? string.Empty;
         await _db.SaveChangesAsync();
         await RefreshAuthClaimsAsync(user);
 
@@ -219,7 +220,8 @@ public class AccountController : Controller
             {
                 FullName = user.FullName,
                 Email = user.Email,
-                PhoneNumber = user.Phone ?? string.Empty
+                PhoneNumber = user.Phone ?? string.Empty,
+                Address = user.Address ?? string.Empty
             },
             Username = user.Username,
             Address = string.IsNullOrWhiteSpace(user.Address) ? null : user.Address,
