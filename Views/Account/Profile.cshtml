@@ -4,59 +4,80 @@
 }
 
 <div class="card shadow-sm mb-3">
-    <div class="card-header"><h4 class="mb-0">A. Xem thông tin tài khoản</h4></div>
-    <div class="card-body">
-        <dl class="row mb-0">
-            <dt class="col-sm-3">Họ tên</dt><dd class="col-sm-9">@Model.Profile.FullName</dd>
-            <dt class="col-sm-3">Username</dt><dd class="col-sm-9">@Model.Username</dd>
-            <dt class="col-sm-3">Email</dt><dd class="col-sm-9">@Model.Profile.Email</dd>
-            <dt class="col-sm-3">Số điện thoại</dt><dd class="col-sm-9">@(string.IsNullOrWhiteSpace(Model.Profile.PhoneNumber) ? "Chưa cập nhật" : Model.Profile.PhoneNumber)</dd>
-            <dt class="col-sm-3">Địa chỉ</dt><dd class="col-sm-9">@(string.IsNullOrWhiteSpace(Model.Address) ? "Chưa cập nhật" : Model.Address)</dd>
-            <dt class="col-sm-3">Ngày tạo</dt><dd class="col-sm-9">@Model.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</dd>
-            <dt class="col-sm-3">Trạng thái</dt><dd class="col-sm-9">@(Model.IsActive ? "Đang hoạt động" : "Đã khóa")</dd>
-        </dl>
-    </div>
-    <div class="card-footer">
-        <a class="btn btn-outline-secondary" asp-controller="Home" asp-action="Index">Về trang chủ</a>
-    </div>
-</div>
-
-<div class="card shadow-sm mb-3">
-    <div class="card-header"><h4 class="mb-0">B. Cập nhật thông tin cá nhân</h4></div>
+    <div class="card-header"><h4 class="mb-0">Thông tin tài khoản</h4></div>
     <div class="card-body">
         @if (TempData["ProfileMessage"] is string profileMessage)
         {
-            <div class="alert alert-success">@profileMessage</div>
+            <div class="alert alert-success" role="alert">@profileMessage</div>
         }
+        @if (TempData["ErrorMessage"] is string errorMessage)
+        {
+            <div class="alert alert-danger" role="alert">@errorMessage</div>
+        }
+
         <form asp-action="UpdateProfile" method="post">
             @Html.AntiForgeryToken()
-            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-            <div class="mb-3">
-                <label asp-for="Profile.FullName" class="form-label"></label>
-                <input asp-for="Profile.FullName" class="form-control" />
-                <span asp-validation-for="Profile.FullName" class="text-danger"></span>
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+            <div class="row g-3">
+                <div class="col-md-7">
+                    <h5 class="mb-3">Thông tin cá nhân</h5>
+                    <div class="mb-3">
+                        <label asp-for="Profile.FullName" class="form-label">Họ tên</label>
+                        <input asp-for="Profile.FullName" class="form-control" />
+                        <span asp-validation-for="Profile.FullName" class="text-danger"></span>
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="Profile.PhoneNumber" class="form-label">Số điện thoại</label>
+                        <input asp-for="Profile.PhoneNumber" class="form-control" />
+                        <span asp-validation-for="Profile.PhoneNumber" class="text-danger"></span>
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="Profile.Email" class="form-label">Email</label>
+                        <input asp-for="Profile.Email" class="form-control" />
+                        <span asp-validation-for="Profile.Email" class="text-danger"></span>
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="Profile.Address" class="form-label">Địa chỉ</label>
+                        <textarea asp-for="Profile.Address" class="form-control" rows="3"></textarea>
+                        <span asp-validation-for="Profile.Address" class="text-danger"></span>
+                    </div>
+                </div>
+
+                <div class="col-md-5">
+                    <h5 class="mb-3">Thông tin đăng nhập</h5>
+                    <div class="list-group list-group-flush border rounded">
+                        <div class="list-group-item">
+                            <div class="small text-muted">Username</div>
+                            <div class="fw-semibold">@Model.Username</div>
+                        </div>
+                        <div class="list-group-item">
+                            <div class="small text-muted">Ngày tạo</div>
+                            <div class="fw-semibold">@Model.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</div>
+                        </div>
+                        <div class="list-group-item">
+                            <div class="small text-muted">Trạng thái</div>
+                            <span class="badge @(Model.IsActive ? "bg-success" : "bg-secondary")">
+                                @(Model.IsActive ? "Đang hoạt động" : "Đã khóa")
+                            </span>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="mb-3">
-                <label asp-for="Profile.PhoneNumber" class="form-label">Số điện thoại</label>
-                <input asp-for="Profile.PhoneNumber" class="form-control" />
-                <span asp-validation-for="Profile.PhoneNumber" class="text-danger"></span>
+
+            <div class="d-flex flex-wrap gap-2 mt-4">
+                <button type="submit" class="btn btn-primary">Lưu thông tin</button>
+                <a class="btn btn-outline-secondary" asp-controller="Home" asp-action="Index">Về trang chủ</a>
             </div>
-            <div class="mb-3">
-                <label asp-for="Profile.Email" class="form-label">Gmail/Email</label>
-                <input asp-for="Profile.Email" class="form-control" />
-                <span asp-validation-for="Profile.Email" class="text-danger"></span>
-            </div>
-            <button type="submit" class="btn btn-primary">Lưu thông tin</button>
         </form>
     </div>
 </div>
 
 <div class="card shadow-sm">
-    <div class="card-header"><h4 class="mb-0">C. Đổi mật khẩu</h4></div>
+    <div class="card-header"><h4 class="mb-0">Đổi mật khẩu</h4></div>
     <div class="card-body">
         @if (TempData["PasswordMessage"] is string passwordMessage)
         {
-            <div class="alert alert-success">@passwordMessage</div>
+            <div class="alert alert-success" role="alert">@passwordMessage</div>
         }
         <form asp-action="ChangePassword" method="post">
             @Html.AntiForgeryToken()
