@@ -1,4 +1,3 @@
-using System.Text.RegularExpressions;
 using Datn.PcStore.Data;
 using Datn.PcStore.Helpers;
 using Datn.PcStore.Models;
@@ -17,16 +16,21 @@ public class CompareController : Controller
         "CPU", "RAM", "GPU", "SSD", "Mainboard", "PSU/Nguồn", "Case", "Tản nhiệt"
     };
 
-    private static readonly Dictionary<string, string[]> SpecAliases = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly Dictionary<string, string[]> ComponentKeywords = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["CPU"] = new[] { "cpu", "processor", "bộ vi xử lý", "vi xử lý", "core", "ryzen" },
-        ["GPU"] = new[] { "gpu", "vga", "card màn hình", "card man hinh", "graphics", "rtx", "gtx", "radeon" },
-        ["RAM"] = new[] { "ram", "memory", "bộ nhớ", "bo nho", "ddr" },
-        ["SSD"] = new[] { "ssd", "hdd", "ổ cứng", "o cung", "storage", "nvme" },
-        ["Mainboard"] = new[] { "mainboard", "main", "motherboard", "bo mạch chủ", "bo mach chu", "b760", "z790", "h610", "b650", "x670" },
-        ["PSU/Nguồn"] = new[] { "psu", "nguồn", "nguon", "power", "watt", "650w", "750w" },
-        ["Case"] = new[] { "case", "vỏ", "vo may", "vỏ máy" },
-        ["Tản nhiệt"] = new[] { "tản nhiệt", "tan nhiet", "cooler", "cooling", "aio", "fan cpu" }
+        ["CPU"] = new[] { "CPU", "Intel Core", "Core i", "Ryzen" },
+        ["RAM"] = new[] { "RAM", "Ram", "DDR4", "DDR5", "Bus" },
+        ["GPU"] = new[] { "Card màn hình", "Card Màn Hình", "VGA", "RTX", "GTX", "Radeon", "RX", "GeForce" },
+        ["SSD"] = new[] { "SSD", "Ổ cứng", "Ổ Cứng", "NVMe", "M.2" },
+        ["Mainboard"] = new[] { "Mainboard", "Bo mạch chủ", "B760", "H610", "B650", "A620", "Z790", "PRIME", "BATTLE-AX" },
+        ["PSU/Nguồn"] = new[] { "Nguồn", "PSU", "650W", "750W", "850W", "80 Plus", "Bronze", "Gold" },
+        ["Case"] = new[] { "Case", "Vỏ Case", "Vỏ", "Fan ARGB" },
+        ["Tản nhiệt"] = new[] { "Tản nhiệt", "Tản Nhiệt", "Cooler", "Thermalright", "JONSBO", "IDCOOLING" }
+    };
+
+    private static readonly string[] ClassificationPriority =
+    {
+        "GPU", "CPU", "Mainboard", "RAM", "SSD", "PSU/Nguồn", "Case", "Tản nhiệt"
     };
 
     private readonly ApplicationDbContext _db;
@@ -44,17 +48,10 @@ public class CompareController : Controller
         var products = await _compareService.GetProductsAsync();
         var compareProducts = products.Select(BuildCompareProduct).ToList();
 
-        var labels = compareProducts
-            .SelectMany(p => p.Specifications.Keys)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .OrderBy(GetSpecSortOrder)
-            .ThenBy(x => x)
-            .ToList();
-
         var model = new CompareIndexVm
         {
             Products = compareProducts,
-            Rows = labels.Select(label => new CompareRowVm
+            Rows = PreferredSpecOrder.Select(label => new CompareRowVm
             {
                 Label = label,
                 ProductAValue = compareProducts.ElementAtOrDefault(0)?.Specifications.GetValueOrDefault(label) ?? "-",
@@ -129,95 +126,56 @@ public class CompareController : Controller
 
         if (componentSpecs.Any())
         {
-            foreach (var description in componentSpecs.Select(x => CleanSpecText(x.Description)).Where(x => !string.IsNullOrWhiteSpace(x)))
+            foreach (var component in componentSpecs)
             {
-                AddMatchedSpec(specs, description);
+                AddMatchedComponent(specs, component.Description);
             }
 
             return specs;
         }
 
-        var text = string.Join('\n', new[] { product.TechnicalSpecifications, product.DetailDescription, product.Description }
-            .Where(x => !string.IsNullOrWhiteSpace(x)));
-
-        var parts = Regex.Split(text, @"\r?\n|\||;|<br\s*/?>", RegexOptions.IgnoreCase)
-            .Select(CleanSpecText)
-            .Where(x => !string.IsNullOrWhiteSpace(x) && x != "1" && !IsHeaderLine(x))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        foreach (var part in parts)
+        foreach (var component in ProductComponentSpecHelper.ParseFallbackText(product.TechnicalSpecifications))
         {
-            AddMatchedSpec(specs, part);
+            AddMatchedComponent(specs, component.Description);
         }
 
         return specs;
     }
 
-    private static void AddMatchedSpec(Dictionary<string, string> specs, string part)
+    private static void AddMatchedComponent(Dictionary<string, string> specs, string? rawDescription)
     {
-        var (label, value) = ExtractLabelValue(part);
-        if (string.IsNullOrWhiteSpace(label) || GetSpecSortOrder(label) >= PreferredSpecOrder.Length) return;
+        var description = NormalizeDisplayDescription(rawDescription);
+        if (string.IsNullOrWhiteSpace(description)) return;
 
-        specs.TryAdd(label, string.IsNullOrWhiteSpace(value) ? part : value);
+        var label = ClassifyComponent(description);
+        if (string.IsNullOrWhiteSpace(label)) return;
+
+        if (specs.TryGetValue(label, out var existing) && !string.IsNullOrWhiteSpace(existing))
+        {
+            specs[label] = $"{existing}\n{description}";
+        }
+        else
+        {
+            specs[label] = description;
+        }
     }
 
-    private static (string Label, string Value) ExtractLabelValue(string part)
+    private static string ClassifyComponent(string description)
     {
-        var explicitMatch = Regex.Match(part, @"^(?<label>[^:：\-–—]{2,40})\s*[:：\-–—]\s*(?<value>.+)$");
-        if (explicitMatch.Success)
+        foreach (var label in ClassificationPriority)
         {
-            var label = NormalizeSpecLabel(explicitMatch.Groups["label"].Value);
-            var value = explicitMatch.Groups["value"].Value.Trim();
-            return (label, value);
-        }
-
-        foreach (var label in PreferredSpecOrder)
-        {
-            if (!SpecAliases.TryGetValue(label, out var aliases)) continue;
-            var alias = aliases.FirstOrDefault(a => ContainsToken(part, a));
-            if (alias == null) continue;
-
-            var value = Regex.Replace(part, $@"^\s*{Regex.Escape(alias)}\s*[:：\-–—]?\s*", string.Empty, RegexOptions.IgnoreCase).Trim();
-            return (label, string.IsNullOrWhiteSpace(value) ? part : value);
-        }
-
-        return (string.Empty, string.Empty);
-    }
-
-    private static string NormalizeSpecLabel(string rawLabel)
-    {
-        var label = CleanSpecText(rawLabel).Trim(':', '-', '–', '—');
-        foreach (var preferred in PreferredSpecOrder)
-        {
-            if (SpecAliases.TryGetValue(preferred, out var aliases) && aliases.Any(a => ContainsToken(label, a)))
+            if (ComponentKeywords.TryGetValue(label, out var keywords)
+                && keywords.Any(keyword => description.Contains(keyword, StringComparison.OrdinalIgnoreCase)))
             {
-                return preferred;
+                return label;
             }
         }
 
-        return label;
+        return string.Empty;
     }
 
-    private static bool ContainsToken(string text, string token)
-        => text.Contains(token, StringComparison.OrdinalIgnoreCase);
-
-    private static string CleanSpecText(string value)
-        => Regex.Replace(Regex.Replace(value ?? string.Empty, "<.*?>", string.Empty), @"\s+", " ").Trim(' ', '-', '•', '\t', '\r', '\n');
-
-    private static bool IsHeaderLine(string value)
-    {
-        var normalized = Regex.Replace(value ?? string.Empty, @"\s+", " ").Trim().ToLowerInvariant();
-        return normalized == "stt mô tả thiết bị sl bh"
-            || normalized == "stt mo ta thiet bi sl bh"
-            || (normalized.StartsWith("stt ") && normalized.Contains("mô tả") && normalized.Contains(" sl") && normalized.EndsWith("bh"));
-    }
-
-    private static int GetSpecSortOrder(string label)
-    {
-        var index = Array.FindIndex(PreferredSpecOrder, x => x.Equals(label, StringComparison.OrdinalIgnoreCase));
-        return index >= 0 ? index : PreferredSpecOrder.Length;
-    }
+    private static string NormalizeDisplayDescription(string? value)
+        => (value ?? string.Empty).Trim();
 
     private IActionResult RedirectToSafeReturnUrl(string? returnUrl)
     {

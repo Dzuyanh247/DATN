@@ -57,20 +57,18 @@ public static class ProductComponentSpecHelper
             var line = CleanLine(rawLine);
             if (string.IsNullOrWhiteSpace(line) || IsHeaderLine(line)) continue;
 
-            var tabColumns = rawLine.Split('\t')
-                .Select(CleanLine)
-                .Where(x => !string.IsNullOrWhiteSpace(x))
-                .ToArray();
+            var columns = SplitComponentColumns(rawLine);
+            if (columns.Length >= 4 && IsHeaderLine(string.Join(' ', columns))) continue;
 
             ProductComponentSpecViewModel? spec = null;
-            if (tabColumns.Length >= 4)
+            if (columns.Length >= 4)
             {
                 spec = new ProductComponentSpecViewModel
                 {
-                    Stt = ParsePositiveInt(tabColumns[0], specs.Count + 1),
-                    Description = tabColumns[1],
-                    Quantity = ParsePositiveInt(tabColumns[2], 1),
-                    Warranty = tabColumns[3]
+                    Stt = ParsePositiveInt(columns[0], specs.Count + 1),
+                    Description = columns[1],
+                    Quantity = ParsePositiveInt(columns[2], 1),
+                    Warranty = columns[3]
                 };
             }
             else
@@ -143,8 +141,19 @@ public static class ProductComponentSpecHelper
             || (normalized.StartsWith("stt ") && normalized.Contains("mô tả") && normalized.Contains(" sl") && normalized.EndsWith("bh"));
     }
 
+    private static string[] SplitComponentColumns(string rawLine)
+    {
+        var separator = rawLine.Contains('\t') ? '\t' : rawLine.Contains('|') ? '|' : '\0';
+        if (separator == '\0') return Array.Empty<string>();
+
+        return rawLine.Split(separator)
+            .Select(CleanLine)
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .ToArray();
+    }
+
     private static string CleanLine(string? value)
-        => Regex.Replace(value ?? string.Empty, @"\s+", " ").Trim(' ', '-', '•', '\t', '\r', '\n');
+        => Regex.Replace(value ?? string.Empty, @"[ \t\r\n]+", " ").Trim();
 
     private static int ParsePositiveInt(string? value, int fallback)
         => int.TryParse((value ?? string.Empty).Trim(), out var result) && result > 0 ? result : fallback;
