@@ -1,28 +1,13 @@
 @model Order
 @{
     ViewData["Title"] = $"Chi tiết đơn hàng DH{Model.Id:D6}";
-    string StatusLabel(OrderStatus status) => status switch
-    {
-        OrderStatus.Pending => "Chờ xác nhận",
-        OrderStatus.Processing => "Đã xác nhận",
-        OrderStatus.Delivering => "Đang giao hàng",
-        OrderStatus.Completed => "Đã giao hàng",
-        OrderStatus.Cancelled => "Đã hủy",
-        OrderStatus.PendingConfirmation => "Chờ xác nhận",
-        OrderStatus.PendingPayment => "Chờ thanh toán",
-        OrderStatus.Expired => "Hết hạn",
-        _ => status.ToString()
-    };
-}
-@{
     var nowUtc = DateTime.UtcNow;
-    var isCod = Model.PaymentMethod == "COD";
-    var isBankTransfer = Model.PaymentMethod == "BANK_TRANSFER";
-    var isPendingPayment = Model.Status == OrderStatus.PendingPayment;
-    var isAwaitingConfirmation = Model.Status == OrderStatus.PendingConfirmation;
-    var isExpiredPayment = Model.Status == OrderStatus.Expired || Model.PaymentStatus == "EXPIRED" || (!isCod && isPendingPayment && Model.PaymentExpireAt.HasValue && Model.PaymentExpireAt.Value <= nowUtc);
-    var canShowCountdown = !isCod && isPendingPayment && Model.PaymentExpireAt.HasValue && Model.PaymentExpireAt.Value > nowUtc;
-    var isPaid = Model.PaymentStatus == "PAID";
+    var isCod = PaymentMethods.IsCod(Model.PaymentMethod);
+    var isBankTransfer = Model.PaymentMethod == PaymentMethods.BankTransfer;
+    var isPendingPayment = OrderStatusHelper.IsPendingPaymentOrder(Model);
+    var isAwaitingConfirmation = Model.Status == OrderStatus.PendingConfirmation && Model.PaymentStatus == PaymentStatuses.PendingConfirmation;
+    var isExpiredPayment = OrderStatusHelper.IsExpiredPayment(Model, nowUtc);
+    var canPayNow = OrderStatusHelper.CanPayNow(Model, nowUtc);
     var phoneQuery = Context.Request.Query["phone"].ToString();
     var enableTrackingStatusPolling = ViewBag.EnableTrackingStatusPolling is bool trackingPollingEnabled
         ? trackingPollingEnabled
@@ -35,49 +20,70 @@
 }
 <h3>Chi tiết đơn hàng @($"DH{Model.Id:D6}")</h3>
 <p><strong>Ngày đặt:</strong> @Model.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</p>
-<p><strong>Trạng thái:</strong> <span id="order-status-label" data-status="@Model.Status">@StatusLabel(Model.Status)</span></p>
+<p><strong>Trạng thái:</strong> <span id="order-status-label" data-status="@Model.Status">@OrderStatusHelper.Label(Model.Status)</span></p>
 <p><strong>Người nhận:</strong> @Model.ReceiverName - @Model.ReceiverPhone</p>
 <p><strong>Địa chỉ giao hàng:</strong> @Model.ShippingAddress</p>
-<p><strong>Phương thức thanh toán:</strong> @Model.PaymentMethod</p>
+<p><strong>Phương thức thanh toán:</strong> @PaymentMethods.Label(Model.PaymentMethod)</p>
 <p><strong>Tổng tiền:</strong> @Model.TotalAmount.ToString("N0") đ</p>
 <div class="mb-3">
     <a asp-action="Quotation" asp-route-orderId="@Model.Id" class="btn btn-sm btn-danger">In báo giá</a>
 </div>
 
 <div id="payment-status-panel">
-@if (isAwaitingConfirmation)
+@if (isCod)
+{
+    <div class="alert alert-secondary" id="payment-status-alert" data-payment-state="cod">
+        Phương thức thanh toán: COD - thanh toán khi nhận hàng.
+    </div>
+}
+else if (isAwaitingConfirmation)
 {
     <div class="alert alert-warning" id="payment-status-alert" data-payment-state="waiting-confirmation">
+        <div><strong>Trạng thái thanh toán:</strong> <span id="payment-status-label">@OrderStatusHelper.PaymentLabel(Model.PaymentStatus, Model.Status)</span></div>
         Bạn đã gửi xác nhận thanh toán. Đơn hàng đang chờ admin kiểm tra.
     </div>
 }
 else if (isExpiredPayment)
 {
-    <div class="alert alert-danger" id="payment-status-alert" data-payment-state="expired">Đơn hàng đã hết hạn thanh toán.</div>
+    <div class="alert alert-danger" id="payment-status-alert" data-payment-state="expired">
+        <div><strong>Trạng thái thanh toán:</strong> <span id="payment-status-label">@OrderStatusHelper.PaymentLabel(Model.PaymentStatus, Model.Status)</span></div>
+        <div>Đơn hàng đã hết hạn thanh toán.</div>
+        <a asp-controller="Products" asp-action="Index" class="btn btn-outline-light btn-sm mt-2">Tiếp tục mua sắm</a>
+    </div>
 }
 else if (isPendingPayment)
 {
     <div class="alert alert-info" id="payment-status-alert" data-payment-state="waiting-payment">
-        <div><strong>Trạng thái thanh toán:</strong> <span id="payment-status-label">Chờ thanh toán</span></div>
+        <div><strong>Trạng thái thanh toán:</strong> <span id="payment-status-label">@OrderStatusHelper.PaymentLabel(Model.PaymentStatus, Model.Status)</span></div>
         <div><strong>Hạn thanh toán:</strong> @(Model.PaymentExpireAt.HasValue ? Model.PaymentExpireAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss") : "-")</div>
-        @if (canShowCountdown)
+        @if (canPayNow)
         {
             <div><strong>Thời gian còn lại:</strong> <span id="payment-countdown" data-expire-utc="@Model.PaymentExpireAt!.Value.ToString("O")">--:--:--</span></div>
-            @if (isBankTransfer)
-            {
-                <form asp-action="ConfirmTransferred" asp-route-id="@Model.Id" method="post" class="mt-2" data-payment-action="true">
-                    @Html.AntiForgeryToken()
-                    <button class="btn btn-warning text-dark">Tôi đã thanh toán</button>
-                </form>
-            }
-            else if (!isCod)
-            {
-                <form asp-action="PayNow" asp-route-id="@Model.Id" method="post" class="mt-2" data-payment-action="true">
+            <div class="mt-2">Vui lòng thanh toán trong thời gian còn lại để giữ đơn hàng.</div>
+            <div class="d-flex flex-wrap gap-2 mt-2" data-payment-action="true">
+                <form asp-action="PayNow" asp-route-id="@Model.Id" method="post">
                     @Html.AntiForgeryToken()
                     <button class="btn btn-warning text-dark">Thanh toán ngay</button>
                 </form>
-            }
+                @if (isBankTransfer)
+                {
+                    <form asp-action="ConfirmTransferred" asp-route-id="@Model.Id" method="post">
+                        @Html.AntiForgeryToken()
+                        <button class="btn btn-outline-primary">Tôi đã thanh toán</button>
+                    </form>
+                }
+            </div>
         }
+        else
+        {
+            <div class="text-danger mt-2">Đơn hàng chưa có hạn thanh toán hợp lệ. Vui lòng liên hệ quản trị viên.</div>
+        }
+    </div>
+}
+else
+{
+    <div class="alert alert-light border" id="payment-status-alert" data-payment-state="normal">
+        <strong>Trạng thái thanh toán:</strong> <span id="payment-status-label">@OrderStatusHelper.PaymentLabel(Model.PaymentStatus, Model.Status)</span>
     </div>
 }
 </div>
@@ -118,19 +124,22 @@ else if (isPendingPayment)
             const statusLabels = {
                 Pending: 'Chờ xác nhận',
                 Processing: 'Đã xác nhận',
-                Delivering: 'Đang giao hàng',
-                Completed: 'Đã giao hàng',
+                Delivering: 'Đang giao',
+                Completed: 'Hoàn thành',
                 Cancelled: 'Đã hủy',
                 PendingConfirmation: 'Chờ xác nhận',
                 PendingPayment: 'Chờ thanh toán',
-                Expired: 'Hết hạn'
+                Expired: 'Hết hạn thanh toán'
             };
 
             const paymentLabels = {
+                UNPAID: 'Chưa thanh toán',
                 WAITING_PAYMENT: 'Chờ thanh toán',
                 WAITING_CONFIRMATION: 'Chờ xác nhận thanh toán',
                 PAID: 'Đã thanh toán',
-                EXPIRED: 'Đã hết hạn'
+                FAILED: 'Thanh toán thất bại',
+                EXPIRED: 'Hết hạn thanh toán',
+                REFUNDED: 'Đã hoàn tiền'
             };
 
             function updateCountdown(totalSec) {
@@ -152,7 +161,7 @@ else if (isPendingPayment)
                     paymentAlertEl.classList.remove('alert-info', 'alert-warning');
                     paymentAlertEl.classList.add('alert-danger');
                     paymentAlertEl.dataset.paymentState = 'expired';
-                    paymentAlertEl.querySelectorAll('[data-payment-action]').forEach(form => form.remove());
+                    paymentAlertEl.querySelectorAll('[data-payment-action]').forEach(el => el.remove());
                     const message = 'Đơn hàng đã hết hạn thanh toán.';
                     if (!paymentAlertEl.textContent.includes(message)) {
                         paymentAlertEl.insertAdjacentHTML('afterbegin', `<div class="fw-semibold mb-1">${message}</div>`);
@@ -177,7 +186,7 @@ else if (isPendingPayment)
                 if (Number.isFinite(data.remainingSeconds) && countdownEl && data.status !== 'Expired' && data.paymentStatus !== 'EXPIRED') {
                     updateCountdown(data.remainingSeconds);
                 }
-                if (data.status === 'Expired' || data.paymentStatus === 'EXPIRED' || data.remainingSeconds <= 0 && countdownEl) {
+                if (data.status === 'Expired' || data.paymentStatus === 'EXPIRED' || (data.remainingSeconds <= 0 && countdownEl)) {
                     markExpired();
                 }
             }
