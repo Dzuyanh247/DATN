@@ -53,9 +53,10 @@ public class ProductsController : Controller
         if (product == null) return NotFound();
 
         ViewBag.UpgradeSuggestions = await _db.Products
+            .Include(p => p.ProductImages)
             .Where(p => p.CategoryId == product.CategoryId && p.Id != product.Id && p.Price > product.Price)
             .OrderBy(p => p.Price)
-            .Take(3)
+            .Take(4)
             .ToListAsync();
 
         return View(product);

@@ -158,6 +158,7 @@ else
     @RenderBody()
 </div>
 @await Html.PartialAsync("_CompareTray", compareProducts)
+<div id="ttg-product-preview" class="product-hover-card" aria-hidden="true"></div>
 }
 
 <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1090;">
@@ -192,6 +193,44 @@ document.querySelectorAll('form[action*="/Cart/Add"]').forEach(function(f){f.add
 if(window.__successToastMessage){window.showGlobalToast(window.__successToastMessage,'success');}
 if(window.__infoToastMessage){window.showGlobalToast(window.__infoToastMessage,'info');}
 document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el){new bootstrap.Tooltip(el);});
+const productHoverPopup=document.getElementById('ttg-product-preview');
+const esc=(s)=>(s||'').toString().replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const hasRawJson=(s)=>{const value=(s||'').toString().trim();return value.startsWith('[')||value.startsWith('{')||/"(description|stt|quantity)"/i.test(value);};
+const splitSpecs=(s)=>(s||'').split('||').map(x=>x.trim()).filter(x=>x&&!hasRawJson(x)).slice(0,6);
+const hideProductHover=()=>{if(productHoverPopup){productHoverPopup.classList.remove('show');productHoverPopup.setAttribute('aria-hidden','true');}};
+const placeProductHover=(card)=>{
+    const rect=card.getBoundingClientRect();
+    const ppRect=productHoverPopup.getBoundingClientRect();
+    const gap=10;
+    let left=rect.right+gap;
+    if(left+ppRect.width>window.innerWidth-10) left=rect.left-ppRect.width-gap;
+    left=Math.max(10, Math.min(left, window.innerWidth-ppRect.width-10));
+    let top=rect.top;
+    if(top+ppRect.height>window.innerHeight-10) top=Math.max(10, window.innerHeight-ppRect.height-10);
+    productHoverPopup.style.left=`${left+window.scrollX}px`;
+    productHoverPopup.style.top=`${top+window.scrollY}px`;
+};
+const showProductHover=(card)=>{
+    if(!productHoverPopup||window.innerWidth<768) return;
+    const d=card.dataset;
+    const specs=splitSpecs(d.ppSpecLines);
+    const desc=(!hasRawJson(d.ppDesc)&&d.ppDesc)?d.ppDesc:'';
+    const promo=(!hasRawJson(d.ppPromo)&&d.ppPromo)?d.ppPromo:'';
+    const specHtml=specs.length?`<div class="product-hover-label">Mô tả tóm tắt:</div><ul class="product-hover-spec-list">${specs.map(x=>`<li><i class="bi bi-check-circle-fill"></i><span>${esc(x)}</span></li>`).join('')}</ul>`:(desc?`<div class="product-hover-label">Mô tả tóm tắt:</div><div class="product-hover-desc">${esc(desc)}</div>`:'');
+    const promoHtml=promo?`<div class="product-hover-promo"><div class="product-hover-label">Khuyến mại:</div><div><span aria-hidden="true">🎁</span> ${esc(promo)}</div></div>`:'';
+    productHoverPopup.innerHTML=`<div class="product-hover-header">${esc(d.ppName||'Sản phẩm')}</div><div class="product-hover-body"><div class="product-hover-price"><span>Giá bán:</span> <strong>${esc(d.ppPrice||'Liên hệ')}</strong></div>${d.ppOldPrice?`<div class="product-hover-old-price">${esc(d.ppOldPrice)}</div>`:''}${d.ppWarranty?`<div class="product-hover-warranty"><b>Bảo hành:</b> ${esc(d.ppWarranty)}</div>`:''}${specHtml}${promoHtml}</div>`;
+    productHoverPopup.classList.add('show');
+    productHoverPopup.setAttribute('aria-hidden','false');
+    placeProductHover(card);
+};
+document.querySelectorAll('.ttg-product-image-wrap').forEach(function(card){
+    card.addEventListener('mouseenter',()=>showProductHover(card));
+    card.addEventListener('mouseleave',hideProductHover);
+    card.addEventListener('focus',()=>showProductHover(card));
+    card.addEventListener('blur',hideProductHover);
+});
+window.addEventListener('scroll',hideProductHover,{passive:true});
+window.addEventListener('resize',hideProductHover);
 })();
 </script>
 <script src="~/js/tawk-chat.js"></script>
