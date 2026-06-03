@@ -15,6 +15,17 @@ public class OrdersController : Controller
 
     private static bool IsOrderExpired(Order order, DateTime now)
         => IsPendingPaymentOrder(order) && order.PaymentExpireAt.HasValue && order.PaymentExpireAt.Value <= now;
+
+    private static int GetRemainingSeconds(Order order, DateTime now)
+    {
+        if (!order.PaymentExpireAt.HasValue)
+        {
+            return 0;
+        }
+
+        return Math.Max(0, (int)Math.Floor((order.PaymentExpireAt.Value - now).TotalSeconds));
+    }
+
     private readonly ApplicationDbContext _db;
     private readonly ICartService _cartService;
     private readonly ILogger<OrdersController> _logger;
@@ -45,10 +56,14 @@ public class OrdersController : Controller
         order.PaymentStatus = "EXPIRED";
 
         var details = await _db.OrderDetails.Where(x => x.OrderId == order.Id).ToListAsync();
+        var productIds = details.Select(x => x.ProductId).Distinct().ToList();
+        var products = await _db.Products
+            .Where(x => productIds.Contains(x.Id))
+            .ToDictionaryAsync(x => x.Id);
+
         foreach (var detail in details)
         {
-            var product = await _db.Products.FirstOrDefaultAsync(x => x.Id == detail.ProductId);
-            if (product == null) continue;
+            if (!products.TryGetValue(detail.ProductId, out var product)) continue;
             product.StockQuantity += detail.Quantity;
             product.IsInStock = product.StockQuantity > 0;
         }
@@ -56,6 +71,34 @@ public class OrdersController : Controller
         await _db.SaveChangesAsync();
         return true;
     }
+
+    private bool CanAccessOrderTracking(Order order, string? phone = null)
+    {
+        if (User.IsInRole("Admin"))
+        {
+            return true;
+        }
+
+        if (order.UserId.HasValue)
+        {
+            if (User.Identity?.IsAuthenticated != true)
+            {
+                return false;
+            }
+
+            var currentUserId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            return order.UserId.Value == currentUserId;
+        }
+
+        if (HttpContext.Session.GetInt32("LastOrderId") == order.Id)
+        {
+            return true;
+        }
+
+        return !string.IsNullOrWhiteSpace(phone)
+               && string.Equals(order.ReceiverPhone, phone, StringComparison.OrdinalIgnoreCase);
+    }
+
 
     [HttpGet("/Checkout")]
     public async Task<IActionResult> Checkout()
@@ -327,31 +370,44 @@ public class OrdersController : Controller
     {
         var order = await _db.Orders.Include(x => x.Details).FirstOrDefaultAsync(x => x.Id == id);
         if (order == null) return NotFound();
-        await ExpireOrderIfNeededAsync(order);
-
-        if (order.UserId.HasValue)
-        {
-            if (User.Identity?.IsAuthenticated != true) return Forbid();
-            var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-            if (order.UserId.Value != userId) return Forbid();
-            return View("Detail", order);
-        }
-
-        var canAccessBySession = HttpContext.Session.GetInt32("LastOrderId") == id;
-        if (!canAccessBySession && string.IsNullOrWhiteSpace(Request.Query["phone"]))
-        {
-            TempData["TrackingError"] = "Vui lòng nhập số điện thoại để xem đơn hàng.";
-            return RedirectToAction(nameof(TrackingLookup));
-        }
 
         var phone = Request.Query["phone"].ToString();
-        if (!canAccessBySession && !string.Equals(order.ReceiverPhone, phone, StringComparison.OrdinalIgnoreCase))
+        if (!CanAccessOrderTracking(order, phone))
         {
-            TempData["TrackingError"] = "Không tìm thấy đơn hàng.";
+            if (order.UserId.HasValue)
+            {
+                return Forbid();
+            }
+
+            TempData["TrackingError"] = string.IsNullOrWhiteSpace(phone)
+                ? "Vui lòng nhập số điện thoại để xem đơn hàng."
+                : "Không tìm thấy đơn hàng.";
             return RedirectToAction(nameof(TrackingLookup));
         }
 
+        await ExpireOrderIfNeededAsync(order);
+        ViewBag.EnableTrackingStatusPolling = true;
         return View("Detail", order);
+    }
+
+    [HttpGet("/Order/TrackingStatus/{id:int}")]
+    public async Task<IActionResult> TrackingStatus(int id, string? phone = null)
+    {
+        var order = await _db.Orders.FirstOrDefaultAsync(x => x.Id == id);
+        if (order == null) return NotFound();
+        if (!CanAccessOrderTracking(order, phone)) return Forbid();
+
+        await ExpireOrderIfNeededAsync(order);
+        var now = DateTime.UtcNow;
+
+        return Json(new
+        {
+            orderId = order.Id,
+            status = order.Status.ToString(),
+            paymentStatus = order.PaymentStatus,
+            paymentExpireAt = order.PaymentExpireAt,
+            remainingSeconds = GetRemainingSeconds(order, now)
+        });
     }
 
     [HttpGet("/Order/Lookup")]
@@ -404,6 +460,7 @@ public class OrdersController : Controller
         var order = await _db.Orders.Include(x => x.Details).FirstOrDefaultAsync(x => x.Id == id && x.UserId == userId);
         if (order == null) return NotFound();
         await ExpireOrderIfNeededAsync(order);
+        ViewBag.EnableTrackingStatusPolling = false;
         return View(order);
     }
 
