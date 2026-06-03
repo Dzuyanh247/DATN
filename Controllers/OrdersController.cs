@@ -267,6 +267,61 @@ public class OrdersController : Controller
         return View(order);
     }
 
+    [HttpGet("/Orders/Quotation/{orderId:int}")]
+    public async Task<IActionResult> Quotation(int orderId)
+    {
+        if (orderId <= 0) return NotFound();
+
+        var order = await _db.Orders
+            .Include(x => x.Details)
+                .ThenInclude(x => x.Product)
+            .FirstOrDefaultAsync(x => x.Id == orderId);
+
+        if (order == null) return NotFound();
+
+        var isAdmin = User.IsInRole("Admin");
+        if (order.UserId.HasValue)
+        {
+            if (User.Identity?.IsAuthenticated != true) return Forbid();
+
+            var currentUserId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            if (order.UserId.Value != currentUserId && !isAdmin) return Forbid();
+        }
+        else if (!isAdmin && HttpContext.Session.GetInt32("LastOrderId") != order.Id)
+        {
+            return Forbid();
+        }
+
+        await ExpireOrderIfNeededAsync(order);
+
+        var vm = new QuotationViewModel
+        {
+            OrderId = order.Id,
+            OrderCode = ToOrderCode(order.Id),
+            QuotationDate = DateTime.Now,
+            CustomerName = order.ReceiverName,
+            CustomerAddress = string.IsNullOrWhiteSpace(order.FullAddress) ? order.ShippingAddress : order.FullAddress,
+            CustomerPhone = order.ReceiverPhone,
+            CustomerEmail = order.CustomerEmail,
+            TotalAmount = order.Details.Sum(x => x.TotalPrice),
+            Items = order.Details.Select(x => new QuotationItemViewModel
+            {
+                ProductId = x.ProductId,
+                ProductCode = string.IsNullOrWhiteSpace(x.Product?.ProductCode) ? $"SP{x.ProductId:D6}" : x.Product.ProductCode,
+                ProductName = x.ProductName,
+                ProductImage = x.ProductImage,
+                Quantity = x.Quantity,
+                UnitPrice = x.UnitPrice,
+                Warranty = x.Warranty,
+                LineTotal = x.TotalPrice
+            }).ToList()
+        };
+
+        if (!vm.Items.Any()) return NotFound();
+
+        return View(vm);
+    }
+
     [HttpGet("/Order/Tracking/{id:int}")]
     public async Task<IActionResult> Tracking(int id)
     {

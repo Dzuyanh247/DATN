@@ -1,0 +1,229 @@
+.quotation-page {
+    background: #f4f4f4;
+    padding: 24px 0 40px;
+}
+
+.quotation-sheet {
+    width: 210mm;
+    min-height: 297mm;
+    margin: 0 auto;
+    padding: 16mm 14mm;
+    background: #fff;
+    color: #111;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 14px;
+    line-height: 1.35;
+    box-shadow: 0 2px 18px rgba(0, 0, 0, .12);
+}
+
+.quotation-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+    border-bottom: 2px solid #d71920;
+    padding-bottom: 12px;
+}
+
+.quotation-logo {
+    width: 170px;
+    flex: 0 0 170px;
+    text-align: center;
+    color: #d71920;
+    font-weight: 800;
+}
+
+.logo-mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 92px;
+    height: 70px;
+    border: 4px solid #d71920;
+    border-radius: 12px;
+    font-size: 28px;
+    letter-spacing: 1px;
+}
+
+.logo-text {
+    margin-top: 6px;
+    font-size: 25px;
+    letter-spacing: .5px;
+}
+
+.store-info {
+    flex: 1;
+    text-align: right;
+}
+
+.store-info h1 {
+    margin: 0 0 6px;
+    color: #d71920;
+    font-size: 24px;
+    font-weight: 800;
+}
+
+.store-info p {
+    margin: 2px 0;
+}
+
+.quotation-title {
+    margin: 24px 0 6px;
+    text-align: center;
+    font-size: 24px;
+    font-weight: 800;
+}
+
+.quotation-date {
+    text-align: center;
+    margin-bottom: 18px;
+}
+
+.customer-info {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 7px 28px;
+    margin-bottom: 16px;
+}
+
+.customer-info span {
+    display: inline-block;
+    min-width: 78px;
+    font-weight: 700;
+}
+
+.quotation-intro {
+    margin: 14px 0 10px;
+}
+
+.quotation-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+.quotation-table th,
+.quotation-table td {
+    border: 1px solid #333;
+    padding: 7px 8px;
+    vertical-align: middle;
+}
+
+.quotation-table th {
+    background: #f1f1f1;
+    text-align: center;
+    font-weight: 700;
+}
+
+.quotation-table th:nth-child(1) { width: 15%; }
+.quotation-table th:nth-child(2) { width: 13%; }
+.quotation-table th:nth-child(3) { width: 34%; }
+.quotation-table th:nth-child(4) { width: 10%; }
+.quotation-table th:nth-child(5) { width: 14%; }
+.quotation-table th:nth-child(6) { width: 14%; }
+
+.product-code {
+    text-align: center;
+    font-weight: 700;
+}
+
+.product-image-cell {
+    text-align: center;
+}
+
+.product-image-cell img {
+    width: 64px;
+    height: 64px;
+    object-fit: contain;
+}
+
+.product-name span {
+    display: block;
+    margin-top: 4px;
+    color: #555;
+    font-size: 13px;
+}
+
+.text-center { text-align: center; }
+.text-end { text-align: right; }
+
+.total-label {
+    text-align: right;
+    font-weight: 800;
+}
+
+.total-amount {
+    color: #d71920;
+    font-size: 18px;
+    font-weight: 800;
+    text-align: right;
+}
+
+.quotation-actions {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.btn-buy,
+.btn-print {
+    min-width: 128px;
+    border: 0;
+    border-radius: 4px;
+    padding: 10px 18px;
+    color: #fff;
+    text-align: center;
+    text-decoration: none;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.btn-buy { background: #d71920; }
+.btn-print { background: #1f2937; }
+
+@media print {
+    @page {
+        size: A4;
+        margin: 10mm;
+    }
+
+    html,
+    body {
+        background: #fff !important;
+    }
+
+    .ttg-topbar,
+    .ttg-header,
+    .ttg-cat-nav-wrap,
+    .toast-container,
+    .print-hidden {
+        display: none !important;
+    }
+
+    .container.ttg-shell {
+        width: auto !important;
+        max-width: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    .quotation-page {
+        padding: 0 !important;
+        background: #fff !important;
+    }
+
+    .quotation-sheet {
+        width: auto;
+        min-height: 0;
+        margin: 0;
+        padding: 0;
+        box-shadow: none;
+        font-size: 13px;
+    }
+
+    .product-image-cell img {
+        width: 58px;
+        height: 58px;
+    }
+}

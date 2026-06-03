@@ -18,6 +18,7 @@
         <div class="d-flex gap-2">
             <a asp-controller="Products" asp-action="Index" class="btn btn-primary">Tiếp tục mua hàng</a>
             <a asp-action="Tracking" asp-route-id="@Model.Id" class="btn btn-outline-secondary">Theo dõi đơn hàng</a>
+            <a asp-action="Quotation" asp-route-orderId="@Model.Id" class="btn btn-danger">In báo giá</a>
         </div>
     </div>
 </div>
