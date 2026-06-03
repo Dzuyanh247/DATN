@@ -1,4 +1,6 @@
+using System.Net;
 using System.Security.Claims;
+using System.Text;
 using Datn.PcStore.Data;
 using Datn.PcStore.Helpers;
 using Datn.PcStore.Models;
@@ -30,6 +32,8 @@ public class OrdersController : Controller
     }
 
     private static string ToOrderCode(int orderId) => $"DH{orderId:D6}";
+
+    private static string ExcelCell(string? value) => WebUtility.HtmlEncode(value ?? string.Empty);
 
     private bool CanAccessOrderTracking(Order order, string? phone = null)
     {
@@ -272,6 +276,58 @@ public class OrdersController : Controller
         }
 
         return View(order);
+    }
+
+    [HttpGet("/Orders/ExportExcel/{orderId:int}")]
+    public async Task<IActionResult> ExportExcel(int orderId)
+    {
+        if (orderId <= 0) return NotFound();
+
+        var order = await _db.Orders
+            .Include(x => x.Details)
+                .ThenInclude(x => x.Product)
+            .FirstOrDefaultAsync(x => x.Id == orderId);
+
+        if (order == null) return NotFound();
+        if (!CanAccessOrderTracking(order)) return Forbid();
+
+        await _orderExpirationService.ExpireOrderIfNeededAsync(order);
+
+        var sb = new StringBuilder();
+        sb.AppendLine("<html><head><meta charset=\"utf-8\" /></head><body><table border=\"1\">");
+        sb.AppendLine("<thead><tr><th>Mã đơn hàng</th><th>Ngày đặt</th><th>Khách hàng</th><th>Số điện thoại</th><th>Email</th><th>Địa chỉ</th><th>Phương thức thanh toán</th><th>Mã sản phẩm</th><th>Sản phẩm</th><th>Số lượng</th><th>Đơn giá</th><th>Thành tiền</th><th>Bảo hành</th></tr></thead><tbody>");
+
+        foreach (var item in order.Details)
+        {
+            var productCode = string.IsNullOrWhiteSpace(item.Product?.ProductCode)
+                ? $"SP{item.ProductId:D6}"
+                : item.Product.ProductCode;
+
+            var createdAt = DateTimeHelper.FormatVietnam(order.CreatedAt, "dd/MM/yyyy HH:mm");
+            var address = string.IsNullOrWhiteSpace(order.FullAddress) ? order.ShippingAddress : order.FullAddress;
+            var paymentMethod = PaymentMethods.Label(order.PaymentMethod);
+
+            sb.Append("<tr>");
+            sb.Append($"<td>{ExcelCell(ToOrderCode(order.Id))}</td>");
+            sb.Append($"<td>{ExcelCell(createdAt)}</td>");
+            sb.Append($"<td>{ExcelCell(order.ReceiverName)}</td>");
+            sb.Append($"<td>{ExcelCell(order.ReceiverPhone)}</td>");
+            sb.Append($"<td>{ExcelCell(order.CustomerEmail)}</td>");
+            sb.Append($"<td>{ExcelCell(address)}</td>");
+            sb.Append($"<td>{ExcelCell(paymentMethod)}</td>");
+            sb.Append($"<td>{ExcelCell(productCode)}</td>");
+            sb.Append($"<td>{ExcelCell(item.ProductName)}</td>");
+            sb.Append($"<td>{item.Quantity}</td>");
+            sb.Append($"<td>{item.UnitPrice:N0}</td>");
+            sb.Append($"<td>{item.TotalPrice:N0}</td>");
+            sb.Append($"<td>{ExcelCell(item.Warranty)}</td>");
+            sb.AppendLine("</tr>");
+        }
+
+        sb.AppendLine("</tbody></table></body></html>");
+
+        var fileName = $"{ToOrderCode(order.Id)}-don-hang.xls";
+        return File(Encoding.UTF8.GetBytes(sb.ToString()), "application/vnd.ms-excel; charset=utf-8", fileName);
     }
 
     [HttpGet("/Orders/Quotation/{orderId:int}")]
