@@ -10,10 +10,10 @@
     {
         <tr>
             <td>@($"DH{o.Id:D6}")</td>
-            <td>@o.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+            <td>@DateTimeHelper.FormatVietnam(o.CreatedAt, "dd/MM/yyyy HH:mm")</td>
             <td>@OrderStatusHelper.Label(o.Status)</td>
             <td>@OrderStatusHelper.PaymentLabel(o.PaymentStatus, o.Status)</td>
-            <td>@(o.PaymentExpireAt.HasValue ? o.PaymentExpireAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm") : "-")</td>
+            <td>@(o.PaymentExpireAt.HasValue ? DateTimeHelper.FormatVietnam(o.PaymentExpireAt, "dd/MM/yyyy HH:mm") : "-")</td>
             <td>@o.TotalAmount.ToString("N0") đ</td>
             <td><a class="btn btn-sm btn-outline-primary" asp-action="Tracking" asp-route-id="@o.Id">Xem chi tiết</a></td>
         </tr>

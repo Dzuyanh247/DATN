@@ -9,7 +9,7 @@
         <p>Cảm ơn bạn đã mua hàng. Mã đơn hàng của bạn là <strong>@orderCode</strong>.</p>
         <ul class="list-unstyled">
             <li><strong>Mã đơn hàng:</strong> @orderCode</li>
-            <li><strong>Ngày đặt:</strong> @Model.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</li>
+            <li><strong>Ngày đặt:</strong> @DateTimeHelper.FormatVietnam(Model.CreatedAt, "dd/MM/yyyy HH:mm")</li>
             <li><strong>Người nhận:</strong> @Model.ReceiverName - @Model.ReceiverPhone</li>
             <li><strong>Địa chỉ:</strong> @Model.ShippingAddress</li>
             <li><strong>Tổng tiền:</strong> @Model.TotalAmount.ToString("N0") đ</li>

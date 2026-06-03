@@ -1,7 +1,7 @@
 @model Order
 @{
     ViewData["Title"] = $"Chi tiết đơn DH{Model.Id:D6}";
-    var nowUtc = DateTime.UtcNow;
+    var nowUtc = DateTimeHelper.UtcNow();
     var canPayNow = OrderStatusHelper.CanPayNow(Model, nowUtc);
     var remaining = TimeSpan.FromSeconds(OrderStatusHelper.RemainingSeconds(Model, nowUtc));
 }
@@ -13,7 +13,7 @@
         <div><b>Địa chỉ:</b> @Model.ShippingAddress</div>
         <div><b>Thanh toán:</b> @PaymentMethods.Label(Model.PaymentMethod)</div>
         <div><b>Trạng thái thanh toán:</b> @OrderStatusHelper.PaymentLabel(Model.PaymentStatus, Model.Status)</div>
-        <div><b>Hạn thanh toán:</b> @(Model.PaymentExpireAt.HasValue ? Model.PaymentExpireAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm") : "-")</div>
+        <div><b>Hạn thanh toán:</b> @(Model.PaymentExpireAt.HasValue ? DateTimeHelper.FormatVietnam(Model.PaymentExpireAt, "dd/MM/yyyy HH:mm") : "-")</div>
         <div>
             <b>Còn lại:</b>
             @if (canPayNow)

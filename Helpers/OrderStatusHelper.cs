@@ -80,9 +80,13 @@ public static class OrderStatusHelper
     public static bool IsExpiredPayment(Order order, DateTime utcNow)
         => order.Status == OrderStatus.Expired
            || string.Equals(order.PaymentStatus, PaymentStatuses.Expired, StringComparison.OrdinalIgnoreCase)
-           || (IsPendingPaymentOrder(order)
-               && order.PaymentExpireAt.HasValue
-               && order.PaymentExpireAt.Value <= utcNow);
+           || ShouldExpirePayment(order, utcNow);
+
+    public static bool ShouldExpirePayment(Order order, DateTime utcNow)
+        => IsPendingPaymentOrder(order)
+           && order.PaymentExpireAt.HasValue
+           && order.PaymentExpireAt.Value <= utcNow
+           && !IsPaid(order);
 
     public static bool CanPayNow(Order order, DateTime utcNow)
         => IsPendingPaymentOrder(order)
@@ -96,6 +100,6 @@ public static class OrderStatusHelper
             return 0;
         }
 
-        return Math.Max(0, (int)Math.Floor((order.PaymentExpireAt.Value - utcNow).TotalSeconds));
+        return Math.Max(0, (int)(order.PaymentExpireAt.Value - utcNow).TotalSeconds);
     }
 }
