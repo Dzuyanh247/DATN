@@ -1,13 +1,83 @@
 @model RegisterVm
-<h3>Đăng ký tài khoản</h3>
-<form method="post" class="card p-3">
-    <div asp-validation-summary="All" class="text-danger"></div>
-    <div class="row">
-        <div class="col-md-6 mb-3"><label>Họ tên</label><input asp-for="FullName" class="form-control" /></div>
-        <div class="col-md-6 mb-3"><label>Email</label><input asp-for="Email" class="form-control" /></div>
-        <div class="col-md-6 mb-3"><label>Mật khẩu</label><input asp-for="Password" type="password" class="form-control" /></div>
-        <div class="col-md-6 mb-3"><label>Điện thoại</label><input asp-for="Phone" class="form-control" /></div>
-        <div class="col-12 mb-3"><label>Địa chỉ</label><input asp-for="Address" class="form-control" /></div>
+@{
+    ViewData["Title"] = "Đăng ký tài khoản";
+}
+
+<section class="account-page" aria-labelledby="register-title">
+    <div class="account-page__decor account-page__decor--primary" aria-hidden="true"></div>
+    <div class="account-page__decor account-page__decor--accent" aria-hidden="true"></div>
+
+    <div class="account-card account-card--register">
+        <header class="account-header">
+            <div class="account-icon" aria-hidden="true">
+                <i class="bi bi-person-plus"></i>
+            </div>
+            <h1 id="register-title" class="account-title">Đăng ký tài khoản</h1>
+            <p class="account-description">Tạo tài khoản để mua sắm và theo dõi đơn hàng tại KKSHOP.</p>
+        </header>
+
+        <form method="post">
+            <div asp-validation-summary="ModelOnly" class="account-validation" role="alert"></div>
+
+            <div class="account-form-grid">
+                <div class="account-field">
+                    <label asp-for="FullName" class="account-label">Họ tên</label>
+                    <div class="account-input-wrap">
+                        <i class="bi bi-person" aria-hidden="true"></i>
+                        <input asp-for="FullName" class="account-input" placeholder="Nhập họ tên của bạn" autocomplete="name" />
+                    </div>
+                    <span asp-validation-for="FullName" class="account-field-validation"></span>
+                </div>
+
+                <div class="account-field">
+                    <label asp-for="Email" class="account-label">Email</label>
+                    <div class="account-input-wrap">
+                        <i class="bi bi-envelope" aria-hidden="true"></i>
+                        <input asp-for="Email" class="account-input" placeholder="Nhập email của bạn" autocomplete="email" inputmode="email" />
+                    </div>
+                    <span asp-validation-for="Email" class="account-field-validation"></span>
+                </div>
+
+                <div class="account-field">
+                    <label asp-for="Phone" class="account-label">Số điện thoại</label>
+                    <div class="account-input-wrap">
+                        <i class="bi bi-telephone" aria-hidden="true"></i>
+                        <input asp-for="Phone" class="account-input" placeholder="Nhập số điện thoại" autocomplete="tel" inputmode="tel" />
+                    </div>
+                    <span asp-validation-for="Phone" class="account-field-validation"></span>
+                </div>
+
+                <div class="account-field">
+                    <label asp-for="Password" class="account-label">Mật khẩu</label>
+                    <div class="account-input-wrap">
+                        <i class="bi bi-lock" aria-hidden="true"></i>
+                        <input asp-for="Password" type="password" class="account-input" placeholder="Nhập mật khẩu" autocomplete="new-password" />
+                    </div>
+                    <span asp-validation-for="Password" class="account-field-validation"></span>
+                </div>
+
+                <div class="account-field account-field--full">
+                    <label asp-for="Address" class="account-label">Địa chỉ</label>
+                    <div class="account-input-wrap">
+                        <i class="bi bi-geo-alt" aria-hidden="true"></i>
+                        <input asp-for="Address" class="account-input" placeholder="Nhập địa chỉ (không bắt buộc)" autocomplete="street-address" />
+                    </div>
+                    <span asp-validation-for="Address" class="account-field-validation"></span>
+                </div>
+            </div>
+
+            <div class="account-actions">
+                <button type="submit" class="account-btn">Đăng ký</button>
+            </div>
+        </form>
+
+        <p class="account-card-footer">
+            Đã có tài khoản?
+            <a asp-controller="Account" asp-action="Login" class="account-link">Đăng nhập</a>
+        </p>
     </div>
-    <button class="btn btn-success">Tạo tài khoản</button>
-</form>
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
