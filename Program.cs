@@ -1,6 +1,7 @@
 using Datn.PcStore.Data;
 using Datn.PcStore.Services;
 using Datn.PcStore.Constants;
+using Datn.PcStore.Hubs;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Data.SqlClient;
 using Microsoft.AspNetCore.Identity;
@@ -8,6 +9,7 @@ using Microsoft.AspNetCore.Identity;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllersWithViews();
+builder.Services.AddSignalR();
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
@@ -90,6 +92,8 @@ app.UseRouting();
 app.UseSession();
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.MapHub<ChatHub>("/hubs/support-chat");
 
 app.MapControllerRoute(
     name: "areas",
