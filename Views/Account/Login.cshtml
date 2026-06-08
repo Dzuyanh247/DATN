@@ -3,77 +3,77 @@
     ViewData["Title"] = "Đăng nhập";
 }
 
-<section class="login-page" aria-labelledby="login-title">
-    <div class="login-page__decor login-page__decor--one" aria-hidden="true"></div>
-    <div class="login-page__decor login-page__decor--two" aria-hidden="true"></div>
+<section class="account-page" aria-labelledby="login-title">
+    <div class="account-page__decor account-page__decor--primary" aria-hidden="true"></div>
+    <div class="account-page__decor account-page__decor--accent" aria-hidden="true"></div>
 
-    <div class="login-card">
-        <div class="login-card__header">
-            <div class="login-card__icon" aria-hidden="true">
+    <div class="account-card">
+        <header class="account-header">
+            <div class="account-icon" aria-hidden="true">
                 <i class="bi bi-person-lock"></i>
             </div>
-            <p class="login-card__eyebrow">Chào mừng trở lại</p>
-            <h1 id="login-title" class="login-card__title">Đăng nhập</h1>
-            <p class="login-card__description">Đăng nhập để tiếp tục mua sắm tại KKSHOP</p>
-        </div>
+            <h1 id="login-title" class="account-title">Đăng nhập</h1>
+            <p class="account-description">Đăng nhập để tiếp tục mua sắm tại KKSHOP</p>
+        </header>
 
         @if (TempData["Ok"] is string okMessage)
         {
-            <div class="alert alert-success login-card__alert" role="alert">
+            <div class="alert alert-success account-alert" role="alert">
                 <i class="bi bi-check-circle-fill" aria-hidden="true"></i>
                 <span>@okMessage</span>
             </div>
         }
         @if (TempData["ErrorMessage"] is string errorMessage)
         {
-            <div class="alert alert-danger login-card__alert" role="alert">
+            <div class="alert alert-danger account-alert" role="alert">
                 <i class="bi bi-exclamation-circle-fill" aria-hidden="true"></i>
                 <span>@errorMessage</span>
             </div>
         }
 
-        <form method="post" class="login-form">
-            <div asp-validation-summary="ModelOnly" class="login-form__validation" role="alert"></div>
+        <form method="post">
+            <div asp-validation-summary="ModelOnly" class="account-validation" role="alert"></div>
 
-            <div class="login-form__group">
-                <label asp-for="Email" class="form-label">Email</label>
-                <div class="login-form__control">
-                    <i class="bi bi-envelope" aria-hidden="true"></i>
-                    <input asp-for="Email"
-                           class="form-control"
-                           placeholder="Nhập email của bạn"
-                           autocomplete="email"
-                           inputmode="email" />
+            <div class="account-form-grid">
+                <div class="account-field">
+                    <label asp-for="Email" class="account-label">Email</label>
+                    <div class="account-input-wrap">
+                        <i class="bi bi-envelope" aria-hidden="true"></i>
+                        <input asp-for="Email"
+                               class="account-input"
+                               placeholder="Nhập email của bạn"
+                               autocomplete="email"
+                               inputmode="email" />
+                    </div>
+                    <span asp-validation-for="Email" class="account-field-validation"></span>
                 </div>
-                <span asp-validation-for="Email" class="login-form__field-error"></span>
+
+                <div class="account-field">
+                    <label asp-for="Password" class="account-label">Mật khẩu</label>
+                    <div class="account-input-wrap">
+                        <i class="bi bi-lock" aria-hidden="true"></i>
+                        <input asp-for="Password"
+                               type="password"
+                               class="account-input"
+                               placeholder="Nhập mật khẩu"
+                               autocomplete="current-password" />
+                    </div>
+                    <span asp-validation-for="Password" class="account-field-validation"></span>
+                    <div class="account-field-meta">
+                        <a asp-controller="Account" asp-action="ForgotPassword" class="account-link">Quên mật khẩu?</a>
+                    </div>
+                </div>
             </div>
 
-            <div class="login-form__group">
-                <div class="login-form__label-row">
-                    <label asp-for="Password" class="form-label">Mật khẩu</label>
-                    <a asp-controller="Account" asp-action="ForgotPassword" class="login-form__forgot">Quên mật khẩu?</a>
-                </div>
-                <div class="login-form__control">
-                    <i class="bi bi-lock" aria-hidden="true"></i>
-                    <input asp-for="Password"
-                           type="password"
-                           class="form-control"
-                           placeholder="Nhập mật khẩu"
-                           autocomplete="current-password" />
-                </div>
-                <span asp-validation-for="Password" class="login-form__field-error"></span>
+            <div class="account-actions">
+                <button type="submit" class="account-btn">Đăng nhập</button>
             </div>
-
-            <button type="submit" class="btn login-form__submit">
-                <span>Đăng nhập</span>
-                <i class="bi bi-arrow-right" aria-hidden="true"></i>
-            </button>
         </form>
 
-        <div class="login-card__footer">
-            <i class="bi bi-shield-check" aria-hidden="true"></i>
-            <span>Thông tin của bạn luôn được bảo mật</span>
-        </div>
+        <p class="account-card-footer">
+            Chưa có tài khoản?
+            <a asp-controller="Account" asp-action="Register" class="account-link">Đăng ký ngay</a>
+        </p>
     </div>
 </section>
 
