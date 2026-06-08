@@ -10,39 +10,44 @@
     display: flex;
     justify-content: center;
     align-items: flex-start;
-    min-height: clamp(540px, 68vh, 680px);
+    width: 100vw;
+    min-height: calc(100vh - 164px);
+    margin: -1rem calc(50% - 50vw);
     overflow: hidden;
-    padding: clamp(40px, 6vw, 72px) 16px 56px;
+    padding: 64px 16px 90px;
     color: var(--account-text);
     background:
-        radial-gradient(circle at 12% 18%, rgba(20, 100, 200, 0.1), transparent 28%),
-        radial-gradient(circle at 88% 78%, rgba(244, 123, 32, 0.09), transparent 26%),
-        linear-gradient(145deg, #f5f8fc 0%, #fbfcfe 48%, #f7f9fc 100%);
+        radial-gradient(ellipse at 8% 4%, rgba(41, 128, 185, 0.13) 0%, rgba(41, 128, 185, 0.04) 30%, transparent 58%),
+        radial-gradient(ellipse at 94% 96%, rgba(244, 123, 32, 0.09) 0%, rgba(244, 123, 32, 0.025) 28%, transparent 55%),
+        linear-gradient(135deg, #f4f8fb 0%, #ffffff 48%, #eef4f7 100%);
     font-family: Inter, "Segoe UI", Roboto, Arial, sans-serif;
 }
 
-.account-page__decor {
+.account-page::before {
     position: absolute;
-    z-index: -1;
-    border-radius: 999px;
+    inset: 0;
+    z-index: -2;
+    background-image:
+        linear-gradient(rgba(0, 60, 80, 0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 60, 80, 0.04) 1px, transparent 1px);
+    background-size: 28px 28px;
+    content: "";
+    opacity: 0.45;
     pointer-events: none;
 }
 
-.account-page__decor--primary {
-    top: 54px;
-    left: max(4vw, 24px);
-    width: 150px;
-    height: 150px;
-    border: 24px solid rgba(20, 100, 200, 0.045);
-}
-
-.account-page__decor--accent {
-    right: max(5vw, 28px);
-    bottom: 46px;
-    width: 112px;
-    height: 112px;
-    background: rgba(244, 123, 32, 0.055);
-    box-shadow: 0 0 0 20px rgba(244, 123, 32, 0.025);
+.account-page::after {
+    position: absolute;
+    top: 9%;
+    left: 50%;
+    z-index: -1;
+    width: min(760px, 86vw);
+    height: 82%;
+    background: radial-gradient(ellipse, rgba(32, 112, 156, 0.08) 0%, rgba(255, 255, 255, 0.04) 48%, transparent 72%);
+    content: "";
+    filter: blur(18px);
+    transform: translateX(-50%);
+    pointer-events: none;
 }
 
 .account-card {
@@ -287,8 +292,8 @@
 
 @media (max-width: 767.98px) {
     .account-page {
-        min-height: auto;
-        padding: 32px 16px 44px;
+        min-height: calc(100vh - 148px);
+        padding: 32px 14px 52px;
     }
 
     .account-card,
@@ -302,15 +307,6 @@
         margin-bottom: 22px;
     }
 
-    .account-page__decor--primary {
-        top: 24px;
-        left: -68px;
-    }
-
-    .account-page__decor--accent {
-        right: -42px;
-        bottom: 18px;
-    }
 }
 
 @media (prefers-reduced-motion: reduce) {
