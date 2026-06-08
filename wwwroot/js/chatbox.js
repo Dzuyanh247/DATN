@@ -19,6 +19,7 @@
     const createUrl = root.dataset.createUrl;
     const messagesUrlTemplate = root.dataset.messagesUrlTemplate;
     const sendUrlTemplate = root.dataset.sendUrlTemplate;
+    const systemMessageUrlTemplate = root.dataset.systemMessageUrlTemplate;
     const csrf = document.querySelector('#kk-chat-antiforgery input[name="__RequestVerificationToken"]')?.value || '';
     let session = readSession();
     let connection;
@@ -32,11 +33,18 @@
         if (value) localStorage.setItem(storageKey, JSON.stringify(value));
         else localStorage.removeItem(storageKey);
     }
+    function scrollToLatest() {
+        requestAnimationFrame(() => { messagesElement.scrollTop = messagesElement.scrollHeight; });
+    }
     function setOpen(open) {
         root.classList.toggle('is-open', open);
         panel.setAttribute('aria-hidden', String(!open));
         launcher.setAttribute('aria-expanded', String(open));
-        if (open) { unread = 0; updateUnread(); messagesElement.scrollTop = messagesElement.scrollHeight; }
+        if (open) {
+            unread = 0;
+            updateUnread();
+            scrollToLatest();
+        }
     }
     function updateUnread() {
         unreadElement.textContent = String(unread);
@@ -51,11 +59,11 @@
         return Number.isNaN(date.getTime()) ? '' : date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
     }
     function addMessage(message) {
-        if (document.querySelector(`[data-chat-message-id="${message.id}"]`)) return;
+        if (message.id && messagesElement.querySelector(`[data-chat-message-id="${message.id}"]`)) return;
         const item = document.createElement('div');
         const customer = String(message.senderType).toLowerCase() === 'customer';
         item.className = `kk-chat-message ${customer ? 'customer' : 'admin'}`;
-        item.dataset.chatMessageId = message.id;
+        if (message.id) item.dataset.chatMessageId = message.id;
         const bubble = document.createElement('div');
         bubble.className = 'kk-chat-bubble';
         bubble.textContent = message.message;
@@ -64,7 +72,7 @@
         time.textContent = `${customer ? 'Bạn' : 'KKSHOP'} • ${formatTime(message.createdAt)}`;
         item.append(bubble, time);
         messagesElement.appendChild(item);
-        messagesElement.scrollTop = messagesElement.scrollHeight;
+        scrollToLatest();
     }
     function showConversation(status) {
         welcome.classList.add('d-none');
@@ -140,6 +148,24 @@
             resetConversation();
         }
     }
+    async function addCloseMessage() {
+        if (!session?.conversationId || !session?.accessToken || !systemMessageUrlTemplate) return;
+        const closeMessageKey = `kkshop_chat_close_message_sent_${session.conversationId}`;
+        if (localStorage.getItem(closeMessageKey) === 'true') return;
+
+        localStorage.setItem(closeMessageKey, 'true');
+        try {
+            const data = await jsonFetch(conversationUrl(systemMessageUrlTemplate, session.conversationId), {
+                method: 'POST',
+                body: JSON.stringify({ accessToken: session.accessToken, messageType: 'close' })
+            });
+            if (data.message) addMessage(data.message);
+        } catch (error) {
+            localStorage.removeItem(closeMessageKey);
+            console.error('[SupportChat] Could not add close message', error);
+        }
+    }
+
     async function connectRealtime() {
         if (!window.signalR || !session?.conversationId) { setConnection(false); return; }
         if (connection) await connection.stop().catch(() => {});
@@ -164,7 +190,10 @@
     }
 
     launcher.addEventListener('click', () => setOpen(true));
-    closeButton.addEventListener('click', () => setOpen(false));
+    closeButton.addEventListener('click', () => {
+        setOpen(false);
+        void addCloseMessage();
+    });
     document.getElementById('kk-chat-new-conversation').addEventListener('click', resetConversation);
     startForm.addEventListener('submit', async event => {
         event.preventDefault();
@@ -185,7 +214,7 @@
             const data = await jsonFetch(createUrl, { method: 'POST', body: JSON.stringify(payload) });
             saveSession({ conversationId: data.conversationId, accessToken: data.accessToken });
             messagesElement.replaceChildren();
-            addMessage(data.message);
+            (data.messages || []).forEach(addMessage);
             showConversation(data.status);
             await connectRealtime();
         } catch (error) {
@@ -207,6 +236,7 @@
             addMessage(data.message);
             messageInput.value = '';
             messageInput.style.height = '';
+            scrollToLatest();
         } catch (error) {
             console.error('[SupportChat] Could not send message', error);
             if (window.showGlobalToast) window.showGlobalToast(error.message, 'danger');

@@ -20,3 +20,9 @@ public class AdminSendChatMessageRequest
 {
     [Required, StringLength(1000, MinimumLength = 1)] public string Message { get; set; } = string.Empty;
 }
+
+public class SystemChatMessageRequest
+{
+    [Required, StringLength(64)] public string AccessToken { get; set; } = string.Empty;
+    [Required, RegularExpression("close")] public string MessageType { get; set; } = string.Empty;
+}

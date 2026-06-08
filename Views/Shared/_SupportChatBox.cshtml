@@ -13,7 +13,8 @@
      data-storage-key="kkshop-support-chat-@userId"
      data-create-url="@Url.Action("CreateConversation", "SupportChat")"
      data-messages-url-template="@Url.Action("GetMessages", "SupportChat", new { conversationId = 987654321 })"
-     data-send-url-template="@Url.Action("SendMessage", "SupportChat", new { conversationId = 987654321 })">
+     data-send-url-template="@Url.Action("SendMessage", "SupportChat", new { conversationId = 987654321 })"
+     data-system-message-url-template="@Url.Action("AddSystemMessage", "SupportChat", new { conversationId = 987654321 })">
     <form class="d-none" id="kk-chat-antiforgery">@Html.AntiForgeryToken()</form>
 
     <button type="button" class="kk-chat-launcher" id="kk-chat-launcher" aria-label="Mở KKSHOP hỗ trợ" aria-expanded="false">
@@ -40,6 +41,10 @@
             </div>
 
             <form id="kk-chat-start-form" class="kk-chat-start-form">
+                <div class="kk-chat-message admin kk-chat-start-greeting" aria-live="polite">
+                    <div class="kk-chat-bubble">KKSHOP xin chào 👋 Cảm ơn bạn đã liên hệ. Bạn vui lòng để lại nội dung cần hỗ trợ, nhân viên sẽ phản hồi trong giây lát.</div>
+                    <div class="kk-chat-time">KKSHOP</div>
+                </div>
                 @if (!authenticated)
                 {
                     <label for="kk-chat-name">Tên của bạn</label>
