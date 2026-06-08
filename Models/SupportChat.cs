@@ -11,7 +11,8 @@ public enum ChatConversationStatus
 public enum ChatSenderType
 {
     Customer = 1,
-    Admin = 2
+    Admin = 2,
+    System = 3
 }
 
 public class ChatConversation : BaseEntity

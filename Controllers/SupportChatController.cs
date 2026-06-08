@@ -15,6 +15,8 @@ namespace Datn.PcStore.Controllers;
 [Route("support-chat")]
 public class SupportChatController : Controller
 {
+    private const string GreetingMessage = "KKSHOP xin chào 👋 Cảm ơn bạn đã liên hệ. Bạn vui lòng để lại nội dung cần hỗ trợ, nhân viên sẽ phản hồi trong giây lát.";
+    private const string CloseMessage = "Cảm ơn bạn đã liên hệ KKSHOP. Nếu cần hỗ trợ thêm, bạn có thể nhắn lại bất cứ lúc nào.";
     private readonly ApplicationDbContext _db;
     private readonly IHubContext<ChatHub> _hub;
     private readonly ILogger<SupportChatController> _logger;
@@ -67,7 +69,14 @@ public class SupportChatController : Controller
             AccessToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(32)),
             Status = ChatConversationStatus.Open
         };
-        var message = new ChatMessage
+        var greeting = new ChatMessage
+        {
+            Conversation = conversation,
+            SenderType = ChatSenderType.System,
+            Message = GreetingMessage,
+            IsRead = true
+        };
+        var customerMessage = new ChatMessage
         {
             Conversation = conversation,
             SenderType = ChatSenderType.Customer,
@@ -75,11 +84,13 @@ public class SupportChatController : Controller
             IsRead = false
         };
 
-        _db.ChatMessages.Add(message);
+        _db.ChatMessages.AddRange(greeting, customerMessage);
         await _db.SaveChangesAsync();
 
-        var payload = MessagePayload(message);
-        await NotifyAdmins(conversation.Id, payload);
+        var greetingPayload = MessagePayload(greeting);
+        var customerPayload = MessagePayload(customerMessage);
+        await NotifyAdmins(conversation.Id, greetingPayload);
+        await NotifyAdmins(conversation.Id, customerPayload);
 
         return Ok(new
         {
@@ -87,7 +98,7 @@ public class SupportChatController : Controller
             conversationId = conversation.Id,
             accessToken = conversation.AccessToken,
             status = conversation.Status.ToString(),
-            message = payload
+            messages = new[] { greetingPayload, customerPayload }
         });
     }
 
@@ -144,6 +155,40 @@ public class SupportChatController : Controller
         var payload = MessagePayload(message);
         await NotifyAdmins(conversation.Id, payload);
         return Ok(new { success = true, message = payload });
+    }
+
+    [HttpPost("conversations/{conversationId:int}/system-message")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AddSystemMessage(int conversationId, [FromBody] SystemChatMessageRequest? request)
+    {
+        if (request == null) return BadRequest(JsonError("Dữ liệu tin nhắn hệ thống không hợp lệ."));
+        if (!ModelState.IsValid || !string.Equals(request.MessageType, "close", StringComparison.OrdinalIgnoreCase))
+            return BadRequest(JsonError(FirstModelError("Loại tin nhắn hệ thống không hợp lệ.")));
+
+        var conversation = await FindOwnedConversation(conversationId, request.AccessToken);
+        if (conversation == null) return NotFound(JsonError("Không tìm thấy cuộc trò chuyện."));
+
+        var existingMessage = await _db.ChatMessages.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.ConversationId == conversationId &&
+                                      x.SenderType == ChatSenderType.System &&
+                                      x.Message == CloseMessage);
+        if (existingMessage != null)
+            return Ok(new { success = true, created = false, message = MessagePayload(existingMessage) });
+
+        var message = new ChatMessage
+        {
+            ConversationId = conversation.Id,
+            SenderType = ChatSenderType.System,
+            Message = CloseMessage,
+            IsRead = true
+        };
+        conversation.UpdatedAt = DateTime.UtcNow;
+        _db.ChatMessages.Add(message);
+        await _db.SaveChangesAsync();
+
+        var payload = MessagePayload(message);
+        await NotifyAdmins(conversation.Id, payload);
+        return Ok(new { success = true, created = true, message = payload });
     }
 
     private async Task NotifyAdmins(int conversationId, object payload)
