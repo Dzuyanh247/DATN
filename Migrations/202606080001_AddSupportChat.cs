@@ -1,9 +1,13 @@
+using Datn.PcStore.Data;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
 namespace Datn.PcStore.Migrations;
 
+[DbContext(typeof(ApplicationDbContext))]
+[Migration("202606080001_AddSupportChat")]
 public partial class AddSupportChat : Migration
 {
     protected override void Up(MigrationBuilder migrationBuilder)

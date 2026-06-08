@@ -4,28 +4,37 @@ using Datn.PcStore.Data;
 using Datn.PcStore.Hubs;
 using Datn.PcStore.Models;
 using Datn.PcStore.ViewModels;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
 namespace Datn.PcStore.Controllers;
 
+[AllowAnonymous]
 [Route("support-chat")]
 public class SupportChatController : Controller
 {
     private readonly ApplicationDbContext _db;
     private readonly IHubContext<ChatHub> _hub;
+    private readonly ILogger<SupportChatController> _logger;
 
-    public SupportChatController(ApplicationDbContext db, IHubContext<ChatHub> hub)
+    public SupportChatController(
+        ApplicationDbContext db,
+        IHubContext<ChatHub> hub,
+        ILogger<SupportChatController> logger)
     {
         _db = db;
         _hub = hub;
+        _logger = logger;
     }
 
     [HttpPost("conversations")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> CreateConversation([FromBody] CreateChatConversationRequest request)
+    public async Task<IActionResult> CreateConversation([FromBody] CreateChatConversationRequest? request)
     {
+        if (request == null) return BadRequest(JsonError("Dữ liệu cuộc trò chuyện không hợp lệ."));
+
         request.Message = request.Message?.Trim() ?? string.Empty;
         var userId = CurrentUserId();
         User? user = null;
@@ -70,8 +79,7 @@ public class SupportChatController : Controller
         await _db.SaveChangesAsync();
 
         var payload = MessagePayload(message);
-        await _hub.Clients.Group(ChatHub.AdminGroup).SendAsync("MessageReceived", conversation.Id, payload);
-        await _hub.Clients.Group(ChatHub.AdminGroup).SendAsync("ConversationUpdated", conversation.Id);
+        await NotifyAdmins(conversation.Id, payload);
 
         return Ok(new
         {
@@ -109,8 +117,10 @@ public class SupportChatController : Controller
 
     [HttpPost("conversations/{conversationId:int}/messages")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> SendMessage(int conversationId, [FromBody] SendChatMessageRequest request)
+    public async Task<IActionResult> SendMessage(int conversationId, [FromBody] SendChatMessageRequest? request)
     {
+        if (request == null) return BadRequest(JsonError("Dữ liệu tin nhắn không hợp lệ."));
+
         request.Message = request.Message?.Trim() ?? string.Empty;
         if (!ModelState.IsValid || string.IsNullOrWhiteSpace(request.Message))
             return BadRequest(JsonError(FirstModelError("Tin nhắn không được để trống.")));
@@ -132,9 +142,21 @@ public class SupportChatController : Controller
         await _db.SaveChangesAsync();
 
         var payload = MessagePayload(message);
-        await _hub.Clients.Group(ChatHub.AdminGroup).SendAsync("MessageReceived", conversation.Id, payload);
-        await _hub.Clients.Group(ChatHub.AdminGroup).SendAsync("ConversationUpdated", conversation.Id);
+        await NotifyAdmins(conversation.Id, payload);
         return Ok(new { success = true, message = payload });
+    }
+
+    private async Task NotifyAdmins(int conversationId, object payload)
+    {
+        try
+        {
+            await _hub.Clients.Group(ChatHub.AdminGroup).SendAsync("MessageReceived", conversationId, payload);
+            await _hub.Clients.Group(ChatHub.AdminGroup).SendAsync("ConversationUpdated", conversationId);
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(exception, "Conversation {ConversationId} was saved but realtime admin notification failed.", conversationId);
+        }
     }
 
     private async Task<ChatConversation?> FindOwnedConversation(int id, string? accessToken)
@@ -151,7 +173,7 @@ public class SupportChatController : Controller
     private string FirstModelError(string fallback) =>
         ModelState.Values.SelectMany(x => x.Errors).Select(x => x.ErrorMessage).FirstOrDefault() ?? fallback;
 
-    private static object JsonError(string message) => new { success = false, message };
+    private static object JsonError(string error) => new { success = false, error };
 
     private static object MessagePayload(ChatMessage message) => new
     {

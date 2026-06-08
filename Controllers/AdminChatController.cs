@@ -15,11 +15,16 @@ public class AdminChatController : Controller
 {
     private readonly ApplicationDbContext _db;
     private readonly IHubContext<ChatHub> _hub;
+    private readonly ILogger<AdminChatController> _logger;
 
-    public AdminChatController(ApplicationDbContext db, IHubContext<ChatHub> hub)
+    public AdminChatController(
+        ApplicationDbContext db,
+        IHubContext<ChatHub> hub,
+        ILogger<AdminChatController> logger)
     {
         _db = db;
         _hub = hub;
+        _logger = logger;
     }
 
     [HttpGet("")]
@@ -54,7 +59,7 @@ public class AdminChatController : Controller
         var conversation = await _db.ChatConversations
             .Include(x => x.User)
             .FirstOrDefaultAsync(x => x.Id == conversationId);
-        if (conversation == null) return NotFound(new { success = false, message = "Không tìm thấy cuộc trò chuyện." });
+        if (conversation == null) return NotFound(new { success = false, error = "Không tìm thấy cuộc trò chuyện." });
 
         var unread = await _db.ChatMessages
             .Where(x => x.ConversationId == conversationId && x.SenderType == ChatSenderType.Customer && !x.IsRead)
@@ -89,16 +94,18 @@ public class AdminChatController : Controller
 
     [HttpPost("conversations/{conversationId:int}/messages")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> SendMessage(int conversationId, [FromBody] AdminSendChatMessageRequest request)
+    public async Task<IActionResult> SendMessage(int conversationId, [FromBody] AdminSendChatMessageRequest? request)
     {
+        if (request == null) return BadRequest(new { success = false, error = "Dữ liệu tin nhắn không hợp lệ." });
+
         request.Message = request.Message?.Trim() ?? string.Empty;
         if (!ModelState.IsValid || string.IsNullOrWhiteSpace(request.Message))
-            return BadRequest(new { success = false, message = "Tin nhắn không được để trống và tối đa 1000 ký tự." });
+            return BadRequest(new { success = false, error = "Tin nhắn không được để trống và tối đa 1000 ký tự." });
 
         var conversation = await _db.ChatConversations.FirstOrDefaultAsync(x => x.Id == conversationId);
-        if (conversation == null) return NotFound(new { success = false, message = "Không tìm thấy cuộc trò chuyện." });
+        if (conversation == null) return NotFound(new { success = false, error = "Không tìm thấy cuộc trò chuyện." });
         if (conversation.Status == ChatConversationStatus.Closed)
-            return BadRequest(new { success = false, message = "Cuộc trò chuyện đã đóng." });
+            return BadRequest(new { success = false, error = "Cuộc trò chuyện đã đóng." });
 
         var message = new ChatMessage
         {
@@ -119,8 +126,11 @@ public class AdminChatController : Controller
             message.IsRead,
             message.CreatedAt
         };
-        await _hub.Clients.Group(ChatHub.ConversationGroup(conversationId)).SendAsync("MessageReceived", conversationId, payload);
-        await _hub.Clients.Group(ChatHub.AdminGroup).SendAsync("ConversationUpdated", conversationId);
+        await NotifyRealtime(async () =>
+        {
+            await _hub.Clients.Group(ChatHub.ConversationGroup(conversationId)).SendAsync("MessageReceived", conversationId, payload);
+            await _hub.Clients.Group(ChatHub.AdminGroup).SendAsync("ConversationUpdated", conversationId);
+        }, conversationId);
         return Ok(new { success = true, message = payload });
     }
 
@@ -129,13 +139,28 @@ public class AdminChatController : Controller
     public async Task<IActionResult> CloseConversation(int conversationId)
     {
         var conversation = await _db.ChatConversations.FirstOrDefaultAsync(x => x.Id == conversationId);
-        if (conversation == null) return NotFound(new { success = false, message = "Không tìm thấy cuộc trò chuyện." });
+        if (conversation == null) return NotFound(new { success = false, error = "Không tìm thấy cuộc trò chuyện." });
 
         conversation.Status = ChatConversationStatus.Closed;
         conversation.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
-        await _hub.Clients.Group(ChatHub.ConversationGroup(conversationId)).SendAsync("ConversationClosed", conversationId);
-        await _hub.Clients.Group(ChatHub.AdminGroup).SendAsync("ConversationUpdated", conversationId);
+        await NotifyRealtime(async () =>
+        {
+            await _hub.Clients.Group(ChatHub.ConversationGroup(conversationId)).SendAsync("ConversationClosed", conversationId);
+            await _hub.Clients.Group(ChatHub.AdminGroup).SendAsync("ConversationUpdated", conversationId);
+        }, conversationId);
         return Ok(new { success = true, message = "Đã đóng cuộc trò chuyện." });
+    }
+
+    private async Task NotifyRealtime(Func<Task> notification, int conversationId)
+    {
+        try
+        {
+            await notification();
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(exception, "Conversation {ConversationId} was saved but realtime notification failed.", conversationId);
+        }
     }
 }

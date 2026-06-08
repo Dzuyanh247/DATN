@@ -15,9 +15,22 @@
     let filter = 'all';
 
     async function request(url, options = {}) {
-        const response = await fetch(url, { ...options, headers: { Accept: 'application/json', 'Content-Type': 'application/json', RequestVerificationToken: csrf, ...(options.headers || {}) } });
-        const data = await response.json().catch(() => ({ success: false, message: 'Phản hồi máy chủ không hợp lệ.' }));
-        if (!response.ok || data.success === false) throw new Error(data.message || 'Không thể xử lý yêu cầu.');
+        const response = await fetch(url, {
+            ...options,
+            credentials: 'same-origin',
+            headers: { Accept: 'application/json', 'Content-Type': 'application/json', RequestVerificationToken: csrf, ...(options.headers || {}) }
+        });
+        const contentType = response.headers.get('content-type') || '';
+        const responseText = await response.text();
+        let data = null;
+        if (contentType.toLowerCase().includes('application/json')) {
+            try { data = responseText ? JSON.parse(responseText) : null; }
+            catch (error) { console.error('[AdminChat] Invalid JSON response', { url, status: response.status, responseText, error }); }
+        } else {
+            console.error('[AdminChat] Expected JSON response', { url, status: response.status, contentType, responseText });
+        }
+        if (!data || typeof data !== 'object') throw new Error(`Máy chủ trả về dữ liệu không hợp lệ (${response.status}).`);
+        if (!response.ok || data.success === false) throw new Error(data.error || data.message || 'Không thể xử lý yêu cầu.');
         return data;
     }
     function formatDate(value, timeOnly = false) {
