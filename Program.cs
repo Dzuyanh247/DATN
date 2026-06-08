@@ -24,6 +24,28 @@ builder.Services.AddAuthentication(options =>
     {
         options.LoginPath = "/Account/Login";
         options.AccessDeniedPath = "/Account/AccessDenied";
+        options.Events.OnRedirectToLogin = async context =>
+        {
+            if (ExpectsJson(context.Request))
+            {
+                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                await context.Response.WriteAsJsonAsync(new { success = false, error = "Vui lòng đăng nhập để tiếp tục." });
+                return;
+            }
+
+            context.Response.Redirect(context.RedirectUri);
+        };
+        options.Events.OnRedirectToAccessDenied = async context =>
+        {
+            if (ExpectsJson(context.Request))
+            {
+                context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                await context.Response.WriteAsJsonAsync(new { success = false, error = "Bạn không có quyền thực hiện thao tác này." });
+                return;
+            }
+
+            context.Response.Redirect(context.RedirectUri);
+        };
     });
 
 builder.Services.AddHttpContextAccessor();
@@ -86,6 +108,40 @@ if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
 }
+
+app.Use(async (context, next) =>
+{
+    try
+    {
+        await next();
+
+        if (IsChatRequest(context.Request) &&
+            context.Response.StatusCode == StatusCodes.Status400BadRequest &&
+            !context.Response.HasStarted &&
+            (string.IsNullOrWhiteSpace(context.Response.ContentType) ||
+             !context.Response.ContentType.Contains("application/json", StringComparison.OrdinalIgnoreCase)))
+        {
+            context.Response.Clear();
+            context.Response.StatusCode = StatusCodes.Status400BadRequest;
+            await context.Response.WriteAsJsonAsync(new
+            {
+                success = false,
+                error = "Yêu cầu chat không hợp lệ hoặc mã bảo mật đã hết hạn. Vui lòng tải lại trang và thử lại."
+            });
+        }
+    }
+    catch (Exception exception) when (IsChatRequest(context.Request) && !context.Response.HasStarted)
+    {
+        app.Logger.LogError(exception, "Unhandled chat request error for {Method} {Path}", context.Request.Method, context.Request.Path);
+        context.Response.Clear();
+        context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+        await context.Response.WriteAsJsonAsync(new
+        {
+            success = false,
+            error = "Hệ thống chat đang gặp sự cố. Vui lòng thử lại sau."
+        });
+    }
+});
 
 app.UseStaticFiles();
 app.UseRouting();
@@ -362,3 +418,12 @@ WHERE t.name = 'Products'
 ORDER BY c.name;").ToListAsync();
     Console.WriteLine($"[DB] Products promotion columns present: {string.Join(", ", promotionColumns)}");
 }
+
+
+static bool ExpectsJson(HttpRequest request) =>
+    IsChatRequest(request) && request.Headers.Accept.Any(x =>
+        x?.Contains("application/json", StringComparison.OrdinalIgnoreCase) == true);
+
+static bool IsChatRequest(HttpRequest request) =>
+    request.Path.StartsWithSegments("/support-chat", StringComparison.OrdinalIgnoreCase) ||
+    request.Path.StartsWithSegments("/AdminChat", StringComparison.OrdinalIgnoreCase);

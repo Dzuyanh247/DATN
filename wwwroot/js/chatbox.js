@@ -16,6 +16,9 @@
     const closedElement = document.getElementById('kk-chat-closed');
     const unreadElement = document.getElementById('kk-chat-unread');
     const storageKey = root.dataset.storageKey;
+    const createUrl = root.dataset.createUrl;
+    const messagesUrlTemplate = root.dataset.messagesUrlTemplate;
+    const sendUrlTemplate = root.dataset.sendUrlTemplate;
     const csrf = document.querySelector('#kk-chat-antiforgery input[name="__RequestVerificationToken"]')?.value || '';
     let session = readSession();
     let connection;
@@ -80,20 +83,56 @@
         closedElement.classList.add('d-none');
         messageForm.classList.remove('d-none');
     }
+    function conversationUrl(template, conversationId) {
+        return template.replace('987654321', encodeURIComponent(conversationId));
+    }
     async function jsonFetch(url, options = {}) {
-        const response = await fetch(url, {
-            ...options,
-            headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'RequestVerificationToken': csrf, ...(options.headers || {}) }
-        });
-        let data;
-        try { data = await response.json(); } catch { data = { success: false, message: 'Phản hồi máy chủ không hợp lệ.' }; }
-        if (!response.ok || data.success === false) throw new Error(data.message || 'Không thể xử lý yêu cầu.');
+        let response;
+        try {
+            response = await fetch(url, {
+                ...options,
+                credentials: 'same-origin',
+                headers: { Accept: 'application/json', 'Content-Type': 'application/json', RequestVerificationToken: csrf, ...(options.headers || {}) }
+            });
+        } catch (error) {
+            console.error('[SupportChat] Network error', { url, error });
+            throw new Error('Không thể kết nối máy chủ. Vui lòng kiểm tra mạng và thử lại.');
+        }
+
+        const contentType = response.headers.get('content-type') || '';
+        const responseText = await response.text();
+        let data = null;
+        if (contentType.toLowerCase().includes('application/json')) {
+            try {
+                data = responseText ? JSON.parse(responseText) : null;
+            } catch (error) {
+                console.error('[SupportChat] Invalid JSON response', { url, status: response.status, contentType, responseText, error });
+            }
+        } else {
+            console.error('[SupportChat] Expected JSON but received another content type', {
+                url,
+                status: response.status,
+                contentType,
+                responseText
+            });
+        }
+
+        if (!data || typeof data !== 'object') {
+            throw new Error(response.ok
+                ? 'Máy chủ trả về dữ liệu không đúng định dạng. Vui lòng thử lại.'
+                : `Máy chủ không thể xử lý yêu cầu (${response.status}). Vui lòng thử lại.`);
+        }
+        if (!response.ok || data.success === false) {
+            const serverError = data.error || data.message || `Không thể xử lý yêu cầu (${response.status}).`;
+            console.error('[SupportChat] Server rejected request', { url, status: response.status, data });
+            throw new Error(serverError);
+        }
         return data;
     }
     async function loadMessages() {
         if (!session?.conversationId || !session?.accessToken) return resetConversation();
         try {
-            const data = await jsonFetch(`/support-chat/conversations/${session.conversationId}/messages?accessToken=${encodeURIComponent(session.accessToken)}`, { headers: { 'Content-Type': 'application/json' } });
+            const data = await jsonFetch(`${conversationUrl(messagesUrlTemplate, session.conversationId)}?accessToken=${encodeURIComponent(session.accessToken)}`);
             messagesElement.replaceChildren();
             data.messages.forEach(addMessage);
             showConversation(data.status);
@@ -143,13 +182,16 @@
         }
         button.disabled = true;
         try {
-            const data = await jsonFetch('/support-chat/conversations', { method: 'POST', body: JSON.stringify(payload) });
+            const data = await jsonFetch(createUrl, { method: 'POST', body: JSON.stringify(payload) });
             saveSession({ conversationId: data.conversationId, accessToken: data.accessToken });
             messagesElement.replaceChildren();
             addMessage(data.message);
             showConversation(data.status);
             await connectRealtime();
-        } catch (error) { errorElement.textContent = error.message; }
+        } catch (error) {
+            console.error('[SupportChat] Could not start conversation', error);
+            errorElement.textContent = error.message;
+        }
         finally { button.disabled = false; }
     });
     messageForm.addEventListener('submit', async event => {
@@ -159,13 +201,17 @@
         const button = messageForm.querySelector('button');
         button.disabled = true;
         try {
-            const data = await jsonFetch(`/support-chat/conversations/${session.conversationId}/messages`, {
+            const data = await jsonFetch(conversationUrl(sendUrlTemplate, session.conversationId), {
                 method: 'POST', body: JSON.stringify({ accessToken: session.accessToken, message: text })
             });
             addMessage(data.message);
             messageInput.value = '';
             messageInput.style.height = '';
-        } catch (error) { window.showGlobalToast?.(error.message, 'danger'); }
+        } catch (error) {
+            console.error('[SupportChat] Could not send message', error);
+            if (window.showGlobalToast) window.showGlobalToast(error.message, 'danger');
+            else window.alert(error.message);
+        }
         finally { button.disabled = false; }
     });
     messageInput.addEventListener('input', () => {
