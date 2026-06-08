@@ -27,6 +27,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<ShippingConfig> ShippingConfigs => Set<ShippingConfig>();
     public DbSet<ShopLocation> ShopLocations => Set<ShopLocation>();
     public DbSet<PasswordResetOtp> PasswordResetOtps => Set<PasswordResetOtp>();
+    public DbSet<ChatConversation> ChatConversations => Set<ChatConversation>();
+    public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
 
 
     public override int SaveChanges()
@@ -104,6 +106,27 @@ public class ApplicationDbContext : DbContext
                 .OnDelete(DeleteBehavior.Cascade);
             entity.HasIndex(x => new { x.UserId, x.IsUsed, x.ExpiresAt });
             entity.HasIndex(x => new { x.Email, x.CodeHash });
+        });
+
+        modelBuilder.Entity<ChatConversation>(entity =>
+        {
+            entity.Property(x => x.AccessToken).HasMaxLength(64).IsRequired();
+            entity.HasIndex(x => x.AccessToken).IsUnique();
+            entity.HasIndex(x => new { x.Status, x.UpdatedAt });
+            entity.HasOne(x => x.User)
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<ChatMessage>(entity =>
+        {
+            entity.Property(x => x.Message).HasMaxLength(1000).IsRequired();
+            entity.HasIndex(x => new { x.ConversationId, x.CreatedAt });
+            entity.HasOne(x => x.Conversation)
+                .WithMany(x => x.Messages)
+                .HasForeignKey(x => x.ConversationId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<User>().HasIndex(x => x.Email).IsUnique();

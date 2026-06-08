@@ -1,0 +1,77 @@
+@using System.Security.Claims
+@{
+    var authenticated = User.Identity?.IsAuthenticated == true;
+    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "guest";
+    var fullName = User.FindFirstValue(ClaimTypes.Name) ?? string.Empty;
+    var email = User.FindFirstValue(ClaimTypes.Email) ?? string.Empty;
+}
+<div id="kk-support-chat"
+     class="kk-chat"
+     data-authenticated="@authenticated.ToString().ToLowerInvariant()"
+     data-name="@fullName"
+     data-email="@email"
+     data-storage-key="kkshop-support-chat-@userId">
+    <form class="d-none" id="kk-chat-antiforgery">@Html.AntiForgeryToken()</form>
+
+    <button type="button" class="kk-chat-launcher" id="kk-chat-launcher" aria-label="Mở KKSHOP hỗ trợ" aria-expanded="false">
+        <span class="kk-chat-launcher-icon"><i class="bi bi-headset"></i></span>
+        <span class="kk-chat-launcher-text">Hỗ trợ</span>
+        <span class="kk-chat-unread d-none" id="kk-chat-unread">0</span>
+    </button>
+
+    <section class="kk-chat-panel" id="kk-chat-panel" aria-hidden="true" aria-label="KKSHOP hỗ trợ">
+        <header class="kk-chat-header">
+            <div class="kk-chat-brand-icon"><i class="bi bi-chat-heart-fill"></i></div>
+            <div>
+                <strong>KKSHOP hỗ trợ</strong>
+                <small id="kk-chat-connection"><span></span> Đang kết nối...</small>
+            </div>
+            <button type="button" id="kk-chat-close" class="kk-chat-close" aria-label="Thu nhỏ"><i class="bi bi-dash-lg"></i></button>
+        </header>
+
+        <div class="kk-chat-body">
+            <div class="kk-chat-welcome" id="kk-chat-welcome">
+                <div class="kk-chat-avatar"><i class="bi bi-headset"></i></div>
+                <h6>KKSHOP xin chào!</h6>
+                <p>Hãy để lại lời nhắn, shop sẽ phản hồi bạn sớm nhất.</p>
+            </div>
+
+            <form id="kk-chat-start-form" class="kk-chat-start-form">
+                @if (!authenticated)
+                {
+                    <label for="kk-chat-name">Tên của bạn</label>
+                    <input id="kk-chat-name" maxlength="100" autocomplete="name" placeholder="Nguyễn Văn A" required />
+                    <div class="kk-chat-contact-row">
+                        <div>
+                            <label for="kk-chat-email">Email</label>
+                            <input id="kk-chat-email" maxlength="120" type="email" autocomplete="email" placeholder="email@example.com" />
+                        </div>
+                        <div>
+                            <label for="kk-chat-phone">Số điện thoại</label>
+                            <input id="kk-chat-phone" maxlength="20" autocomplete="tel" placeholder="09xxxxxxxx" />
+                        </div>
+                    </div>
+                    <small class="kk-chat-hint">Nhập ít nhất email hoặc số điện thoại.</small>
+                }
+                else
+                {
+                    <div class="kk-chat-user-note"><i class="bi bi-person-check-fill"></i> Đang chat với tên <strong>@fullName</strong></div>
+                }
+                <label for="kk-chat-first-message">Bạn cần KKSHOP hỗ trợ gì?</label>
+                <textarea id="kk-chat-first-message" maxlength="1000" rows="3" placeholder="Nhập nội dung cần hỗ trợ..." required></textarea>
+                <div class="kk-chat-error" id="kk-chat-start-error" role="alert"></div>
+                <button type="submit" class="kk-chat-primary"><i class="bi bi-send-fill"></i> Bắt đầu trò chuyện</button>
+            </form>
+
+            <div class="kk-chat-conversation d-none" id="kk-chat-conversation">
+                <div class="kk-chat-messages" id="kk-chat-messages" aria-live="polite"></div>
+                <div class="kk-chat-closed d-none" id="kk-chat-closed">Cuộc trò chuyện đã đóng.<button type="button" id="kk-chat-new-conversation">Bắt đầu hội thoại mới</button></div>
+                <form class="kk-chat-compose" id="kk-chat-message-form">
+                    <textarea id="kk-chat-message" maxlength="1000" rows="1" placeholder="Nhập tin nhắn..." aria-label="Tin nhắn"></textarea>
+                    <button type="submit" aria-label="Gửi tin nhắn"><i class="bi bi-send-fill"></i></button>
+                </form>
+            </div>
+        </div>
+        <footer class="kk-chat-footer"><i class="bi bi-shield-check"></i> Thông tin của bạn được bảo mật</footer>
+    </section>
+</div>

@@ -1,0 +1,54 @@
+@{
+    ViewData["Title"] = "Quản lý hỗ trợ khách hàng";
+}
+<form id="admin-chat-antiforgery" class="d-none">@Html.AntiForgeryToken()</form>
+
+<div class="admin-chat" id="admin-chat">
+    <aside class="admin-chat-list-panel">
+        <div class="admin-chat-list-head">
+            <div>
+                <h2>Hội thoại</h2>
+                <span id="admin-chat-summary">Đang tải...</span>
+            </div>
+            <button type="button" id="admin-chat-refresh" title="Làm mới"><i class="bi bi-arrow-clockwise"></i></button>
+        </div>
+        <div class="admin-chat-filters">
+            <button type="button" class="active" data-filter="all">Tất cả</button>
+            <button type="button" data-filter="open">Đang mở</button>
+            <button type="button" data-filter="unread">Chưa đọc</button>
+        </div>
+        <div class="admin-chat-list" id="admin-chat-list">
+            <div class="admin-chat-empty"><span class="spinner-border spinner-border-sm"></span> Đang tải hội thoại...</div>
+        </div>
+    </aside>
+
+    <section class="admin-chat-detail">
+        <div class="admin-chat-placeholder" id="admin-chat-placeholder">
+            <div><i class="bi bi-chat-square-text"></i></div>
+            <h3>Chọn một cuộc trò chuyện</h3>
+            <p>Tin nhắn của khách hàng sẽ xuất hiện tại đây theo thời gian thực.</p>
+        </div>
+        <div class="admin-chat-room d-none" id="admin-chat-room">
+            <header class="admin-chat-customer">
+                <button type="button" class="admin-chat-back" id="admin-chat-back"><i class="bi bi-chevron-left"></i></button>
+                <div class="admin-chat-customer-avatar" id="admin-chat-avatar">K</div>
+                <div class="admin-chat-customer-info">
+                    <h3 id="admin-chat-name">Khách hàng</h3>
+                    <div><span id="admin-chat-contact"></span> <span id="admin-chat-status" class="admin-chat-status"></span></div>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-danger" id="admin-chat-close-conversation"><i class="bi bi-check2-circle"></i> Đóng hội thoại</button>
+            </header>
+            <div class="admin-chat-messages" id="admin-chat-messages" aria-live="polite"></div>
+            <div class="admin-chat-closed d-none" id="admin-chat-closed">Cuộc trò chuyện này đã đóng.</div>
+            <form class="admin-chat-compose" id="admin-chat-compose">
+                <textarea id="admin-chat-message" maxlength="1000" rows="2" placeholder="Nhập phản hồi cho khách hàng..."></textarea>
+                <button type="submit"><i class="bi bi-send-fill"></i><span>Gửi</span></button>
+            </form>
+        </div>
+    </section>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/@@microsoft/signalr@8.0.7/dist/browser/signalr.min.js"></script>
+    <script src="~/js/admin-chat.js" asp-append-version="true"></script>
+}
