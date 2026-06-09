@@ -20,49 +20,12 @@
         </div>
     </div>
 
-    <form method="get" asp-controller="Products" asp-action="Index" class="products-toolbar">
-        <input type="hidden" name="categorySlug" value="@Model.CategorySlug" />
-        <div class="products-toolbar-field products-search-field">
-            <label for="product-keyword">Tìm sản phẩm</label>
-            <div class="input-group">
-                <span class="input-group-text"><i class="bi bi-search"></i></span>
-                <input id="product-keyword" name="keyword" value="@Model.Keyword" class="form-control" placeholder="Nhập tên sản phẩm..." />
-            </div>
-        </div>
-        <div class="products-toolbar-field">
-            <label for="product-category">Danh mục</label>
-            <select id="product-category" name="categoryId" class="form-select">
-                <option value="">Tất cả danh mục</option>
-                @foreach (var category in Model.Categories)
-                {
-                    <option value="@category.Id" selected="@(Model.CategoryId == category.Id)">@category.Name</option>
-                }
-            </select>
-        </div>
-        <div class="products-toolbar-field">
-            <label for="legacy-brand">Hãng</label>
-            <input id="legacy-brand" name="brand" value="@Model.Brand" class="form-control" placeholder="Ví dụ: AMD" />
-        </div>
-        <div class="products-toolbar-field products-price-field">
-            <label>Khoảng giá tùy chỉnh</label>
-            <div class="products-price-inputs">
-                <input name="minPrice" value="@Model.MinPrice" class="form-control" type="number" min="0" step="100000" placeholder="Giá từ" />
-                <span>–</span>
-                <input name="maxPrice" value="@Model.MaxPrice" class="form-control" type="number" min="0" step="100000" placeholder="Giá đến" />
-            </div>
-        </div>
-        <button class="btn products-toolbar-submit" type="submit"><i class="bi bi-funnel"></i> Lọc</button>
-    </form>
-
-    <div class="products-layout">
+    <div class="products-layout" id="product-filter">
         <aside class="products-filter-sidebar" aria-label="Bộ lọc sản phẩm">
-            <form method="get" asp-controller="Products" asp-action="Index" id="product-filter-form">
+            <form method="get" asp-controller="Products" asp-action="Index" asp-fragment="product-filter" id="product-filter-form">
                 <input type="hidden" name="categoryId" value="@Model.CategoryId" />
                 <input type="hidden" name="categorySlug" value="@Model.CategorySlug" />
                 <input type="hidden" name="keyword" value="@Model.Keyword" />
-                <input type="hidden" name="brand" value="@Model.Brand" />
-                <input type="hidden" name="minPrice" value="@Model.MinPrice" />
-                <input type="hidden" name="maxPrice" value="@Model.MaxPrice" />
 
                 <div class="products-filter-header">
                     <div>
@@ -72,7 +35,8 @@
                     <a asp-controller="Products" asp-action="Index"
                        asp-route-categoryId="@Model.CategoryId"
                        asp-route-categorySlug="@Model.CategorySlug"
-                       class="products-clear-filter">Xóa lọc</a>
+                       asp-fragment="product-filter"
+                       class="products-clear-filter" data-preserve-filter-scroll>Xóa lọc</a>
                 </div>
 
                 <details class="products-filter-group" open>
@@ -193,7 +157,8 @@
                     <a asp-controller="Products" asp-action="Index"
                        asp-route-categoryId="@Model.CategoryId"
                        asp-route-categorySlug="@Model.CategorySlug"
-                       class="btn btn-primary">Xóa bộ lọc</a>
+                       asp-fragment="product-filter"
+                       class="btn btn-primary" data-preserve-filter-scroll>Xóa bộ lọc</a>
                 </div>
             }
             else
@@ -215,8 +180,26 @@
             const filterForm = document.getElementById('product-filter-form');
             if (!filterForm) return;
 
+            const scrollStorageKey = 'products-filter-scroll-position';
+            const saveScrollPosition = () => {
+                sessionStorage.setItem(scrollStorageKey, window.scrollY.toString());
+            };
+
+            const savedScrollPosition = sessionStorage.getItem(scrollStorageKey);
+            if (savedScrollPosition !== null) {
+                sessionStorage.removeItem(scrollStorageKey);
+                const scrollY = Number.parseInt(savedScrollPosition, 10);
+                if (Number.isFinite(scrollY)) {
+                    requestAnimationFrame(() => window.scrollTo(0, scrollY));
+                }
+            }
+
+            filterForm.addEventListener('submit', saveScrollPosition);
             filterForm.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
                 checkbox.addEventListener('change', () => filterForm.requestSubmit());
+            });
+            document.querySelectorAll('[data-preserve-filter-scroll]').forEach(link => {
+                link.addEventListener('click', saveScrollPosition);
             });
         })();
     </script>
