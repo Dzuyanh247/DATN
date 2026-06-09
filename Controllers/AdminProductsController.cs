@@ -39,6 +39,7 @@ public class AdminProductsController : Controller
     {
         await PopulateCategoriesAsync(vm);
         TryValidateProductImageUrls(vm, true);
+        var promotionText = BuildAndValidatePromotionText(vm);
         if (!ModelState.IsValid) return InvalidProductForm(vm, "tạo");
 
         var price = vm.Price!.Value;
@@ -59,6 +60,7 @@ public class AdminProductsController : Controller
             IsPromotion = vm.IsPromotion,
             PromotionStartDate = vm.PromotionStartDate,
             PromotionEndDate = vm.PromotionEndDate,
+            PromotionText = promotionText,
             StockQuantity = stockQuantity,
             WarrantyMonths = warrantyMonths,
             WarrantyDuration = $"{warrantyMonths} tháng",
@@ -95,6 +97,7 @@ public class AdminProductsController : Controller
     {
         await PopulateCategoriesAsync(vm);
         TryValidateProductImageUrls(vm, false);
+        var promotionText = BuildAndValidatePromotionText(vm);
         if (!ModelState.IsValid)
         {
             await PopulateExistingImagesAsync(vm);
@@ -113,6 +116,7 @@ public class AdminProductsController : Controller
         product.IsPromotion = vm.IsPromotion;
         product.PromotionStartDate = vm.PromotionStartDate;
         product.PromotionEndDate = vm.PromotionEndDate;
+        product.PromotionText = promotionText;
         product.StockQuantity = vm.StockQuantity!.Value;
         product.WarrantyMonths = vm.WarrantyMonths!.Value;
         product.WarrantyDuration = $"{vm.WarrantyMonths.Value} tháng";
@@ -159,6 +163,7 @@ public class AdminProductsController : Controller
         vm.Id = product.Id; vm.Name = product.Name; vm.Price = product.Price; vm.DiscountPrice = product.DiscountPrice ?? product.SalePrice;
         vm.IsHotSale = product.IsHotSale; vm.IsDailyDeal = product.IsDailyDeal; vm.IsPromotion = product.IsPromotion;
         vm.PromotionStartDate = product.PromotionStartDate; vm.PromotionEndDate = product.PromotionEndDate;
+        vm.SelectedPromotionTexts = ProductPromotionHelper.GetSelectedPresetTexts(product.PromotionText); vm.CustomPromotionText = ProductPromotionHelper.GetCustomText(product.PromotionText);
         vm.StockQuantity = product.StockQuantity; vm.WarrantyMonths = product.WarrantyMonths > 0 ? product.WarrantyMonths : 12; vm.CategoryId = product.CategoryId;
         vm.Description = string.IsNullOrWhiteSpace(product.Description) ? product.DetailDescription : product.Description; vm.Specifications = product.TechnicalSpecifications; vm.ComponentSpecs = ProductComponentSpecHelper.ParseStored(product.TechnicalSpecifications); vm.IsActive = product.IsActive;
         vm.ThumbnailImageUrl = product.ThumbnailImage;
@@ -184,6 +189,19 @@ public class AdminProductsController : Controller
             errors);
         TempData["ErrorMessage"] = $"Không thể {operation} sản phẩm. Vui lòng kiểm tra {errors.Count} lỗi được hiển thị trong biểu mẫu.";
         return View(vm);
+    }
+
+    private static string? NormalizeNullableText(string value) => string.IsNullOrWhiteSpace(value) ? null : value;
+
+    private string? BuildAndValidatePromotionText(AdminProductUpsertVm vm)
+    {
+        var promotionText = ProductPromotionHelper.BuildStoredText(vm.SelectedPromotionTexts, vm.CustomPromotionText);
+        if (promotionText.Length > ProductPromotionHelper.MaxStoredLength)
+        {
+            ModelState.AddModelError(nameof(vm.CustomPromotionText), $"Tổng nội dung khuyến mại không được vượt quá {ProductPromotionHelper.MaxStoredLength:N0} ký tự.");
+        }
+
+        return NormalizeNullableText(promotionText);
     }
 
     private async Task PopulateCategoriesAsync(AdminProductUpsertVm vm) => vm.Categories = await _db.Categories.OrderBy(x => x.Name).ToListAsync();

@@ -59,6 +59,7 @@ public class Product : BaseEntity
     public bool IsPromotion { get; set; }
     public DateTime? PromotionStartDate { get; set; }
     public DateTime? PromotionEndDate { get; set; }
+    [MaxLength(2000)] public string? PromotionText { get; set; }
     public int StockQuantity { get; set; }
     [MaxLength(1000)] public string ThumbnailImage { get; set; } = string.Empty;
     [MaxLength(1000)] public string SourceUrl { get; set; } = string.Empty;

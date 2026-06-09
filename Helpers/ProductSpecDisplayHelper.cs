@@ -95,18 +95,7 @@ public static class ProductSpecDisplayHelper
 
     public static string GetPromotionText(Product product, int maxLength = 220)
     {
-        var productSpecs = CleanLine(product.TechnicalSpecifications);
-        var candidates = product.IsPromotion
-            ? new[] { product.DetailDescription, product.Description, product.ShortDescription }
-            : new[] { product.DetailDescription };
-
-        return candidates
-            .Select(CleanLine)
-            .Where(x => !string.IsNullOrWhiteSpace(x))
-            .Where(x => !ContainsRawJsonMarkers(x))
-            .Where(x => !string.Equals(x, productSpecs, StringComparison.OrdinalIgnoreCase))
-            .Select(x => Truncate(x, maxLength))
-            .FirstOrDefault() ?? string.Empty;
+        return Truncate(string.Join(" | ", ProductPromotionHelper.GetPromotionLines(product)), maxLength);
     }
 
     private static IEnumerable<string> GetSafeFallbackLines(params string?[] values)

@@ -8,6 +8,32 @@
     .admin-product-form .validation-summary-valid {
         display: none;
     }
+
+    .promotion-preset-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: .75rem;
+    }
+
+    .promotion-preset-option {
+        display: flex;
+        gap: .65rem;
+        align-items: flex-start;
+        padding: .8rem;
+        border: 1px solid #fed7aa;
+        border-radius: .65rem;
+        background: #fff7ed;
+        cursor: pointer;
+    }
+
+    .promotion-preset-option:hover {
+        border-color: #fb923c;
+        background: #ffedd5;
+    }
+
+    @@media (max-width: 767.98px) {
+        .promotion-preset-grid { grid-template-columns: 1fr; }
+    }
 </style>
 
 <form asp-controller="AdminProducts" asp-action="@(isEdit ? "Edit" : "Create")" method="post" class="admin-product-form">
@@ -87,6 +113,34 @@
                         </div>
                     </div>
                 </div>
+            </div>
+
+            <div class="apf-card mb-4">
+                <h5 class="apf-title">Khuyến mại / Quà tặng kèm</h5>
+                <p class="text-muted small mb-3">Chọn nhanh một hoặc nhiều mẫu bên dưới. Nếu không chọn hoặc nhập nội dung, website sẽ dùng hai khuyến mại mặc định.</p>
+
+                <div class="promotion-preset-grid mb-3">
+                    @foreach (var promotion in ProductPromotionHelper.PresetTexts)
+                    {
+                        var isSelected = Model.SelectedPromotionTexts.Contains(promotion, StringComparer.Ordinal);
+                        <label class="promotion-preset-option">
+                            @if (isSelected)
+                            {
+                                <input class="form-check-input mt-1" type="checkbox" name="SelectedPromotionTexts" value="@promotion" checked />
+                            }
+                            else
+                            {
+                                <input class="form-check-input mt-1" type="checkbox" name="SelectedPromotionTexts" value="@promotion" />
+                            }
+                            <span><span aria-hidden="true">🎁</span> @promotion</span>
+                        </label>
+                    }
+                </div>
+
+                <label asp-for="CustomPromotionText" class="form-label fw-semibold">Khuyến mại tùy chỉnh</label>
+                <textarea asp-for="CustomPromotionText" rows="4" class="form-control" placeholder="Mỗi khuyến mại trên một dòng"></textarea>
+                <div class="form-text text-muted">Nội dung tùy chỉnh sẽ được nối sau các mẫu đã chọn, mỗi dòng là một khuyến mại.</div>
+                <span asp-validation-for="CustomPromotionText" class="text-danger"></span>
             </div>
 
             <div class="apf-card mb-4">
