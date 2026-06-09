@@ -5,6 +5,9 @@ namespace Datn.PcStore.Helpers;
 
 public static partial class ProductFilterFacetHelper
 {
+    private static readonly HashSet<string> SupportedRamCapacities =
+        new(["8", "16", "32", "64"], StringComparer.OrdinalIgnoreCase);
+
     public static readonly IReadOnlyList<PriceRangeDefinition> PriceRanges =
     [
         new("under-10", "Dưới 10 triệu", null, 10_000_000m),
@@ -28,19 +31,55 @@ public static partial class ProductFilterFacetHelper
 
     public static ProductParsedFacets Parse(Product product)
     {
-        var source = string.Join(' ', new[]
+        var sources = GetFacetSources(product);
+        var cpu = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var ram = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var gpu = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var source in sources)
+        {
+            cpu.UnionWith(ExtractMatches(source, CpuRegex(), match => NormalizeCpu(match.Value)));
+            ram.UnionWith(ExtractRam(source));
+            gpu.UnionWith(ExtractMatches(source, GpuRegex(), match => NormalizeGpu(match.Value)));
+        }
+
+        return new ProductParsedFacets(cpu, ram, gpu);
+    }
+
+    private static IReadOnlyCollection<string> GetFacetSources(Product product)
+    {
+        if (!string.IsNullOrWhiteSpace(product.Specifications))
+        {
+            var componentDescriptions = ProductComponentSpecHelper.ParseStored(product.Specifications)
+                .Select(spec => spec.Description)
+                .Where(value => !string.IsNullOrWhiteSpace(value))
+                .ToArray();
+
+            if (componentDescriptions.Length > 0)
+                return componentDescriptions;
+
+            if (!string.Equals(product.Specifications.Trim(), "[]", StringComparison.Ordinal))
+                return [product.Specifications];
+        }
+
+        return new[]
         {
             product.Name,
             product.ShortDescription,
             product.Description,
-            product.DetailDescription,
-            product.Specifications
-        }.Where(value => !string.IsNullOrWhiteSpace(value)));
+            product.DetailDescription
+        }.Where(value => !string.IsNullOrWhiteSpace(value)).ToArray();
+    }
 
-        return new ProductParsedFacets(
-            ExtractMatches(source, CpuRegex(), match => NormalizeCpu(match.Value)),
-            ExtractMatches(source, RamRegex(), match => $"{match.Groups[1].Value}GB"),
-            ExtractMatches(source, GpuRegex(), match => NormalizeGpu(match.Value)));
+    private static HashSet<string> ExtractRam(string source)
+    {
+        // Avoid treating values such as "RTX 4060 8GB GDDR6" as system RAM.
+        var sourceWithoutVram = GpuVramRegex().Replace(source, match => match.Groups[1].Value);
+        return RamRegex().Matches(sourceWithoutVram)
+            .Select(match => match.Groups[1].Value)
+            .Where(SupportedRamCapacities.Contains)
+            .Select(capacity => $"{capacity}GB")
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
     }
 
     private static HashSet<string> ExtractMatches(string source, Regex regex, Func<Match, string> selector) =>
@@ -52,8 +91,9 @@ public static partial class ProductFilterFacetHelper
     private static string NormalizeCpu(string value)
     {
         var normalized = WhitespaceRegex().Replace(value.Trim(), " ");
-        if (normalized.StartsWith("Ryzen", StringComparison.OrdinalIgnoreCase))
-            return $"Ryzen {normalized[^1]}";
+        var ryzenMatch = RyzenCpuRegex().Match(normalized);
+        if (ryzenMatch.Success)
+            return $"Ryzen {ryzenMatch.Groups[1].Value}";
 
         var coreMatch = CoreCpuRegex().Match(normalized);
         return coreMatch.Success ? $"Core i{coreMatch.Groups[1].Value}" : normalized;
@@ -62,19 +102,29 @@ public static partial class ProductFilterFacetHelper
     private static string NormalizeGpu(string value)
     {
         var normalized = WhitespaceRegex().Replace(value.Replace('-', ' ').Trim(), " ").ToUpperInvariant();
-        return normalized.Replace(" TI", " Ti", StringComparison.Ordinal).Replace(" SUPER", " SUPER", StringComparison.Ordinal);
+        normalized = GpuVendorPrefixRegex().Replace(normalized, string.Empty);
+        return normalized.Replace(" TI", " Ti", StringComparison.Ordinal);
     }
 
-    [GeneratedRegex(@"\bRyzen\s+[3579]\b|\b(?:Intel\s+)?Core\s+i[3579]\b|\bIntel\s+i[3579]\b", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"\b(?:AMD\s+)?Ryzen\s+[3579](?:\s+PRO)?\b|\b(?:Intel\s+)?Core\s+i[3579]\b|\bIntel\s+i[3579]\b", RegexOptions.IgnoreCase)]
     private static partial Regex CpuRegex();
 
-    [GeneratedRegex(@"(?:\bRAM\s*[:\-]?\s*|\b)(\d{1,3})\s*GB\s*(?:DDR[345])\b", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"\b(?:AMD\s+)?Ryzen\s+([3579])\b", RegexOptions.IgnoreCase)]
+    private static partial Regex RyzenCpuRegex();
+
+    [GeneratedRegex(@"\b(8|16|32|64)\s*GB\b", RegexOptions.IgnoreCase)]
     private static partial Regex RamRegex();
 
-    [GeneratedRegex(@"\b(?:RTX|GTX|RX)\s*-?\s*\d{3,4}(?:\s*(?:Ti|SUPER|XT|XTX))?\b", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"\b(?:(?:AMD\s+)?RADEON\s+|NVIDIA\s+|AMD\s+)?(?:RTX|GTX|RX)\s*-?\s*\d{3,4}(?:\s*(?:Ti|SUPER|XT|XTX))?\b", RegexOptions.IgnoreCase)]
     private static partial Regex GpuRegex();
 
-    [GeneratedRegex(@"i([3579])", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"(\b(?:(?:AMD\s+)?RADEON\s+|NVIDIA\s+|AMD\s+)?(?:RTX|GTX|RX)\s*-?\s*\d{3,4}(?:\s*(?:Ti|SUPER|XT|XTX))?\b)\s*(?:[-/]\s*)?(?:8|16|32|64)\s*GB(?:\s+GDDR\w*)?", RegexOptions.IgnoreCase)]
+    private static partial Regex GpuVramRegex();
+
+    [GeneratedRegex(@"^(?:(?:AMD\s+)?RADEON|NVIDIA|AMD)\s+", RegexOptions.IgnoreCase)]
+    private static partial Regex GpuVendorPrefixRegex();
+
+    [GeneratedRegex(@"(?:Core\s+)?i([3579])", RegexOptions.IgnoreCase)]
     private static partial Regex CoreCpuRegex();
 
     [GeneratedRegex(@"\s+")]
