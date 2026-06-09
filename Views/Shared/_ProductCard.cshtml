@@ -7,7 +7,7 @@
         ?? Model.ThumbnailImage, "/images/banners/banner_main1.png");
     var hoverSpecs = ProductSpecDisplayHelper.GetHoverSpecs(Model);
     var hoverSummary = ProductSpecDisplayHelper.GetSummaryText(Model);
-    var hoverPromo = ProductSpecDisplayHelper.GetPromotionText(Model);
+    var promotionLines = ProductPromotionHelper.GetPromotionLines(Model);
 }
 <div class="ttg-product-card">
     <a asp-controller="Products" asp-action="Detail" asp-route-id="@Model.Id" class="ttg-product-image-wrap text-decoration-none"
@@ -18,7 +18,7 @@
        data-pp-warranty="@(string.IsNullOrWhiteSpace(Model.WarrantyDuration) ? (Model.WarrantyMonths > 0 ? $"{Model.WarrantyMonths} tháng" : string.Empty) : Model.WarrantyDuration)"
        data-pp-desc="@hoverSummary"
        data-pp-spec-lines='@string.Join("||", hoverSpecs)'
-       data-pp-promo="@hoverPromo">
+       data-pp-promo-lines='@string.Join("||", promotionLines)'>
         <img src="@image" class="ttg-product-image" alt="@Model.Name" onerror="this.onerror=null;this.src='/images/banners/banner_main1.png';" />
         @if (discount > 0)
         {
@@ -29,6 +29,10 @@
     <div class="ttg-price">@finalPrice.ToString("N0") VNĐ</div>
     <div class="ttg-old-price">@(finalPrice < Model.Price ? $"{Model.Price:N0} VNĐ" : "")</div>
     <span class="ttg-stock">@(Model.IsInStock ? "Còn hàng" : "Hết hàng")</span>
+    <div class="ttg-product-promotion" title="@(string.Join("; ", promotionLines))">
+        <span aria-hidden="true">🎁</span>
+        <span>@promotionLines[0]@(promotionLines.Count > 1 ? $" (+{promotionLines.Count - 1})" : string.Empty)</span>
+    </div>
     @if (Model.IsInStock)
     {
         <form method="post" asp-controller="Cart" asp-action="Add" class="mt-auto pt-2">

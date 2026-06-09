@@ -230,9 +230,9 @@ const showProductHover=(card)=>{
     const d=card.dataset;
     const specs=splitSpecs(d.ppSpecLines);
     const desc=(!hasRawJson(d.ppDesc)&&d.ppDesc)?d.ppDesc:'';
-    const promo=(!hasRawJson(d.ppPromo)&&d.ppPromo)?d.ppPromo:'';
+    const promotions=splitSpecs(d.ppPromoLines);
     const specHtml=specs.length?`<div class="product-hover-label">Mô tả tóm tắt:</div><ul class="product-hover-spec-list">${specs.map(x=>`<li><i class="bi bi-check-circle-fill"></i><span>${esc(x)}</span></li>`).join('')}</ul>`:(desc?`<div class="product-hover-label">Mô tả tóm tắt:</div><div class="product-hover-desc">${esc(desc)}</div>`:'');
-    const promoHtml=promo?`<div class="product-hover-promo"><div class="product-hover-label">Khuyến mại:</div><div><span aria-hidden="true">🎁</span> ${esc(promo)}</div></div>`:'';
+    const promoHtml=promotions.length?`<div class="product-hover-promo"><div class="product-hover-label">Khuyến mại:</div><ul class="product-hover-promo-list">${promotions.map(x=>`<li><span aria-hidden="true">🎁</span><span>${esc(x)}</span></li>`).join('')}</ul></div>`:'';
     productHoverPopup.innerHTML=`<div class="product-hover-header">${esc(d.ppName||'Sản phẩm')}</div><div class="product-hover-body"><div class="product-hover-price"><span>Giá bán:</span> <strong>${esc(d.ppPrice||'Liên hệ')}</strong></div>${d.ppOldPrice?`<div class="product-hover-old-price">${esc(d.ppOldPrice)}</div>`:''}${d.ppWarranty?`<div class="product-hover-warranty"><b>Bảo hành:</b> ${esc(d.ppWarranty)}</div>`:''}${specHtml}${promoHtml}</div>`;
     productHoverPopup.classList.add('show');
     productHoverPopup.setAttribute('aria-hidden','false');

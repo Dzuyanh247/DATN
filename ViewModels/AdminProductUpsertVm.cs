@@ -27,6 +27,11 @@ public class AdminProductUpsertVm
     public DateTime? PromotionStartDate { get; set; }
     public DateTime? PromotionEndDate { get; set; }
 
+    public List<string> SelectedPromotionTexts { get; set; } = new();
+
+    [MaxLength(2000, ErrorMessage = "Nội dung khuyến mại không được vượt quá 2.000 ký tự")]
+    public string? CustomPromotionText { get; set; }
+
     [Required(ErrorMessage = "Số lượng tồn kho là bắt buộc")]
     [Range(0, 999999999, ErrorMessage = "Số lượng tồn kho không được âm")]
     public int? StockQuantity { get; set; }
