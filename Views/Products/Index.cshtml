@@ -22,7 +22,7 @@
 
     <div class="products-layout" id="product-filter">
         <aside class="products-filter-sidebar" aria-label="Bộ lọc sản phẩm">
-            <form method="get" asp-controller="Products" asp-action="Index" asp-fragment="product-filter" id="product-filter-form">
+            <form method="get" asp-controller="Products" asp-action="Index" id="product-filter-form">
                 <input type="hidden" name="categoryId" value="@Model.CategoryId" />
                 <input type="hidden" name="categorySlug" value="@Model.CategorySlug" />
                 <input type="hidden" name="keyword" value="@Model.Keyword" />
@@ -35,7 +35,6 @@
                     <a asp-controller="Products" asp-action="Index"
                        asp-route-categoryId="@Model.CategoryId"
                        asp-route-categorySlug="@Model.CategorySlug"
-                       asp-fragment="product-filter"
                        class="products-clear-filter" data-preserve-filter-scroll>Xóa lọc</a>
                 </div>
 
@@ -157,7 +156,6 @@
                     <a asp-controller="Products" asp-action="Index"
                        asp-route-categoryId="@Model.CategoryId"
                        asp-route-categorySlug="@Model.CategorySlug"
-                       asp-fragment="product-filter"
                        class="btn btn-primary" data-preserve-filter-scroll>Xóa bộ lọc</a>
                 </div>
             }
@@ -180,18 +178,25 @@
             const filterForm = document.getElementById('product-filter-form');
             if (!filterForm) return;
 
-            const scrollStorageKey = 'products-filter-scroll-position';
+            const scrollStorageKey = 'productsFilterScrollY';
             const saveScrollPosition = () => {
-                sessionStorage.setItem(scrollStorageKey, window.scrollY.toString());
+                sessionStorage.setItem('productsFilterScrollY', window.scrollY);
+            };
+            const restoreScrollPosition = () => {
+                const savedY = sessionStorage.getItem(scrollStorageKey);
+                if (savedY === null) return;
+
+                const scrollY = parseInt(savedY, 10);
+                if (Number.isFinite(scrollY)) {
+                    window.scrollTo(0, scrollY);
+                }
+                sessionStorage.removeItem(scrollStorageKey);
             };
 
-            const savedScrollPosition = sessionStorage.getItem(scrollStorageKey);
-            if (savedScrollPosition !== null) {
-                sessionStorage.removeItem(scrollStorageKey);
-                const scrollY = Number.parseInt(savedScrollPosition, 10);
-                if (Number.isFinite(scrollY)) {
-                    requestAnimationFrame(() => window.scrollTo(0, scrollY));
-                }
+            if (document.readyState === 'complete') {
+                restoreScrollPosition();
+            } else {
+                window.addEventListener('load', restoreScrollPosition, { once: true });
             }
 
             filterForm.addEventListener('submit', saveScrollPosition);
