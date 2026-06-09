@@ -123,9 +123,9 @@ public static class ProductComponentSpecHelper
 
             normalized.Add(new ProductComponentSpecViewModel
             {
-                Stt = spec.Stt > 0 ? spec.Stt : normalized.Count + 1,
+                Stt = spec.Stt.GetValueOrDefault() > 0 ? spec.Stt : normalized.Count + 1,
                 Description = description,
-                Quantity = spec.Quantity > 0 ? spec.Quantity : 1,
+                Quantity = spec.Quantity.GetValueOrDefault() > 0 ? spec.Quantity : 1,
                 Warranty = CleanLine(spec.Warranty)
             });
         }

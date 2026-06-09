@@ -12,13 +12,14 @@ public class AdminProductUpsertVm
     public string Name { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "Vui lòng chọn danh mục")]
-    public int CategoryId { get; set; }
+    [Range(1, int.MaxValue, ErrorMessage = "Vui lòng chọn danh mục hợp lệ")]
+    public int? CategoryId { get; set; }
 
     [Required(ErrorMessage = "Giá gốc là bắt buộc")]
-    [Range(1000, 999999999)]
-    public decimal Price { get; set; }
+    [Range(1000, 999999999, ErrorMessage = "Giá gốc phải từ 1.000 đến 999.999.999")]
+    public decimal? Price { get; set; }
 
-    [Range(0, 999999999)]
+    [Range(0, 999999999, ErrorMessage = "Giá khuyến mãi không được âm")]
     public decimal? DiscountPrice { get; set; }
     public bool IsHotSale { get; set; }
     public bool IsDailyDeal { get; set; }
@@ -26,23 +27,25 @@ public class AdminProductUpsertVm
     public DateTime? PromotionStartDate { get; set; }
     public DateTime? PromotionEndDate { get; set; }
 
-    [Range(0, 999999999)]
-    public int StockQuantity { get; set; }
+    [Required(ErrorMessage = "Số lượng tồn kho là bắt buộc")]
+    [Range(0, 999999999, ErrorMessage = "Số lượng tồn kho không được âm")]
+    public int? StockQuantity { get; set; }
 
-    [Range(0, 120)]
-    public int WarrantyMonths { get; set; } = 12;
+    [Required(ErrorMessage = "Thời gian bảo hành là bắt buộc")]
+    [Range(0, 120, ErrorMessage = "Bảo hành phải từ 0 đến 120 tháng")]
+    public int? WarrantyMonths { get; set; } = 12;
 
-    public string Description { get; set; } = string.Empty;
-    public string Specifications { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public string? Specifications { get; set; }
     public List<ProductComponentSpecViewModel> ComponentSpecs { get; set; } = new();
 
     public bool IsActive { get; set; } = true;
 
     [Url(ErrorMessage = "URL thumbnail không hợp lệ")]
     [MaxLength(1000)]
-    public string ThumbnailImageUrl { get; set; } = string.Empty;
+    public string? ThumbnailImageUrl { get; set; }
 
-    public string ProductImageUrlsText { get; set; } = string.Empty;
+    public string? ProductImageUrlsText { get; set; }
 
     public List<int> RemoveImageIds { get; set; } = new();
 
@@ -63,8 +66,14 @@ public class ProductImageItemVm
 
 public class ProductComponentSpecViewModel
 {
-    public int Stt { get; set; }
-    public string Description { get; set; } = string.Empty;
-    public int Quantity { get; set; } = 1;
-    public string Warranty { get; set; } = string.Empty;
+    [Range(1, int.MaxValue, ErrorMessage = "Thứ tự cấu hình phải lớn hơn 0")]
+    public int? Stt { get; set; }
+
+    [Required(ErrorMessage = "Linh kiện / thông số không được để trống")]
+    public string? Description { get; set; }
+
+    [Range(1, int.MaxValue, ErrorMessage = "Số lượng cấu hình phải lớn hơn 0")]
+    public int? Quantity { get; set; } = 1;
+
+    public string? Warranty { get; set; }
 }

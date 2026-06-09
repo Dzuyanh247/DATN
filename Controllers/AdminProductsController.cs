@@ -12,10 +12,12 @@ namespace Datn.PcStore.Controllers;
 public class AdminProductsController : Controller
 {
     private readonly ApplicationDbContext _db;
+    private readonly ILogger<AdminProductsController> _logger;
 
-    public AdminProductsController(ApplicationDbContext db)
+    public AdminProductsController(ApplicationDbContext db, ILogger<AdminProductsController> logger)
     {
         _db = db;
+        _logger = logger;
     }
 
     [HttpGet]
@@ -36,14 +38,20 @@ public class AdminProductsController : Controller
     public async Task<IActionResult> Create(AdminProductUpsertVm vm)
     {
         await PopulateCategoriesAsync(vm);
-        if (!TryValidateProductImageUrls(vm, true)) return View(vm);
+        TryValidateProductImageUrls(vm, true);
+        if (!ModelState.IsValid) return InvalidProductForm(vm, "tạo");
+
+        var price = vm.Price!.Value;
+        var stockQuantity = vm.StockQuantity!.Value;
+        var warrantyMonths = vm.WarrantyMonths!.Value;
+        var categoryId = vm.CategoryId!.Value;
 
         var product = new Product
         {
             Name = vm.Name,
             ProductCode = $"SP-{Guid.NewGuid():N}"[..16],
             Brand = "N/A",
-            Price = vm.Price,
+            Price = price,
             DiscountPrice = vm.DiscountPrice,
             SalePrice = vm.DiscountPrice,
             IsHotSale = vm.IsHotSale,
@@ -51,19 +59,19 @@ public class AdminProductsController : Controller
             IsPromotion = vm.IsPromotion,
             PromotionStartDate = vm.PromotionStartDate,
             PromotionEndDate = vm.PromotionEndDate,
-            StockQuantity = vm.StockQuantity,
-            WarrantyMonths = vm.WarrantyMonths,
-            WarrantyDuration = $"{vm.WarrantyMonths} tháng",
-            CategoryId = vm.CategoryId,
+            StockQuantity = stockQuantity,
+            WarrantyMonths = warrantyMonths,
+            WarrantyDuration = $"{warrantyMonths} tháng",
+            CategoryId = categoryId,
             ShortDescription = BuildShortDescription(vm.Description),
-            Description = vm.Description,
-            DetailDescription = vm.Description,
+            Description = vm.Description ?? string.Empty,
+            DetailDescription = vm.Description ?? string.Empty,
             TechnicalSpecifications = ProductComponentSpecHelper.Serialize(vm.ComponentSpecs),
             ComponentType = "Khác",
             IsActive = vm.IsActive,
-            IsInStock = vm.StockQuantity > 0,
+            IsInStock = stockQuantity > 0,
             Slug = BuildSlug(vm.Name),
-            ThumbnailImage = vm.ThumbnailImageUrl.Trim()
+            ThumbnailImage = vm.ThumbnailImageUrl!.Trim()
         };
 
         AddProductImagesFromUrls(product, vm.ProductImageUrlsText);
@@ -86,17 +94,18 @@ public class AdminProductsController : Controller
     public async Task<IActionResult> Edit(AdminProductUpsertVm vm)
     {
         await PopulateCategoriesAsync(vm);
-        if (!TryValidateProductImageUrls(vm, false))
+        TryValidateProductImageUrls(vm, false);
+        if (!ModelState.IsValid)
         {
             await PopulateExistingImagesAsync(vm);
-            return View(vm);
+            return InvalidProductForm(vm, "cập nhật");
         }
 
         var product = await _db.Products.Include(p => p.ProductImages).FirstOrDefaultAsync(x => x.Id == vm.Id);
         if (product == null) return NotFound();
 
         product.Name = vm.Name;
-        product.Price = vm.Price;
+        product.Price = vm.Price!.Value;
         product.DiscountPrice = vm.DiscountPrice;
         product.SalePrice = vm.DiscountPrice;
         product.IsHotSale = vm.IsHotSale;
@@ -104,16 +113,16 @@ public class AdminProductsController : Controller
         product.IsPromotion = vm.IsPromotion;
         product.PromotionStartDate = vm.PromotionStartDate;
         product.PromotionEndDate = vm.PromotionEndDate;
-        product.StockQuantity = vm.StockQuantity;
-        product.WarrantyMonths = vm.WarrantyMonths;
-        product.WarrantyDuration = $"{vm.WarrantyMonths} tháng";
-        product.CategoryId = vm.CategoryId;
+        product.StockQuantity = vm.StockQuantity!.Value;
+        product.WarrantyMonths = vm.WarrantyMonths!.Value;
+        product.WarrantyDuration = $"{vm.WarrantyMonths.Value} tháng";
+        product.CategoryId = vm.CategoryId!.Value;
         product.ShortDescription = BuildShortDescription(vm.Description);
-        product.Description = vm.Description;
-        product.DetailDescription = vm.Description;
+        product.Description = vm.Description ?? string.Empty;
+        product.DetailDescription = vm.Description ?? string.Empty;
         product.TechnicalSpecifications = ProductComponentSpecHelper.Serialize(vm.ComponentSpecs);
         product.IsActive = vm.IsActive;
-        product.IsInStock = vm.StockQuantity > 0;
+        product.IsInStock = vm.StockQuantity.Value > 0;
         product.Slug = BuildSlug(vm.Name);
         product.UpdatedAt = DateTime.UtcNow;
 
@@ -156,6 +165,27 @@ public class AdminProductsController : Controller
         var orderedImages = product.ProductImages.OrderBy(x => x.SortOrder).ToList(); vm.ExistingImageOrder = orderedImages.Select(x => x.Id).ToList();
         vm.ExistingImages = orderedImages.Select(x => new ProductImageItemVm { Id = x.Id, ImageUrl = x.ImageUrl, IsPrimary = x.IsPrimary, SortOrder = x.SortOrder }).ToList(); return vm; }
 
+    private IActionResult InvalidProductForm(AdminProductUpsertVm vm, string operation)
+    {
+        var errors = ModelState
+            .Where(entry => entry.Value?.Errors.Count > 0)
+            .SelectMany(entry => entry.Value!.Errors.Select(error => new
+            {
+                Field = string.IsNullOrWhiteSpace(entry.Key) ? "Model" : entry.Key,
+                Message = string.IsNullOrWhiteSpace(error.ErrorMessage)
+                    ? error.Exception?.Message ?? "Giá trị không hợp lệ."
+                    : error.ErrorMessage
+            }))
+            .ToList();
+
+        _logger.LogWarning(
+            "Không thể {Operation} sản phẩm vì ModelState không hợp lệ: {@ValidationErrors}",
+            operation,
+            errors);
+        TempData["ErrorMessage"] = $"Không thể {operation} sản phẩm. Vui lòng kiểm tra {errors.Count} lỗi được hiển thị trong biểu mẫu.";
+        return View(vm);
+    }
+
     private async Task PopulateCategoriesAsync(AdminProductUpsertVm vm) => vm.Categories = await _db.Categories.OrderBy(x => x.Name).ToListAsync();
     private async Task PopulateExistingImagesAsync(AdminProductUpsertVm vm) { vm.ExistingImages = await _db.ProductImages.Where(x => x.ProductId == vm.Id).OrderBy(x => x.SortOrder).Select(x => new ProductImageItemVm { Id = x.Id, ImageUrl = x.ImageUrl, IsPrimary = x.IsPrimary, SortOrder = x.SortOrder }).ToListAsync(); if (!vm.ExistingImageOrder.Any()) vm.ExistingImageOrder = vm.ExistingImages.Select(x => x.Id).ToList(); }
 
@@ -167,16 +197,16 @@ public class AdminProductsController : Controller
         return ModelState.IsValid;
     }
 
-    private void AddProductImagesFromUrls(Product product, string urlsText)
+    private void AddProductImagesFromUrls(Product product, string? urlsText)
     {
         var sort = product.ProductImages.Count == 0 ? 1 : product.ProductImages.Max(x => x.SortOrder) + 1;
         foreach (var url in SplitImageUrls(urlsText)) product.ProductImages.Add(new ProductImage { ImageUrl = url, SortOrder = sort++, IsPrimary = false });
     }
 
-    private static List<string> SplitImageUrls(string urlsText) => (urlsText ?? string.Empty).Split(new[] { '\r', '\n', ',', ';' }, StringSplitOptions.RemoveEmptyEntries).Select(x => x.Trim()).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+    private static List<string> SplitImageUrls(string? urlsText) => (urlsText ?? string.Empty).Split(new[] { '\r', '\n', ',', ';' }, StringSplitOptions.RemoveEmptyEntries).Select(x => x.Trim()).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
     private void ValidateUrl(string? value, string key) { if (string.IsNullOrWhiteSpace(value)) return; if (!Uri.TryCreate(value.Trim(), UriKind.Absolute, out var uri) || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)) ModelState.AddModelError(key, "Chỉ chấp nhận URL http/https hợp lệ."); }
     private static void ApplyExistingImageOrder(Product product, List<int> orderedImageIds) { if (!orderedImageIds.Any()) return; var current = product.ProductImages.ToDictionary(x => x.Id); var sort = 1; foreach (var imageId in orderedImageIds) if (current.TryGetValue(imageId, out var image)) image.SortOrder = sort++; foreach (var image in product.ProductImages.Where(x => x.SortOrder <= 0).OrderBy(x => x.Id)) image.SortOrder = sort++; }
     private static void EnsurePrimaryImage(Product product) { var orderedImages = product.ProductImages.OrderBy(x => x.SortOrder).ToList(); if (!orderedImages.Any()) return; var primaryImage = orderedImages.First(); foreach (var image in orderedImages) image.IsPrimary = image.Id == primaryImage.Id; if (string.IsNullOrWhiteSpace(product.ThumbnailImage)) product.ThumbnailImage = primaryImage.ImageUrl; }
     private static string BuildSlug(string input) => string.IsNullOrWhiteSpace(input) ? Guid.NewGuid().ToString("N") : string.Join('-', input.ToLowerInvariant().Trim().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries));
-    private static string BuildShortDescription(string description) => string.IsNullOrWhiteSpace(description) ? string.Empty : description.Trim().Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault()?.Trim() ?? string.Empty;
+    private static string BuildShortDescription(string? description) => string.IsNullOrWhiteSpace(description) ? string.Empty : description.Trim().Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault()?.Trim() ?? string.Empty;
 }
