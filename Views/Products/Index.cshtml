@@ -1,21 +1,223 @@
 @model ProductFilterVm
-<h3>Danh sách sản phẩm</h3>
-<form method="get" class="row g-2 mb-3">
-    <div class="col-md-3"><input asp-for="Keyword" class="form-control" placeholder="Từ khóa" /></div>
-    <div class="col-md-2">
-        <select asp-for="CategoryId" class="form-select">
-            <option value="">Tất cả danh mục</option>
-            @foreach (var c in Model.Categories) { <option value="@c.Id">@c.Name</option> }
-        </select>
+@{
+    ViewData["Title"] = "Danh sách sản phẩm";
+    var currentCategory = Model.Categories.FirstOrDefault(category => category.Id == Model.CategoryId);
+    var pageTitle = currentCategory?.Name ?? "Tất cả sản phẩm";
+    var resultText = $"{Model.Products.Count:N0} sản phẩm";
+}
+
+<div class="products-page">
+    <div class="products-heading">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb products-breadcrumb">
+                    <li class="breadcrumb-item"><a asp-controller="Home" asp-action="Index">Trang chủ</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">@pageTitle</li>
+                </ol>
+            </nav>
+            <h1>@pageTitle</h1>
+            <p>@resultText phù hợp với tiêu chí của bạn</p>
+        </div>
     </div>
-    <div class="col-md-2"><input asp-for="Brand" class="form-control" placeholder="Hãng" /></div>
-    <div class="col-md-2"><input asp-for="MinPrice" class="form-control" placeholder="Giá từ" /></div>
-    <div class="col-md-2"><input asp-for="MaxPrice" class="form-control" placeholder="Giá đến" /></div>
-    <div class="col-md-1"><button class="btn btn-primary w-100">Lọc</button></div>
-</form>
-<div class="row g-3">
-    @foreach (var p in Model.Products)
-    {
-        <div class="col-md-3"><partial name="_ProductCard" model="p" /></div>
-    }
+
+    <form method="get" asp-controller="Products" asp-action="Index" class="products-toolbar">
+        <input type="hidden" name="categorySlug" value="@Model.CategorySlug" />
+        <div class="products-toolbar-field products-search-field">
+            <label for="product-keyword">Tìm sản phẩm</label>
+            <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                <input id="product-keyword" name="keyword" value="@Model.Keyword" class="form-control" placeholder="Nhập tên sản phẩm..." />
+            </div>
+        </div>
+        <div class="products-toolbar-field">
+            <label for="product-category">Danh mục</label>
+            <select id="product-category" name="categoryId" class="form-select">
+                <option value="">Tất cả danh mục</option>
+                @foreach (var category in Model.Categories)
+                {
+                    <option value="@category.Id" selected="@(Model.CategoryId == category.Id)">@category.Name</option>
+                }
+            </select>
+        </div>
+        <div class="products-toolbar-field">
+            <label for="legacy-brand">Hãng</label>
+            <input id="legacy-brand" name="brand" value="@Model.Brand" class="form-control" placeholder="Ví dụ: AMD" />
+        </div>
+        <div class="products-toolbar-field products-price-field">
+            <label>Khoảng giá tùy chỉnh</label>
+            <div class="products-price-inputs">
+                <input name="minPrice" value="@Model.MinPrice" class="form-control" type="number" min="0" step="100000" placeholder="Giá từ" />
+                <span>–</span>
+                <input name="maxPrice" value="@Model.MaxPrice" class="form-control" type="number" min="0" step="100000" placeholder="Giá đến" />
+            </div>
+        </div>
+        <button class="btn products-toolbar-submit" type="submit"><i class="bi bi-funnel"></i> Lọc</button>
+    </form>
+
+    <div class="products-layout">
+        <aside class="products-filter-sidebar" aria-label="Bộ lọc sản phẩm">
+            <form method="get" asp-controller="Products" asp-action="Index" id="product-filter-form">
+                <input type="hidden" name="categoryId" value="@Model.CategoryId" />
+                <input type="hidden" name="categorySlug" value="@Model.CategorySlug" />
+                <input type="hidden" name="keyword" value="@Model.Keyword" />
+                <input type="hidden" name="brand" value="@Model.Brand" />
+                <input type="hidden" name="minPrice" value="@Model.MinPrice" />
+                <input type="hidden" name="maxPrice" value="@Model.MaxPrice" />
+
+                <div class="products-filter-header">
+                    <div>
+                        <i class="bi bi-sliders"></i>
+                        <span>Bộ lọc sản phẩm</span>
+                    </div>
+                    <a asp-controller="Products" asp-action="Index"
+                       asp-route-categoryId="@Model.CategoryId"
+                       asp-route-categorySlug="@Model.CategorySlug"
+                       class="products-clear-filter">Xóa lọc</a>
+                </div>
+
+                <details class="products-filter-group" open>
+                    <summary>Khoảng giá <i class="bi bi-chevron-down"></i></summary>
+                    <div class="products-filter-options">
+                        @foreach (var option in Model.PriceRangeOptions)
+                        {
+                            var id = $"price-{option.Value}";
+                            <label class="products-filter-option" for="@id">
+                                <input id="@id" type="checkbox" name="priceRanges" value="@option.Value"
+                                       checked="@(Model.PriceRanges.Contains(option.Value, StringComparer.OrdinalIgnoreCase))" />
+                                <span>@option.Label</span>
+                                <small>(@option.Count)</small>
+                            </label>
+                        }
+                    </div>
+                </details>
+
+                <details class="products-filter-group" open>
+                    <summary>Thương hiệu <i class="bi bi-chevron-down"></i></summary>
+                    <div class="products-filter-options">
+                        @if (Model.BrandOptions.Count == 0)
+                        {
+                            <div class="products-filter-empty">Chưa có dữ liệu</div>
+                        }
+                        @foreach (var option in Model.BrandOptions)
+                        {
+                            var id = $"brand-{option.Value.GetHashCode()}";
+                            <label class="products-filter-option" for="@id">
+                                <input id="@id" type="checkbox" name="brands" value="@option.Value"
+                                       checked="@(Model.Brands.Contains(option.Value, StringComparer.OrdinalIgnoreCase))" />
+                                <span>@option.Label</span>
+                                <small>(@option.Count)</small>
+                            </label>
+                        }
+                    </div>
+                </details>
+
+                <details class="products-filter-group" open>
+                    <summary>Dòng CPU <i class="bi bi-chevron-down"></i></summary>
+                    <div class="products-filter-options">
+                        @if (Model.CpuOptions.Count == 0)
+                        {
+                            <div class="products-filter-empty">Chưa nhận diện được CPU</div>
+                        }
+                        @foreach (var option in Model.CpuOptions)
+                        {
+                            var id = $"cpu-{option.Value.Replace(" ", "-").ToLowerInvariant()}";
+                            <label class="products-filter-option" for="@id">
+                                <input id="@id" type="checkbox" name="cpu" value="@option.Value"
+                                       checked="@(Model.Cpu.Contains(option.Value, StringComparer.OrdinalIgnoreCase))" />
+                                <span>@option.Label</span>
+                                <small>(@option.Count)</small>
+                            </label>
+                        }
+                    </div>
+                </details>
+
+                <details class="products-filter-group" open>
+                    <summary>Dung lượng RAM <i class="bi bi-chevron-down"></i></summary>
+                    <div class="products-filter-options">
+                        @if (Model.RamOptions.Count == 0)
+                        {
+                            <div class="products-filter-empty">Chưa nhận diện được RAM</div>
+                        }
+                        @foreach (var option in Model.RamOptions)
+                        {
+                            var id = $"ram-{option.Value.ToLowerInvariant()}";
+                            <label class="products-filter-option" for="@id">
+                                <input id="@id" type="checkbox" name="ram" value="@option.Value"
+                                       checked="@(Model.Ram.Contains(option.Value, StringComparer.OrdinalIgnoreCase))" />
+                                <span>@option.Label</span>
+                                <small>(@option.Count)</small>
+                            </label>
+                        }
+                    </div>
+                </details>
+
+                <details class="products-filter-group" open>
+                    <summary>GPU <i class="bi bi-chevron-down"></i></summary>
+                    <div class="products-filter-options">
+                        @if (Model.GpuOptions.Count == 0)
+                        {
+                            <div class="products-filter-empty">Chưa nhận diện được GPU</div>
+                        }
+                        @foreach (var option in Model.GpuOptions)
+                        {
+                            var id = $"gpu-{option.Value.Replace(" ", "-").ToLowerInvariant()}";
+                            <label class="products-filter-option" for="@id">
+                                <input id="@id" type="checkbox" name="gpu" value="@option.Value"
+                                       checked="@(Model.Gpu.Contains(option.Value, StringComparer.OrdinalIgnoreCase))" />
+                                <span>@option.Label</span>
+                                <small>(@option.Count)</small>
+                            </label>
+                        }
+                    </div>
+                </details>
+
+                <button class="products-apply-filter" type="submit"><i class="bi bi-check2-circle"></i> Áp dụng bộ lọc</button>
+            </form>
+        </aside>
+
+        <section class="products-results" aria-live="polite">
+            <div class="products-results-header">
+                <strong>@resultText</strong>
+                @if (Model.HasSidebarFilters)
+                {
+                    <span><i class="bi bi-funnel-fill"></i> Đang áp dụng bộ lọc</span>
+                }
+            </div>
+
+            @if (Model.Products.Count == 0)
+            {
+                <div class="products-empty-state">
+                    <i class="bi bi-search"></i>
+                    <h2>Không tìm thấy sản phẩm phù hợp</h2>
+                    <p>Hãy thử bỏ bớt tiêu chí hoặc xóa bộ lọc để xem thêm sản phẩm.</p>
+                    <a asp-controller="Products" asp-action="Index"
+                       asp-route-categoryId="@Model.CategoryId"
+                       asp-route-categorySlug="@Model.CategorySlug"
+                       class="btn btn-primary">Xóa bộ lọc</a>
+                </div>
+            }
+            else
+            {
+                <div class="products-grid">
+                    @foreach (var product in Model.Products)
+                    {
+                        <partial name="_ProductCard" model="product" />
+                    }
+                </div>
+            }
+        </section>
+    </div>
 </div>
+
+@section Scripts {
+    <script>
+        (() => {
+            const filterForm = document.getElementById('product-filter-form');
+            if (!filterForm) return;
+
+            filterForm.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+                checkbox.addEventListener('change', () => filterForm.requestSubmit());
+            });
+        })();
+    </script>
+}
