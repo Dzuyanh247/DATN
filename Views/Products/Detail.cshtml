@@ -31,6 +31,7 @@
         .Where(line => !componentSpecs.Any(spec => string.Equals(spec.Description.Trim(), line.Trim(), StringComparison.OrdinalIgnoreCase)))
         .Distinct(StringComparer.OrdinalIgnoreCase)
         .ToList();
+    var fullDescription = ProductSpecDisplayHelper.GetFullDescriptionText(Model);
     var promotionLines = ProductPromotionHelper.GetPromotionLines(Model);
 
     var bundleProducts = suggestions.Take(4).ToList();
@@ -144,7 +145,7 @@
                     @if (descriptionLines.Any())
                     {
                         <div class="spec-summary-box">
-                            <div class="compact-box-title"><i class="bi bi-card-checklist" aria-hidden="true"></i><span>Mô tả sản phẩm</span></div>
+                            <div class="compact-box-title"><i class="bi bi-card-checklist" aria-hidden="true"></i><span>Thông tin nổi bật</span></div>
                             <ul>
                                 @foreach (var line in descriptionLines)
                                 {
@@ -189,7 +190,24 @@
             </div>
         </section>
 
-        @if (componentSpecs.Any() || descriptionLines.Any())
+        <section class="product-detail-section product-description-section" aria-labelledby="product-description-title">
+            <div class="product-section-heading">
+                <div><span class="product-section-kicker">Thông tin sản phẩm</span><h2 id="product-description-title">Mô tả sản phẩm</h2></div>
+                <i class="bi bi-file-text" aria-hidden="true"></i>
+            </div>
+            <div class="product-description-content @(string.IsNullOrWhiteSpace(fullDescription) ? "is-empty" : string.Empty)">
+                @if (string.IsNullOrWhiteSpace(fullDescription))
+                {
+                    <p>Sản phẩm đang được cập nhật mô tả.</p>
+                }
+                else
+                {
+                    <div class="product-description-text">@fullDescription</div>
+                }
+            </div>
+        </section>
+
+        @if (componentSpecs.Any())
         {
             <section class="product-detail-section product-spec-section" aria-labelledby="product-spec-title">
                 <div class="product-section-heading">
@@ -200,20 +218,10 @@
                     <table class="table spec-table mb-0">
                         <thead><tr><th class="text-center spec-order-column">STT</th><th>Mô tả thiết bị</th><th class="text-center spec-quantity-column">SL</th><th class="text-center spec-warranty-column">BH</th></tr></thead>
                         <tbody>
-                            @if (componentSpecs.Any())
+                            @for (var i = 0; i < componentSpecs.Count; i++)
                             {
-                                @for (var i = 0; i < componentSpecs.Count; i++)
-                                {
-                                    var spec = componentSpecs[i];
-                                    <tr><td class="text-center">@(i + 1)</td><td>@spec.Description</td><td class="text-center">@spec.Quantity</td><td class="text-center">@spec.Warranty</td></tr>
-                                }
-                            }
-                            else
-                            {
-                                @for (var i = 0; i < descriptionLines.Count; i++)
-                                {
-                                    <tr><td class="text-center">@(i + 1)</td><td>@descriptionLines[i]</td><td class="text-center">1</td><td class="text-center">@warrantyText</td></tr>
-                                }
+                                var spec = componentSpecs[i];
+                                <tr><td class="text-center">@(i + 1)</td><td>@spec.Description</td><td class="text-center">@spec.Quantity</td><td class="text-center">@spec.Warranty</td></tr>
                             }
                         </tbody>
                     </table>

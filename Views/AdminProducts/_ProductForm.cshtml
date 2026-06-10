@@ -145,7 +145,8 @@
 
             <div class="apf-card mb-4">
                 <h5 class="apf-title">Mô tả sản phẩm</h5>
-                <textarea asp-for="Description" rows="8" class="form-control" placeholder="Nhập mô tả sản phẩm"></textarea>
+                <textarea asp-for="Description" rows="8" class="form-control" placeholder="Nhập mô tả đầy đủ của sản phẩm"></textarea>
+                <div class="form-text text-muted">Nội dung này được lưu vào Description và hiển thị tại mục “Mô tả sản phẩm” trên trang chi tiết. Các dòng xuống hàng sẽ được giữ nguyên.</div>
                 <span asp-validation-for="Description" class="text-danger"></span>
             </div>
 

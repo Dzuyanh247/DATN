@@ -165,7 +165,7 @@ public class AdminProductsController : Controller
         vm.PromotionStartDate = product.PromotionStartDate; vm.PromotionEndDate = product.PromotionEndDate;
         vm.SelectedPromotionTexts = ProductPromotionHelper.GetSelectedPresetTexts(product.PromotionText); vm.CustomPromotionText = ProductPromotionHelper.GetCustomText(product.PromotionText);
         vm.StockQuantity = product.StockQuantity; vm.WarrantyMonths = product.WarrantyMonths > 0 ? product.WarrantyMonths : 12; vm.CategoryId = product.CategoryId;
-        vm.Description = string.IsNullOrWhiteSpace(product.Description) ? product.DetailDescription : product.Description; vm.Specifications = product.TechnicalSpecifications; vm.ComponentSpecs = ProductComponentSpecHelper.ParseStored(product.TechnicalSpecifications); vm.IsActive = product.IsActive;
+        vm.Description = ResolveDescriptionForEditing(product); vm.Specifications = product.TechnicalSpecifications; vm.ComponentSpecs = ProductComponentSpecHelper.ParseStored(product.TechnicalSpecifications); vm.IsActive = product.IsActive;
         vm.ThumbnailImageUrl = product.ThumbnailImage;
         var orderedImages = product.ProductImages.OrderBy(x => x.SortOrder).ToList(); vm.ExistingImageOrder = orderedImages.Select(x => x.Id).ToList();
         vm.ExistingImages = orderedImages.Select(x => new ProductImageItemVm { Id = x.Id, ImageUrl = x.ImageUrl, IsPrimary = x.IsPrimary, SortOrder = x.SortOrder }).ToList(); return vm; }
@@ -226,5 +226,12 @@ public class AdminProductsController : Controller
     private static void ApplyExistingImageOrder(Product product, List<int> orderedImageIds) { if (!orderedImageIds.Any()) return; var current = product.ProductImages.ToDictionary(x => x.Id); var sort = 1; foreach (var imageId in orderedImageIds) if (current.TryGetValue(imageId, out var image)) image.SortOrder = sort++; foreach (var image in product.ProductImages.Where(x => x.SortOrder <= 0).OrderBy(x => x.Id)) image.SortOrder = sort++; }
     private static void EnsurePrimaryImage(Product product) { var orderedImages = product.ProductImages.OrderBy(x => x.SortOrder).ToList(); if (!orderedImages.Any()) return; var primaryImage = orderedImages.First(); foreach (var image in orderedImages) image.IsPrimary = image.Id == primaryImage.Id; if (string.IsNullOrWhiteSpace(product.ThumbnailImage)) product.ThumbnailImage = primaryImage.ImageUrl; }
     private static string BuildSlug(string input) => string.IsNullOrWhiteSpace(input) ? Guid.NewGuid().ToString("N") : string.Join('-', input.ToLowerInvariant().Trim().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries));
+    private static string ResolveDescriptionForEditing(Product product)
+    {
+        if (!string.IsNullOrWhiteSpace(product.Description)) return product.Description;
+        if (!string.IsNullOrWhiteSpace(product.DetailDescription)) return product.DetailDescription;
+        return product.ShortDescription;
+    }
+
     private static string BuildShortDescription(string? description) => string.IsNullOrWhiteSpace(description) ? string.Empty : description.Trim().Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault()?.Trim() ?? string.Empty;
 }
