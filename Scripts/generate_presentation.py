@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate the 30-slide DATN PC Store graduation-defense deck.
+"""Generate the 11-slide DATN PC Store graduation-defense deck.
 
 The presentation is assembled directly as OOXML so the repository does not need
 python-pptx. Only vector shapes and text are embedded: no downloaded images,
@@ -19,33 +19,31 @@ ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "output"
 PPTX_PATH = OUTPUT / "DATN_PC_Store_Gioi_Thieu.pptx"
 SPEECH_PATH = OUTPUT / "presentation_speech.md"
-TOTAL = 30
+TOTAL = 11
 W, H, EMU = 13.333, 7.5, 914400
 FONT = "Aptos"
 
 C = {
-    "navy": "0B3D91", "blue": "2563EB", "cyan": "06B6D4", "orange": "F59E0B",
+    "navy": "003845", "blue": "1677FF", "cyan": "14D9FF", "orange": "FF6B00",
     "bg": "F8FAFC", "paper": "FFFFFF", "text": "1E293B", "muted": "64748B",
     "success": "10B981", "danger": "EF4444", "purple": "8B5CF6", "pink": "EC4899",
     "line": "DCE6F1", "ice": "EAF4FF", "mint": "E9FBF5", "warm": "FFF6DF",
-    "dark": "071D3B", "slate": "0F2942", "soft": "F1F5F9",
+    "dark": "002B36", "slate": "0F3D47", "soft": "F1F5F9",
 }
 
 SECTIONS = {
-    1: ("SECTION 01", "TỔNG QUAN ĐỀ TÀI", C["blue"], "◎", "01"),
-    2: ("SECTION 02", "PHÂN TÍCH & THIẾT KẾ", C["purple"], "◇", "02"),
-    3: ("SECTION 03", "DEMO WEBSITE KHÁCH HÀNG", C["cyan"], "▣", "03"),
-    4: ("SECTION 04", "QUẢN TRỊ HỆ THỐNG", C["orange"], "▤", "04"),
-    5: ("SECTION 05", "ĐÁNH GIÁ & KẾT LUẬN", C["success"], "↗", "05"),
+    1: ("PHẦN 01", "TỔNG QUAN ĐỀ TÀI", C["cyan"], "◎", "01"),
+    2: ("PHẦN 02", "CHỨC NĂNG & CÔNG NGHỆ", C["blue"], "◇", "02"),
+    3: ("PHẦN 03", "GIAO DIỆN DEMO", C["orange"], "▣", "03"),
+    4: ("PHẦN 04", "ĐÁNH GIÁ & KẾT LUẬN", C["success"], "↗", "04"),
 }
 
 
 def section_for(number: int) -> int:
-    if number <= 6: return 1
-    if number <= 12: return 2
-    if number <= 23: return 3
-    if number <= 26: return 4
-    return 5
+    if number <= 3: return 1
+    if number <= 6: return 2
+    if number <= 9: return 3
+    return 4
 
 
 @dataclass
@@ -321,125 +319,310 @@ def _set_notes(slide: Slide, speech: list[str], emphasis: list[str]) -> Slide:
 
 
 def build_slides(facts: SourceFacts) -> list[Slide]:
+    """Build the focused 11-slide graduation-defense presentation."""
     slides: list[Slide] = []
 
-    s = Slide(1, "DATN PC Store", "cover")
-    c = Canvas(s); add_safe_background(c, 1, dark=True)
-    c.text(.82, .82, 4.4, .30, "ĐỒ ÁN TỐT NGHIỆP · WEBSITE PC STORE", size=15, color=C["cyan"], bold=True, fill=C["dark"])
-    c.text(.82, 1.62, 9.4, .82, "DATN PC STORE", size=40, color=C["paper"], bold=True, fill=C["dark"], margin=0)
-    c.text(.84, 2.63, 7.9, .54, "Website bán linh kiện và hỗ trợ Build PC", size=21, color="C7DAED", fill=C["dark"], margin=0)
-    c.shape(.84, 3.50, 2.20, .09, fill=C["orange"], line=C["orange"], geom="rect")
-    c.text(.84, 4.06, 5.8, .35, "Sinh viên: ................................", size=16, color=C["paper"], fill=C["dark"])
-    c.text(.84, 4.56, 5.8, .35, "Giảng viên hướng dẫn: ........................", size=16, color="C7DAED", fill=C["dark"])
+    def notes(slide: Slide, speech: list[str], emphasis: list[str], image: str | None = None) -> None:
+        slide.speaker = speech
+        slide.animation = emphasis
+        if image:
+            slide.image_note = f"Có. URL: {image}."
+        slides.append(slide)
+
+    def base(number: int, title: str, kicker: str) -> tuple[Slide, Canvas]:
+        slide = Slide(number, title, f"defense-{number:02d}", transition="fade")
+        canvas = Canvas(slide)
+        add_safe_background(canvas, section_for(number), variant=number)
+        add_title(canvas, title, kicker)
+        add_footer_progress(canvas)
+        return slide, canvas
+
+    def browser_frame(c: Canvas, x: float, y: float, w: float, h: float, label: str, url: str) -> None:
+        c.shape(x, y, w, h, fill=C["paper"], line="CBD5E1", shadow=True)
+        c.shape(x, y, w, .42, fill=C["dark"], line=C["dark"], geom="roundRect")
+        for i, color in enumerate((C["danger"], C["orange"], C["success"])):
+            c.shape(x + .20 + i * .22, y + .15, .10, .10, fill=color, line=color, geom="ellipse")
+        c.shape(x + .95, y + .10, w - 1.18, .22, fill="163E49", line="163E49", geom="roundRect")
+        c.text(x + 1.08, y + .10, w - 1.45, .22, url, size=14, color="D9F7FC", fill="163E49", margin=0)
+        c.shape(x + .22, y + .64, w - .44, h - .88, fill="EDF4F7", line=C["cyan"],
+                line_width=18000, dash="dash")
+        c.text(x + .55, y + h * .40, w - 1.10, .42, "VỊ TRÍ ẢNH CHỤP WEBSITE", size=20,
+               color=C["dark"], bold=True, align="ctr", fill="EDF4F7", margin=0)
+        c.text(x + .70, y + h * .51, w - 1.40, .58, label, size=14,
+               color=C["muted"], bold=True, align="ctr", fill="EDF4F7", margin=0)
+
+    # 01 — Cover
+    s = Slide(1, "Website bán máy tính & linh kiện", "cover", transition="fade")
+    c = Canvas(s)
+    add_safe_background(c, 1, dark=True)
+    c.text(.80, .70, 5.6, .28, "ĐỒ ÁN TỐT NGHIỆP · CÔNG NGHỆ THÔNG TIN", size=14,
+           color=C["cyan"], bold=True, fill=C["dark"], margin=0)
+    c.text(.80, 1.48, 9.7, 1.18, "WEBSITE BÁN MÁY TÍNH\n& LINH KIỆN PC", size=36,
+           color=C["paper"], bold=True, fill=C["dark"], valign="top", margin=0)
+    c.text(.82, 2.92, 7.8, .44, "Nền tảng mua sắm, đặt hàng và quản trị tập trung", size=19,
+           color="C7E7EC", fill=C["dark"], margin=0)
+    c.shape(.82, 3.58, 2.20, .08, fill=C["orange"], line=C["orange"], geom="rect")
+    c.shape(.80, 4.05, 7.05, 1.75, fill="0B3540", line="1C5662", shadow=True)
+    c.text(1.08, 4.30, 3.15, .34, "SINH VIÊN", size=13, color=C["cyan"], bold=True, fill="0B3540", margin=0)
+    c.text(1.08, 4.68, 3.15, .42, "........................................", size=17, color=C["paper"], bold=True, fill="0B3540", margin=0)
+    c.text(4.55, 4.30, 2.95, .34, "LỚP · KHOA", size=13, color=C["orange"], bold=True, fill="0B3540", margin=0)
+    c.text(4.55, 4.68, 2.95, .58, ".........................\n.........................", size=15, color=C["paper"], fill="0B3540", valign="top", margin=0)
+    c.text(.82, 6.28, 5.0, .30, "NĂM THỰC HIỆN  ·  2026", size=14, color="B6D4DB", bold=True, fill=C["dark"], margin=0)
+    c.text(9.35, 2.05, 2.75, 2.75, "PC\nSTORE", size=29, color=C["cyan"], bold=True,
+           align="ctr", fill="0A323D", line=C["cyan"], geom="ellipse", alpha=100000, line_alpha=100000)
     add_footer_progress(c, dark=True)
-    slides.append(_set_notes(s,["Em xin kính chào hội đồng và thầy cô tham dự buổi bảo vệ.","Đề tài của em là xây dựng website PC Store phục vụ bán linh kiện máy tính.","Hệ thống tập trung vào hành trình từ tìm sản phẩm đến đặt hàng và hậu mãi.","Sau đây em xin trình bày ngắn gọn bài toán, giải pháp và phần demo chính."],["Website thương mại điện tử cho linh kiện PC","Trình bày theo luồng nghiệp vụ thực tế"]))
+    notes(s, [
+        "Em xin kính chào hội đồng và thầy cô tham dự buổi bảo vệ đồ án tốt nghiệp.",
+        "Đề tài của em là xây dựng website bán máy tính và linh kiện PC theo mô hình thương mại điện tử.",
+        "Sản phẩm tập trung vào trải nghiệm mua sắm của khách hàng và khả năng vận hành tập trung của quản trị viên.",
+        "Trong phần trình bày, em sẽ giới thiệu mục tiêu, công nghệ, chức năng chính, giao diện và định hướng phát triển."
+    ], ["Bài toán thương mại điện tử thực tế", "Hai nhóm người dùng: khách hàng và quản trị"])
 
-    simple = [
-        (2,"Đặt vấn đề",["Nhu cầu mua linh kiện ngày càng tăng","Thông tin sản phẩm phân tán, khó đối chiếu","Khách cần quy trình mua hàng liền mạch"]),
-        (3,"Khó khăn thực tế",["Thông số kỹ thuật khó đọc","Khó kiểm tra tương thích linh kiện","Theo dõi đơn và hậu mãi chưa thuận tiện"]),
-        (4,"Lý do chọn đề tài",["Bài toán gần với thực tế","Vận dụng kiến thức phát triển web","Có nhiều nghiệp vụ để kiểm chứng"]),
-        (5,"Mục tiêu đề tài",["Xây dựng website bán linh kiện","Hỗ trợ Build PC và so sánh","Quản trị tập trung, dễ vận hành","Theo dõi đơn và hỗ trợ sau bán"]),
-        (6,"Đối tượng và phạm vi",["Khách vãng lai và khách đăng nhập","Nhân viên, quản trị viên hệ thống","Phạm vi website bán linh kiện PC","Thanh toán COD và chuyển khoản"]),
+    # 02 — Introduction
+    s, c = base(2, "Giới thiệu đề tài", "01 · BỐI CẢNH & MỤC TIÊU")
+    add_card(c, .72, 1.55, 3.72, 4.75, title="VÌ SAO CHỌN ĐỀ TÀI?",
+             body="Thị trường PC có nhiều nhóm sản phẩm, thông số kỹ thuật và mức giá. Một website chuyên biệt giúp chuẩn hóa thông tin, giảm thời gian tư vấn và tạo môi trường để vận dụng kiến thức phát triển web vào bài toán thực tế.", accent=C["orange"], body_size=15)
+    add_card(c, 4.66, 1.55, 3.72, 4.75, title="NHU CẦU NGƯỜI DÙNG",
+             body="Khách hàng cần tìm kiếm nhanh, lọc đúng nhu cầu, so sánh giá và kiểm tra tình trạng đơn hàng. Với linh kiện máy tính, nội dung rõ ràng và quy trình thanh toán minh bạch là yếu tố quyết định niềm tin.", accent=C["cyan"], body_size=15)
+    add_card(c, 8.60, 1.55, 3.98, 4.75, title="MỤC TIÊU XÂY DỰNG",
+             body="Xây dựng hệ thống mua sắm liền mạch từ xem sản phẩm đến đặt hàng; đồng thời cung cấp trang quản trị để cập nhật danh mục, xử lý đơn, theo dõi người dùng và đánh giá hoạt động kinh doanh.", accent=C["success"], body_size=15)
+    notes(s, [
+        "Đề tài xuất phát từ thực tế sản phẩm công nghệ có nhiều thông số và khách hàng thường mất thời gian đối chiếu.",
+        "Nhu cầu không chỉ dừng ở xem giá mà còn gồm tìm kiếm, lọc, đặt hàng và theo dõi sau mua.",
+        "Vì vậy hệ thống được định hướng như một quy trình mua sắm hoàn chỉnh thay vì chỉ là trang trưng bày sản phẩm.",
+        "Mục tiêu cuối cùng là cân bằng giữa trải nghiệm khách hàng và hiệu quả quản trị của cửa hàng."
+    ], ["Bài toán có nhu cầu thực tế", "Mục tiêu là một quy trình mua sắm hoàn chỉnh"])
+
+    # 03 — System overview
+    s, c = base(3, "Tổng quan hệ thống", "01 · PHẠM VI GIẢI PHÁP")
+    add_card(c, .72, 1.52, 2.78, 2.08, title="ĐỐI TƯỢNG SỬ DỤNG",
+             body="Khách vãng lai, khách đã đăng nhập và quản trị viên. Mỗi nhóm có quyền truy cập và hành trình sử dụng riêng.", accent=C["blue"], body_size=14)
+    add_card(c, 3.72, 1.52, 2.78, 2.08, title="CHỨC NĂNG CỐT LÕI",
+             body="Tra cứu sản phẩm, giỏ hàng, checkout, theo dõi đơn và quản lý dữ liệu bán hàng tại khu vực admin.", accent=C["cyan"], body_size=14)
+    add_card(c, 6.72, 1.52, 2.78, 2.08, title="NỀN TẢNG CÔNG NGHỆ",
+             body="ASP.NET Core MVC, Entity Framework Core, SQL Server và giao diện responsive bằng CSS/JavaScript.", accent=C["purple"], body_size=14)
+    add_card(c, 9.72, 1.52, 2.86, 2.08, title="ĐIỂM NỔI BẬT",
+             body="Phân tách nghiệp vụ rõ ràng, hỗ trợ khách chưa đăng nhập và có khả năng mở rộng tích hợp dịch vụ.", accent=C["orange"], body_size=14)
+    c.shape(.72, 3.92, 11.86, 2.15, fill=C["dark"], line=C["dark"], shadow=True)
+    c.text(1.04, 4.18, 2.0, .30, "HÀNH TRÌNH CHÍNH", size=14, color=C["cyan"], bold=True, fill=C["dark"], margin=0)
+    journey = [("01", "Khám phá", C["cyan"]), ("02", "Chọn sản phẩm", C["blue"]), ("03", "Đặt hàng", C["orange"]), ("04", "Theo dõi", C["success"])]
+    for i, (num, label, color) in enumerate(journey):
+        x = 1.05 + i * 2.87
+        c.text(x, 4.73, .54, .54, num, size=16, color=C["dark"], bold=True, align="ctr", fill=color, line=color, geom="ellipse", alpha=100000, line_alpha=100000)
+        c.text(x + .72, 4.72, 1.85, .56, label, size=15, color=C["paper"], bold=True, fill=C["dark"], margin=0)
+        if i < 3:
+            c.text(x + 2.48, 4.80, .28, .30, "→", size=19, color="80A8B2", bold=True, align="ctr", fill=C["dark"], margin=0)
+    notes(s, [
+        "Hệ thống phục vụ ba nhóm chính gồm khách vãng lai, khách có tài khoản và quản trị viên.",
+        "Phần khách hàng bao phủ hành trình từ khám phá sản phẩm, thêm giỏ, đặt hàng đến theo dõi trạng thái.",
+        "Phần quản trị tập trung dữ liệu sản phẩm, đơn hàng, người dùng và báo cáo để hỗ trợ vận hành.",
+        "Kiến trúc MVC và lớp dịch vụ giúp mã nguồn có tổ chức, dễ bảo trì và mở rộng thêm tích hợp trong tương lai."
+    ], ["Ba nhóm người dùng", "Một hành trình xuyên suốt từ khám phá đến theo dõi"])
+
+    # 04 — Technology
+    s, c = base(4, "Công nghệ sử dụng", "02 · NỀN TẢNG TRIỂN KHAI")
+    tech = [
+        ("ASP.NET CORE MVC", "Tổ chức ứng dụng theo Model–View–Controller, tách giao diện khỏi xử lý nghiệp vụ. Razor View hỗ trợ render phía máy chủ và kiểm soát luồng điều hướng rõ ràng.", C["blue"]),
+        ("ENTITY FRAMEWORK CORE", "Đảm nhiệm ánh xạ đối tượng và truy vấn dữ liệu bằng LINQ. Migration hỗ trợ quản lý thay đổi cấu trúc cơ sở dữ liệu theo từng phiên bản.", C["purple"]),
+        ("SQL SERVER", "Lưu trữ tập trung dữ liệu người dùng, sản phẩm, giỏ hàng và đơn hàng. Quan hệ và ràng buộc giúp duy trì tính nhất quán trong giao dịch.", C["orange"]),
+        ("BOOTSTRAP · CSS · JAVASCRIPT", "Xây dựng giao diện responsive, card sản phẩm và các tương tác phía trình duyệt. CSS tùy biến đồng bộ nhận diện xanh đậm, cyan và cam của website.", C["cyan"]),
     ]
-    for n,title,items in simple:
-        s,c=_base_slide(n,title); c.shape(.76,1.58,11.82,4.88,fill=C["paper"],line=C["line"],shadow=True)
-        _bullets(c,items,1.20,2.05,10.60,gap=.82)
-        slides.append(_set_notes(s,[f"Ở phần {title.lower()}, em tập trung vào vấn đề trực tiếp của người dùng.","Các ý trên slide được rút gọn để hội đồng dễ theo dõi trên máy chiếu.","Phạm vi được giới hạn ở những chức năng đã triển khai trong source code.","Đây là cơ sở để xác định yêu cầu và thiết kế hệ thống ở phần tiếp theo."],[items[0],items[-1]]))
+    for i, (title, body, color) in enumerate(tech):
+        x = .72 + (i % 2) * 6.02
+        y = 1.52 + (i // 2) * 2.46
+        add_card(c, x, y, 5.80, 2.18, title=title, body=body, accent=color, body_size=14)
+    c.text(.82, 6.52, 11.65, .28, f"Mã nguồn hiện tại: {facts.controllers} controller · {facts.services} tệp service · {facts.dbsets} DbSet được định nghĩa", size=14,
+           color=C["muted"], bold=True, align="ctr", fill=C["bg"], margin=0)
+    notes(s, [
+        "ASP.NET Core MVC là nền tảng chính, giúp phân tách trách nhiệm giữa dữ liệu, xử lý và giao diện.",
+        "Entity Framework Core kết nối ứng dụng với SQL Server, giảm mã truy vấn lặp lại và hỗ trợ migration.",
+        "SQL Server lưu trữ dữ liệu nghiệp vụ có quan hệ như khách hàng, sản phẩm, giỏ hàng và đơn hàng.",
+        "Ở phía giao diện, Bootstrap, CSS và JavaScript được kết hợp để bảo đảm khả năng hiển thị responsive và tương tác thuận tiện."
+    ], ["Mỗi công nghệ có một vai trò rõ ràng", "Stack phù hợp ứng dụng thương mại điện tử MVC"])
 
-    s=add_section_divider(7,"Phân tích & thiết kế","Thiết kế vừa đủ để giải thích cách hệ thống vận hành","02")
-    slides.append(_set_notes(s,["Tiếp theo em xin chuyển sang phần phân tích và thiết kế.","Phần này không đi sâu vào sơ đồ phức tạp mà tập trung vào các thành phần chính.","Em sẽ lần lượt trình bày yêu cầu, kiến trúc, công nghệ và dữ liệu.","Mục tiêu là cho thấy giải pháp bám sát bài toán đã nêu."],["Thiết kế đơn giản, bám nghiệp vụ","Tập trung vào luồng xử lý chính"]))
-
-    s,c=_base_slide(8,"Yêu cầu chức năng")
-    add_card(c,.75,1.60,5.75,4.85,title="KHÁCH HÀNG",body="• Xem và lọc sản phẩm\n• Quản lý giỏ hàng\n• Đặt và theo dõi đơn\n• Build PC, so sánh\n• Chat, bảo hành, báo giá",accent=C["blue"])
-    add_card(c,6.82,1.60,5.75,4.85,title="QUẢN TRỊ VIÊN",body="• Quản lý sản phẩm\n• Quản lý đơn hàng\n• Quản lý người dùng\n• Xử lý chat, bảo hành\n• Cấu hình nội dung website",accent=C["orange"])
-    slides.append(_set_notes(s,["Yêu cầu được chia thành hai nhóm người dùng chính.","Khách hàng thao tác từ khám phá sản phẩm đến dịch vụ sau bán.","Quản trị viên tập trung vào dữ liệu, đơn hàng và hỗ trợ khách.","Cách chia này giúp thiết kế controller và giao diện rõ trách nhiệm."],["Hai nhóm chức năng rõ ràng","Không đưa chức năng ngoài source"]))
-
-    s,c=_base_slide(9,"Kiến trúc hệ thống"); add_simple_architecture(c)
-    c.text(1.10,5.28,11.1,.40,"Luồng xử lý một chiều, dễ theo dõi và bảo trì",size=16,color=C["muted"],bold=True,align="ctr",fill=C["bg"])
-    slides.append(_set_notes(s,["Hệ thống sử dụng kiến trúc phân lớp quen thuộc của ASP.NET Core MVC.","Yêu cầu từ trình duyệt đi qua controller rồi đến lớp service.","EF Core đảm nhiệm truy cập SQL Server và ánh xạ dữ liệu.","SignalR, GHN và SMTP hoặc QR là các tích hợp hỗ trợ bên ngoài."],["Năm lớp xử lý chính","Tích hợp ngoài được tách riêng"]))
-
-    s,c=_base_slide(10,"Công nghệ sử dụng")
-    tech=[("ASP.NET Core MVC","Nền tảng web",C["blue"]),("Entity Framework Core","Truy cập dữ liệu",C["cyan"]),("SQL Server","Lưu trữ",C["purple"]),("SignalR","Chat realtime",C["orange"]),("Bootstrap / JS","Giao diện",C["success"]),("GHN / SMTP","Tích hợp",C["blue"])]
-    for i,(t,b,col) in enumerate(tech): add_card(c,.72+(i%3)*4.18,1.58+(i//3)*2.40,3.78,1.92,title=t,body=b,accent=col)
-    slides.append(_set_notes(s,["Công nghệ chính là ASP.NET Core MVC kết hợp Entity Framework Core.","SQL Server lưu dữ liệu nghiệp vụ và migration quản lý thay đổi cấu trúc.","SignalR hỗ trợ chat thời gian thực giữa khách và quản trị.","Giao vận, email và QR được tích hợp theo từng nghiệp vụ cụ thể."],["Stack đồng nhất với source","Tích hợp phục vụ nghiệp vụ thật"]))
-
-    s,c=_base_slide(11,"Cơ sở dữ liệu"); add_simple_database_groups(c)
-    c.text(.95,5.34,11.4,.42,f"DbContext hiện khai báo {facts.dbsets} DbSet",size=17,color=C["navy"],bold=True,align="ctr",fill=C["bg"])
-    slides.append(_set_notes(s,["Thay vì trình bày ERD chi tiết, em nhóm dữ liệu theo năm miền nghiệp vụ.","Tài khoản và sản phẩm là dữ liệu nền của hệ thống.","Giỏ hàng, đơn hàng và bảo hành thể hiện luồng mua bán.","Nhóm chat lưu cả hội thoại và tin nhắn để hỗ trợ khách lâu dài."],[f"{facts.dbsets} DbSet trong ApplicationDbContext","Năm nhóm dữ liệu dễ theo dõi"]))
-
-    s,c=_base_slide(12,"Các module chính")
-    modules=[("Sản phẩm","Danh mục, lọc, chi tiết"),("Tài khoản","Đăng ký, đăng nhập"),("Giỏ hàng","Thêm, sửa, xóa"),("Đơn hàng","Checkout, thanh toán"),("Build PC / So sánh","Hỗ trợ lựa chọn"),("Quản trị / hỗ trợ","Vận hành, hậu mãi")]
-    for i,(t,b) in enumerate(modules): add_card(c,.72+(i%3)*4.18,1.58+(i//3)*2.38,3.78,1.88,title=t,body=b,accent=[C["blue"],C["cyan"],C["purple"],C["orange"],C["success"],C["navy"]][i])
-    slides.append(_set_notes(s,["Source code được tổ chức thành các module nghiệp vụ tương đối rõ.","Nhóm sản phẩm, tài khoản và giỏ hàng phục vụ đầu hành trình mua sắm.","Đơn hàng, Build PC và so sánh hỗ trợ quyết định và giao dịch.","Khối quản trị cùng hỗ trợ giúp cửa hàng vận hành sau khi khách đặt hàng."],["Sáu module nghiệp vụ","Module khách hàng và quản trị liên kết"]))
-
-    s=add_section_divider(13,"Demo website khách hàng","Minh họa hành trình mua sắm từ trang chủ đến hậu mãi","03")
-    slides.append(_set_notes(s,["Sau phần thiết kế, em xin chuyển sang demo website khách hàng.","Các màn hình được sắp theo đúng hành trình sử dụng phổ biến.","Mỗi slide dành phần lớn diện tích cho ảnh chụp giao diện thật.","Khi bảo vệ, em sẽ thao tác trực tiếp và dùng slide làm phương án dự phòng."],["Demo theo hành trình người dùng","Ưu tiên ảnh thật, ít chữ"]))
-
-    demos=[
-        (14,"Trang chủ","/",["Banner và danh mục nổi bật","Sản phẩm khuyến mãi","Điểm vào hành trình mua sắm"]),
-        (15,"Danh sách sản phẩm","/Products",["Lọc theo danh mục và giá","Tìm kiếm, sắp xếp","Hiển thị tồn kho và khuyến mãi"]),
-        (16,"Chi tiết sản phẩm","/Products/Detail/{id}",["Thông tin và hình ảnh sản phẩm","Thông số kỹ thuật rõ ràng","Thêm giỏ hoặc mua ngay"]),
-        (17,"Giỏ hàng","/Cart",["Cập nhật số lượng","Xóa hoặc làm trống giỏ","Tính tổng trước checkout"]),
-        (18,"Checkout & vận chuyển","/Checkout",["Nhập thông tin nhận hàng","Tính phí giao hàng","Chọn phương thức thanh toán"]),
-        (19,"Thanh toán QR / chuyển khoản","/Orders/BankTransfer/{id}",["Hiển thị QR và nội dung chuyển","Có thời hạn thanh toán","Khách xác nhận đã chuyển tiền"]),
-        (20,"Theo dõi đơn hàng","/Order/Tracking/{id}",["Tra cứu bằng mã đơn","Theo dõi trạng thái xử lý","Xem thông tin vận chuyển"]),
-        (21,"Build PC","/BuildPc",["Chọn linh kiện theo nhóm","Kiểm tra tương thích cơ bản","Thêm cấu hình vào giỏ"]),
-        (22,"So sánh sản phẩm","/Compare",["So sánh tối đa hai sản phẩm","Đối chiếu giá và thông số","Lưu lựa chọn trong session"]),
-        (23,"Hỗ trợ và hậu mãi","/Warranty",["Chat realtime với hỗ trợ","Gửi yêu cầu bảo hành","Xem báo giá từ đơn hàng"]),
+    # 05 — Customer features
+    s, c = base(5, "Chức năng dành cho khách hàng", "02 · TRẢI NGHIỆM MUA SẮM")
+    customer = [
+        ("01", "Đăng ký & đăng nhập", "Tạo tài khoản, xác thực và duy trì phiên mua sắm cá nhân.", C["blue"]),
+        ("02", "Tìm kiếm & lọc", "Thu hẹp sản phẩm theo từ khóa, danh mục, giá và thuộc tính.", C["cyan"]),
+        ("03", "Giỏ hàng", "Thay đổi số lượng, kiểm tra tạm tính và lưu lựa chọn trước checkout.", C["purple"]),
+        ("04", "Đặt hàng", "Nhập thông tin nhận hàng, kiểm tra tồn kho và tạo mã đơn.", C["orange"]),
+        ("05", "Theo dõi đơn hàng", "Xem tiến trình xử lý và tra cứu bằng thông tin đơn hàng.", C["success"]),
+        ("06", "Thanh toán", "Hỗ trợ COD hoặc chuyển khoản với nội dung thanh toán rõ ràng.", C["danger"]),
     ]
-    for n,title,url,items in demos:
-        s=add_demo_slide(n,title,url,items)
-        slides.append(_set_notes(s,[f"Màn hình {title.lower()} là một bước trong hành trình của khách hàng.","Phần ảnh lớn giúp hội đồng quan sát giao diện thật thay vì đọc mô tả dài.",f"Các thao tác chính gồm {items[0].lower()} và {items[1].lower()}.","Tất cả nội dung trình bày ở đây đều được đối chiếu với controller, view và script liên quan."],[items[0],items[-1]]))
+    for i, (num, title, body, color) in enumerate(customer):
+        x = .72 + (i % 3) * 4.02
+        y = 1.52 + (i // 3) * 2.48
+        c.shape(x, y, 3.80, 2.20, fill=C["paper"], line=C["line"], shadow=True)
+        c.text(x + .22, y + .20, .48, .48, num, size=15, color=C["paper"], bold=True, align="ctr", fill=color, line=color, geom="ellipse", alpha=100000, line_alpha=100000)
+        c.text(x + .84, y + .22, 2.70, .36, title, size=15, color=C["text"], bold=True, fill=C["paper"], margin=0)
+        c.text(x + .24, y + .90, 3.30, .86, body, size=14, color=C["muted"], fill=C["paper"], valign="top", margin=0)
+    notes(s, [
+        "Các chức năng khách hàng được thiết kế theo đúng thứ tự của một hành trình mua sắm trực tuyến.",
+        "Người dùng có thể tìm và lọc sản phẩm trước khi đăng nhập, sau đó quản lý lựa chọn trong giỏ hàng.",
+        "Tại checkout, hệ thống thu thập thông tin giao nhận, kiểm tra dữ liệu và tạo đơn với mã theo dõi.",
+        "Sau khi đặt hàng, khách có thể kiểm tra trạng thái và lựa chọn COD hoặc chuyển khoản tùy nhu cầu."
+    ], ["Sáu chức năng theo một hành trình", "Giảm số bước và giữ thông tin minh bạch"])
 
-    s=add_section_divider(24,"Quản trị hệ thống","Theo dõi vận hành và xử lý nghiệp vụ cửa hàng","04")
-    slides.append(_set_notes(s,["Tiếp theo là phần quản trị hệ thống.","Em tập trung vào dashboard và hai nhóm nghiệp vụ vận hành quan trọng nhất.","Giao diện quản trị sử dụng dữ liệu thật từ database.","Các thao tác được giới hạn theo quyền của người quản trị."],["Dashboard tổng quan","Quản lý sản phẩm và đơn hàng"]))
+    # 06 — Admin features
+    s, c = base(6, "Chức năng quản trị", "02 · VẬN HÀNH HỆ THỐNG")
+    admin = [
+        ("SẢN PHẨM", "Thêm, sửa, ẩn/hiện sản phẩm; quản lý giá, tồn kho, hình ảnh và danh mục.", C["blue"]),
+        ("ĐƠN HÀNG", "Duyệt đơn, cập nhật trạng thái xử lý và theo dõi thông tin giao nhận, thanh toán.", C["orange"]),
+        ("NGƯỜI DÙNG", "Tra cứu tài khoản, phân quyền và kiểm soát trạng thái sử dụng hệ thống.", C["purple"]),
+        ("KHUYẾN MÃI", "Thiết lập nội dung ưu đãi, giá khuyến mãi và thời gian áp dụng trên sản phẩm.", C["danger"]),
+        ("BÁO CÁO THỐNG KÊ", "Tổng hợp chỉ số sản phẩm, đơn hàng và doanh thu để hỗ trợ ra quyết định.", C["success"]),
+    ]
+    for i, (title, body, color) in enumerate(admin):
+        if i < 3:
+            x, y, w = .72 + i * 4.02, 1.52, 3.80
+        else:
+            x, y, w = 2.72 + (i - 3) * 4.02, 4.00, 3.80
+        add_card(c, x, y, w, 2.18, title=title, body=body, accent=color, body_size=14)
+    notes(s, [
+        "Khu vực quản trị được tổ chức theo các nhóm nghiệp vụ mà cửa hàng phải thực hiện hằng ngày.",
+        "Quản trị viên có thể cập nhật sản phẩm, tồn kho và hình ảnh mà không cần sửa trực tiếp cơ sở dữ liệu.",
+        "Đơn hàng được theo dõi theo trạng thái, kết hợp thông tin giao nhận và phương thức thanh toán.",
+        "Các nhóm người dùng, khuyến mãi và thống kê giúp hệ thống không chỉ bán hàng mà còn hỗ trợ vận hành và đánh giá."
+    ], ["Quản trị theo nghiệp vụ thực tế", "Dữ liệu tập trung, dễ theo dõi và cập nhật"])
 
-    s,c=_base_slide(25,"Dashboard quản trị")
-    add_image_placeholder(c,.68,1.55,8.22,4.95,"DASHBOARD QUẢN TRỊ","/AdminDashboard",accent=C["orange"])
-    for i,(t,b,col) in enumerate([("SẢN PHẨM","ProductCount",C["blue"]),("ĐƠN HÀNG","OrderCount",C["orange"]),("NGƯỜI DÙNG","UserCount",C["purple"]),("BẢO HÀNH","WarrantyRequestCount",C["success"])]):
-        add_card(c,9.20,1.55+i*1.22,3.45,1.00,title=t,body=b,accent=col,title_size=14,body_size=14)
-    s.image_note="Có. URL: /AdminDashboard."
-    slides.append(_set_notes(s,["Dashboard cung cấp cái nhìn nhanh về tình trạng vận hành.","Bốn KPI trên slide tương ứng với dữ liệu có trong AdminDashboardVm.","Quản trị viên có thể từ đây chuyển sang các màn hình nghiệp vụ.","Khi demo, em sẽ dùng ảnh thật để tránh tạo dashboard giả trên PowerPoint."],["KPI lấy từ ViewModel thật","Ảnh thật chiếm phần lớn slide"]))
+    # 07 — Home UI
+    s, c = base(7, "Giao diện trang chủ", "03 · DEMO WEBSITE")
+    browser_frame(c, .65, 1.45, 7.65, 5.18, "Trang chủ toàn màn hình — ưu tiên banner và khu vực sản phẩm", "/")
+    c.shape(8.62, 1.45, 4.05, 5.18, fill=C["paper"], line=C["line"], shadow=True)
+    c.text(8.94, 1.76, 3.35, .30, "CÁC KHU VỰC CHÍNH", size=14, color=C["cyan"], bold=True, fill=C["paper"], margin=0)
+    home_blocks = [
+        ("01", "Header & tìm kiếm", "Điều hướng nhanh, tài khoản và giỏ hàng."),
+        ("02", "Banner khuyến mãi", "Tạo điểm nhấn và dẫn đến chiến dịch bán hàng."),
+        ("03", "Danh mục sản phẩm", "Nhóm PC, laptop, màn hình và linh kiện."),
+        ("04", "Sản phẩm nổi bật", "Card hiển thị giá, ưu đãi và thao tác mua."),
+    ]
+    for i, (num, title, body) in enumerate(home_blocks):
+        y = 2.30 + i * .93
+        c.text(8.94, y, .44, .44, num, size=14, color=C["dark"], bold=True, align="ctr", fill=C["cyan"], line=C["cyan"], geom="ellipse", alpha=100000, line_alpha=100000)
+        c.text(9.56, y - .01, 2.72, .28, title, size=14, color=C["text"], bold=True, fill=C["paper"], margin=0)
+        c.text(9.56, y + .29, 2.72, .54, body, size=13, color=C["muted"], fill=C["paper"], valign="top", margin=0)
+    notes(s, [
+        "Trang chủ là điểm bắt đầu của hành trình nên phần ảnh chụp được đặt lớn để hội đồng quan sát tổng thể.",
+        "Header tập trung tìm kiếm, danh mục, tài khoản và giỏ hàng để giảm thời gian điều hướng.",
+        "Banner và các khu vực khuyến mãi tạo điểm nhấn nhưng vẫn giữ cấu trúc rõ ràng, không che nội dung sản phẩm.",
+        "Các nhóm sản phẩm được trình bày theo card đồng nhất, giúp người dùng quét nhanh tên, giá và ưu đãi."
+    ], ["Ảnh demo chiếm khoảng 60%", "Bốn khu vực chính có vai trò khác nhau"], "/")
 
-    s,c=_base_slide(26,"Quản lý sản phẩm & đơn hàng")
-    add_image_placeholder(c,.70,1.58,5.72,3.58,"QUẢN LÝ SẢN PHẨM","/AdminProducts",accent=C["blue"])
-    add_image_placeholder(c,6.90,1.58,5.72,3.58,"QUẢN LÝ ĐƠN HÀNG","/AdminOrders",accent=C["orange"])
-    c.text(.90,5.46,5.30,.42,"Thêm, sửa, xóa · ảnh · tồn kho",size=15,color=C["blue"],bold=True,align="ctr",fill=C["bg"])
-    c.text(7.10,5.46,5.30,.42,"Chi tiết · trạng thái · xác nhận tiền",size=15,color=C["orange"],bold=True,align="ctr",fill=C["bg"])
-    s.image_note="Có. URL: /AdminProducts và /AdminOrders."
-    slides.append(_set_notes(s,["Hai màn hình quản trị chính là sản phẩm và đơn hàng.","Quản lý sản phẩm hỗ trợ tạo, sửa, xóa, ảnh và thông tin tồn kho.","Quản lý đơn cho phép xem chi tiết, cập nhật trạng thái và xác nhận chuyển khoản.","Bố cục hai ảnh giúp so sánh nhanh mà không cần dựng dashboard phức tạp."],["Hai nghiệp vụ vận hành chính","Không mô phỏng giao diện bằng nhiều shape"]))
+    # 08 — Product detail UI
+    s, c = base(8, "Giao diện chi tiết sản phẩm", "03 · DEMO WEBSITE")
+    browser_frame(c, .65, 1.45, 7.35, 5.18, "Chi tiết sản phẩm — hình ảnh, giá và thông số kỹ thuật", "/Products/Details/{id}")
+    c.shape(8.30, 1.45, 4.37, 2.28, fill=C["dark"], line=C["dark"], shadow=True)
+    c.text(8.62, 1.76, 3.60, .28, "MỤC TIÊU GIAO DIỆN", size=14, color=C["cyan"], bold=True, fill=C["dark"], margin=0)
+    c.text(8.62, 2.18, 3.55, 1.22, "Cung cấp đủ dữ liệu để khách hàng hiểu sản phẩm và đưa ra quyết định ngay trên một màn hình.", size=16, color=C["paper"], fill=C["dark"], valign="top", margin=0)
+    utilities = [
+        ("Thông tin rõ", "Tên, giá, tình trạng và khuyến mãi."),
+        ("Thông số dễ đọc", "Nhóm cấu hình theo từng đặc điểm."),
+        ("Thao tác mua", "Thêm giỏ, mua ngay hoặc so sánh."),
+    ]
+    for i, (title, body) in enumerate(utilities):
+        y = 3.97 + i * .89
+        c.shape(8.30, y, 4.37, .72, fill=C["paper"], line=C["line"], shadow=True)
+        c.shape(8.30, y, .07, .72, fill=(C["cyan"], C["orange"], C["success"])[i], line=(C["cyan"], C["orange"], C["success"])[i], geom="rect")
+        c.text(8.58, y + .08, 1.58, .42, title, size=13, color=C["text"], bold=True, fill=C["paper"], margin=0)
+        c.text(10.14, y + .09, 2.15, .46, body, size=14, color=C["muted"], fill=C["paper"], valign="top", margin=0)
+    notes(s, [
+        "Trang chi tiết sản phẩm cần trả lời ba câu hỏi: đây là sản phẩm gì, có phù hợp không và mua bằng cách nào.",
+        "Hình ảnh, giá, tồn kho và khuyến mãi được ưu tiên ở vùng nhìn đầu tiên để hỗ trợ quyết định nhanh.",
+        "Thông số được nhóm theo cấu trúc dễ đọc thay vì đưa thành một đoạn văn dài.",
+        "Các thao tác thêm giỏ, mua ngay hoặc so sánh được đặt gần thông tin chính để giảm số lần chuyển trang."
+    ], ["Một màn hình hỗ trợ quyết định mua", "Thông tin và hành động được đặt gần nhau"], "/Products/Details/{id}")
 
-    s,c=_base_slide(27,"Kết quả đạt được")
-    add_stat_cards(c,[("6","Nhóm module",C["blue"]),(str(facts.dbsets),"DbSet",C["cyan"]),(str(facts.controllers),"Controller",C["purple"]),("4","Nhóm người dùng",C["orange"]),("ASP.NET","Công nghệ chính",C["success"])])
-    c.text(.88,5.33,11.55,.44,"Hoàn thiện luồng mua hàng, quản trị và hỗ trợ sau bán",size=17,color=C["navy"],bold=True,align="ctr",fill=C["bg"])
-    slides.append(_set_notes(s,["Kết quả đạt được được tổng hợp trực tiếp từ cấu trúc source hiện tại.",f"Hệ thống có {facts.controllers} controller và {facts.dbsets} DbSet trong DbContext.","Sáu nhóm module bao phủ luồng khách hàng, quản trị và hỗ trợ.","Quan trọng nhất là các chức năng có thể liên kết thành một quy trình mua hàng hoàn chỉnh."],[f"{facts.controllers} controller, {facts.dbsets} DbSet","Luồng nghiệp vụ đã kết nối"]))
+    # 09 — Cart and payment
+    s, c = base(9, "Giỏ hàng & thanh toán", "03 · DEMO WEBSITE")
+    browser_frame(c, .65, 1.45, 6.95, 5.18, "Giỏ hàng / checkout / màn hình chuyển khoản", "/Cart  →  /Cart/Checkout")
+    c.shape(7.90, 1.45, 4.77, 5.18, fill=C["paper"], line=C["line"], shadow=True)
+    c.text(8.22, 1.76, 3.95, .30, "QUY TRÌNH ĐẶT HÀNG", size=14, color=C["orange"], bold=True, fill=C["paper"], margin=0)
+    steps = [
+        ("1", "Kiểm tra giỏ", "Số lượng, giá và tạm tính."),
+        ("2", "Nhập giao nhận", "Thông tin người nhận và địa chỉ."),
+        ("3", "Chọn thanh toán", "COD hoặc chuyển khoản ngân hàng."),
+        ("4", "Theo dõi đơn", "Mã đơn và tiến trình xử lý."),
+    ]
+    for i, (num, title, body) in enumerate(steps):
+        y = 2.26 + i * .86
+        color = (C["cyan"], C["blue"], C["orange"], C["success"])[i]
+        c.text(8.22, y, .46, .46, num, size=14, color=C["paper"], bold=True, align="ctr", fill=color, line=color, geom="ellipse", alpha=100000, line_alpha=100000)
+        c.text(8.86, y - .01, 1.70, .44, title, size=13, color=C["text"], bold=True, fill=C["paper"], margin=0)
+        c.text(10.58, y - .01, 1.62, .48, body, size=14, color=C["muted"], fill=C["paper"], valign="top", margin=0)
+    c.shape(8.22, 5.83, 4.05, .50, fill="FFF2E8", line="FFD2B3")
+    c.text(8.40, 5.86, 3.70, .40, "Chuyển khoản: nội dung & QR", size=13, color="B54708", bold=True, align="ctr", fill="FFF2E8", margin=0)
+    notes(s, [
+        "Quy trình checkout được chia thành bốn bước ngắn để người dùng luôn biết mình đang ở giai đoạn nào.",
+        "Trước khi tạo đơn, khách kiểm tra lại sản phẩm, số lượng, giá và nhập thông tin giao nhận.",
+        "Với chuyển khoản, hệ thống hiển thị số tiền, nội dung và mã QR để hạn chế sai sót khi thanh toán.",
+        "Sau khi hoàn tất, mã đơn và trạng thái giúp khách chủ động theo dõi thay vì phải liên hệ cửa hàng nhiều lần."
+    ], ["Quy trình bốn bước", "Thông tin chuyển khoản rõ ràng và có thể đối chiếu"], "/Cart/Checkout")
 
-    s,c=_base_slide(28,"Hạn chế")
-    add_card(c,.78,1.62,5.70,4.82,title="HIỆN TẠI",body="• Chuyển khoản cần xác nhận\n• Gợi ý Build PC theo quy tắc\n• Báo cáo quản trị còn cơ bản\n• Trải nghiệm mobile cần tối ưu",accent=C["orange"])
-    add_card(c,6.84,1.62,5.70,4.82,title="CẦN CẢI THIỆN",body="• Tự động hóa thanh toán\n• Nâng chất lượng gợi ý\n• Bổ sung báo cáo trực quan\n• Tối ưu hiệu năng và SEO",accent=C["blue"])
-    slides.append(_set_notes(s,["Bên cạnh kết quả đạt được, hệ thống vẫn còn một số giới hạn.","Thanh toán chuyển khoản hiện cần bước xác nhận của khách và quản trị.","Build PC mới dừng ở kiểm tra tương thích theo quy tắc đã cài đặt.","Đây là các điểm thực tế để tiếp tục cải thiện sau đồ án."],["Nhìn nhận đúng giới hạn hiện tại","Hạn chế gắn với hướng phát triển"]))
+    # 10 — Advantages
+    s, c = base(10, "Ưu điểm của hệ thống", "04 · ĐÁNH GIÁ GIẢI PHÁP")
+    advantages = [
+        ("01", "GIAO DIỆN THÂN THIỆN", "Nhận diện nhất quán, độ tương phản tốt và ưu tiên nội dung quan trọng.", C["cyan"]),
+        ("02", "DỄ SỬ DỤNG", "Luồng mua hàng quen thuộc, thao tác rõ và phản hồi trực tiếp cho người dùng.", C["blue"]),
+        ("03", "QUẢN LÝ THUẬN TIỆN", "Dữ liệu sản phẩm, đơn hàng và người dùng tập trung trong khu vực admin.", C["purple"]),
+        ("04", "HIỆU NĂNG ỔN ĐỊNH", "Render phía máy chủ, truy vấn có cấu trúc và kiểm soát dữ liệu trong giao dịch.", C["orange"]),
+        ("05", "HỖ TRỢ MỞ RỘNG", "Kiến trúc phân lớp thuận lợi bổ sung thanh toán, vận chuyển và báo cáo.", C["success"]),
+    ]
+    for i, (num, title, body, color) in enumerate(advantages):
+        if i < 3:
+            x, y, w = .72 + i * 4.02, 1.52, 3.80
+        else:
+            x, y, w = 2.72 + (i - 3) * 4.02, 4.04, 3.80
+        c.shape(x, y, w, 2.18, fill=C["paper"], line=C["line"], shadow=True)
+        c.text(x + .22, y + .20, .48, .48, num, size=14, color=C["paper"], bold=True, align="ctr", fill=color, line=color, geom="ellipse", alpha=100000, line_alpha=100000)
+        c.text(x + .86, y + .24, w - 1.10, .30, title, size=14, color=color, bold=True, fill=C["paper"], margin=0)
+        c.text(x + .24, y + .89, w - .50, .88, body, size=14, color=C["muted"], fill=C["paper"], valign="top", margin=0)
+    notes(s, [
+        "Ưu điểm đầu tiên là giao diện đồng bộ với website, dễ đọc và làm nổi bật thông tin mua hàng quan trọng.",
+        "Luồng sử dụng quen thuộc giúp khách mới có thể tìm sản phẩm và đặt hàng mà không cần hướng dẫn dài.",
+        "Đối với cửa hàng, dữ liệu quản trị được tập trung nên việc cập nhật và theo dõi thuận tiện hơn.",
+        "Kiến trúc hiện tại cũng tạo nền tảng để tối ưu hiệu năng và tích hợp thêm dịch vụ khi quy mô tăng."
+    ], ["Ưu điểm trải đều ở UX, quản trị và kỹ thuật", "Kiến trúc tạo nền tảng mở rộng"])
 
-    s,c=_base_slide(29,"Hướng phát triển")
-    roadmap=[("01","Cổng thanh toán"),("02","Build PC thông minh"),("03","Báo cáo doanh thu"),("04","Mobile và SEO")]
-    c.line(1.30,3.18,12.00,3.18,color=C["success"],width=26000,alpha=42000)
-    for i,(code,label) in enumerate(roadmap):
-        x=1.10+i*3.00
-        c.shape(x,2.75,.82,.82,fill=C["success"],line=C["paper"],geom="ellipse",shadow=True)
-        c.text(x,2.75,.82,.82,code,size=15,color=C["paper"],bold=True,align="ctr",fill=C["success"])
-        c.text(x-.48,3.85,1.80,.70,label,size=15,color=C["text"],bold=True,align="ctr",fill=C["bg"])
-    slides.append(_set_notes(s,["Từ các hạn chế vừa nêu, em đề xuất bốn hướng phát triển.","Ưu tiên đầu tiên là tích hợp cổng thanh toán để tự động đối soát.","Sau đó có thể nâng Build PC bằng dữ liệu và mô hình gợi ý phù hợp hơn.","Báo cáo doanh thu, mobile và SEO sẽ giúp hệ thống sẵn sàng vận hành thực tế."],["Bốn bước rõ ràng","Ưu tiên thanh toán và trải nghiệm"]))
+    # 11 — Conclusion
+    s, c = base(11, "Kết luận & hướng phát triển", "04 · TỔNG KẾT ĐỒ ÁN")
+    c.shape(.72, 1.52, 5.72, 4.90, fill=C["dark"], line=C["dark"], shadow=True)
+    c.text(1.05, 1.88, 4.92, .34, "KẾT QUẢ ĐẠT ĐƯỢC", size=16, color=C["cyan"], bold=True, fill=C["dark"], margin=0)
+    results = [
+        "Hoàn thiện website MVC với luồng mua hàng cốt lõi.",
+        "Xây dựng khu vực quản trị dữ liệu và xử lý đơn.",
+        "Áp dụng EF Core, SQL Server và giao diện responsive.",
+        "Rèn luyện phân tích nghiệp vụ, thiết kế và triển khai.",
+    ]
+    for i, text in enumerate(results):
+        y = 2.55 + i * .78
+        c.text(1.05, y, .38, .38, "✓", size=15, color=C["dark"], bold=True, align="ctr", fill=C["cyan"], line=C["cyan"], geom="ellipse", alpha=100000, line_alpha=100000)
+        c.text(1.62, y - .04, 4.25, .58, text, size=14, color=C["paper"], fill=C["dark"], valign="top", margin=0)
+    c.shape(6.68, 1.52, 5.90, 4.90, fill=C["paper"], line=C["line"], shadow=True)
+    c.text(7.02, 1.88, 4.90, .34, "HƯỚNG PHÁT TRIỂN", size=16, color=C["orange"], bold=True, fill=C["paper"], margin=0)
+    future = [
+        ("01", "Tích hợp cổng thanh toán và đối soát tự động."),
+        ("02", "Nâng cấp bảo mật tài khoản và kiểm thử tự động."),
+        ("03", "Bổ sung gợi ý sản phẩm, báo cáo và SEO."),
+        ("04", "Tối ưu mobile, hiệu năng và triển khai cloud."),
+    ]
+    for i, (num, text) in enumerate(future):
+        y = 2.48 + i * .81
+        c.text(7.02, y, .48, .48, num, size=14, color=C["paper"], bold=True, align="ctr", fill=C["orange"], line=C["orange"], geom="ellipse", alpha=100000, line_alpha=100000)
+        c.text(7.72, y - .01, 4.22, .52, text, size=15, color=C["text"], fill=C["paper"], valign="top", margin=0)
+    notes(s, [
+        "Đồ án đã hoàn thiện các chức năng cốt lõi của một website bán máy tính, từ giao diện khách hàng đến quản trị.",
+        "Quá trình thực hiện giúp em vận dụng kiến thức MVC, cơ sở dữ liệu, thiết kế giao diện và phân tích nghiệp vụ.",
+        "Tuy nhiên hệ thống vẫn cần tiếp tục nâng cấp bảo mật, kiểm thử và tự động hóa thanh toán để phù hợp vận hành thực tế.",
+        "Trong tương lai, em định hướng bổ sung gợi ý sản phẩm, báo cáo chuyên sâu, tối ưu mobile và triển khai trên hạ tầng cloud.",
+        "Em xin chân thành cảm ơn hội đồng và sẵn sàng tiếp nhận câu hỏi, góp ý."
+    ], ["Đã đạt mục tiêu cốt lõi", "Hướng phát triển ưu tiên tính thực tế và khả năng vận hành"])
 
-    s=Slide(30,"Xin chân thành cảm ơn", "thanks"); c=Canvas(s); add_safe_background(c,5,dark=True)
-    c.text(.82,1.50,11.7,.42,"DATN PC STORE",size=17,color=C["cyan"],bold=True,align="ctr",fill=C["dark"])
-    c.text(.82,2.18,11.7,.82,"XIN CHÂN THÀNH CẢM ƠN",size=34,color=C["paper"],bold=True,align="ctr",fill=C["dark"])
-    c.text(2.10,3.35,9.1,.52,"Em sẵn sàng lắng nghe câu hỏi và góp ý từ hội đồng",size=19,color="C7DAED",align="ctr",fill=C["dark"])
-    c.shape(5.45,4.30,2.42,.08,fill=C["orange"],line=C["orange"],geom="rect"); add_footer_progress(c,dark=True)
-    slides.append(_set_notes(s,["Phần trình bày của em xin được kết thúc tại đây.","Em xin cảm ơn thầy cô và hội đồng đã lắng nghe.","Em rất mong nhận được nhận xét để tiếp tục hoàn thiện sản phẩm.","Em xin sẵn sàng trả lời các câu hỏi của hội đồng."],["Cảm ơn hội đồng","Sẵn sàng trao đổi"]))
     return slides
 
 
 def write_presentation_speech(slides: list[Slide]) -> None:
-    lines = ["# Lời thuyết trình — DATN PC Store", "", "> Nội dung khớp với 30 slide được sinh từ source code hiện tại.", ""]
+    lines = ["# Lời thuyết trình — DATN PC Store", "", "> Nội dung khớp với 11 slide bảo vệ đồ án được sinh từ source code hiện tại.", ""]
     for slide in slides:
         lines += [f"## Slide {slide.number:02d} — {slide.title}", "", "### Lời thuyết trình", ""]
         lines += [f"{sentence}" for sentence in slide.speaker]
@@ -494,7 +677,7 @@ def validate_pptx(slides: list[Slide]) -> None:
             ET.fromstring(archive.read(name))
     speech = SPEECH_PATH.read_text(encoding="utf-8")
     if speech.count("## Slide ") != TOTAL:
-        raise RuntimeError("Speech markdown does not contain exactly 30 slides")
+        raise RuntimeError(f"Speech markdown does not contain exactly {TOTAL} slides")
 
 
 def validate_deck(slides: list[Slide]) -> None:
@@ -634,7 +817,7 @@ def package_xml(slides: list[Slide]) -> dict[str,str]:
            f'<a:fontScheme name="Aptos"><a:majorFont><a:latin typeface="{FONT} Display"/></a:majorFont><a:minorFont><a:latin typeface="{FONT}"/></a:minorFont></a:fontScheme>'
            '<a:fmtScheme name="DATN"><a:fillStyleLst><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:fillStyleLst><a:lnStyleLst><a:ln w="12700"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln></a:lnStyleLst><a:effectStyleLst><a:effectStyle><a:effectLst/></a:effectStyle></a:effectStyleLst><a:bgFillStyleLst><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:bgFillStyleLst></a:fmtScheme></a:themeElements></a:theme>')
     core=('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/">'
-          '<dc:title>DATN PC Store — Bảo vệ đồ án tốt nghiệp</dc:title><dc:creator>DATN PC Store</dc:creator><dc:description>30-slide creative thesis-defense deck generated from verified source code.</dc:description></cp:coreProperties>')
+          '<dc:title>DATN PC Store — Bảo vệ đồ án tốt nghiệp</dc:title><dc:creator>DATN PC Store</dc:creator><dc:description>11-slide graduation-defense deck generated from verified source code.</dc:description></cp:coreProperties>')
     app=f'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties"><Application>Microsoft Office PowerPoint</Application><PresentationFormat>Widescreen</PresentationFormat><Slides>{count}</Slides><Notes>0</Notes></Properties>'
     sliderel=('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
               '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/></Relationships>')

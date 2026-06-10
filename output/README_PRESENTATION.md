@@ -1,23 +1,33 @@
-# Hướng dẫn tạo PowerPoint DATN PC Store
+# PowerPoint bảo vệ đồ án — DATN PC Store
 
-Bài thuyết trình bảo vệ đồ án gồm **30 slide** theo phong cách “clean IT thesis
-deck”. File PowerPoint là sản phẩm build local và không được lưu trong Git.
+Bài thuyết trình gồm **11 slide**, được thiết kế theo phong cách bảo vệ đồ án
+tốt nghiệp CNTT: hiện đại, dễ đọc, dùng card/khối nội dung thay cho danh sách
+gạch đầu dòng dài và đồng bộ với bảng màu của website (`#002b36`, `#14d9ff`,
+`#ff6b00`).
 
-## Nội dung đã xác minh
+## Cấu trúc nội dung
 
-Generator rà soát các marker chức năng trong `Controllers`, `Models`,
-`ViewModels`, `Services`, `Views`, `Program.cs`, `ApplicationDbContext`,
-`wwwroot/js`, `wwwroot/css` và migration trước khi tạo deck. Nội dung chỉ dùng
-các chức năng có trong source: sản phẩm, tài khoản, giỏ hàng, đặt hàng,
-COD/chuyển khoản QR, GHN, Build PC, so sánh, chat SignalR, bảo hành, báo giá và
-quản trị.
+1. Trang bìa
+2. Giới thiệu đề tài
+3. Tổng quan hệ thống
+4. Công nghệ sử dụng
+5. Chức năng dành cho khách hàng
+6. Chức năng quản trị
+7. Giao diện trang chủ
+8. Giao diện chi tiết sản phẩm
+9. Giỏ hàng và thanh toán
+10. Ưu điểm của hệ thống
+11. Kết luận và hướng phát triển
 
-## Cách tạo
+Mỗi slide có nội dung đủ để trình bày khoảng **30–60 giây**. Lời nói gợi ý được
+sinh tại `output/presentation_speech.md`.
+
+## Cách tạo PowerPoint
 
 Từ thư mục gốc repository, chạy:
 
 ```bash
-python Scripts/generate_presentation.py
+python3 Scripts/generate_presentation.py
 ```
 
 Kết quả local:
@@ -25,16 +35,16 @@ Kết quả local:
 - `output/DATN_PC_Store_Gioi_Thieu.pptx`
 - `output/presentation_speech.md`
 
-Script không tải ảnh, không tạo base64/PDF/video và chỉ dùng shape, text cùng
-OOXML chuẩn để không phụ thuộc package ngoài. Sau khi sinh, script tự kiểm tra
-ZIP, parse XML của 30 slide và đối chiếu đủ 30 phần lời thuyết trình.
+Generator không cần package Python ngoài. File PPTX được dựng bằng OOXML và tự
+kiểm tra số slide, tọa độ vùng an toàn, tính hợp lệ của ZIP/XML và số phần lời
+thuyết trình.
 
-## Chèn ảnh giao diện thật
+## Hoàn thiện trước khi bảo vệ
 
-Các slide **14–23, 25 và 26** có placeholder nét đứt và URL cần chụp. Hãy chạy
-ứng dụng, chụp đúng màn hình thật rồi thay placeholder trong PowerPoint.
+- Điền họ tên sinh viên, lớp và khoa ở slide 1.
+- Chạy website và chụp ảnh thật cho slide 7, 8 và 9.
+- Thay khung nét đứt trong PowerPoint bằng ảnh chụp đúng URL ghi trên khung.
+- Giữ ảnh theo tỷ lệ khung, dùng crop thay vì kéo méo ảnh.
 
-## Lưu ý Git
-
-`output/*.pptx` nằm trong `.gitignore`. Không dùng `git add -f` để commit file
-PowerPoint. Chỉ commit script và các file Markdown liên quan.
+`output/*.pptx` được bỏ qua bởi Git, vì vậy cần chạy generator để tạo file trên
+máy trình bày.
