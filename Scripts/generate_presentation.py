@@ -18,33 +18,33 @@ from xml.sax.saxutils import escape
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "output"
 PPTX_PATH = OUTPUT / "DATN_PC_Store_Gioi_Thieu.pptx"
-NOTES_PATH = OUTPUT / "presentation_notes.md"
+SPEECH_PATH = OUTPUT / "presentation_speech.md"
 TOTAL = 30
 W, H, EMU = 13.333, 7.5, 914400
 FONT = "Aptos"
 
 C = {
-    "navy": "0B3D91", "blue": "1E88E5", "cyan": "00B8D9", "orange": "F59E0B",
-    "bg": "F8FAFC", "paper": "FFFFFF", "text": "16324F", "muted": "64748B",
+    "navy": "0B3D91", "blue": "2563EB", "cyan": "06B6D4", "orange": "F59E0B",
+    "bg": "F8FAFC", "paper": "FFFFFF", "text": "1E293B", "muted": "64748B",
     "success": "10B981", "danger": "EF4444", "purple": "8B5CF6", "pink": "EC4899",
     "line": "DCE6F1", "ice": "EAF4FF", "mint": "E9FBF5", "warm": "FFF6DF",
     "dark": "071D3B", "slate": "0F2942", "soft": "F1F5F9",
 }
 
 SECTIONS = {
-    1: ("SECTION 01", "MỞ ĐẦU", C["blue"], "◎", "01"),
+    1: ("SECTION 01", "TỔNG QUAN ĐỀ TÀI", C["blue"], "◎", "01"),
     2: ("SECTION 02", "PHÂN TÍCH & THIẾT KẾ", C["purple"], "◇", "02"),
-    3: ("SECTION 03", "TRIỂN KHAI WEBSITE", C["cyan"], "▣", "03"),
-    4: ("SECTION 04", "ĐÁNH GIÁ & PHÁT TRIỂN", C["orange"], "↗", "04"),
-    5: ("SECTION 05", "CẢM ƠN", C["pink"], "✦", "05"),
+    3: ("SECTION 03", "DEMO WEBSITE KHÁCH HÀNG", C["cyan"], "▣", "03"),
+    4: ("SECTION 04", "QUẢN TRỊ HỆ THỐNG", C["orange"], "▤", "04"),
+    5: ("SECTION 05", "ĐÁNH GIÁ & KẾT LUẬN", C["success"], "↗", "05"),
 }
 
 
 def section_for(number: int) -> int:
     if number <= 6: return 1
     if number <= 13: return 2
-    if number <= 24: return 3
-    if number <= 29: return 4
+    if number <= 23: return 3
+    if number <= 26: return 4
     return 5
 
 
@@ -66,10 +66,17 @@ def audit_source() -> SourceFacts:
         "Controllers/OrdersController.cs": ["BankTransfer", "TrackingStatus", "ConfirmTransferred"],
         "Controllers/SupportChatController.cs": ["CreateConversation", "SendMessage"],
         "Controllers/WarrantyController.cs": ["WarrantyController"],
+        "Models/Entities.cs": ["OrderStatus", "BuildPcConfig", "WarrantyRequest"],
+        "ViewModels/BuildPcVm.cs": ["BuildPcViewModel", "SelectedComponentViewModel"],
         "Services/BuildCompatibilityService.cs": ["BuildCompatibilityService"],
+        "Data/ApplicationDbContext.cs": ["DbSet<Product>", "DbSet<ChatConversation>"],
+        "Migrations/202606080001_AddSupportChat.cs": ["ChatConversations", "ChatMessages"],
         "Views/Products/Index.cshtml": ["ProductFilterVm"],
         "Views/Orders/BankTransfer.cshtml": ["QR", "PaymentExpireAt"],
+        "Views/AdminDashboard/Index.cshtml": ["ProductCount", "OrderCount"],
         "wwwroot/js/chatbox.js": ["signalR"],
+        "wwwroot/js/buildpc.js": ["/buildpc/select"],
+        "wwwroot/css/admin.css": ["admin"],
     }
     missing: list[str] = []
     for rel, markers in required.items():
@@ -138,7 +145,7 @@ class Canvas:
              valign="ctr", fill="FFFFFF", fill2=None, line=None, geom="rect", alpha=0,
              line_alpha=0, shadow=False, rotation=0, margin=.08) -> None:
         self.s.elements.append(Element("text", x, y, w, h, text=value, fill=fill, fill2=fill2,
-            line=line or fill, color=color or C["text"], size=size, bold=bold, align=align,
+            line=line or fill, color=color or C["text"], size=max(14, size), bold=bold, align=align,
             valign=valign, geom=geom, alpha=alpha, line_alpha=line_alpha, shadow=shadow,
             rotation=rotation, margin=margin))
 
@@ -182,7 +189,8 @@ def add_header(c: Canvas, title: str, kicker: str | None = None, *, dark=False) 
     c.shape(1.46, 1.13, 10.9, .025, fill=muted, line=muted, alpha=26000, line_alpha=0, geom="rect")
 
 
-def add_footer(c: Canvas, *, dark=False) -> None:
+def add_footer_progress(c: Canvas, *, dark=False) -> None:
+    """Add a compact section-aware footer and proportional progress bar."""
     if c.s.number == 1:
         return
     section = section_for(c.s.number)
@@ -190,13 +198,17 @@ def add_footer(c: Canvas, *, dark=False) -> None:
     accent = SECTIONS[section][2]
     base = "17365E" if dark else "E2E8F0"
     label = "C7DBF2" if dark else C["muted"]
-    y = 7.17
-    c.text(.62, y-.12, .72, .20, f"{c.s.number:02d}/{TOTAL:02d}", size=9, color=accent, bold=True,
-           fill=C["dark"] if dark else C["bg"])
-    c.text(1.40, y-.12, 2.55, .20, section_name, size=8, color=label, bold=True,
-           fill=C["dark"] if dark else C["bg"])
-    c.shape(4.02, y-.035, 8.66, .045, fill=base, line=base, geom="rect")
-    c.shape(4.02, y-.035, 8.66 * c.s.number / TOTAL, .045, fill=accent, line=accent, geom="rect")
+    bg = C["dark"] if dark else C["bg"]
+    y = 7.16
+    c.text(.56, y-.13, 1.18, .20, "DATN PC Store", size=8, color=label, bold=True, fill=bg)
+    c.text(1.82, y-.13, 2.48, .20, section_name, size=7, color=label, bold=True, fill=bg)
+    c.shape(4.38, y-.035, 7.52, .045, fill=base, line=base, geom="rect")
+    c.shape(4.38, y-.035, 7.52 * c.s.number / TOTAL, .045, fill=accent, line=accent, geom="rect")
+    c.text(12.02, y-.13, .70, .20, f"{c.s.number:02d}/{TOTAL:02d}", size=8, color=accent, bold=True, align="r", fill=bg)
+
+
+def add_footer(c: Canvas, *, dark=False) -> None:
+    add_footer_progress(c, dark=dark)
 
 
 def add_card(c: Canvas, x, y, w, h, *, title="", body="", accent=None, icon=None,
@@ -242,7 +254,7 @@ def add_placeholder(c: Canvas, x, y, w, h, label, url, *, accent=None, dark=Fals
             line=accent, line_alpha=35000, geom="ellipse")
     c.text(x+w/2-d/2, y+h*.25-d/2-.01, d, d, "▣", size=20, color=accent, bold=True,
            align="ctr", fill=fill)
-    c.text(x+.25, y+h*.42, w-.5, .36, "THÊM ẢNH", size=17, color=accent, bold=True,
+    c.text(x+.25, y+h*.42, w-.5, .36, "THÊM ẢNH GIAO DIỆN THẬT", size=17, color=accent, bold=True,
            align="ctr", fill=fill)
     c.text(x+.28, y+h*.56, w-.56, .38, label, size=12,
            color=C["paper"] if dark else C["text"], bold=True, align="ctr", fill=fill)
@@ -282,6 +294,70 @@ def add_stats_cards(c: Canvas, stats: list[tuple[str, str, str]], y=2.15) -> Non
         c.text(x+.22, y+.20, .54, .54, "✦", size=15, color=color, bold=True, align="ctr", fill=C["paper"])
         c.text(x+.24, y+.84, w-.48, .72, value, size=32, color=color, bold=True, align="ctr", fill=C["paper"])
         c.text(x+.24, y+1.65, w-.48, .42, label, size=12, color=C["muted"], bold=True, align="ctr", fill=C["paper"])
+
+
+def add_title(c: Canvas, title: str, kicker: str | None = None, *, dark=False) -> None:
+    add_header(c, title, kicker, dark=dark)
+
+
+def add_icon_badge(c: Canvas, x, y, symbol, *, color=None, size=.62, dark=False) -> None:
+    add_icon(c, x, y, symbol, color=color, size=size, dark=dark)
+
+
+def add_image_placeholder(c: Canvas, x, y, w, h, label, url, *, accent=None, dark=False) -> None:
+    add_placeholder(c, x, y, w, h, label, url, accent=accent, dark=dark)
+
+
+def add_process_flow(c: Canvas, items: list[str], *, y=3.0, color=None) -> None:
+    color = color or SECTIONS[section_for(c.s.number)][2]
+    step_w = min(2.15, 10.8 / max(1, len(items)))
+    start_x = (W - (step_w * len(items) + .36 * (len(items)-1))) / 2
+    for index, item in enumerate(items):
+        x = start_x + index * (step_w + .36)
+        add_node(c, x, y, step_w, .86, item, color=color, sub=f"BƯỚC {index+1:02d}")
+        if index < len(items)-1:
+            c.line(x+step_w, y+.43, x+step_w+.36, y+.43, color=color, arrow=True)
+
+
+def add_architecture_diagram(c: Canvas) -> None:
+    labels = ["BROWSER", "CONTROLLER", "SERVICE", "EF CORE", "SQL SERVER"]
+    for i, label in enumerate(labels):
+        x = .72 + i * 2.48
+        add_node(c, x, 2.55, 1.92, 1.0, label, color=[C["blue"], C["cyan"], C["purple"], C["orange"], C["success"]][i])
+        if i < len(labels)-1: c.line(x+1.92, 3.05, x+2.48, 3.05, color=C["muted"], arrow=True)
+
+
+def add_use_case_diagram(c: Canvas) -> None:
+    add_node(c, .70, 2.70, 1.70, 1.0, "KHÁCH HÀNG", color=C["blue"])
+    add_node(c, 10.92, 2.70, 1.70, 1.0, "QUẢN TRỊ", color=C["orange"])
+
+
+def add_database_diagram(c: Canvas) -> None:
+    add_node(c, 5.35, 2.60, 2.64, 1.15, "APPLICATION DB", color=C["blue"], sub="SQL SERVER")
+
+
+def add_comparison_table(c: Canvas, rows: list[tuple[str, str, str]]) -> None:
+    for i, (criterion, left, right) in enumerate(rows[:4]):
+        y = 2.35 + i * .72
+        fill = C["soft"] if i % 2 == 0 else C["paper"]
+        c.shape(.90, y, 11.55, .60, fill=fill, line=fill, geom="rect")
+        c.text(1.08,y+.12,2.0,.28,criterion,size=10,color=C["muted"],bold=True,fill=fill)
+        c.text(3.45,y+.12,3.55,.28,left,size=10,bold=True,align="ctr",fill=fill)
+        c.text(7.90,y+.12,3.55,.28,right,size=10,bold=True,align="ctr",fill=fill)
+
+
+def add_roadmap(c: Canvas, milestones: list[tuple[str, str]]) -> None:
+    for i, (code, label) in enumerate(milestones[:4]):
+        x = 1.0 + i * 3.0
+        c.shape(x, 3.0, .68, .68, fill=C["success"], line=C["paper"], geom="ellipse")
+        c.text(x,3.0,.68,.68,code,size=11,color=C["paper"],bold=True,align="ctr",fill=C["success"])
+        c.text(x-.48,3.92,1.65,.54,label,size=10,bold=True,align="ctr",fill=C["dark"],color=C["paper"])
+        if i < len(milestones[:4])-1: c.line(x+.68,3.34,x+3.0,3.34,color=C["success"],arrow=True)
+
+
+def shorten_bullet(text: str, max_words: int = 11) -> str:
+    words = text.split()
+    return text if len(words) <= max_words else " ".join(words[:max_words-1]) + "…"
 
 
 def new_slide(number: int, title: str, layout: str, *, dark=False, variant=0,
@@ -438,7 +514,11 @@ def divider(number, title, subtitle, icon) -> Slide:
     return s
 
 
-def slide07(): return divider(7,"Phân tích & thiết kế","Từ yêu cầu nghiệp vụ đến kiến trúc và dữ liệu","◇")
+def add_section_divider(number: int, title: str, subtitle: str, icon: str) -> Slide:
+    return divider(number, title, subtitle, icon)
+
+
+def slide07(): return add_section_divider(7,"Phân tích & thiết kế","Từ yêu cầu nghiệp vụ đến kiến trúc và dữ liệu","◇")
 
 
 def slide08() -> Slide:
@@ -560,7 +640,7 @@ def slide13() -> Slide:
     return s
 
 
-def slide14(): return divider(14,"Triển khai website","Trải nghiệm người dùng, giao dịch và hỗ trợ realtime","▣")
+def slide14(): return add_section_divider(14,"Demo website khách hàng","Từ khám phá sản phẩm đến đặt hàng và theo dõi","▣")
 
 
 def slide15() -> Slide:
@@ -605,8 +685,8 @@ def slide16() -> Slide:
 def slide17() -> Slide:
     s,c=new_slide(17,"Chi tiết sản phẩm","17 Product detail split layout",variant=2,transition="push")
     add_chip(c,.70,1.38,1.70,"PRODUCT DETAIL",color=C["purple"])
-    add_placeholder(c,.70,1.88,5.25,4.62,"ẢNH CHI TIẾT SẢN PHẨM","/Products/Detail/{id}",accent=C["purple"])
-    c.shape(6.24,1.88,6.40,4.62,fill=C["paper"],line=C["line"],shadow=True)
+    add_placeholder(c,.70,1.88,5.40,4.62,"ẢNH CHI TIẾT SẢN PHẨM","/Products/Detail/{id}",accent=C["purple"])
+    c.shape(6.38,1.88,6.26,4.62,fill=C["paper"],line=C["line"],shadow=True)
     c.text(6.58,2.15,5.60,.36,"TÊN SẢN PHẨM THỰC TẾ",size=18,color=C["text"],bold=True,fill=C["paper"])
     c.text(6.58,2.72,2.36,.48,"GIÁ BÁN",size=11,color=C["muted"],bold=True,fill=C["paper"])
     c.text(9.28,2.62,2.84,.58,"— đ",size=24,color=C["danger"],bold=True,align="r",fill=C["paper"])
@@ -626,16 +706,16 @@ def slide17() -> Slide:
 
 def slide18() -> Slide:
     s,c=new_slide(18,"Giỏ hàng","18 Cart process ribbon",variant=0,transition="fade")
-    add_placeholder(c,.72,1.50,4.52,4.90,"ẢNH GIỎ HÀNG","/Cart",accent=C["success"])
+    add_placeholder(c,.72,1.50,5.40,4.90,"ẢNH GIỎ HÀNG","/Cart",accent=C["success"])
     steps=[("01","THÊM SẢN PHẨM","CartController.Add",C["blue"]),("02","CẬP NHẬT SỐ LƯỢNG","CartController.Update",C["cyan"]),("03","TÍNH TỔNG","CartService",C["orange"]),("04","CHECKOUT","/Checkout",C["success"])]
     for i,(num,title,sub,color) in enumerate(steps):
         y=1.62+i*1.12
-        c.shape(5.72,y,6.56,.84,fill=C["paper"],line=C["line"],shadow=True)
-        c.shape(5.94,y+.16,.52,.52,fill=color,line=color,geom="ellipse")
-        c.text(5.94,y+.15,.52,.52,num,size=10,color=C["paper"],bold=True,align="ctr",fill=color)
-        c.text(6.76,y+.13,3.10,.30,title,size=13,color=C["text"],bold=True,fill=C["paper"])
-        c.text(6.76,y+.47,3.72,.22,sub,size=9,color=C["muted"],fill=C["paper"])
-        if i<3:c.line(6.20,y+.84,6.20,y+1.12,color=color,width=17000,arrow=True)
+        c.shape(6.38,y,5.90,.84,fill=C["paper"],line=C["line"],shadow=True)
+        c.shape(6.58,y+.16,.52,.52,fill=color,line=color,geom="ellipse")
+        c.text(6.58,y+.15,.52,.52,num,size=10,color=C["paper"],bold=True,align="ctr",fill=color)
+        c.text(7.34,y+.13,2.72,.30,title,size=13,color=C["text"],bold=True,fill=C["paper"])
+        c.text(7.34,y+.47,3.32,.22,sub,size=9,color=C["muted"],fill=C["paper"])
+        if i<3:c.line(6.84,y+.84,6.84,y+1.12,color=color,width=17000,arrow=True)
     c.shape(9.98,5.18,2.30,1.02,fill=C["success"],line=C["success"],shadow=True)
     c.text(10.18,5.36,1.90,.25,"TỔNG ĐƠN",size=9,color="D8FFF1",bold=True,align="ctr",fill=C["success"])
     c.text(10.18,5.72,1.90,.26,"TỰ ĐỘNG",size=13,color=C["paper"],bold=True,align="ctr",fill=C["success"])
@@ -648,6 +728,8 @@ def slide18() -> Slide:
 def slide19() -> Slide:
     s,c=new_slide(19,"Checkout & vận chuyển","19 Five-step checkout timeline",variant=1,transition="fade")
     c.text(.72,1.52,5.72,.72,"Từ thông tin người nhận\nđến một đơn hàng có thể theo dõi",size=21,color=C["text"],bold=True,fill=C["bg"],valign="top",margin=0)
+    add_image_placeholder(c,6.70,1.46,5.62,1.42,"THÊM ẢNH CHECKOUT THẬT","/Checkout",accent=C["cyan"])
+    s.image_note="Có, URL: /Checkout; chụp biểu mẫu địa chỉ, vận chuyển và thanh toán."
     add_chip(c,10.30,1.58,2.10,"GHN SHIPPING",color=C["orange"])
     add_timeline(c,[("01","THÔNG TIN"),("02","VẬN CHUYỂN"),("03","THANH TOÁN"),("04","TẠO ĐƠN"),("05","THEO DÕI")],y=3.42,color=C["cyan"])
     c.shape(.74,5.12,11.86,1.08,fill=C["paper"],line=C["line"],shadow=True)
@@ -743,127 +825,112 @@ def slide23() -> Slide:
 
 
 def slide24() -> Slide:
-    s,c=new_slide(24,"Chat hỗ trợ SignalR","24 Realtime chat bridge plus service cards",dark=True,variant=0,transition="fade")
-    add_chip(c,10.84,1.30,1.54,"REALTIME",color=C["success"],dark=True)
-    add_node(c,.72,2.02,2.62,1.32,"CUSTOMER WIDGET",color=C["cyan"],sub="_SupportChatBox",dark=True)
-    add_node(c,5.34,2.02,2.62,1.32,"SIGNALR HUB",color=C["success"],sub="/hubs/support-chat",dark=True)
-    add_node(c,9.96,2.02,2.62,1.32,"ADMIN CHAT",color=C["purple"],sub="Admin / Staff",dark=True)
-    c.line(3.34,2.68,5.34,2.68,color=C["cyan"],width=22000,arrow=True)
-    c.line(5.34,2.94,3.34,2.94,color=C["cyan"],width=14000,arrow=True)
-    c.line(7.96,2.68,9.96,2.68,color=C["purple"],width=22000,arrow=True)
-    c.line(9.96,2.94,7.96,2.94,color=C["purple"],width=14000,arrow=True)
-    add_placeholder(c,.72,3.80,5.05,2.16,"ẢNH HỘP CHAT","Mở widget trên mọi trang",accent=C["cyan"],dark=True)
-    services=[("CHAT","Hội thoại & tin nhắn",C["cyan"]),("BẢO HÀNH","Yêu cầu sau bán",C["purple"]),("LIÊN HỆ","Feedback khách hàng",C["orange"])]
-    for i,(title,body,color) in enumerate(services):
-        x=6.08+i*2.14
-        c.shape(x,3.80,1.94,2.16,fill="102E52",line=color,shadow=True)
-        add_icon(c,x+.62,4.08,"↔" if i==0 else "✓",color=color,size=.68,dark=True)
-        c.text(x+.14,4.92,1.66,.26,title,size=10,color=color,bold=True,align="ctr",fill="102E52")
-        c.text(x+.14,5.34,1.66,.34,body,size=8,color="B8D7F4",align="ctr",fill="102E52")
-    s.image_note="Chèn ảnh widget chat phía khách và, nếu đủ chỗ, ảnh màn hình /AdminChat ở cùng hội thoại."
-    s.speaker=["Chat hỗ trợ kết nối widget khách hàng với màn hình Admin Chat qua SignalR Hub.","Hệ thống lưu Conversation và Message trong cơ sở dữ liệu.","Khách vãng lai dùng access token, còn người dùng đăng nhập được liên kết bằng UserId.","Cùng với bảo hành và feedback, chat tạo thành nhóm dịch vụ sau bán hàng."]
-    s.animation=["Ba node hệ thống Fade đồng thời.","Hai chiều mũi tên Wipe trong 0,5 giây.","Ảnh chat và ba card hậu mãi xuất hiện sau."]
+    return add_section_divider(24, "Quản trị hệ thống", "Theo dõi vận hành và xử lý nghiệp vụ cửa hàng", "▤")
+
+
+def slide25() -> Slide:
+    s,c=new_slide(25,"Dashboard quản trị","25 Admin dashboard showcase",variant=1,transition="push")
+    c.shape(.62,1.42,8.42,5.12,fill=C["paper"],line=C["line"],shadow=True)
+    c.shape(.62,1.42,1.28,5.12,fill=C["dark"],line=C["dark"])
+    c.text(.78,1.72,.96,.28,"ADMIN",size=11,color=C["cyan"],bold=True,align="ctr",fill=C["dark"])
+    for i,t in enumerate(["Dashboard","Sản phẩm","Đơn hàng","Người dùng","Bảo hành"]):
+        c.text(.76,2.34+i*.54,1.02,.25,t,size=8,color="B8D7F4",bold=i==0,fill=C["dark"])
+    add_image_placeholder(c,2.12,1.72,6.60,4.54,"THÊM ẢNH GIAO DIỆN THẬT","/AdminDashboard",accent=C["orange"])
+    stats=[("SẢN PHẨM","ProductCount",C["blue"]),("ĐƠN HÀNG","OrderCount",C["orange"]),("NGƯỜI DÙNG","UserCount",C["purple"]),("BẢO HÀNH","WarrantyRequestCount",C["success"])]
+    for i,(title,body,color) in enumerate(stats):
+        y=1.54+i*1.12
+        add_card(c,9.38,y,3.18,.88,title=title,body=body,accent=color,icon="●",title_size=11,body_size=9)
+    s.image_note="Có, URL: /AdminDashboard (route convention; cần xác minh route khi chạy web)."
+    s.speaker=["Phần quản trị bắt đầu bằng dashboard tổng quan vận hành cửa hàng.","ViewModel hiện thống kê sản phẩm, đơn hàng, người dùng và yêu cầu bảo hành.","Các số liệu được truy vấn trực tiếp từ cơ sở dữ liệu bằng EF Core.","Ảnh thật nên thể hiện đồng thời KPI và menu quản trị bên trái."]
+    s.animation=["Khung dashboard Push nhẹ từ trái.","Bốn KPI Fade lần lượt, mỗi mục 0,2 giây."]
     return s
-
-
-def slide25(): return divider(25,"Đánh giá & phát triển","Nhìn lại kết quả, giới hạn và lộ trình tiếp theo","↗")
 
 
 def slide26() -> Slide:
-    s,c=new_slide(26,"Trang quản trị","26 Admin dashboard and management split",variant=1,transition="push")
-    # dashboard screenshot large left
-    c.shape(.62,1.42,8.18,5.18,fill=C["paper"],line=C["line"],shadow=True)
-    c.shape(.62,1.42,1.32,5.18,fill=C["dark"],line=C["dark"])
-    c.text(.80,1.72,.96,.28,"ADMIN",size=11,color=C["cyan"],bold=True,align="ctr",fill=C["dark"])
-    for i,t in enumerate(["Dashboard","Products","Orders","Users","Warranty"]):
-        c.text(.78,2.32+i*.52,1.00,.25,t,size=8,color="B8D7F4",bold=i==0,fill=C["dark"])
-    add_placeholder(c,2.18,1.72,6.30,4.58,"ẢNH ADMIN DASHBOARD","/Admin",accent=C["orange"])
-    # management cards right
-    c.text(9.18,1.52,3.12,.28,"VẬN HÀNH TẬP TRUNG",size=10,color=C["orange"],bold=True,fill=C["bg"])
-    modules=[("SẢN PHẨM","CRUD · ảnh",C["blue"]),("ĐƠN HÀNG","Trạng thái · CSV",C["orange"]),("NGƯỜI DÙNG","Role · active",C["purple"]),("BẢO HÀNH","Xử lý yêu cầu",C["success"]),("BANNER / SETTING","Giao diện web",C["cyan"])]
-    for i,(title,body,color) in enumerate(modules):
-        y=2.02+i*.86
-        c.shape(9.14,y,3.36,.68,fill=C["paper"],line=C["line"],shadow=True)
-        c.shape(9.14,y,.10,.68,fill=color,line=color,geom="rect")
-        c.text(9.48,y+.10,1.72,.22,title,size=9,color=C["text"],bold=True,fill=C["paper"])
-        c.text(10.92,y+.36,1.28,.18,body,size=7,color=C["muted"],align="r",fill=C["paper"])
-    s.image_note="Chèn ảnh /Admin (AdminDashboard/Index) có các KPI hoặc bảng đơn hàng gần đây."
-    s.speaker=["Khu vực quản trị tập trung hoạt động vận hành của cửa hàng.","Dashboard tổng hợp số liệu sản phẩm, đơn hàng, người dùng và doanh thu theo ViewModel.","Các controller riêng quản lý sản phẩm, danh mục, đơn, người dùng, bảo hành, banner và cài đặt.","Quyền truy cập được giới hạn cho vai trò Admin hoặc Staff tùy màn hình."]
-    s.animation=["Khung dashboard Push từ trái trong 0,6 giây.","Sidebar mô phỏng xuất hiện cùng khung.","Năm card quản lý Wipe từ trên xuống."]
+    s,c=new_slide(26,"Quản lý sản phẩm & đơn hàng","26 Dual admin workbench",dark=True,variant=2,transition="wipe")
+    c.shape(.68,1.46,5.82,4.98,fill="102E52",line=C["blue"],shadow=True)
+    c.shape(6.84,1.46,5.82,4.98,fill="102E52",line=C["orange"],shadow=True)
+    c.text(.98,1.76,4.80,.34,"QUẢN LÝ SẢN PHẨM",size=16,color=C["cyan"],bold=True,fill="102E52")
+    c.text(7.14,1.76,4.80,.34,"QUẢN LÝ ĐƠN HÀNG",size=16,color=C["orange"],bold=True,fill="102E52")
+    add_image_placeholder(c,.98,2.30,5.22,2.18,"THÊM ẢNH GIAO DIỆN THẬT","/AdminProducts",accent=C["cyan"],dark=True)
+    add_image_placeholder(c,7.14,2.30,5.22,2.18,"THÊM ẢNH GIAO DIỆN THẬT","/AdminOrders",accent=C["orange"],dark=True)
+    left=["Thêm, sửa, xóa sản phẩm","Quản lý ảnh, thông số, tồn kho"]
+    right=["Lọc và xem chi tiết đơn","Cập nhật trạng thái, xác nhận tiền"]
+    for i,item in enumerate(left): c.text(1.04,4.72+i*.43,4.98,.28,"✓ "+shorten_bullet(item),size=10,color="D8EDF9",bold=True,fill="102E52")
+    for i,item in enumerate(right): c.text(7.20,4.72+i*.43,4.98,.28,"✓ "+shorten_bullet(item),size=10,color="FFE4A3",bold=True,fill="102E52")
+    s.image_note="Có, URL: /AdminProducts và /AdminOrders (route convention; cần xác minh khi chạy web)."
+    s.speaker=["Hai nghiệp vụ vận hành chính là quản lý sản phẩm và quản lý đơn hàng.","AdminProducts hỗ trợ tạo, sửa, xóa, lưu ảnh và thông số linh kiện.","AdminOrders cho phép lọc, xem chi tiết và cập nhật trạng thái đơn.","Đơn chuyển khoản có thao tác xác nhận riêng trước khi tiếp tục xử lý."]
+    s.animation=["Hai cột Wipe từ hai phía.","Các ý nghiệp vụ Fade sau ảnh giao diện."]
     return s
 
 
-def slide27(facts: SourceFacts) -> Slide:
-    s,c=new_slide(27,"Kết quả đạt được","27 Source-derived result stats",dark=True,variant=2,transition="fade")
-    c.text(.72,1.40,7.60,.82,"Một hệ thống đủ rộng để chứng minh\nkhả năng phân tích và triển khai",size=22,color=C["paper"],bold=True,fill=C["dark"],valign="top",margin=0)
-    add_stats_cards(c,[(str(facts.dbsets),"DBSET",C["cyan"]),(str(facts.controllers),"CONTROLLER",C["orange"]),(str(facts.stack_cards),"NHÓM CÔNG NGHỆ",C["purple"]),(str(facts.user_groups),"NHÓM NGƯỜI DÙNG",C["success"])],y=2.62)
-    # repaint helper cards for dark bg by overlay labels not needed, white cards contrast
-    c.shape(.72,5.54,11.90,.72,fill="102E52",line="2A4C73",shadow=True)
-    c.text(1.02,5.72,11.30,.28,"✓ Mua hàng  ·  ✓ Vận chuyển  ·  ✓ Thanh toán  ·  ✓ Hỗ trợ  ·  ✓ Quản trị",size=12,color="D8EDF9",bold=True,align="ctr",fill="102E52")
-    s.speaker=[f"Kết quả source hiện tại có {facts.dbsets} DbSet và {facts.controllers} controller.","Deck nhóm công nghệ thành tám khối đại diện cho nền tảng, dữ liệu, UI và tích hợp.","Bốn nhóm người dùng được thể hiện gồm khách vãng lai, khách hàng, admin và nhân viên hỗ trợ.","Quan trọng hơn số lượng là hệ thống đã nối được hành trình mua hàng với vận hành sau bán."]
-    s.animation=["Thông điệp kết quả Fade trước.","Bốn stats card Count Up theo thứ tự trái sang phải.","Thanh kết quả nghiệp vụ Wipe sau cùng."]
+def slide27() -> Slide:
+    s,c=new_slide(27,"Hỗ trợ & dịch vụ sau bán","27 Service support triad",variant=0,transition="fade")
+    cards=[("CHAT REALTIME","SignalR lưu hội thoại","/AdminChat",C["cyan"],"↔"),("BẢO HÀNH","Gửi và xử lý yêu cầu","/Warranty",C["purple"],"✓"),("BÁO GIÁ","Xem và xuất từ đơn","/Orders/Quotation/{id}",C["orange"],"▤")]
+    for i,(title,body,url,color,icon) in enumerate(cards):
+        x=.68+i*4.12
+        c.shape(x,1.52,3.72,4.82,fill=C["paper"],line=color,shadow=True)
+        add_icon_badge(c,x+1.48,1.86,icon,color=color,size=.76)
+        c.text(x+.28,2.80,3.16,.34,title,size=14,color=color,bold=True,align="ctr",fill=C["paper"])
+        c.text(x+.30,3.28,3.12,.40,body,size=11,color=C["text"],bold=True,align="ctr",fill=C["paper"])
+        add_image_placeholder(c,x+.28,3.94,3.16,1.44,"THÊM ẢNH THẬT",url,accent=color)
+        c.text(x+.38,5.65,2.96,.26,url,size=8,color=C["muted"],align="ctr",fill=C["paper"])
+    s.image_note="Có, URL: /AdminChat, /Warranty, /Orders/Quotation?orderId={id}."
+    s.speaker=["Hệ thống có ba nhóm dịch vụ sau bán đã được xác minh từ source.","Chat dùng SignalR, đồng thời lưu hội thoại và tin nhắn vào database.","Khách đăng nhập có thể gửi yêu cầu bảo hành theo sản phẩm đã mua.","Từ chi tiết đơn, người dùng có thể mở báo giá và xuất Excel."]
+    s.animation=["Ba card Fade lần lượt từ trái sang phải.","Icon Zoom nhẹ; không dùng hiệu ứng lặp."]
     return s
 
 
-def slide28() -> Slide:
-    s,c=new_slide(28,"Hạn chế","28 Balanced now-next comparison",variant=0)
-    c.shape(.68,1.48,5.70,4.98,fill=C["paper"],line=C["line"],shadow=True)
-    c.shape(6.94,1.48,5.70,4.98,fill=C["dark"],fill2=C["navy"],line=C["navy"],shadow=True)
-    c.text(.98,1.82,4.90,.36,"HIỆN TẠI",size=16,color=C["orange"],bold=True,fill=C["paper"])
-    c.text(7.24,1.82,4.90,.36,"CẦN CẢI THIỆN",size=16,color=C["cyan"],bold=True,fill=C["dark"])
-    current=["QR chuyển khoản cần admin xác nhận","Tích hợp ngoài phụ thuộc cấu hình","Báo cáo quản trị còn cơ bản","UI cần kiểm thử thêm thiết bị"]
-    improve=["Tự động đối soát giao dịch","Tăng retry và quan sát lỗi","Mở rộng biểu đồ phân tích","Tối ưu mobile và accessibility"]
-    for col,(x,items,dark,color) in enumerate([(.98,current,False,C["orange"]),(7.24,improve,True,C["cyan"])]):
-        for i,item in enumerate(items):
-            y=2.62+i*.78
-            add_icon(c,x,y,"·" if not dark else "→",color=color,size=.34,dark=dark)
-            c.text(x+.52,y-.05,4.44,.46,item,size=11,color="C2D5E8" if dark else C["text"],bold=True,fill=C["dark"] if dark else C["paper"])
-    c.text(.82,6.70,11.68,.20,"Hạn chế được trình bày như cơ hội nâng chất lượng, không phủ nhận kết quả hiện tại.",size=9,color=C["muted"],align="ctr",fill=C["bg"])
-    s.speaker=["Các hạn chế được nhìn nhận ở mức phù hợp với phạm vi đồ án.","Luồng QR hiện là chuyển khoản và xác nhận, chưa phải đối soát gateway tự động.","Các tích hợp ngoài như GHN, SMTP và định tuyến phụ thuộc khóa cấu hình và môi trường.","Báo cáo, mobile UX và khả năng quan sát lỗi là những điểm có thể tiếp tục hoàn thiện."]
-    s.animation=["Cột hiện tại Wipe từ trái.","Cột cần cải thiện Wipe từ phải sau 0,2 giây.","Các cặp nội dung xuất hiện theo từng hàng."]
+def slide28(facts: SourceFacts) -> Slide:
+    s,c=new_slide(28,"Kết quả đạt được","28 Source-derived result stats",dark=True,variant=1,transition="fade")
+    c.text(.72,1.42,8.20,.70,"Kết quả được đo trực tiếp\ntừ cấu trúc source hiện tại",size=23,color=C["paper"],bold=True,fill=C["dark"],valign="top",margin=0)
+    add_stats_cards(c,[(str(facts.dbsets),"DBSET",C["cyan"]),(str(facts.controllers),"CONTROLLER",C["orange"]),(str(facts.stack_cards),"NHÓM CÔNG NGHỆ",C["purple"]),(str(facts.user_groups),"NHÓM NGƯỜI DÙNG",C["success"])],y=2.55)
+    c.shape(.72,5.44,11.90,.82,fill="102E52",line="2A4C73",shadow=True)
+    c.text(1.00,5.66,11.34,.30,"MUA HÀNG  •  BUILD PC  •  THANH TOÁN  •  HẬU MÃI  •  QUẢN TRỊ",size=11,color="D8EDF9",bold=True,align="ctr",fill="102E52")
+    s.speaker=[f"Source hiện có {facts.dbsets} DbSet và {facts.controllers} controller nghiệp vụ.","Bài trình bày nhóm công nghệ thành tám khối dễ theo dõi.","Bốn nhóm sử dụng gồm khách vãng lai, khách hàng, admin và staff.","Kết quả quan trọng nhất là kết nối được mua hàng với hậu mãi."]
+    s.animation=["Bốn thẻ số liệu Fade theo thứ tự.","Thanh module Wipe nhẹ từ trái sang phải."]
     return s
 
 
 def slide29() -> Slide:
-    s,c=new_slide(29,"Hướng phát triển","29 Curved roadmap",dark=True,variant=1,transition="fade")
-    # curved-looking polyline path
-    pts=[(.92,5.42),(3.02,3.18),(5.48,4.78),(7.78,2.42),(10.14,4.18),(12.20,1.78)]
-    for a,b in zip(pts,pts[1:]):c.line(a[0],a[1],b[0],b[1],color=C["orange"],width=26000,alpha=70000,arrow=True)
-    milestones=[(1.34,4.50,"01","PAYMENT\nGATEWAY",C["orange"]),(3.62,2.25,"02","AI BUILD PC",C["cyan"]),(5.92,4.02,"03","BÁO CÁO\nNÂNG CAO",C["purple"]),(8.26,1.55,"04","SEO",C["success"]),(10.46,3.36,"05","MOBILE UX",C["pink"])]
-    for x,y,num,label,color in milestones:
-        c.shape(x,y,.68,.68,fill=color,line=C["paper"],line_width=16000,geom="ellipse",shadow=True)
-        c.text(x,y-.01,.68,.68,num,size=11,color=C["paper"],bold=True,align="ctr",fill=color)
-        c.text(x-.48,y+.84,1.64,.60,label,size=10,color=C["paper"],bold=True,align="ctr",fill=C["dark"],margin=0)
-    c.text(.72,1.40,4.90,.54,"ROADMAP 01 → 05",size=22,color=C["paper"],bold=True,fill=C["dark"])
-    c.text(.72,2.02,4.55,.44,"Từ giao dịch tự động đến trải nghiệm đa thiết bị",size=12,color="B8D7F4",fill=C["dark"])
-    s.speaker=["Lộ trình phát triển bắt đầu bằng payment gateway và đối soát tự động.","AI Build PC có thể tư vấn cấu hình theo ngân sách và nhu cầu.","Báo cáo nâng cao giúp admin hiểu doanh thu, tồn kho và hành vi mua.","SEO và mobile UX hoàn thiện khả năng tiếp cận và trải nghiệm đa thiết bị."]
-    s.animation=["Đường roadmap Wipe theo hướng 01 đến 05 trong 1,2 giây.","Mỗi mốc Zoom khi đường đi tới vị trí tương ứng.","Tên roadmap Fade ngay từ đầu."]
+    s,c=new_slide(29,"Hạn chế & hướng phát triển","29 Limitation and roadmap matrix",variant=2,transition="fade")
+    c.shape(.68,1.46,5.66,4.98,fill=C["paper"],line=C["line"],shadow=True)
+    c.shape(6.98,1.46,5.66,4.98,fill=C["dark"],line=C["success"],shadow=True)
+    c.text(.98,1.78,4.86,.34,"HIỆN TẠI CẦN CẢI THIỆN",size=14,color=C["orange"],bold=True,fill=C["paper"])
+    c.text(7.28,1.78,4.86,.34,"HƯỚNG PHÁT TRIỂN",size=14,color=C["success"],bold=True,fill=C["dark"])
+    limits=["QR cần admin xác nhận","Tích hợp phụ thuộc cấu hình","Báo cáo quản trị cơ bản","Cần kiểm thử đa thiết bị"]
+    future=["Tích hợp payment gateway","AI tư vấn Build PC","Báo cáo doanh thu nâng cao","Tối ưu mobile và SEO"]
+    for i,item in enumerate(limits):
+        add_icon_badge(c,1.00,2.42+i*.80,"!",color=C["orange"],size=.34)
+        c.text(1.52,2.38+i*.80,4.30,.40,shorten_bullet(item),size=11,color=C["text"],bold=True,fill=C["paper"])
+    for i,item in enumerate(future):
+        add_icon_badge(c,7.30,2.42+i*.80,str(i+1),color=C["success"],size=.34,dark=True)
+        c.text(7.82,2.38+i*.80,4.30,.40,shorten_bullet(item),size=11,color="D8EDF9",bold=True,fill=C["dark"])
+    s.speaker=["Các hạn chế được nhìn nhận đúng phạm vi một đồ án sinh viên.","QR hiện hỗ trợ chuyển khoản nhưng vẫn cần admin xác nhận thủ công.","Các dịch vụ ngoài phụ thuộc khóa cấu hình và môi trường triển khai.","Hướng tiếp theo là payment gateway, AI Build PC, báo cáo và mobile UX."]
+    s.animation=["Hai nửa slide Wipe từ hai phía.","Các cặp hiện tại và tương lai Fade theo hàng."]
     return s
 
 
 def slide30() -> Slide:
     s,c=new_slide(30,"Xin chân thành cảm ơn","30 Thank-you full-screen",dark=True,header=False,transition="fade")
     accent=SECTIONS[5][2]
-    # layered circles and central glass panel
-    for x,y,d,a,color in [(9.80,-.70,4.30,15000,accent),(-1.20,4.80,4.00,10000,C["cyan"]),(10.90,5.35,2.70,9000,C["orange"]),(.90,.72,1.30,10000,C["purple"])]:
+    for x,y,d,a,color in [(9.80,-.70,4.30,15000,accent),(-1.20,4.80,4.00,10000,C["cyan"]),(10.90,5.35,2.70,9000,C["orange"])]:
         c.shape(x,y,d,d,fill=color,alpha=a,line=color,line_alpha=0,geom="ellipse")
     c.shape(1.12,1.28,11.08,4.78,fill=C["paper"],alpha=8500,line=C["paper"],line_alpha=22000,shadow=True)
-    c.text(2.00,2.02,9.34,.28,"DATN PC STORE · GRADUATION THESIS",size=11,color="A9CBE6",bold=True,align="ctr",fill=C["dark"])
+    c.text(2.00,2.02,9.34,.28,"DATN PC STORE · WEBSITE LINH KIỆN MÁY TÍNH",size=11,color="A9CBE6",bold=True,align="ctr",fill=C["dark"])
     c.text(1.82,2.64,9.70,1.05,"XIN CHÂN THÀNH CẢM ƠN",size=37,color=C["paper"],bold=True,align="ctr",fill=C["dark"],margin=0)
     c.shape(5.54,3.92,2.24,.055,fill=accent,line=accent,geom="rect")
-    c.text(2.10,4.34,9.12,.72,"Em xin chân thành cảm ơn thầy/cô và hội đồng\nđã lắng nghe.",size=18,color="C7DBF2",align="ctr",fill=C["dark"],margin=0)
+    c.text(2.10,4.34,9.12,.72,"Em xin cảm ơn hội đồng đã lắng nghe.\nEm sẵn sàng trả lời câu hỏi.",size=18,color="C7DBF2",align="ctr",fill=C["dark"],margin=0)
     c.text(4.64,5.52,4.02,.34,"Q & A",size=15,color=accent,bold=True,align="ctr",fill=C["dark"],line=accent,geom="roundRect",alpha=12000,line_alpha=50000)
-    s.speaker=["Em xin chân thành cảm ơn thầy cô và hội đồng đã lắng nghe phần trình bày.","Đề tài đã hoàn thành các luồng chính của một website PC Store trong phạm vi đồ án.","Em mong nhận được nhận xét để tiếp tục cải thiện cả kỹ thuật và trải nghiệm người dùng.","Em xin sẵn sàng trả lời các câu hỏi của hội đồng."]
-    s.animation=["Khung kính Fade trong 0,5 giây.","Tiêu đề Zoom rất nhẹ trong 0,6 giây.","Dòng Q&A Fade sau cùng; giữ slide tĩnh khi trả lời."]
+    s.speaker=["Em xin chân thành cảm ơn thầy cô và hội đồng đã lắng nghe.","Đề tài đã hoàn thành các luồng chính của website PC Store.","Em mong nhận được góp ý để tiếp tục cải thiện sản phẩm.","Sau đây em xin sẵn sàng trả lời các câu hỏi của hội đồng."]
+    s.animation=["Toàn slide Fade trong 0,5 giây.","Giữ slide tĩnh trong phần hỏi đáp."]
     s.duration="20–30 giây trước phần hỏi đáp"
     return s
 
-
 def build_slides(facts: SourceFacts) -> list[Slide]:
-    slides=[slide01(),slide02(),slide03(),slide04(),slide05(),slide06(),slide07(),slide08(),slide09(),slide10(),
+    return [slide01(),slide02(),slide03(),slide04(),slide05(),slide06(),slide07(),slide08(),slide09(),slide10(),
             slide11(),slide12(),slide13(),slide14(),slide15(),slide16(),slide17(),slide18(),slide19(),slide20(),
-            slide21(),slide22(),slide23(),slide24(),slide25(),slide26(),slide27(facts),slide28(),slide29(),slide30()]
-    return slides
+            slide21(),slide22(),slide23(),slide24(),slide25(),slide26(),slide27(),slide28(facts),slide29(),slide30()]
 
 
 # ---------- OOXML renderer ----------
@@ -1009,52 +1076,101 @@ def render(slides: list[Slide]) -> None:
             z.writestr(f"ppt/slides/_rels/slide{slide.number}.xml.rels",sliderel)
 
 
+def write_speech_markdown(slides: list[Slide]) -> None:
+    """Write one speech section for every slide in exactly the same order."""
+    lines=["# Lời thuyết trình — DATN PC Store","",
+           "> Tài liệu gồm đúng 30 phần, khớp thứ tự và tiêu đề trong PowerPoint.",
+           "> Animation chỉ là gợi ý thao tác thủ công, không nhúng hiệu ứng phức tạp vào file.",""]
+    for slide in slides:
+        lines += [f"## Slide {slide.number:02d} — {slide.title}","","### Lời thuyết trình",""]
+        lines += slide.speaker
+        lines += ["","### Ý chính cần nhấn mạnh","",
+                  f"* {slide.speaker[0]}", f"* {slide.speaker[-1]}","",
+                  "### Gợi ý chuyển slide","",
+                  f"* {('Chuyển sang phần tiếp theo để làm rõ ' + slides[slide.number].title.lower() + '.') if slide.number < TOTAL else 'Mời hội đồng đặt câu hỏi và trao đổi.'}","",
+                  "### Ảnh cần chèn","",f"* {slide.image_note}","",
+                  "### Gợi ý animation thủ công","",
+                  *[f"* {item}" for item in slide.animation],"",
+                  f"* Thời lượng gợi ý: {slide.duration}.",""]
+    SPEECH_PATH.write_text("\n".join(lines),encoding="utf-8")
+
+
+def validate_deck(slides: list[Slide]) -> None:
+    """Validate structure, readability rules and the generated OOXML package."""
+    if len(slides) != TOTAL:
+        raise RuntimeError(f"Expected {TOTAL} slides, got {len(slides)}")
+    if any(not slide.title.strip() for slide in slides):
+        raise RuntimeError("Every slide must have a title")
+    if len({slide.layout for slide in slides}) < 25:
+        raise RuntimeError("Deck needs at least 25 distinct layout identities")
+    if any(len(slide.speaker) < 4 or len(slide.speaker) > 7 for slide in slides):
+        raise RuntimeError("Each slide needs 4–7 natural speaker sentences")
+    if any(not slide.animation for slide in slides):
+        raise RuntimeError("Each slide needs a manual animation suggestion")
+    for slide in slides:
+        if any(element.kind == "text" and element.size < 14 for element in slide.elements):
+            raise RuntimeError(f"Slide {slide.number:02d} contains text below 14 pt")
+        for element in slide.elements:
+            if element.kind == "text" and len(element.text) > 150:
+                raise RuntimeError(f"Slide {slide.number:02d} contains an overlong text box")
+        bullet_lines=[line.strip("✓•- ") for element in slide.elements if element.kind=="text"
+                      for line in element.text.splitlines() if line.lstrip().startswith(("✓","•","-"))]
+        if len(bullet_lines) > 4:
+            raise RuntimeError(f"Slide {slide.number:02d} has more than four bullets")
+        if any(len(line.split()) > 11 for line in bullet_lines):
+            raise RuntimeError(f"Slide {slide.number:02d} has a bullet above 11 words")
+    showcase_slides={15,16,17,18,19,20,21,22,23,25,26,27}
+    for slide in slides:
+        if slide.number in showcase_slides:
+            widths=[e.w for e in slide.elements if e.kind=="shape" and e.dash=="dash"]
+            if not widths or max(widths) < W * .40:
+                # Multi-panel admin/service slides intentionally combine adjacent placeholders.
+                combined=sum(sorted(widths, reverse=True)[:2])
+                if combined < W * .40:
+                    raise RuntimeError(f"Slide {slide.number:02d} image placeholder is below 40% width")
+    with zipfile.ZipFile(PPTX_PATH) as archive:
+        bad=archive.testzip()
+        if bad: raise RuntimeError(f"Corrupt ZIP member: {bad}")
+        slide_names=[name for name in archive.namelist() if re.fullmatch(r"ppt/slides/slide\d+\.xml",name)]
+        if len(slide_names) != TOTAL:
+            raise RuntimeError(f"PPTX contains {len(slide_names)} slides")
+        all_xml="\n".join(archive.read(name).decode("utf-8") for name in slide_names)
+        for token in ["Đặt vấn đề","Build PC","Quản trị hệ thống","Hỗ trợ & dịch vụ sau bán","XIN CHÂN THÀNH CẢM ƠN"]:
+            if escape(token) not in all_xml: raise RuntimeError(f"Missing required content: {token}")
+    if not zipfile.is_zipfile(PPTX_PATH):
+        raise RuntimeError("Generated PPTX is not a valid ZIP package")
+    if not SPEECH_PATH.exists() or SPEECH_PATH.read_text(encoding="utf-8").count("## Slide ") != TOTAL:
+        raise RuntimeError("Speech markdown does not contain exactly 30 slide sections")
+    if any(path.suffix.lower()==".pptx" for path in ROOT.glob("*.pptx")):
+        raise RuntimeError("Do not place generated PPTX files at repository root")
+
+
+def create_deck(facts: SourceFacts) -> list[Slide]:
+    return build_slides(facts)
+
+
+# Backward-compatible internal aliases used by older automation.
 def write_notes(slides: list[Slide]) -> None:
-    lines=["# Ghi chú thuyết trình — DATN PC Store","",
-           "> Nội dung được đối chiếu trực tiếp với source code. Các gợi ý animation dùng hiệu ứng PowerPoint an toàn, ngắn và tiết chế.",""]
-    for s in slides:
-        lines += [f"## Slide {s.number:02d} — {s.title}","","**Lời thuyết trình:**"]
-        lines += [f"{i+1}. {sentence}" for i,sentence in enumerate(s.speaker)]
-        lines += ["","**Animation suggestion:**"]
-        lines += [f"- {item}" for item in s.animation]
-        lines += ["",f"**Thời lượng gợi ý:** {s.duration}","",f"**Ghi chú ảnh:** {s.image_note}",""]
-    NOTES_PATH.write_text("\n".join(lines),encoding="utf-8")
+    write_speech_markdown(slides)
 
 
 def validate(slides: list[Slide]) -> None:
-    if len(slides)!=TOTAL:raise RuntimeError(f"Expected {TOTAL} slides, got {len(slides)}")
-    if len({s.layout for s in slides})!=TOTAL:raise RuntimeError("All 30 slides must have distinct layout identities")
-    if any(len(s.speaker)<4 or len(s.speaker)>6 for s in slides):raise RuntimeError("Each slide needs 4–6 speaker sentences")
-    if any(not s.animation for s in slides):raise RuntimeError("Each slide needs animation suggestions")
-    with zipfile.ZipFile(PPTX_PATH) as z:
-        bad=z.testzip()
-        if bad:raise RuntimeError(f"Corrupt ZIP member: {bad}")
-        names=z.namelist()
-        slide_names=[n for n in names if re.fullmatch(r"ppt/slides/slide\d+\.xml",n)]
-        if len(slide_names)!=TOTAL:raise RuntimeError(f"PPTX contains {len(slide_names)} slides")
-        all_xml="\n".join(z.read(n).decode("utf-8") for n in slide_names)
-        for token in ["Đặt vấn đề","Build PC","SIGNALR HUB","XIN CHÂN THÀNH CẢM ƠN","PaymentExpireAt"]:
-            if escape(token) not in all_xml:raise RuntimeError(f"Missing required content: {token}")
-        if sum("<p:transition" in z.read(n).decode("utf-8") for n in slide_names)<12:
-            raise RuntimeError("Expected transitions on section/showcase/process slides")
-    if PPTX_PATH.stat().st_size<70000:raise RuntimeError("Generated PPTX is unexpectedly small")
-    if not NOTES_PATH.exists() or NOTES_PATH.stat().st_size<10000:raise RuntimeError("Presentation notes are incomplete")
-
+    validate_deck(slides)
 
 def main() -> int:
     facts=audit_source()
-    slides=build_slides(facts)
-    write_notes(slides)
+    slides=create_deck(facts)
+    write_speech_markdown(slides)
     render(slides)
-    validate(slides)
+    validate_deck(slides)
     image_slides=[s.number for s in slides if s.image_note!="Không cần chèn ảnh."]
     print(f"Created {len(slides)} slides with {len({s.layout for s in slides})} distinct layout identities.")
     print(f"Source facts: {facts.dbsets} DbSet, {facts.controllers} controllers, {facts.services} service files.")
-    print("Sections: 01 Blue, 02 Purple, 03 Cyan, 04 Orange, 05 Pink.")
+    print("Sections: 01 Blue, 02 Purple, 03 Cyan, 04 Orange, 05 Green.")
     print("Progress footer: slides 02–30.")
     print("Image placeholders: " + ", ".join(f"{n:02d}" for n in image_slides))
     print(f"PowerPoint: {PPTX_PATH}")
-    print(f"Notes: {NOTES_PATH}")
+    print(f"Speech: {SPEECH_PATH}")
     return 0
 
 
