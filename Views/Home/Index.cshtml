@@ -18,36 +18,77 @@ var dealSectionBackground = ImageUrlHelper.ResolveImageUrl(Model.SiteSettings?.D
 
 <div class="ttg-home">
 @{
-    var mainBanners = Model.Banners.Where(b => b.Position == "MainBanner" && !string.IsNullOrWhiteSpace(b.ImageUrl)).OrderBy(b => b.SortOrder).ToList();
-    var subBanners = Model.Banners.Where(b => b.Position == "SubBanner" && !string.IsNullOrWhiteSpace(b.ImageUrl)).OrderBy(b => b.SortOrder).Take(3).ToList();
+    var mainBanners = Model.Banners
+        .Where(b => b.Position == "MainBanner" && !string.IsNullOrWhiteSpace(b.ImageUrl))
+        .OrderBy(b => b.SortOrder)
+        .ToList();
+    var subBanners = Model.Banners
+        .Where(b => b.Position == "SubBanner" && !string.IsNullOrWhiteSpace(b.ImageUrl))
+        .OrderBy(b => b.SortOrder)
+        .Take(3)
+        .ToList();
 }
+
 @if (mainBanners.Any())
 {
-    <div class="swiper ttg-hero-swiper ttg-main-banner">
-        <div class="swiper-wrapper">
-            @foreach (var b in mainBanners)
+    <section class="ttg-main-banner" data-home-carousel aria-roledescription="carousel" aria-label="Banner khuyến mãi">
+        <div class="ttg-banner-track">
+            @for (var index = 0; index < mainBanners.Count; index++)
             {
-                <div class="swiper-slide">
-                    <img src="@ImageUrlHelper.ResolveImageUrl(b.ImageUrl, fallbackBanner)" class="d-block w-100 banner-image" alt="@(string.IsNullOrWhiteSpace(b.Title) ? "Main banner" : b.Title)" onerror="this.onerror=null;this.src='@fallbackBanner';">
+                var banner = mainBanners[index];
+                var bannerTitle = string.IsNullOrWhiteSpace(banner.Title) ? $"Banner khuyến mãi {index + 1}" : banner.Title;
+                <div class="ttg-banner-slide @(index == 0 ? "is-active" : string.Empty)"
+                     data-carousel-slide
+                     aria-hidden="@(index == 0 ? "false" : "true")">
+                    <a href="@(string.IsNullOrWhiteSpace(banner.LinkUrl) ? "/Products" : banner.LinkUrl)"
+                       aria-label="@bannerTitle"
+                       tabindex="@(index == 0 ? "0" : "-1")">
+                        <img src="@ImageUrlHelper.ResolveImageUrl(banner.ImageUrl, fallbackBanner)"
+                             class="banner-image"
+                             alt="@bannerTitle"
+                             fetchpriority="@(index == 0 ? "high" : "auto")"
+                             loading="@(index == 0 ? "eager" : "lazy")"
+                             onerror="this.onerror=null;this.src='@fallbackBanner';" />
+                    </a>
                 </div>
             }
         </div>
-        <div class="swiper-button-prev"></div>
-        <div class="swiper-button-next"></div>
-        <div class="swiper-pagination"></div>
-    </div>
 
-    @if (subBanners.Any())
-    {
-        <div class="ttg-sub-banners">
-            @foreach (var b in subBanners)
-            {
-                <a class="ttg-sub-banner-item" href="@(string.IsNullOrWhiteSpace(b.LinkUrl) ? "#" : b.LinkUrl)">
-                    <img src="@ImageUrlHelper.ResolveImageUrl(b.ImageUrl, fallbackBanner)" alt="@(string.IsNullOrWhiteSpace(b.Title) ? "Sub banner" : b.Title)" onerror="this.onerror=null;this.src='@fallbackBanner';" />
-                </a>
-            }
-        </div>
-    }
+        @if (mainBanners.Count > 1)
+        {
+            <button class="ttg-banner-arrow ttg-banner-arrow-prev" type="button" data-carousel-prev aria-label="Xem banner trước">
+                <i class="bi bi-chevron-left" aria-hidden="true"></i>
+            </button>
+            <button class="ttg-banner-arrow ttg-banner-arrow-next" type="button" data-carousel-next aria-label="Xem banner tiếp theo">
+                <i class="bi bi-chevron-right" aria-hidden="true"></i>
+            </button>
+            <div class="ttg-banner-dots" role="group" aria-label="Chọn banner">
+                @for (var index = 0; index < mainBanners.Count; index++)
+                {
+                    <button class="ttg-banner-dot @(index == 0 ? "is-active" : string.Empty)"
+                            type="button"
+                            data-carousel-dot="@index"
+                            aria-label="Xem banner @(index + 1)"
+                            aria-current="@(index == 0 ? "true" : "false")"></button>
+                }
+            </div>
+        }
+    </section>
+}
+
+@if (subBanners.Any())
+{
+    <div class="ttg-sub-banners">
+        @foreach (var banner in subBanners)
+        {
+            <a class="ttg-sub-banner-item" href="@(string.IsNullOrWhiteSpace(banner.LinkUrl) ? "/Products" : banner.LinkUrl)">
+                <img src="@ImageUrlHelper.ResolveImageUrl(banner.ImageUrl, fallbackBanner)"
+                     alt="@(string.IsNullOrWhiteSpace(banner.Title) ? "Banner khuyến mãi phụ" : banner.Title)"
+                     loading="lazy"
+                     onerror="this.onerror=null;this.src='@fallbackBanner';" />
+            </a>
+        }
+    </div>
 }
 
 <partial name="_ProductSection" model='Tuple.Create("Deal hot mỗi ngày", dealHotProducts, dealSectionBackground)' />
@@ -64,14 +105,5 @@ var dealSectionBackground = ImageUrlHelper.ResolveImageUrl(Model.SiteSettings?.D
 </div>
 
 @section Scripts {
-    <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
-    <script>
-        new Swiper('.ttg-hero-swiper', {
-            loop: true,
-            speed: 900,
-            autoplay: { delay: 3500, disableOnInteraction: false },
-            pagination: { el: '.swiper-pagination', clickable: true },
-            navigation: { nextEl: '.swiper-button-next', prevEl: '.swiper-button-prev' }
-        });
-    </script>
+    <script src="~/js/home-banner.js" asp-append-version="true"></script>
 }
