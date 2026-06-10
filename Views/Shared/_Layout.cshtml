@@ -34,6 +34,10 @@
     {
         <link rel="stylesheet" href="~/css/bank-transfer.css" asp-append-version="true" />
     }
+    @if (controllerName == "Orders" && (actionName == "Tracking" || actionName == "Detail"))
+    {
+        <link rel="stylesheet" href="~/css/order-tracking.css" asp-append-version="true" />
+    }
     @if (!isAdminPage)
     {
         <link rel="stylesheet" href="~/css/chatbox.css" asp-append-version="true" />
