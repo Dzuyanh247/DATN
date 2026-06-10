@@ -59,9 +59,11 @@
         }
         @if (isCompact)
         {
-            <partial name="_CompareButton" model="Model" />
+            <div class="ttg-secondary-actions">
+                <partial name="_CompareButton" model="Model" />
+                <span class="ttg-action-stock @(Model.IsInStock ? string.Empty : "is-out-of-stock")">@(Model.IsInStock ? "Còn hàng" : "Hết hàng")</span>
+            </div>
         }
-        <span class="ttg-action-stock @(Model.IsInStock ? string.Empty : "is-out-of-stock")">@(Model.IsInStock ? "Còn hàng" : "Hết hàng")</span>
     </div>
     @if (!isCompact)
     {
