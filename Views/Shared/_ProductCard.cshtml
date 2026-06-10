@@ -57,6 +57,10 @@
         {
             <button class="ttg-add-btn" disabled>Thêm vào giỏ</button>
         }
+        @if (isCompact)
+        {
+            <partial name="_CompareButton" model="Model" />
+        }
         <span class="ttg-action-stock @(Model.IsInStock ? string.Empty : "is-out-of-stock")">@(Model.IsInStock ? "Còn hàng" : "Hết hàng")</span>
     </div>
     @if (!isCompact)
