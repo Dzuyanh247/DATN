@@ -238,12 +238,13 @@ const showProductHover=(card)=>{
     productHoverPopup.setAttribute('aria-hidden','false');
     placeProductHover(card);
 };
-document.querySelectorAll('.ttg-product-image-wrap').forEach(function(card){
-    if(card.closest('.standard-product-section')) return;
-    card.addEventListener('mouseenter',()=>showProductHover(card));
+document.querySelectorAll('.ttg-product-card').forEach(function(card){
+    const previewSource=card.querySelector('.ttg-product-image-wrap[data-pp-name]');
+    if(!previewSource) return;
+    card.addEventListener('mouseenter',()=>showProductHover(previewSource));
     card.addEventListener('mouseleave',hideProductHover);
-    card.addEventListener('focus',()=>showProductHover(card));
-    card.addEventListener('blur',hideProductHover);
+    card.addEventListener('focusin',()=>showProductHover(previewSource));
+    card.addEventListener('focusout',(event)=>{if(!card.contains(event.relatedTarget)) hideProductHover();});
 });
 window.addEventListener('scroll',hideProductHover,{passive:true});
 window.addEventListener('resize',hideProductHover);

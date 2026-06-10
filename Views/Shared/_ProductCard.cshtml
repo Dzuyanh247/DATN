@@ -21,10 +21,6 @@
        data-pp-spec-lines='@string.Join("||", hoverSpecs)'
        data-pp-promo-lines='@string.Join("||", promotionLines)'>
         <img src="@image" class="ttg-product-image" alt="@Model.Name" onerror="this.onerror=null;this.src='/images/banners/banner_main1.png';" />
-        @if (!isCompact && discount > 0)
-        {
-            <span class="ttg-discount-badge">-@discount%</span>
-        }
     </a>
     <h6 class="ttg-product-title">@Model.Name</h6>
     <div class="ttg-price-row">
