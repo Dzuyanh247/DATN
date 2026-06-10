@@ -1,32 +1,25 @@
-@model List<WarrantyRequest>
-<h3>Quản lý bảo hành</h3>
-<table class="table table-bordered align-middle">
-<thead><tr><th>Khách</th><th>Sản phẩm</th><th>Mô tả</th><th>Trạng thái</th><th></th></tr></thead>
-<tbody>
-@foreach (var r in Model)
-{
-    <tr>
-        <td>@r.User?.FullName</td><td>@r.Product?.Name</td><td>@r.IssueDescription</td><td>@r.Status</td>
-        <td>
-            <form method="post" asp-action="UpdateStatus" class="d-flex gap-2">
-                <input type="hidden" name="id" value="@r.Id" />
-                <select name="status" class="form-select form-select-sm">
-                    @foreach (var status in new[] { "Mới tạo", "Đã nhận máy", "Đang xử lý", "Hoàn thành", "Từ chối" })
-                    {
-                        if (status == r.Status)
-                        {
-                            <option value="@status" selected>@status</option>
-                        }
-                        else
-                        {
-                            <option value="@status">@status</option>
-                        }
-                    }
-                </select>
-                <button class="btn btn-sm btn-primary">Lưu</button>
-            </form>
-        </td>
-    </tr>
+@model AdminWarrantyIndexVm
+@{
+    ViewData["Title"] = "Quản lý bảo hành";
 }
-</tbody>
+<div class="admin-warranty-header">
+    <div><h2>Yêu cầu bảo hành</h2><p class="text-muted mb-0">Tiếp nhận và theo dõi các yêu cầu hậu mãi của khách hàng.</p></div>
+    <span class="badge text-bg-dark rounded-pill px-3 py-2">@Model.Requests.Count kết quả</span>
+</div>
+<form method="get" class="admin-filter-bar">
+    <div class="input-group"><span class="input-group-text"><i class="bi bi-search"></i></span><input name="search" value="@Model.Search" class="form-control" placeholder="Mã đơn, mã bảo hành, SĐT, tên khách hàng" /></div>
+    <select name="status" class="form-select"><option value="">Tất cả trạng thái</option>@foreach (var status in WarrantyStatuses.All){<option value="@status" selected="@(Model.Status == status)">@status</option>}</select>
+    <button class="btn btn-primary"><i class="bi bi-funnel me-1"></i>Lọc</button><a class="btn btn-light" asp-action="Index">Đặt lại</a>
+</form>
+<div class="table-responsive">
+<table class="table align-middle admin-warranty-table">
+    <thead><tr><th>Mã yêu cầu</th><th>Khách hàng</th><th>Sản phẩm / lỗi</th><th>Ngày gửi</th><th>Trạng thái</th><th></th></tr></thead>
+    <tbody>
+    @if (!Model.Requests.Any()){<tr><td colspan="6"><div class="text-center py-5 text-muted"><i class="bi bi-inbox fs-2 d-block mb-2"></i>Không có yêu cầu phù hợp.</div></td></tr>}
+    @foreach (var item in Model.Requests)
+    {
+        <tr><td><strong>@item.WarrantyCode</strong><small class="d-block text-muted">@(item.OrderId.HasValue ? $"DH{item.OrderId.Value:D6}" : "Đơn hàng cũ")</small></td><td><strong>@item.CustomerName</strong><small class="d-block text-muted">@item.Phone</small></td><td><strong class="admin-warranty-product">@item.ProductName</strong><small class="d-block text-muted text-truncate">@item.IssueTitle</small></td><td>@DateTimeHelper.FormatVietnam(item.CreatedAt, "dd/MM/yyyy")<small class="d-block text-muted">@DateTimeHelper.FormatVietnam(item.CreatedAt, "HH:mm")</small></td><td><span class="warranty-status @WarrantyStatuses.BadgeClass(item.Status)">@item.Status</span></td><td class="text-end"><a class="btn btn-sm btn-outline-primary" asp-action="Detail" asp-route-id="@item.Id"><i class="bi bi-eye me-1"></i>Chi tiết</a></td></tr>
+    }
+    </tbody>
 </table>
+</div>

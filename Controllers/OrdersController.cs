@@ -140,7 +140,7 @@ public class OrdersController : Controller
                 var unitPrice = product.DiscountPrice ?? product.SalePrice ?? product.Price;
                 var lineTotal = unitPrice * item.Quantity;
                 subtotal += lineTotal;
-                detailRows.Add(new OrderDetail { ProductId = product.Id, Quantity = item.Quantity, UnitPrice = unitPrice, ProductName = product.Name, ProductImage = product.ThumbnailImage, Warranty = product.WarrantyDuration, TotalPrice = lineTotal });
+                detailRows.Add(new OrderDetail { ProductId = product.Id, Quantity = item.Quantity, UnitPrice = unitPrice, ProductName = product.Name, ProductImage = product.ThumbnailImage, Warranty = product.WarrantyDuration, WarrantyMonths = product.WarrantyMonths > 0 ? product.WarrantyMonths : 12, TotalPrice = lineTotal });
             }
 
             if (vm.PaymentMethod == PaymentMethods.BankTransfer)

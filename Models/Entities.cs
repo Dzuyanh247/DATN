@@ -166,6 +166,7 @@ public class OrderDetail : BaseEntity
     [MaxLength(200)] public string ProductName { get; set; } = string.Empty;
     [MaxLength(250)] public string ProductImage { get; set; } = string.Empty;
     [MaxLength(50)] public string? Warranty { get; set; }
+    public int WarrantyMonths { get; set; } = 12;
     public decimal TotalPrice { get; set; }
 }
 
@@ -187,12 +188,27 @@ public class Warranty : BaseEntity
 
 public class WarrantyRequest : BaseEntity
 {
-    public int UserId { get; set; }
-    public User? User { get; set; }
+    public int? OrderId { get; set; }
+    public Order? Order { get; set; }
+    public int? OrderDetailId { get; set; }
+    public OrderDetail? OrderDetail { get; set; }
     public int ProductId { get; set; }
     public Product? Product { get; set; }
-    [MaxLength(200)] public string IssueDescription { get; set; } = string.Empty;
-    [MaxLength(50)] public string Status { get; set; } = "Mới tạo";
+    public int? UserId { get; set; }
+    public User? User { get; set; }
+    [MaxLength(120)] public string CustomerName { get; set; } = string.Empty;
+    [MaxLength(20)] public string Phone { get; set; } = string.Empty;
+    [MaxLength(120)] public string? Email { get; set; }
+    [MaxLength(200)] public string ProductName { get; set; } = string.Empty;
+    [MaxLength(80)] public string WarrantyCode { get; set; } = string.Empty;
+    [MaxLength(100)] public string? SerialNumber { get; set; }
+    public DateTime PurchaseDate { get; set; }
+    public int WarrantyMonths { get; set; } = 12;
+    [MaxLength(200)] public string IssueTitle { get; set; } = string.Empty;
+    [MaxLength(2000)] public string IssueDescription { get; set; } = string.Empty;
+    [MaxLength(1000)] public string? EvidencePath { get; set; }
+    [MaxLength(50)] public string Status { get; set; } = "Chờ tiếp nhận";
+    [MaxLength(2000)] public string? AdminNote { get; set; }
 }
 
 public class BuildPcConfig : BaseEntity

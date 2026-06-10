@@ -1,0 +1,18 @@
+@model WarrantyRequest
+@{
+    ViewData["Title"] = "Chi tiết yêu cầu bảo hành";
+    var expiresAt = WarrantyPolicy.ExpiresAt(Model.PurchaseDate, Model.WarrantyMonths);
+}
+<link rel="stylesheet" href="~/css/warranty.css" asp-append-version="true" />
+<div class="warranty-page">
+    <div class="warranty-breadcrumb"><a asp-action="MyRequests" asp-route-phone="@(Model.UserId.HasValue ? null : Model.Phone)">Yêu cầu của tôi</a><i class="bi bi-chevron-right"></i><span>@Model.WarrantyCode</span></div>
+    <section class="warranty-detail-card">
+        <header><div><span class="warranty-code">@Model.WarrantyCode</span><h1>@Model.IssueTitle</h1><p>@Model.ProductName</p></div><span class="warranty-status @WarrantyStatuses.BadgeClass(Model.Status)">@Model.Status</span></header>
+        <div class="warranty-detail-grid">
+            <div><h2><i class="bi bi-box-seam"></i> Thông tin sản phẩm</h2><dl><div><dt>Đơn hàng</dt><dd>@(Model.OrderId.HasValue ? $"DH{Model.OrderId.Value:D6}" : "—")</dd></div><div><dt>Ngày mua</dt><dd>@DateTimeHelper.FormatVietnam(Model.PurchaseDate, "dd/MM/yyyy")</dd></div><div><dt>Thời hạn</dt><dd>@Model.WarrantyMonths tháng</dd></div><div><dt>Hết hạn</dt><dd>@DateTimeHelper.FormatVietnam(expiresAt, "dd/MM/yyyy")</dd></div></dl></div>
+            <div><h2><i class="bi bi-person"></i> Thông tin liên hệ</h2><dl><div><dt>Khách hàng</dt><dd>@Model.CustomerName</dd></div><div><dt>Điện thoại</dt><dd>@Model.Phone</dd></div><div><dt>Email</dt><dd>@(Model.Email ?? "—")</dd></div><div><dt>Ngày gửi</dt><dd>@DateTimeHelper.FormatVietnam(Model.CreatedAt, "dd/MM/yyyy HH:mm")</dd></div></dl></div>
+        </div>
+        <div class="warranty-description"><h2>Mô tả lỗi</h2><p>@Model.IssueDescription</p>@if (!string.IsNullOrWhiteSpace(Model.EvidencePath)){<a href="@Model.EvidencePath" target="_blank"><img src="@Model.EvidencePath" alt="Ảnh minh chứng" /></a>}</div>
+        @if (!string.IsNullOrWhiteSpace(Model.AdminNote)){<div class="warranty-admin-note"><i class="bi bi-chat-left-text"></i><div><strong>Phản hồi từ KKSHOP</strong><p>@Model.AdminNote</p></div></div>}
+    </section>
+</div>

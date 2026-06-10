@@ -249,7 +249,10 @@
                             <td>
                                 <div class="order-product-info">
                                     <img src="@img" alt="@d.ProductName" onerror="this.onerror=null;this.src='/images/placeholders/product-placeholder.png';" />
-                                    <strong>@d.ProductName</strong>
+                                    <div>
+                                        <strong>@d.ProductName</strong>
+                                        <a class="d-block small mt-1 text-danger text-decoration-none" asp-controller="Warranty" asp-action="Check" asp-route-query="@($"DH{Model.Id:D6}")"><i class="bi bi-shield-check"></i> Kiểm tra bảo hành</a>
+                                    </div>
                                 </div>
                             </td>
                             <td class="order-product-price">@d.UnitPrice.ToString("N0") đ</td>
