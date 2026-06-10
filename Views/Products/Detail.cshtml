@@ -1,200 +1,256 @@
 @using Datn.PcStore.Helpers
 @model Product
 @{
+    ViewData["Title"] = Model.Name;
+
     var suggestions = ViewBag.UpgradeSuggestions as List<Product> ?? new();
     var galleryImages = Model.ProductImages.OrderBy(x => x.SortOrder).ToList();
     var mainImage = ImageUrlHelper.ResolveImageUrl(galleryImages.FirstOrDefault()?.ImageUrl
         ?? Model.ThumbnailImage, "/images/no-image.png");
+    var galleryImageUrls = galleryImages
+        .Select(image => ImageUrlHelper.ResolveImageUrl(image.ImageUrl, "/images/no-image.png"))
+        .ToList();
+    if (!galleryImageUrls.Any())
+    {
+        galleryImageUrls.Add(mainImage);
+    }
     var finalPrice = (Model.DiscountPrice ?? Model.SalePrice) ?? Model.Price;
     var savings = Model.Price > finalPrice ? Model.Price - finalPrice : 0;
     var inStock = Model.StockQuantity > 0;
+    var warrantyText = Model.WarrantyMonths > 0 ? $"{Model.WarrantyMonths} tháng" : Model.WarrantyDuration;
 
     var descriptionLines = ProductSpecDisplayHelper.GetSafeTextLines(Model);
     var promotionLines = ProductPromotionHelper.GetPromotionLines(Model);
-
-    var componentSpecs = ProductSpecDisplayHelper.TryParseComponentSpecs(Model.TechnicalSpecifications);
+    var componentSpecs = ProductSpecDisplayHelper.TryParseComponentSpecs(Model.TechnicalSpecifications)
+        .Where(spec => !string.IsNullOrWhiteSpace(spec.Description))
+        .GroupBy(spec => spec.Description.Trim(), StringComparer.OrdinalIgnoreCase)
+        .Select(group => group.First())
+        .ToList();
     var hasComponentSpecs = componentSpecs.Any();
-    var specsLines = new List<string>();
 }
 
 <div class="product-detail-page">
-    <div class="product-top card border-0 shadow-sm">
-        <div class="card-body p-4">
-            <div class="row g-4 align-items-start">
-                <div class="col-lg-7">
-                    <div class="product-gallery-main">
-                        <img id="main-product-image" src="@mainImage" alt="@Model.Name" onerror="this.onerror=null;this.src='/images/no-image.png';" />
-                    </div>
+    <nav class="product-detail-breadcrumb" aria-label="Điều hướng">
+        <a asp-controller="Home" asp-action="Index">Trang chủ</a>
+        <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        <a asp-controller="Products" asp-action="Index">Sản phẩm</a>
+        <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        <span aria-current="page">@Model.Name</span>
+    </nav>
 
-                    @if (galleryImages.Any())
-                    {
-                        <div class="product-gallery-thumbs mt-3">
-                            @for (var i = 0; i < galleryImages.Count; i++)
-                            {
-                                var image = galleryImages[i];
-                                <button type="button" class="thumb-btn @(i == 0 ? "active" : string.Empty)" data-src="@ImageUrlHelper.ResolveImageUrl(image.ImageUrl, "/images/no-image.png")">
-                                    <img src="@ImageUrlHelper.ResolveImageUrl(image.ImageUrl, "/images/no-image.png")" alt="Thumbnail @i" onerror="this.onerror=null;this.src='/images/no-image.png';" />
-                                </button>
-                            }
-                        </div>
-                    }
+    <section class="product-detail-card" aria-labelledby="product-title">
+        <div class="product-detail-grid">
+            <div class="product-detail-media">
+                <div class="product-gallery-main">
+                    <img id="main-product-image"
+                         src="@mainImage"
+                         alt="@Model.Name"
+                         onerror="this.onerror=null;this.src='/images/no-image.png';" />
                 </div>
 
-                <div class="col-lg-5">
-                    <h1 class="product-name">@Model.Name</h1>
+                @if (galleryImageUrls.Any())
+                {
+                    <div class="product-gallery-thumbs" aria-label="Ảnh sản phẩm">
+                        @for (var i = 0; i < galleryImageUrls.Count; i++)
+                        {
+                            var imageUrl = galleryImageUrls[i];
+                            <button type="button"
+                                    class="thumb-btn @(i == 0 ? "active" : string.Empty)"
+                                    data-src="@imageUrl"
+                                    aria-label="Xem ảnh sản phẩm @(i + 1)"
+                                    aria-pressed="@(i == 0 ? "true" : "false")">
+                                <img src="@imageUrl"
+                                     alt="Ảnh thu nhỏ @(i + 1) của @Model.Name"
+                                     onerror="this.onerror=null;this.src='/images/no-image.png';" />
+                            </button>
+                        }
+                    </div>
+                }
+            </div>
 
-                    <div class="price-row mt-3 mb-3">
+            <div class="product-detail-info">
+                <div class="product-detail-heading">
+                    @if (!string.IsNullOrWhiteSpace(Model.Brand))
+                    {
+                        <span class="product-brand">@Model.Brand</span>
+                    }
+                    <h1 id="product-title" class="product-name">@Model.Name</h1>
+                </div>
+
+                <div class="product-price-block">
+                    <div class="price-row">
                         <span class="price-current">@finalPrice.ToString("N0", new System.Globalization.CultureInfo("vi-VN")) đ</span>
                         @if (finalPrice < Model.Price)
                         {
                             <span class="price-old">@Model.Price.ToString("N0", new System.Globalization.CultureInfo("vi-VN")) đ</span>
                         }
                     </div>
-
                     @if (savings > 0)
                     {
-                        <div class="text-success fw-semibold mb-3">Tiết kiệm: @savings.ToString("N0", new System.Globalization.CultureInfo("vi-VN")) đ</div>
+                        <div class="product-savings">
+                            <i class="bi bi-arrow-down-circle-fill" aria-hidden="true"></i>
+                            Tiết kiệm @savings.ToString("N0", new System.Globalization.CultureInfo("vi-VN")) đ
+                        </div>
                     }
+                </div>
 
-                    <div class="d-flex flex-wrap gap-2 mb-3">
-                        <span class="badge text-bg-light border">Bảo hành: @(Model.WarrantyMonths > 0 ? $"{Model.WarrantyMonths} tháng" : Model.WarrantyDuration)</span>
-                        @if (inStock)
-                        {
-                            <span class="badge text-bg-success">Còn hàng: @Model.StockQuantity</span>
-                        }
-                        else
-                        {
-                            <span class="badge text-bg-danger">Hết hàng</span>
-                        }
+                <div class="product-meta-pills">
+                    <span class="product-meta-pill warranty-pill">
+                        <i class="bi bi-shield-check" aria-hidden="true"></i>
+                        Bảo hành: @warrantyText
+                    </span>
+                    @if (inStock)
+                    {
+                        <span class="product-meta-pill stock-pill in-stock">
+                            <i class="bi bi-check-circle-fill" aria-hidden="true"></i>
+                            Còn hàng: @Model.StockQuantity
+                        </span>
+                    }
+                    else
+                    {
+                        <span class="product-meta-pill stock-pill out-of-stock">
+                            <i class="bi bi-x-circle-fill" aria-hidden="true"></i>
+                            Hết hàng
+                        </span>
+                    }
+                </div>
+
+                <div class="product-promotion-box">
+                    <div class="product-box-title product-promotion-title">
+                        <span class="product-box-icon"><i class="bi bi-gift-fill" aria-hidden="true"></i></span>
+                        <span>Khuyến mãi</span>
                     </div>
+                    <ul class="product-promotion-list">
+                        @foreach (var promotion in promotionLines)
+                        {
+                            <li><i class="bi bi-check2-circle" aria-hidden="true"></i><span>@promotion</span></li>
+                        }
+                    </ul>
+                </div>
 
-                    <div class="product-promotion-box mb-4">
-                        <div class="product-promotion-title">Khuyến mại:</div>
-                        <ul class="product-promotion-list">
-                            @foreach (var promotion in promotionLines)
+                @if (descriptionLines.Any())
+                {
+                    <div class="product-quick-desc">
+                        <div class="product-box-title">
+                            <span class="product-box-icon"><i class="bi bi-card-text" aria-hidden="true"></i></span>
+                            <span>Mô tả sản phẩm</span>
+                        </div>
+                        <ul>
+                            @foreach (var line in descriptionLines)
                             {
-                                <li><span aria-hidden="true">🎁</span><span>@promotion</span></li>
+                                <li><i class="bi bi-check-lg" aria-hidden="true"></i><span>@line</span></li>
                             }
                         </ul>
                     </div>
+                }
 
-                    @if (descriptionLines.Any())
-                    {
-                        <div class="product-quick-desc mb-4">
-                            <h6 class="fw-bold mb-2">Mô tả sản phẩm</h6>
-                            <ul class="mb-0">
-                                @foreach (var line in descriptionLines)
-                                {
-                                    <li>@line</li>
-                                }
-                            </ul>
-                        </div>
-                    }
-
-                    <form method="post" asp-controller="Cart" asp-action="Add" class="purchase-form">
-                        <input type="hidden" name="productId" value="@Model.Id" />
-                        <div class="d-flex align-items-center gap-2 mb-3">
-                            <label class="mb-0 fw-semibold">Số lượng</label>
-                            <input type="number" name="quantity" value="1" min="1" max="@(Math.Max(1, Model.StockQuantity))" class="form-control" style="width:100px;" @(inStock ? string.Empty : "disabled") />
-                        </div>
-                        <div class="d-flex gap-2 flex-wrap">
-                            <button class="btn btn-danger" type="submit" @(inStock ? string.Empty : "disabled")>Mua ngay</button>
-                            <button class="btn btn-outline-primary" type="submit" @(inStock ? string.Empty : "disabled")>Thêm vào giỏ</button>
-                        </div>
-                    </form>
-                    <div class="mt-3">
-                        <partial name="_CompareButton" model="Model" />
+                <form method="post" asp-controller="Cart" asp-action="Add" class="purchase-form">
+                    <input type="hidden" name="productId" value="@Model.Id" />
+                    <div class="purchase-quantity">
+                        <label for="product-quantity">Số lượng</label>
+                        <input id="product-quantity"
+                               type="number"
+                               name="quantity"
+                               value="1"
+                               min="1"
+                               max="@(Math.Max(1, Model.StockQuantity))"
+                               class="form-control"
+                               @(inStock ? string.Empty : "disabled") />
                     </div>
+                    <div class="purchase-actions">
+                        <button class="btn product-buy-now" type="submit" @(inStock ? string.Empty : "disabled")>
+                            <i class="bi bi-lightning-charge-fill" aria-hidden="true"></i>
+                            <span>Mua ngay</span>
+                        </button>
+                        <button class="btn product-add-cart" type="submit" @(inStock ? string.Empty : "disabled")>
+                            <i class="bi bi-cart-plus" aria-hidden="true"></i>
+                            <span>Thêm vào giỏ</span>
+                        </button>
+                    </div>
+                </form>
+
+                <div class="product-compare-action">
+                    <partial name="_CompareButton" model="Model" />
                 </div>
             </div>
         </div>
-    </div>
+    </section>
 
-    @if (hasComponentSpecs || specsLines.Any())
+    @if (hasComponentSpecs)
     {
-        <div class="spec-card card border-0 shadow-sm mt-4">
-            <div class="card-body p-0">
-                <div class="spec-header">THÔNG SỐ KỸ THUẬT</div>
-                @if (hasComponentSpecs)
-                {
-                    <div class="table-responsive">
-                        <table class="table spec-table mb-0">
-                            <thead>
-                                <tr>
-                                    <th class="text-center" style="width:70px;">STT</th>
-                                    <th>Mô tả thiết bị</th>
-                                    <th class="text-center" style="width:80px;">SL</th>
-                                    <th class="text-center" style="width:120px;">BH</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var spec in componentSpecs)
-                                {
-                                    <tr>
-                                        <td class="text-center">@spec.Stt</td>
-                                        <td>@spec.Description</td>
-                                        <td class="text-center">@spec.Quantity</td>
-                                        <td class="text-center">@spec.Warranty</td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
-                }
-                else
-                {
-                    <div class="table-responsive">
-                        <table class="table spec-table mb-0">
-                            <thead>
-                                <tr>
-                                    <th class="text-center" style="width:70px;">STT</th>
-                                    <th>Mô tả thiết bị</th>
-                                    <th class="text-center" style="width:80px;">SL</th>
-                                    <th class="text-center" style="width:120px;">BH</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @for (var i = 0; i < specsLines.Count; i++)
-                                {
-                                    <tr>
-                                        <td class="text-center">@(i + 1)</td>
-                                        <td>@specsLines[i]</td>
-                                        <td class="text-center">1</td>
-                                        <td class="text-center">@(Model.WarrantyMonths > 0 ? $"{Model.WarrantyMonths}T" : string.Empty)</td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
-                }
+        <section class="product-detail-section product-spec-section" aria-labelledby="product-spec-title">
+            <div class="product-section-heading">
+                <div>
+                    <span class="product-section-kicker">Chi tiết cấu hình</span>
+                    <h2 id="product-spec-title">Thông số kỹ thuật</h2>
+                </div>
+                <i class="bi bi-cpu" aria-hidden="true"></i>
             </div>
-        </div>
+            <div class="table-responsive">
+                <table class="table spec-table mb-0">
+                    <thead>
+                        <tr>
+                            <th class="text-center spec-order-column">STT</th>
+                            <th>Mô tả thiết bị</th>
+                            <th class="text-center spec-quantity-column">SL</th>
+                            <th class="text-center spec-warranty-column">BH</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (var i = 0; i < componentSpecs.Count; i++)
+                        {
+                            var spec = componentSpecs[i];
+                            <tr>
+                                <td class="text-center">@(i + 1)</td>
+                                <td>@spec.Description</td>
+                                <td class="text-center">@spec.Quantity</td>
+                                <td class="text-center">@spec.Warranty</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </section>
     }
 
     @if (suggestions.Any())
     {
-        <div class="card border-0 shadow-sm mt-4">
-            <div class="card-body">
-                <h5 class="mb-3">Sản phẩm liên quan</h5>
-                <div class="row g-3">
-                    @foreach (var p in suggestions)
-                    {
-                        <div class="col-sm-6 col-lg-3">
-                            <partial name="_ProductCard" model="p" />
-                        </div>
-                    }
+        <section class="product-detail-section product-related-section" aria-labelledby="related-products-title">
+            <div class="product-section-heading">
+                <div>
+                    <span class="product-section-kicker">Gợi ý nâng cấp</span>
+                    <h2 id="related-products-title">Sản phẩm liên quan</h2>
                 </div>
+                <a asp-controller="Products" asp-action="Index" class="product-view-all">
+                    Xem tất cả <i class="bi bi-arrow-right" aria-hidden="true"></i>
+                </a>
             </div>
-        </div>
+            <div class="product-related-grid">
+                @foreach (var product in suggestions)
+                {
+                    <partial name="_ProductCard" model="product" />
+                }
+            </div>
+        </section>
     }
 </div>
 
-<script>
-    document.querySelectorAll('.thumb-btn').forEach(function (button) {
-        button.addEventListener('click', function () {
-            document.getElementById('main-product-image').src = this.dataset.src;
-            document.querySelectorAll('.thumb-btn').forEach(function (item) { item.classList.remove('active'); });
-            this.classList.add('active');
+@section Scripts {
+    <script>
+        document.querySelectorAll('.product-detail-page .thumb-btn').forEach(function (button) {
+            button.addEventListener('click', function () {
+                const mainImage = document.getElementById('main-product-image');
+                if (mainImage && this.dataset.src) {
+                    mainImage.src = this.dataset.src;
+                }
+
+                document.querySelectorAll('.product-detail-page .thumb-btn').forEach(function (item) {
+                    item.classList.remove('active');
+                    item.setAttribute('aria-pressed', 'false');
+                });
+                this.classList.add('active');
+                this.setAttribute('aria-pressed', 'true');
+            });
         });
-    });
-</script>
+    </script>
+}
