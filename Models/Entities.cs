@@ -200,6 +200,7 @@ public class WarrantyRequest : BaseEntity
     [MaxLength(20)] public string Phone { get; set; } = string.Empty;
     [MaxLength(120)] public string? Email { get; set; }
     [MaxLength(200)] public string ProductName { get; set; } = string.Empty;
+    [MaxLength(40)] public string RequestCode { get; set; } = string.Empty;
     [MaxLength(80)] public string WarrantyCode { get; set; } = string.Empty;
     [MaxLength(100)] public string? SerialNumber { get; set; }
     public DateTime PurchaseDate { get; set; }

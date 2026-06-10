@@ -1,3 +1,4 @@
+using System.Data;
 using System.Security.Claims;
 using Datn.PcStore.Data;
 using Datn.PcStore.Helpers;
@@ -31,12 +32,22 @@ public class WarrantyController : Controller
         var normalized = vm.Query!;
         var numericText = new string(normalized.Where(char.IsDigit).ToArray());
         int.TryParse(numericText, out var numericId);
-        var deterministicDetailId = ParseWarrantyDetailId(normalized);
+        var deterministicDetailId = WarrantyCodeHelper.ParseWarrantyDetailId(normalized);
 
-        var orderDetailIdsByWarrantyCode = await _db.WarrantyRequests
-            .Where(x => x.WarrantyCode == normalized && x.OrderDetailId.HasValue)
-            .Select(x => x.OrderDetailId!.Value)
+        var matchingRequests = await _db.WarrantyRequests
+            .AsNoTracking()
+            .Include(x => x.Product)
+            .Include(x => x.OrderDetail)
+            .Where(x => x.Phone == normalized || x.WarrantyCode == normalized || x.RequestCode == normalized ||
+                        (numericId > 0 && x.OrderId == numericId))
+            .OrderByDescending(x => x.CreatedAt)
             .ToListAsync();
+
+        var requestDetailIds = matchingRequests
+            .Where(x => x.OrderDetailId.HasValue)
+            .Select(x => x.OrderDetailId!.Value)
+            .Distinct()
+            .ToList();
 
         var details = await _db.OrderDetails
             .AsNoTracking()
@@ -45,31 +56,47 @@ public class WarrantyController : Controller
             .Where(x => x.Order != null &&
                 (x.Order.ReceiverPhone == normalized ||
                  (numericId > 0 && x.OrderId == numericId) ||
-                 orderDetailIdsByWarrantyCode.Contains(x.Id) ||
+                 requestDetailIds.Contains(x.Id) ||
                  (deterministicDetailId.HasValue && x.Id == deterministicDetailId.Value)))
             .OrderByDescending(x => x.Order!.CreatedAt)
             .ToListAsync();
 
         var detailIds = details.Select(x => x.Id).ToList();
-        var activeDetailIds = await _db.WarrantyRequests
-            .Where(x => x.OrderDetailId.HasValue && detailIds.Contains(x.OrderDetailId.Value) &&
-                        (x.Status == WarrantyStatuses.Pending || x.Status == WarrantyStatuses.Received || x.Status == WarrantyStatuses.Processing))
+        var relatedRequests = await _db.WarrantyRequests
+            .AsNoTracking()
+            .Include(x => x.Product)
+            .Include(x => x.OrderDetail)
+            .Where(x => (x.OrderDetailId.HasValue && detailIds.Contains(x.OrderDetailId.Value)) ||
+                        x.Phone == normalized || x.WarrantyCode == normalized || x.RequestCode == normalized ||
+                        (numericId > 0 && x.OrderId == numericId))
+            .OrderByDescending(x => x.CreatedAt)
+            .ToListAsync();
+
+        vm.Requests = relatedRequests
+            .GroupBy(x => x.Id)
+            .Select(x => x.First())
+            .OrderByDescending(x => x.CreatedAt)
+            .ToList();
+
+        var activeDetailIds = vm.Requests
+            .Where(x => x.OrderDetailId.HasValue && WarrantyStatuses.IsActive(x.Status))
             .Select(x => x.OrderDetailId!.Value)
             .Distinct()
-            .ToListAsync();
+            .ToHashSet();
 
         var now = DateTimeHelper.UtcNow();
         vm.Products = details.Select(detail =>
         {
-            var months = detail.WarrantyMonths > 0 ? detail.WarrantyMonths : detail.Product?.WarrantyMonths > 0 ? detail.Product.WarrantyMonths : 12;
+            var months = GetWarrantyMonths(detail);
             var purchaseDate = detail.Order!.CreatedAt;
             return new WarrantyProductVm
             {
                 OrderId = detail.OrderId,
                 OrderDetailId = detail.Id,
-                ProductName = detail.ProductName,
+                ProductName = detail.ProductName ?? string.Empty,
                 ProductImage = detail.ProductImage,
-                WarrantyCode = BuildWarrantyCode(detail.OrderId, detail.Id),
+                WarrantyCode = WarrantyCodeHelper.BuildWarrantyCode(detail.OrderId, detail.Id),
+                LookupPhone = detail.Order.ReceiverPhone,
                 PurchaseDate = purchaseDate,
                 WarrantyMonths = months,
                 ExpiresAt = WarrantyPolicy.ExpiresAt(purchaseDate, months),
@@ -133,6 +160,17 @@ public class WarrantyController : Controller
             evidencePath = $"/uploads/warranty/{fileName}";
         }
 
+        await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+        var duplicateExists = await _db.WarrantyRequests.AnyAsync(x => x.OrderDetailId == detail.Id &&
+                                                                      WarrantyStatuses.AllActive.Contains(x.Status));
+        if (duplicateExists)
+        {
+            await transaction.RollbackAsync();
+            DeleteEvidenceFile(evidencePath);
+            TempData["InfoMessage"] = "Sản phẩm này đang có yêu cầu bảo hành được xử lý. Vui lòng theo dõi trạng thái bên dưới.";
+            return RedirectToAction(nameof(Check), new { query = WarrantyCodeHelper.BuildWarrantyCode(detail.OrderId, detail.Id) });
+        }
+
         var months = GetWarrantyMonths(detail);
         var request = new WarrantyRequest
         {
@@ -143,8 +181,9 @@ public class WarrantyController : Controller
             CustomerName = vm.CustomerName.Trim(),
             Phone = vm.Phone.Trim(),
             Email = string.IsNullOrWhiteSpace(vm.Email) ? null : vm.Email.Trim(),
-            ProductName = detail.ProductName,
-            WarrantyCode = BuildWarrantyCode(detail.OrderId, detail.Id),
+            ProductName = detail.ProductName ?? string.Empty,
+            RequestCode = $"TMP-{Guid.NewGuid():N}",
+            WarrantyCode = WarrantyCodeHelper.BuildWarrantyCode(detail.OrderId, detail.Id),
             PurchaseDate = detail.Order!.CreatedAt,
             WarrantyMonths = months,
             IssueTitle = vm.IssueTitle.Trim(),
@@ -155,30 +194,51 @@ public class WarrantyController : Controller
 
         _db.WarrantyRequests.Add(request);
         await _db.SaveChangesAsync();
-        TempData["SuccessMessage"] = $"Đã gửi yêu cầu bảo hành {request.WarrantyCode}. Shop sẽ sớm liên hệ với bạn.";
-        return RedirectToAction(nameof(Detail), new { id = request.Id, phone = request.UserId.HasValue ? null : request.Phone });
+        request.RequestCode = WarrantyCodeHelper.BuildRequestCode(request.Id);
+        await _db.SaveChangesAsync();
+        await transaction.CommitAsync();
+
+        TempData["SuccessMessage"] = $"Đã gửi yêu cầu bảo hành {request.RequestCode}. Shop sẽ sớm liên hệ với bạn.";
+        return RedirectToAction(nameof(Detail), new { id = request.Id, query = request.UserId.HasValue ? null : request.Phone });
     }
 
     [HttpGet("/Warranty/MyRequests")]
-    public async Task<IActionResult> MyRequests(string? phone)
+    public async Task<IActionResult> MyRequests(string? query, string? phone)
     {
         var userId = CurrentUserId();
-        var normalizedPhone = phone?.Trim();
-        var vm = new WarrantyMyRequestsVm { Phone = normalizedPhone, RequiresPhone = !userId.HasValue };
-
-        if (userId.HasValue || !string.IsNullOrWhiteSpace(normalizedPhone))
+        var lookup = (query ?? phone)?.Trim();
+        var vm = new WarrantyMyRequestsVm
         {
-            vm.Requests = await _db.WarrantyRequests.AsNoTracking()
-                .Include(x => x.Product)
-                .Where(x => userId.HasValue ? x.UserId == userId : x.Phone == normalizedPhone)
-                .OrderByDescending(x => x.CreatedAt)
-                .ToListAsync();
+            Query = lookup,
+            RequiresLookup = !userId.HasValue,
+            HasSearched = userId.HasValue || !string.IsNullOrWhiteSpace(lookup)
+        };
+
+        if (!vm.HasSearched) return View(vm);
+
+        var requests = _db.WarrantyRequests.AsNoTracking()
+            .Include(x => x.Product)
+            .Include(x => x.OrderDetail)
+            .AsQueryable();
+
+        if (userId.HasValue)
+        {
+            requests = requests.Where(x => x.UserId == userId);
         }
+        else
+        {
+            var digits = new string(lookup!.Where(char.IsDigit).ToArray());
+            int.TryParse(digits, out var orderId);
+            requests = requests.Where(x => x.Phone == lookup || x.WarrantyCode == lookup || x.RequestCode == lookup ||
+                                           (orderId > 0 && x.OrderId == orderId));
+        }
+
+        vm.Requests = await requests.OrderByDescending(x => x.CreatedAt).ToListAsync();
         return View(vm);
     }
 
     [HttpGet("/Warranty/Detail/{id:int}")]
-    public async Task<IActionResult> Detail(int id, string? phone)
+    public async Task<IActionResult> Detail(int id, string? query, string? phone)
     {
         var request = await _db.WarrantyRequests.AsNoTracking()
             .Include(x => x.Order)
@@ -186,7 +246,7 @@ public class WarrantyController : Controller
             .Include(x => x.Product)
             .FirstOrDefaultAsync(x => x.Id == id);
         if (request == null) return NotFound();
-        if (!CanAccessRequest(request, phone)) return Forbid();
+        if (!CanAccessRequest(request, query ?? phone)) return Forbid();
         return View(request);
     }
 
@@ -197,22 +257,23 @@ public class WarrantyController : Controller
 
     private async Task<IActionResult?> ValidateCanCreateAsync(OrderDetail detail)
     {
+        var redirectQuery = WarrantyCodeHelper.BuildWarrantyCode(detail.OrderId, detail.Id);
         if (!WarrantyPolicy.IsOrderEligible(detail.Order!))
         {
             TempData["ErrorMessage"] = "Sản phẩm chỉ có thể yêu cầu bảo hành sau khi đơn hàng đã thanh toán, giao hàng hoặc hoàn tất.";
-            return RedirectToAction(nameof(Check), new { query = $"DH{detail.OrderId:D6}" });
+            return RedirectToAction(nameof(Check), new { query = redirectQuery });
         }
         if (!WarrantyPolicy.IsInWarranty(detail.Order!.CreatedAt, GetWarrantyMonths(detail), DateTimeHelper.UtcNow()))
         {
             TempData["InfoMessage"] = "Sản phẩm đã hết thời hạn bảo hành, vui lòng liên hệ shop để được hỗ trợ thêm.";
-            return RedirectToAction(nameof(Check), new { query = $"DH{detail.OrderId:D6}" });
+            return RedirectToAction(nameof(Check), new { query = redirectQuery });
         }
         var duplicate = await _db.WarrantyRequests.AnyAsync(x => x.OrderDetailId == detail.Id &&
-            (x.Status == WarrantyStatuses.Pending || x.Status == WarrantyStatuses.Received || x.Status == WarrantyStatuses.Processing));
+                                                                  WarrantyStatuses.AllActive.Contains(x.Status));
         if (duplicate)
         {
-            TempData["InfoMessage"] = "Sản phẩm này đang có một yêu cầu bảo hành được xử lý. Vui lòng theo dõi yêu cầu hiện tại.";
-            return RedirectToAction(nameof(MyRequests), new { phone = detail.Order.ReceiverPhone });
+            TempData["InfoMessage"] = "Sản phẩm này đang có yêu cầu bảo hành được xử lý. Vui lòng theo dõi trạng thái bên dưới.";
+            return RedirectToAction(nameof(Check), new { query = redirectQuery });
         }
         return null;
     }
@@ -221,8 +282,8 @@ public class WarrantyController : Controller
     {
         var vm = new WarrantyCreateVm
         {
-            CustomerName = detail.Order!.User?.FullName ?? detail.Order.ReceiverName,
-            Phone = detail.Order.User?.Phone ?? detail.Order.ReceiverPhone,
+            CustomerName = detail.Order!.User?.FullName ?? detail.Order.ReceiverName ?? string.Empty,
+            Phone = detail.Order.User?.Phone ?? detail.Order.ReceiverPhone ?? string.Empty,
             Email = detail.Order.User?.Email ?? detail.Order.CustomerEmail
         };
         CopyProductData(vm, detail);
@@ -237,7 +298,7 @@ public class WarrantyController : Controller
         vm.OrderCode = $"DH{detail.OrderId:D6}";
         vm.ProductName = detail.ProductName;
         vm.ProductImage = detail.ProductImage;
-        vm.WarrantyCode = BuildWarrantyCode(detail.OrderId, detail.Id);
+        vm.WarrantyCode = WarrantyCodeHelper.BuildWarrantyCode(detail.OrderId, detail.Id);
         vm.PurchaseDate = detail.Order!.CreatedAt;
         vm.WarrantyMonths = months;
         vm.ExpiresAt = WarrantyPolicy.ExpiresAt(detail.Order.CreatedAt, months);
@@ -247,17 +308,30 @@ public class WarrantyController : Controller
     {
         if (User.IsInRole("Admin")) return true;
         var userId = CurrentUserId();
-        if (order.UserId.HasValue) return userId.HasValue && order.UserId == userId;
+        if (order.UserId.HasValue && userId.HasValue && order.UserId == userId) return true;
         return HttpContext.Session.GetInt32("LastOrderId") == order.Id ||
                (!string.IsNullOrWhiteSpace(phone) && order.ReceiverPhone == phone.Trim());
     }
 
-    private bool CanAccessRequest(WarrantyRequest request, string? phone)
+    private bool CanAccessRequest(WarrantyRequest request, string? lookup)
     {
         if (User.IsInRole("Admin")) return true;
         var userId = CurrentUserId();
-        if (request.UserId.HasValue) return userId.HasValue && request.UserId == userId;
-        return !string.IsNullOrWhiteSpace(phone) && request.Phone == phone.Trim();
+        if (request.UserId.HasValue && userId.HasValue) return request.UserId == userId;
+        if (string.IsNullOrWhiteSpace(lookup)) return false;
+
+        var normalized = lookup.Trim();
+        var orderCode = request.OrderId.HasValue ? $"DH{request.OrderId.Value:D6}" : string.Empty;
+        return request.Phone == normalized || request.WarrantyCode == normalized || request.RequestCode == normalized ||
+               orderCode.Equals(normalized, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private void DeleteEvidenceFile(string? evidencePath)
+    {
+        if (string.IsNullOrWhiteSpace(evidencePath)) return;
+        var relativePath = evidencePath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar);
+        var fullPath = Path.Combine(_environment.WebRootPath, relativePath);
+        if (System.IO.File.Exists(fullPath)) System.IO.File.Delete(fullPath);
     }
 
     private int? CurrentUserId() => User.Identity?.IsAuthenticated == true &&
@@ -265,12 +339,4 @@ public class WarrantyController : Controller
 
     private static int GetWarrantyMonths(OrderDetail detail) =>
         detail.WarrantyMonths > 0 ? detail.WarrantyMonths : detail.Product?.WarrantyMonths > 0 ? detail.Product.WarrantyMonths : 12;
-
-    private static string BuildWarrantyCode(int orderId, int detailId) => $"BH-DH{orderId:D6}-CT{detailId:D6}";
-
-    private static int? ParseWarrantyDetailId(string value)
-    {
-        var markerIndex = value.LastIndexOf("-CT", StringComparison.OrdinalIgnoreCase);
-        return markerIndex >= 0 && int.TryParse(value[(markerIndex + 3)..], out var id) ? id : null;
-    }
 }

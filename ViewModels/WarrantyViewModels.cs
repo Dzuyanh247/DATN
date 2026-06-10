@@ -12,15 +12,17 @@ public class WarrantyCheckVm
     public string? Query { get; set; }
     public bool HasSearched { get; set; }
     public List<WarrantyProductVm> Products { get; set; } = [];
+    public List<WarrantyRequest> Requests { get; set; } = [];
 }
 
 public class WarrantyProductVm
 {
     public int OrderId { get; set; }
     public int OrderDetailId { get; set; }
-    public string? ProductName { get; set; }
+    public string ProductName { get; set; } = string.Empty;
     public string? ProductImage { get; set; }
-    public string? WarrantyCode { get; set; }
+    public string WarrantyCode { get; set; } = string.Empty;
+    public string? LookupPhone { get; set; }
     public DateTime PurchaseDate { get; set; }
     public int WarrantyMonths { get; set; }
     public DateTime ExpiresAt { get; set; }
@@ -72,8 +74,9 @@ public class WarrantyCreateVm
 
 public class WarrantyMyRequestsVm
 {
-    [MaxLength(20)] public string? Phone { get; set; }
-    public bool RequiresPhone { get; set; }
+    [MaxLength(80)] public string? Query { get; set; }
+    public bool RequiresLookup { get; set; }
+    public bool HasSearched { get; set; }
     public List<WarrantyRequest> Requests { get; set; } = [];
 }
 
