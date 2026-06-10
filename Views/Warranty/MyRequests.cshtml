@@ -4,22 +4,34 @@
 }
 <link rel="stylesheet" href="~/css/warranty.css" asp-append-version="true" />
 <div class="warranty-page">
-    <div class="warranty-section-title warranty-section-title--page"><div><span>Theo dõi tiến độ</span><h1>Yêu cầu bảo hành của tôi</h1></div><a class="btn btn-outline-danger" asp-action="Check"><i class="bi bi-search me-2"></i>Kiểm tra sản phẩm</a></div>
-    @if (Model.RequiresPhone)
+    <div class="warranty-section-title warranty-section-title--page">
+        <div><span>Theo dõi tiến độ</span><h1>Yêu cầu bảo hành của tôi</h1></div>
+        <a class="btn btn-outline-danger" asp-action="Check"><i class="bi bi-search me-2"></i>Kiểm tra sản phẩm</a>
+    </div>
+    @if (Model.RequiresLookup)
     {
-        <form method="get" class="warranty-phone-lookup"><i class="bi bi-phone"></i><div class="flex-grow-1"><label class="form-label fw-semibold">Số điện thoại đã gửi yêu cầu</label><input name="phone" value="@Model.Phone" class="form-control" placeholder="Nhập số điện thoại" required /></div><button class="btn btn-danger">Tra cứu</button></form>
+        <form method="get" class="warranty-phone-lookup">
+            <i class="bi bi-search"></i>
+            <div class="flex-grow-1"><label class="form-label fw-semibold">Số điện thoại / mã đơn / mã bảo hành</label><input name="query" value="@Model.Query" class="form-control" placeholder="Nhập thông tin đã dùng khi mua hàng" required /></div>
+            <button class="btn btn-danger">Tra cứu yêu cầu</button>
+        </form>
     }
-    @if ((User.Identity?.IsAuthenticated == true || !string.IsNullOrWhiteSpace(Model.Phone)) && !Model.Requests.Any())
-    { <div class="warranty-empty"><i class="bi bi-inbox"></i><h3>Chưa có yêu cầu bảo hành</h3><p>Các yêu cầu bạn gửi sẽ được hiển thị tại đây.</p></div> }
+    @if (Model.HasSearched && !Model.Requests.Any())
+    {
+        <div class="warranty-empty"><i class="bi bi-inbox"></i><h3>Chưa có yêu cầu bảo hành</h3><p>Chưa tìm thấy yêu cầu phù hợp với thông tin tra cứu.</p></div>
+    }
     else if (Model.Requests.Any())
     {
         <div class="warranty-request-grid">
         @foreach (var item in Model.Requests)
         {
+            var image = ImageUrlHelper.ResolveImageUrl(item.OrderDetail?.ProductImage ?? item.Product?.ThumbnailImage, "/images/placeholders/product-placeholder.png");
             <article class="warranty-request-card">
-                <div class="d-flex justify-content-between gap-2 align-items-start"><span class="warranty-code">@item.WarrantyCode</span><span class="warranty-status @WarrantyStatuses.BadgeClass(item.Status)">@item.Status</span></div>
-                <h2>@item.ProductName</h2><p>@item.IssueTitle</p>
-                <div class="warranty-request-footer"><span><i class="bi bi-calendar3"></i> @DateTimeHelper.FormatVietnam(item.CreatedAt, "dd/MM/yyyy HH:mm")</span><a asp-action="Detail" asp-route-id="@item.Id" asp-route-phone="@(item.UserId.HasValue ? null : Model.Phone)">Xem chi tiết <i class="bi bi-arrow-right"></i></a></div>
+                <div class="warranty-request-card__product"><img src="@image" alt="@item.ProductName" /><div><span class="warranty-code">@(string.IsNullOrWhiteSpace(item.RequestCode) ? $"YCBH{item.Id:D6}" : item.RequestCode)</span><h2>@item.ProductName</h2></div></div>
+                <div class="warranty-request-card__meta"><span>@item.WarrantyCode</span><span class="warranty-status @WarrantyStatuses.BadgeClass(item.Status)">@item.Status</span></div>
+                <p>@(string.IsNullOrWhiteSpace(item.IssueTitle) ? "Yêu cầu kiểm tra sản phẩm" : item.IssueTitle)</p>
+                @if (!string.IsNullOrWhiteSpace(item.AdminNote)){<div class="warranty-card-admin-note"><i class="bi bi-chat-left-text"></i><span>@item.AdminNote</span></div>}
+                <div class="warranty-request-footer"><span><i class="bi bi-calendar3"></i> @DateTimeHelper.FormatVietnam(item.CreatedAt, "dd/MM/yyyy HH:mm")</span><a asp-action="Detail" asp-route-id="@item.Id" asp-route-query="@(User.Identity?.IsAuthenticated == true ? null : Model.Query)">Xem chi tiết <i class="bi bi-arrow-right"></i></a></div>
             </article>
         }
         </div>

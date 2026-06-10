@@ -7,18 +7,28 @@
     <span class="badge text-bg-dark rounded-pill px-3 py-2">@Model.Requests.Count kết quả</span>
 </div>
 <form method="get" class="admin-filter-bar">
-    <div class="input-group"><span class="input-group-text"><i class="bi bi-search"></i></span><input name="search" value="@Model.Search" class="form-control" placeholder="Mã đơn, mã bảo hành, SĐT, tên khách hàng" /></div>
+    <div class="input-group"><span class="input-group-text"><i class="bi bi-search"></i></span><input name="search" value="@Model.Search" class="form-control" placeholder="Mã yêu cầu, đơn hàng, bảo hành, SĐT, sản phẩm" /></div>
     <select name="status" class="form-select"><option value="">Tất cả trạng thái</option>@foreach (var status in WarrantyStatuses.All){<option value="@status" selected="@(Model.Status == status)">@status</option>}</select>
     <button class="btn btn-primary"><i class="bi bi-funnel me-1"></i>Lọc</button><a class="btn btn-light" asp-action="Index">Đặt lại</a>
 </form>
-<div class="table-responsive">
+<div class="table-responsive admin-warranty-table-wrap">
 <table class="table align-middle admin-warranty-table">
-    <thead><tr><th>Mã yêu cầu</th><th>Khách hàng</th><th>Sản phẩm / lỗi</th><th>Ngày gửi</th><th>Trạng thái</th><th></th></tr></thead>
+    <thead><tr><th>Mã yêu cầu / đơn</th><th>Sản phẩm</th><th>Khách hàng</th><th>Ngày mua / hết hạn</th><th>Ngày gửi</th><th>Trạng thái</th><th></th></tr></thead>
     <tbody>
-    @if (!Model.Requests.Any()){<tr><td colspan="6"><div class="text-center py-5 text-muted"><i class="bi bi-inbox fs-2 d-block mb-2"></i>Không có yêu cầu phù hợp.</div></td></tr>}
+    @if (!Model.Requests.Any()){<tr><td colspan="7"><div class="text-center py-5 text-muted"><i class="bi bi-inbox fs-2 d-block mb-2"></i>Không có yêu cầu phù hợp.</div></td></tr>}
     @foreach (var item in Model.Requests)
     {
-        <tr><td><strong>@item.WarrantyCode</strong><small class="d-block text-muted">@(item.OrderId.HasValue ? $"DH{item.OrderId.Value:D6}" : "Đơn hàng cũ")</small></td><td><strong>@item.CustomerName</strong><small class="d-block text-muted">@item.Phone</small></td><td><strong class="admin-warranty-product">@item.ProductName</strong><small class="d-block text-muted text-truncate">@item.IssueTitle</small></td><td>@DateTimeHelper.FormatVietnam(item.CreatedAt, "dd/MM/yyyy")<small class="d-block text-muted">@DateTimeHelper.FormatVietnam(item.CreatedAt, "HH:mm")</small></td><td><span class="warranty-status @WarrantyStatuses.BadgeClass(item.Status)">@item.Status</span></td><td class="text-end"><a class="btn btn-sm btn-outline-primary" asp-action="Detail" asp-route-id="@item.Id"><i class="bi bi-eye me-1"></i>Chi tiết</a></td></tr>
+        var image = ImageUrlHelper.ResolveImageUrl(item.OrderDetail?.ProductImage ?? item.Product?.ThumbnailImage, "/images/placeholders/product-placeholder.png");
+        var expiresAt = WarrantyPolicy.ExpiresAt(item.PurchaseDate, item.WarrantyMonths);
+        <tr>
+            <td><strong>@(string.IsNullOrWhiteSpace(item.RequestCode) ? $"YCBH{item.Id:D6}" : item.RequestCode)</strong><small class="d-block text-muted">@(item.OrderId.HasValue ? $"DH{item.OrderId.Value:D6}" : "Đơn hàng cũ")</small><small class="d-block text-muted">@item.WarrantyCode</small></td>
+            <td><div class="admin-warranty-product-cell"><img src="@image" alt="@item.ProductName" /><div><strong>@item.ProductName</strong><small>@(string.IsNullOrWhiteSpace(item.IssueTitle) ? "Yêu cầu kiểm tra sản phẩm" : item.IssueTitle)</small></div></div></td>
+            <td><strong>@(string.IsNullOrWhiteSpace(item.CustomerName) ? "—" : item.CustomerName)</strong><small class="d-block text-muted">@(string.IsNullOrWhiteSpace(item.Phone) ? "—" : item.Phone)</small></td>
+            <td><span>@DateTimeHelper.FormatVietnam(item.PurchaseDate, "dd/MM/yyyy")</span><small class="d-block text-muted">BH đến @DateTimeHelper.FormatVietnam(expiresAt, "dd/MM/yyyy")</small></td>
+            <td>@DateTimeHelper.FormatVietnam(item.CreatedAt, "dd/MM/yyyy")<small class="d-block text-muted">@DateTimeHelper.FormatVietnam(item.CreatedAt, "HH:mm")</small></td>
+            <td><span class="warranty-status @WarrantyStatuses.BadgeClass(item.Status)">@item.Status</span></td>
+            <td class="text-end"><a class="btn btn-sm btn-outline-primary" asp-action="Detail" asp-route-id="@item.Id"><i class="bi bi-eye me-1"></i>Chi tiết</a></td>
+        </tr>
     }
     </tbody>
 </table>

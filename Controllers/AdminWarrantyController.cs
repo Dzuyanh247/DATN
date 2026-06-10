@@ -16,7 +16,11 @@ public class AdminWarrantyController : Controller
     [HttpGet("/AdminWarranty")]
     public async Task<IActionResult> Index(string? status, string? search)
     {
-        var query = _db.WarrantyRequests.AsNoTracking().Include(x => x.Order).AsQueryable();
+        var query = _db.WarrantyRequests.AsNoTracking()
+            .Include(x => x.Order)
+            .Include(x => x.OrderDetail)
+            .Include(x => x.Product)
+            .AsQueryable();
         if (!string.IsNullOrWhiteSpace(status)) query = query.Where(x => x.Status == status);
         if (!string.IsNullOrWhiteSpace(search))
         {
@@ -24,7 +28,8 @@ public class AdminWarrantyController : Controller
             var digits = new string(term.Where(char.IsDigit).ToArray());
             int.TryParse(digits, out var orderId);
             query = query.Where(x => x.CustomerName.Contains(term) || x.Phone.Contains(term) ||
-                                     x.WarrantyCode.Contains(term) || (orderId > 0 && x.OrderId == orderId));
+                                     x.WarrantyCode.Contains(term) || x.RequestCode.Contains(term) || x.ProductName.Contains(term) ||
+                                     (orderId > 0 && x.OrderId == orderId));
         }
         return View(new AdminWarrantyIndexVm
         {

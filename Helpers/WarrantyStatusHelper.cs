@@ -13,7 +13,9 @@ public static class WarrantyStatuses
     public static readonly IReadOnlyList<string> All =
         [Pending, Received, Processing, Rejected, Completed];
 
-    public static bool IsActive(string? status) => status is Pending or Received or Processing;
+    public static readonly IReadOnlyList<string> AllActive = [Pending, Received, Processing];
+
+    public static bool IsActive(string? status) => status != null && AllActive.Contains(status);
 
     public static string BadgeClass(string? status) => status switch
     {

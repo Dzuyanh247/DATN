@@ -152,6 +152,7 @@ public class ApplicationDbContext : DbContext
 
         modelBuilder.Entity<WarrantyRequest>(entity =>
         {
+            entity.HasIndex(x => x.RequestCode).IsUnique();
             entity.HasIndex(x => x.WarrantyCode);
             entity.HasIndex(x => new { x.Phone, x.CreatedAt });
             entity.HasIndex(x => new { x.Status, x.UpdatedAt });
