@@ -12,59 +12,217 @@
         : OrderStatusHelper.RemainingSeconds(Model, nowUtc);
 }
 
-<h3>Thanh toán chuyển khoản cho đơn @($"DH{Model.Id:D6}")</h3>
-<div class="card p-3">
-    @if (Model.PaymentExpireAt.HasValue)
-    {
-        <p><strong>Hạn thanh toán:</strong> @DateTimeHelper.FormatVietnam(Model.PaymentExpireAt, "dd/MM/yyyy HH:mm")</p>
-        @if (canPayNow)
-        {
-            <p><strong>Thời gian còn lại:</strong> <span id="payment-countdown" data-remaining-seconds="@remainingSeconds">--:--:--</span></p>
-        }
-    }
-    <p><strong>Ngân hàng:</strong> @bankName</p>
-    <p><strong>Số tài khoản:</strong> @accountNumber</p>
-    <p><strong>Chủ tài khoản:</strong> @accountName</p>
-    <p><strong>Số tiền cần chuyển:</strong> <span class="text-danger fw-bold">@Model.TotalAmount.ToString("N0") đ</span></p>
-    <p><strong>Nội dung chuyển khoản:</strong> <code>@Model.TransferContent</code></p>
-    <div class="mb-3">
-        <img src="@qrData" alt="QR chuyển khoản" style="max-width:280px" class="img-thumbnail" />
-    </div>
+<div class="bank-transfer-page">
+    <div class="bank-transfer-container">
+        <section class="bank-transfer-card" aria-labelledby="bank-transfer-title">
+            <header class="payment-header">
+                <div class="payment-header-main">
+                    <span class="payment-header-icon" aria-hidden="true">
+                        <i class="bi bi-bank"></i>
+                    </span>
+                    <div>
+                        <h1 id="bank-transfer-title">Thanh toán chuyển khoản</h1>
+                        <div class="payment-order-meta">
+                            <span>Đơn hàng <strong>#@($"DH{Model.Id:D6}")</strong></span>
+                            <span class="payment-status @(canPayNow ? string.Empty : "payment-status--expired")" id="payment-status">
+                                <span class="payment-status-dot" aria-hidden="true"></span>
+                                <span id="payment-status-label">@(canPayNow ? "Đang chờ thanh toán" : "Đã hết hạn thanh toán")</span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
 
-    <div class="d-flex flex-wrap gap-2">
-        @if (canPayNow)
-        {
-            <form asp-action="ConfirmTransferred" method="post">
-                @Html.AntiForgeryToken()
-                <input type="hidden" name="id" value="@Model.Id" />
-                <button class="btn btn-primary">Tôi đã thanh toán</button>
-            </form>
-        }
-        <a asp-action="Quotation" asp-route-orderId="@Model.Id" class="btn btn-danger">In báo giá</a>
-        <a asp-action="ExportExcel" asp-route-orderId="@Model.Id" class="btn report-action-btn report-action-btn--excel"><i class="bi bi-file-earmark-spreadsheet"></i> Tải file Excel</a>
-        <a asp-action="Tracking" asp-route-id="@Model.Id" class="btn btn-outline-secondary">Theo dõi đơn hàng</a>
+                @if (Model.PaymentExpireAt.HasValue)
+                {
+                    <div class="payment-countdown-pill @(canPayNow ? string.Empty : "payment-countdown-pill--expired")" id="payment-countdown-card">
+                        <i class="bi bi-clock" aria-hidden="true"></i>
+                        <span>Thời gian còn lại:</span>
+                        <strong id="payment-countdown" data-remaining-seconds="@remainingSeconds">--:--:--</strong>
+                    </div>
+                }
+            </header>
+
+            <div class="payment-grid">
+                <section class="payment-info-card" aria-labelledby="payment-info-title">
+                    <div class="payment-section-heading">
+                        <span class="payment-section-icon" aria-hidden="true"><i class="bi bi-credit-card-2-front"></i></span>
+                        <div>
+                            <h2 id="payment-info-title">Thông tin chuyển khoản</h2>
+                            <p>Chuyển khoản theo đúng thông tin bên dưới</p>
+                        </div>
+                    </div>
+
+                    <div class="payment-info-list">
+                        <div class="payment-info-row">
+                            <span class="payment-info-label">Ngân hàng</span>
+                            <strong class="payment-info-value">@bankName</strong>
+                        </div>
+                        <div class="payment-info-row payment-info-row--copyable">
+                            <span class="payment-info-label">Số tài khoản</span>
+                            <div class="payment-value-with-action">
+                                <strong class="payment-info-value payment-account-number">@accountNumber</strong>
+                                <button type="button" class="payment-copy-btn" data-copy-value="@accountNumber" aria-label="Sao chép số tài khoản">
+                                    <i class="bi bi-copy" aria-hidden="true"></i>
+                                    <span>Sao chép</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="payment-info-row">
+                            <span class="payment-info-label">Chủ tài khoản</span>
+                            <strong class="payment-info-value">@accountName</strong>
+                        </div>
+                        <div class="payment-info-row payment-info-row--amount">
+                            <span class="payment-info-label">Số tiền cần chuyển</span>
+                            <strong class="payment-amount">@Model.TotalAmount.ToString("N0") đ</strong>
+                        </div>
+                    </div>
+
+                    <div class="payment-transfer-content">
+                        <span class="payment-info-label">Nội dung chuyển khoản</span>
+                        <div class="payment-transfer-content-box">
+                            <strong>@Model.TransferContent</strong>
+                            <button type="button" class="payment-copy-btn payment-copy-btn--content" data-copy-value="@Model.TransferContent" aria-label="Sao chép nội dung chuyển khoản">
+                                <i class="bi bi-copy" aria-hidden="true"></i>
+                                <span>Sao chép</span>
+                            </button>
+                        </div>
+                        <p><i class="bi bi-info-circle" aria-hidden="true"></i> Vui lòng không thay đổi nội dung chuyển khoản.</p>
+                    </div>
+                </section>
+
+                <section class="payment-qr-card" aria-labelledby="payment-qr-title">
+                    <div class="payment-qr-heading">
+                        <span class="payment-section-icon payment-section-icon--qr" aria-hidden="true"><i class="bi bi-qr-code-scan"></i></span>
+                        <div>
+                            <h2 id="payment-qr-title">Quét mã để thanh toán</h2>
+                            <p>Mở ứng dụng ngân hàng và quét mã QR</p>
+                        </div>
+                    </div>
+
+                    <div class="payment-qr-frame" id="payment-qr-frame">
+                        @if (!string.IsNullOrWhiteSpace(qrData))
+                        {
+                            <img src="@qrData"
+                                 alt="Mã QR thanh toán đơn hàng @($"DH{Model.Id:D6}")"
+                                 id="payment-qr-image"
+                                 loading="eager" />
+                        }
+                        <div class="payment-qr-fallback @(string.IsNullOrWhiteSpace(qrData) ? string.Empty : "d-none")" id="payment-qr-fallback" role="status">
+                            <i class="bi bi-qr-code" aria-hidden="true"></i>
+                            <span>Không thể tải mã QR. Vui lòng chuyển khoản bằng thông tin bên cạnh.</span>
+                        </div>
+                    </div>
+
+                    <p class="payment-qr-note">
+                        <i class="bi bi-shield-check" aria-hidden="true"></i>
+                        Vui lòng chuyển đúng số tiền và nội dung để đơn hàng được xác nhận nhanh hơn.
+                    </p>
+                </section>
+            </div>
+
+            <div class="payment-actions">
+                <form asp-action="ConfirmTransferred" method="post" class="payment-primary-action">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" value="@Model.Id" />
+                    <button type="submit" class="payment-action-btn payment-action-btn--primary" id="confirm-payment-btn" disabled="@(!canPayNow)">
+                        <i class="bi bi-check-circle" aria-hidden="true"></i>
+                        Tôi đã thanh toán
+                    </button>
+                </form>
+                <a asp-action="Quotation" asp-route-orderId="@Model.Id" class="payment-action-btn payment-action-btn--quotation">
+                    <i class="bi bi-printer" aria-hidden="true"></i>
+                    In báo giá
+                </a>
+                <a asp-action="ExportExcel" asp-route-orderId="@Model.Id" class="payment-action-btn payment-action-btn--excel">
+                    <i class="bi bi-file-earmark-spreadsheet" aria-hidden="true"></i>
+                    Tải file Excel
+                </a>
+                <a asp-action="Tracking" asp-route-id="@Model.Id" class="payment-action-btn payment-action-btn--secondary">
+                    <i class="bi bi-truck" aria-hidden="true"></i>
+                    Theo dõi đơn hàng
+                </a>
+            </div>
+        </section>
     </div>
 </div>
 
 @section Scripts {
     <script>
         (() => {
+            const copyButtons = document.querySelectorAll('.payment-copy-btn[data-copy-value]');
+            copyButtons.forEach(button => {
+                button.addEventListener('click', async () => {
+                    const label = button.querySelector('span');
+                    const icon = button.querySelector('i');
+                    const originalText = label?.textContent || 'Sao chép';
+
+                    try {
+                        await navigator.clipboard.writeText(button.dataset.copyValue || '');
+                        button.classList.add('is-copied');
+                        if (label) label.textContent = 'Đã copy';
+                        if (icon) icon.className = 'bi bi-check2';
+
+                        window.setTimeout(() => {
+                            button.classList.remove('is-copied');
+                            if (label) label.textContent = originalText;
+                            if (icon) icon.className = 'bi bi-copy';
+                        }, 1800);
+                    } catch {
+                        if (label) label.textContent = 'Không thể copy';
+                        window.setTimeout(() => {
+                            if (label) label.textContent = originalText;
+                        }, 1800);
+                    }
+                });
+            });
+
+            const qrImage = document.getElementById('payment-qr-image');
+            const qrFallback = document.getElementById('payment-qr-fallback');
+            if (qrImage && qrFallback) {
+                qrImage.addEventListener('error', () => {
+                    qrImage.classList.add('d-none');
+                    qrFallback.classList.remove('d-none');
+                });
+            }
+
             const countdownEl = document.getElementById('payment-countdown');
             if (!countdownEl) return;
+
+            const countdownCard = document.getElementById('payment-countdown-card');
+            const statusEl = document.getElementById('payment-status');
+            const statusLabel = document.getElementById('payment-status-label');
+            const confirmButton = document.getElementById('confirm-payment-btn');
             let remainingSeconds = Number.parseInt(countdownEl.dataset.remainingSeconds || '0', 10);
             if (!Number.isFinite(remainingSeconds)) remainingSeconds = 0;
-            const pad = n => String(n).padStart(2, '0');
-            function render(totalSec) {
-                const h = Math.floor(totalSec / 3600);
-                const m = Math.floor((totalSec % 3600) / 60);
-                const s = totalSec % 60;
-                countdownEl.textContent = totalSec > 0 ? `${pad(h)}:${pad(m)}:${pad(s)}` : 'Đã hết hạn';
-            }
+
+            const pad = number => String(number).padStart(2, '0');
+            const setExpiredState = () => {
+                countdownEl.textContent = 'Đã hết hạn';
+                countdownCard?.classList.add('payment-countdown-pill--expired');
+                statusEl?.classList.add('payment-status--expired');
+                if (statusLabel) statusLabel.textContent = 'Đã hết hạn thanh toán';
+                if (confirmButton) confirmButton.disabled = true;
+            };
+            const render = totalSeconds => {
+                if (totalSeconds <= 0) {
+                    setExpiredState();
+                    return;
+                }
+
+                const hours = Math.floor(totalSeconds / 3600);
+                const minutes = Math.floor((totalSeconds % 3600) / 60);
+                const seconds = totalSeconds % 60;
+                countdownEl.textContent = `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+            };
+
             render(remainingSeconds);
-            window.setInterval(() => {
+            if (remainingSeconds <= 0) return;
+
+            const countdownTimer = window.setInterval(() => {
                 remainingSeconds = Math.max(0, remainingSeconds - 1);
                 countdownEl.dataset.remainingSeconds = remainingSeconds;
                 render(remainingSeconds);
+                if (remainingSeconds === 0) window.clearInterval(countdownTimer);
             }, 1000);
         })();
     </script>

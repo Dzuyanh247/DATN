@@ -30,6 +30,10 @@
     {
         <link rel="stylesheet" href="~/css/products.css" asp-append-version="true" />
     }
+    @if (controllerName == "Orders" && actionName == "BankTransfer")
+    {
+        <link rel="stylesheet" href="~/css/bank-transfer.css" asp-append-version="true" />
+    }
     @if (!isAdminPage)
     {
         <link rel="stylesheet" href="~/css/chatbox.css" asp-append-version="true" />
