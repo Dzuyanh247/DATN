@@ -150,6 +150,17 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<ProductImage>()
             .HasIndex(x => new { x.ProductId, x.SortOrder });
 
+        modelBuilder.Entity<WarrantyRequest>(entity =>
+        {
+            entity.HasIndex(x => x.WarrantyCode);
+            entity.HasIndex(x => new { x.Phone, x.CreatedAt });
+            entity.HasIndex(x => new { x.Status, x.UpdatedAt });
+            entity.HasOne(x => x.Order).WithMany().HasForeignKey(x => x.OrderId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.OrderDetail).WithMany().HasForeignKey(x => x.OrderDetailId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.SetNull);
+        });
+
         modelBuilder.Entity<Product>()
             .Property(x => x.Price)
             .HasPrecision(18, 2);

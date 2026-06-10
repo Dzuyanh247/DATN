@@ -1,0 +1,27 @@
+@model WarrantyMyRequestsVm
+@{
+    ViewData["Title"] = "Yêu cầu bảo hành của tôi";
+}
+<link rel="stylesheet" href="~/css/warranty.css" asp-append-version="true" />
+<div class="warranty-page">
+    <div class="warranty-section-title warranty-section-title--page"><div><span>Theo dõi tiến độ</span><h1>Yêu cầu bảo hành của tôi</h1></div><a class="btn btn-outline-danger" asp-action="Check"><i class="bi bi-search me-2"></i>Kiểm tra sản phẩm</a></div>
+    @if (Model.RequiresPhone)
+    {
+        <form method="get" class="warranty-phone-lookup"><i class="bi bi-phone"></i><div class="flex-grow-1"><label class="form-label fw-semibold">Số điện thoại đã gửi yêu cầu</label><input name="phone" value="@Model.Phone" class="form-control" placeholder="Nhập số điện thoại" required /></div><button class="btn btn-danger">Tra cứu</button></form>
+    }
+    @if ((User.Identity?.IsAuthenticated == true || !string.IsNullOrWhiteSpace(Model.Phone)) && !Model.Requests.Any())
+    { <div class="warranty-empty"><i class="bi bi-inbox"></i><h3>Chưa có yêu cầu bảo hành</h3><p>Các yêu cầu bạn gửi sẽ được hiển thị tại đây.</p></div> }
+    else if (Model.Requests.Any())
+    {
+        <div class="warranty-request-grid">
+        @foreach (var item in Model.Requests)
+        {
+            <article class="warranty-request-card">
+                <div class="d-flex justify-content-between gap-2 align-items-start"><span class="warranty-code">@item.WarrantyCode</span><span class="warranty-status @WarrantyStatuses.BadgeClass(item.Status)">@item.Status</span></div>
+                <h2>@item.ProductName</h2><p>@item.IssueTitle</p>
+                <div class="warranty-request-footer"><span><i class="bi bi-calendar3"></i> @DateTimeHelper.FormatVietnam(item.CreatedAt, "dd/MM/yyyy HH:mm")</span><a asp-action="Detail" asp-route-id="@item.Id" asp-route-phone="@(item.UserId.HasValue ? null : Model.Phone)">Xem chi tiết <i class="bi bi-arrow-right"></i></a></div>
+            </article>
+        }
+        </div>
+    }
+</div>
