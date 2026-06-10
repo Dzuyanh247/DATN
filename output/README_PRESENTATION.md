@@ -1,40 +1,34 @@
-# Hướng dẫn tạo PowerPoint DATN PC Store
+# PowerPoint bảo vệ đồ án DATN PC Store
 
-Bài thuyết trình bảo vệ đồ án gồm **30 slide** theo phong cách “clean IT thesis
-deck”. File PowerPoint là sản phẩm build local và không được lưu trong Git.
+Bộ PowerPoint gồm **30 slide** theo phong cách đồ án tốt nghiệp CNTT hiện đại, được sinh trực tiếp từ source code hiện tại.
 
-## Nội dung đã xác minh
+## Điểm chính của phiên bản thiết kế lại
 
-Generator rà soát các marker chức năng trong `Controllers`, `Models`,
-`ViewModels`, `Services`, `Views`, `Program.cs`, `ApplicationDbContext`,
-`wwwroot/js`, `wwwroot/css` và migration trước khi tạo deck. Nội dung chỉ dùng
-các chức năng có trong source: sản phẩm, tài khoản, giỏ hàng, đặt hàng,
-COD/chuyển khoản QR, GHN, Build PC, so sánh, chat SignalR, bảo hành, báo giá và
-quản trị.
+- Nội dung đi theo hành trình: bài toán → kiến trúc → khám phá → tư vấn → giao dịch → hậu mãi → quản trị → đánh giá.
+- Bao phủ các chức năng lớn có trong source: catalog, tài khoản/OTP, giỏ hàng guest/user, checkout GHN, COD/chuyển khoản QR, tracking, báo giá/Excel, Build PC/CSV, so sánh, SignalR chat, feedback, bảo hành, articles và toàn bộ các nhóm quản trị chính.
+- Các slide demo dùng **khung giao diện vector bám theo View/Controller thật**, không còn placeholder trống lặp lại.
+- Mỗi slide có một shape nền full-slide riêng, mang tên `BACKGROUND — replaceable full-slide layer` và nằm đầu z-order để có thể thay nền an toàn.
+- Bố cục, decor và nhịp trình bày thay đổi giữa các slide nhưng dùng chung hệ màu navy–blue–cyan–purple–orange–green.
 
-## Cách tạo
+## Tạo PowerPoint
 
-Từ thư mục gốc repository, chạy:
+Từ thư mục gốc repository:
 
 ```bash
-python Scripts/generate_presentation.py
+python3 Scripts/generate_presentation.py
 ```
 
-Kết quả local:
+Kết quả:
 
-- `output/DATN_PC_Store_Gioi_Thieu.pptx`
-- `output/presentation_speech.md`
+- `output/DATN_PC_Store_Gioi_Thieu.pptx` — file PowerPoint 16:9, 30 slide.
+- `output/presentation_speech.md` — lời thuyết trình 40–50 giây/slide.
+- `output/presentation_outline.md` — dàn ý đồng bộ với deck.
+- `output/presentation_notes.md` — ghi chú thiết kế và vị trí giao diện.
+- `output/presentation_script.md` — kịch bản rút gọn.
+- `output/slide_image_placeholders.md` — hướng dẫn thay khung vector bằng screenshot thật khi có môi trường chạy ứng dụng.
 
-Script không tải ảnh, không tạo base64/PDF/video và chỉ dùng shape, text cùng
-OOXML chuẩn để không phụ thuộc package ngoài. Sau khi sinh, script tự kiểm tra
-ZIP, parse XML của 30 slide và đối chiếu đủ 30 phần lời thuyết trình.
+Generator tự kiểm tra marker chức năng trong source, số slide, thứ tự slide, lớp background, biên canvas, ZIP/OOXML và số phần lời thuyết trình.
 
-## Chèn ảnh giao diện thật
+## Lưu ý
 
-Các slide **14–23, 25 và 26** có placeholder nét đứt và URL cần chụp. Hãy chạy
-ứng dụng, chụp đúng màn hình thật rồi thay placeholder trong PowerPoint.
-
-## Lưu ý Git
-
-`output/*.pptx` nằm trong `.gitignore`. Không dùng `git add -f` để commit file
-PowerPoint. Chỉ commit script và các file Markdown liên quan.
+File `.pptx` được tạo local và nằm trong `.gitignore`; repository lưu generator cùng các tài liệu Markdown để có thể tái tạo deck nhất quán trên máy khác.
