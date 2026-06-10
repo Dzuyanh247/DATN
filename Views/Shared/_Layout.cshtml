@@ -26,6 +26,10 @@
     <link rel="stylesheet" href="~/css/account.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/home-redesign.css" />
     <link rel="stylesheet" href="~/css/admin.css" />
+    @if (controllerName == "AdminOrders")
+    {
+        <link rel="stylesheet" href="~/css/admin-orders.css" asp-append-version="true" />
+    }
     @if (controllerName == "Products")
     {
         <link rel="stylesheet" href="~/css/products.css" asp-append-version="true" />

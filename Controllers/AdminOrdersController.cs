@@ -60,7 +60,24 @@ public class AdminOrdersController : Controller
 
         if (!string.IsNullOrWhiteSpace(paymentStatus))
         {
-            query = query.Where(o => o.PaymentStatus == paymentStatus);
+            query = paymentStatus switch
+            {
+                PaymentStatuses.Paid => query.Where(o =>
+                    (o.Status == OrderStatus.Completed && o.PaymentStatus != PaymentStatuses.Refunded)
+                    || (o.Status != OrderStatus.Expired && o.PaymentStatus == PaymentStatuses.Paid)),
+                PaymentStatuses.Expired => query.Where(o =>
+                    o.Status == OrderStatus.Expired
+                    || (o.Status != OrderStatus.Completed && o.PaymentStatus == PaymentStatuses.Expired)),
+                PaymentStatuses.Pending => query.Where(o =>
+                    o.Status == OrderStatus.PendingPayment
+                    && (o.PaymentStatus == PaymentStatuses.Pending || o.PaymentStatus == PaymentStatuses.Unpaid)),
+                PaymentStatuses.Failed => query.Where(o =>
+                    o.PaymentStatus == PaymentStatuses.Failed
+                    || (o.Status == OrderStatus.Cancelled
+                        && o.PaymentStatus != PaymentStatuses.Paid
+                        && o.PaymentStatus != PaymentStatuses.Refunded)),
+                _ => query.Where(o => o.PaymentStatus == paymentStatus)
+            };
         }
 
         // Ngày nhập trên giao diện là ngày Việt Nam (UTC+7), dữ liệu trong DB được lưu UTC.
@@ -80,14 +97,19 @@ public class AdminOrdersController : Controller
             .OrderByDescending(o => o.CreatedAt)
             .ToListAsync(cancellationToken);
 
+        var orderStates = await _db.Orders
+            .AsNoTracking()
+            .Select(o => new { o.Status, o.PaymentStatus })
+            .ToListAsync(cancellationToken);
         var stats = new AdminOrderStatsVm
         {
-            TotalOrders = await _db.Orders.CountAsync(cancellationToken),
-            PendingPaymentOrders = await _db.Orders.CountAsync(o => o.Status == OrderStatus.PendingPayment, cancellationToken),
-            PaidOrders = await _db.Orders.CountAsync(o => o.PaymentStatus == PaymentStatuses.Paid, cancellationToken),
-            ExpiredPaymentOrders = await _db.Orders.CountAsync(
-                o => o.Status == OrderStatus.Expired || o.PaymentStatus == PaymentStatuses.Expired,
-                cancellationToken)
+            TotalOrders = orderStates.Count,
+            PendingPaymentOrders = orderStates.Count(o =>
+                o.Status == OrderStatus.PendingPayment
+                && OrderStatusHelper.NormalizePaymentStatus(o.Status, o.PaymentStatus) == PaymentStatuses.Pending),
+            PaidOrders = orderStates.Count(o => OrderStatusHelper.IsEffectivelyPaid(o.Status, o.PaymentStatus)),
+            ExpiredPaymentOrders = orderStates.Count(o =>
+                OrderStatusHelper.NormalizePaymentStatus(o.Status, o.PaymentStatus) == PaymentStatuses.Expired)
         };
 
         var model = new AdminOrdersIndexVm
@@ -140,6 +162,7 @@ public class AdminOrdersController : Controller
             case OrderStatus.PendingConfirmation:
             case OrderStatus.Pending:
                 order.Status = OrderStatus.PendingConfirmation;
+                order.PaymentExpireAt = null;
                 if (PaymentMethods.RequiresOnlinePayment(order.PaymentMethod) && !OrderStatusHelper.IsPaid(order))
                 {
                     order.PaymentStatus = PaymentStatuses.PendingConfirmation;
@@ -150,6 +173,7 @@ public class AdminOrdersController : Controller
                 break;
             case OrderStatus.Delivering:
                 order.Status = OrderStatus.Delivering;
+                order.PaymentExpireAt = null;
                 if (PaymentMethods.RequiresOnlinePayment(order.PaymentMethod))
                 {
                     order.PaymentStatus = PaymentStatuses.Paid;
@@ -158,22 +182,15 @@ public class AdminOrdersController : Controller
                 break;
             case OrderStatus.Completed:
                 order.Status = OrderStatus.Completed;
-                if (PaymentMethods.RequiresOnlinePayment(order.PaymentMethod))
-                {
-                    order.PaymentStatus = PaymentStatuses.Paid;
-                    order.PaidAt ??= DateTimeHelper.UtcNow();
-                }
+                order.PaymentStatus = PaymentStatuses.Paid;
+                order.PaymentExpireAt = null;
+                order.PaidAt ??= DateTimeHelper.UtcNow();
                 break;
             case OrderStatus.Cancelled:
                 await _orderExpirationService.MarkCancelledAsync(order);
                 break;
             case OrderStatus.Expired:
-                await _orderExpirationService.ExpireOrderIfNeededAsync(order);
-                if (order.Status != OrderStatus.Expired)
-                {
-                    TempData["ErrorMessage"] = "Không thể chuyển hết hạn thanh toán khi hạn thanh toán vẫn còn.";
-                    return RedirectToAction(nameof(Detail), new { id = order.Id });
-                }
+                await _orderExpirationService.MarkExpiredByAdminAsync(order);
                 break;
             default:
                 order.Status = status;
@@ -218,8 +235,8 @@ public class AdminOrdersController : Controller
         CustomerPhone = FirstNonEmpty(order.ReceiverPhone, order.User?.Phone, "—"),
         TotalAmount = order.TotalAmount,
         Status = order.Status,
-        PaymentStatus = order.PaymentStatus,
-        PaymentDeadline = order.PaymentExpireAt,
+        PaymentStatus = OrderStatusHelper.NormalizePaymentStatus(order.Status, order.PaymentStatus),
+        PaymentDeadline = order.Status == OrderStatus.PendingPayment ? order.PaymentExpireAt : null,
         CreatedAt = order.CreatedAt,
         Products = order.Details.OrderBy(d => d.Id).Select(MapProduct).ToList()
     };
@@ -233,9 +250,9 @@ public class AdminOrdersController : Controller
         ShippingAddress = FirstNonEmpty(order.FullAddress, order.ShippingAddress, "Chưa cập nhật"),
         Note = order.Note,
         PaymentMethod = order.PaymentMethod,
-        PaymentStatus = order.PaymentStatus,
+        PaymentStatus = OrderStatusHelper.NormalizePaymentStatus(order.Status, order.PaymentStatus),
         PaidAt = order.PaidAt,
-        PaymentDeadline = order.PaymentExpireAt,
+        PaymentDeadline = order.Status == OrderStatus.PendingPayment ? order.PaymentExpireAt : null,
         Status = order.Status,
         CreatedAt = order.CreatedAt,
         SubtotalAmount = order.SubtotalAmount,
