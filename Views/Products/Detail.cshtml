@@ -33,25 +33,6 @@
         .ToList();
     var promotionLines = ProductPromotionHelper.GetPromotionLines(Model);
 
-    // Tạm ẩn lựa chọn nâng cấp cho đến khi có logic tính lại giá theo cấu hình.
-    var showUpgradeOptions = false;
-    var upgradeGroups = componentSpecs
-        .Select(spec => new { Spec = spec, Group = ProductSpecDisplayHelper.GetSpecGroup(spec.Description) })
-        .Where(item => item.Group is "CPU" or "RAM" or "SSD")
-        .GroupBy(item => item.Group)
-        .ToDictionary(group => group.Key, group => group.Select(item => item.Spec.Description).Distinct(StringComparer.OrdinalIgnoreCase).Take(2).ToList());
-    var coolingOptions = componentSpecs
-        .Where(spec => spec.Description.Contains("tản", StringComparison.OrdinalIgnoreCase)
-            || spec.Description.Contains("cool", StringComparison.OrdinalIgnoreCase))
-        .Select(spec => spec.Description)
-        .Distinct(StringComparer.OrdinalIgnoreCase)
-        .Take(2)
-        .ToList();
-    if (coolingOptions.Any())
-    {
-        upgradeGroups["Tản nhiệt"] = coolingOptions;
-    }
-
     var bundleProducts = suggestions.Take(4).ToList();
     var bundleLabels = new[] { "Màn hình", "Bàn phím", "Chuột", "Tai nghe" };
 }
@@ -129,33 +110,28 @@
 
                 <aside class="product-info-card">
                     <div class="product-detail-heading">
-                        <div class="product-heading-meta">
-                            @if (!string.IsNullOrWhiteSpace(Model.Brand))
-                            {
+                        @if (!string.IsNullOrWhiteSpace(Model.Brand)
+                            && !string.Equals(Model.Brand.Trim(), "N/A", StringComparison.OrdinalIgnoreCase))
+                        {
+                            <div class="product-heading-meta">
                                 <span class="product-brand">@Model.Brand</span>
-                            }
-                            @if (!string.IsNullOrWhiteSpace(Model.ProductCode))
-                            {
-                                <span class="product-code">Mã SP: @Model.ProductCode</span>
-                            }
-                        </div>
+                            </div>
+                        }
                         <h1 id="product-title" class="product-name">@Model.Name</h1>
                     </div>
 
                     <div class="price-box">
                         <div class="price-copy">
-                            <small>Giá ưu đãi</small>
-                            <div class="price-row">
-                                <span class="price-current">@finalPrice.ToString("N0", culture) đ</span>
-                                @if (finalPrice < Model.Price)
-                                {
-                                    <span class="price-old">@Model.Price.ToString("N0", culture) đ</span>
-                                }
-                            </div>
+                            <small>Giá bán</small>
+                            <span class="price-current">@finalPrice.ToString("N0", culture) đ</span>
                         </div>
+                        @if (finalPrice < Model.Price)
+                        {
+                            <div class="price-original"><small>Giá gốc</small><span class="price-old">@Model.Price.ToString("N0", culture) đ</span></div>
+                        }
                         @if (savings > 0)
                         {
-                            <div class="product-savings"><small>Tiết kiệm</small><strong>@savings.ToString("N0", culture) đ</strong></div>
+                            <div class="product-savings"><small>Tiết kiệm</small><strong>@savings.ToString("N0", culture)đ</strong></div>
                         }
                     </div>
 
@@ -181,33 +157,6 @@
                         </div>
                     }
 
-                    @if (showUpgradeOptions && upgradeGroups.Any())
-                    {
-                        <div class="upgrade-box">
-                            <div class="commerce-box-header"><span><i class="bi bi-gear-fill" aria-hidden="true"></i>UPGRADE</span><small>Tùy chọn cấu hình</small></div>
-                            <div class="upgrade-content">
-                                @foreach (var group in upgradeGroups)
-                                {
-                                    <div class="upgrade-row">
-                                        <span class="upgrade-label">@group.Key</span>
-                                        <div class="upgrade-options">
-                                            @for (var i = 0; i < group.Value.Count; i++)
-                                            {
-                                                <button type="button" class="upgrade-option @(i == 0 ? "active" : string.Empty)" aria-pressed="@(i == 0 ? "true" : "false")">
-                                                    @group.Value[i]
-                                                    @if (i == 0)
-                                                    {
-                                                        <i class="bi bi-check-lg" aria-hidden="true"></i>
-                                                    }
-                                                </button>
-                                            }
-                                        </div>
-                                    </div>
-                                }
-                            </div>
-                        </div>
-                    }
-
                     <div class="promo-box">
                         <div class="commerce-box-header"><span><i class="bi bi-gift-fill" aria-hidden="true"></i>KHUYẾN MÃI</span><small>Quà tặng kèm</small></div>
                         <ul class="product-promotion-list">
@@ -230,15 +179,14 @@
                             <span class="stock-note">@(inStock ? $"Sẵn có {Model.StockQuantity} sản phẩm" : "Sản phẩm đang tạm hết hàng")</span>
                         </div>
                         <div class="detail-action-row">
-                            <button class="btn product-buy-now" type="submit" name="purchaseMode" value="buy-now" @(inStock ? string.Empty : "disabled")>
+                            <button class="btn product-buy-now" type="submit" formaction="/Cart/BuyNow" @(inStock ? string.Empty : "disabled")>
                                 <i class="bi bi-lightning-charge-fill" aria-hidden="true"></i><span><strong>ĐẶT HÀNG</strong><small>Giao hàng tận nơi</small></span>
                             </button>
-                            <button class="btn product-add-cart" type="submit" name="purchaseMode" value="add-cart" @(inStock ? string.Empty : "disabled")>
+                            <button class="btn product-add-cart" type="submit" @(inStock ? string.Empty : "disabled")>
                                 <i class="bi bi-cart-plus" aria-hidden="true"></i><span>THÊM VÀO GIỎ</span>
                             </button>
                         </div>
                     </form>
-
                     <div class="product-compare-action"><partial name="_CompareButton" model="Model" /></div>
                 </aside>
             </div>
@@ -310,25 +258,6 @@
                     });
                     this.classList.add('active');
                     this.setAttribute('aria-pressed', 'true');
-                });
-            });
-
-            page.querySelectorAll('.upgrade-option').forEach(function (option) {
-                option.addEventListener('click', function () {
-                    const options = this.closest('.upgrade-options');
-                    options.querySelectorAll('.upgrade-option').forEach(function (item) {
-                        item.classList.remove('active');
-                        item.setAttribute('aria-pressed', 'false');
-                        item.querySelector('.bi-check-lg')?.remove();
-                    });
-                    this.classList.add('active');
-                    this.setAttribute('aria-pressed', 'true');
-                    if (!this.querySelector('.bi-check-lg')) {
-                        const icon = document.createElement('i');
-                        icon.className = 'bi bi-check-lg';
-                        icon.setAttribute('aria-hidden', 'true');
-                        this.appendChild(icon);
-                    }
                 });
             });
 

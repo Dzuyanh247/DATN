@@ -27,38 +27,30 @@
 .product-info-card{display:flex;flex-direction:column;gap:10px;padding:0}
 .product-heading-meta{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:5px}
 .product-brand{padding:4px 8px;border-radius:999px;background:#eef2f7;color:#334155;font-size:.67rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase}
-.product-code{color:#94a3b8;font-size:.71rem;font-weight:600}
 .product-name{margin:0;color:#111827;font-size:clamp(1.38rem,1.9vw,1.5rem);font-weight:800;line-height:1.25}
-.price-box{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:72px;padding:12px 18px;border-radius:9px;background:linear-gradient(95deg,#f23818 0%,#ff5a1f 58%,#ff7a1a 100%);color:#fff;box-shadow:0 4px 12px rgba(255,90,31,.16)}
-.price-copy small,.product-savings small{display:block;margin-bottom:2px;color:rgba(255,255,255,.84);font-size:.65rem;font-weight:700;line-height:1;text-transform:uppercase}
-.price-row{display:flex;align-items:baseline;flex-wrap:wrap;gap:8px}
-.price-current{font-size:1.75rem;font-weight:900;line-height:1}
-.price-old{color:rgba(255,255,255,.74);font-size:.86rem;text-decoration:line-through}
-.product-savings{min-width:104px;padding-left:13px;border-left:1px solid rgba(255,255,255,.28);text-align:right}
-.product-savings strong{font-size:.9rem}
+.price-box{display:flex;min-height:0;align-items:center;gap:16px;padding:12px 16px;border-radius:9px;background:linear-gradient(90deg,#ff4b16,#ff7a1a);color:#fff;box-shadow:0 4px 12px rgba(255,90,31,.16)}
+.price-copy,.price-original,.product-savings{display:grid;min-width:0;gap:2px;color:#fff}
+.price-copy small,.price-original small,.product-savings small{display:block;margin:0;color:rgba(255,255,255,.82);font-size:.68rem;font-weight:700;line-height:1;text-transform:uppercase}
+.price-current{color:#fff;font-size:1.65rem;font-weight:900;line-height:1.05;white-space:nowrap}
+.price-old{color:rgba(255,255,255,.75);font-size:.9rem;line-height:1.15;text-decoration:line-through;white-space:nowrap}
+.product-savings{margin-left:auto;padding-left:16px;border-left:1px solid rgba(255,255,255,.3)}
+.product-savings strong{color:#fff;font-size:.86rem;line-height:1.15;white-space:nowrap}
 .product-meta-pills{display:flex;flex-wrap:wrap;gap:6px}
 .product-meta-pill{display:inline-flex;min-height:28px;align-items:center;gap:5px;padding:4px 8px;border-radius:6px;font-size:.7rem;font-weight:800}
 .warranty-pill{background:#fff3cd;color:#8a5700}
 .in-stock{background:#dcfce7;color:#14733b}
 .out-of-stock{background:#fee2e2;color:#b91c1c}
 .advice-pill{background:#f3e8ff;color:#7e22ce}
-.spec-summary-box,.upgrade-box,.promo-box{overflow:hidden;border:1px solid var(--detail-border);border-radius:9px;background:#fff}
-.compact-box-title{display:flex;align-items:center;gap:7px;padding:9px 11px 3px;color:#1f2937;font-size:.82rem;font-weight:800}
-.compact-box-title i{color:#2c6597;font-size:.82rem}
-.spec-summary-box ul,.product-promotion-list{display:grid;gap:4px;margin:0;padding:5px 11px 10px;list-style:none}
-.spec-summary-box li,.product-promotion-list li{display:flex;align-items:flex-start;gap:7px;color:#4b5563;font-size:.8rem;line-height:1.45}
-.spec-summary-box li i{flex:0 0 14px;width:14px;height:14px;margin-top:2px;color:#236293;font-size:.76rem;font-weight:900;line-height:14px}
+.spec-summary-box,.promo-box{overflow:hidden;border:1px solid var(--detail-border);border-radius:9px;background:#fff}
+.spec-summary-box{padding:10px 12px}
+.compact-box-title{display:flex;align-items:center;gap:7px;padding:0;color:#1f2937;font-size:.84rem;font-weight:800}
+.compact-box-title i{color:#0ea5b7;font-size:.84rem}
+.spec-summary-box ul,.product-promotion-list{display:grid;gap:6px;margin:0;padding:6px 0 0;list-style:none}
+.spec-summary-box li,.product-promotion-list li{display:flex;align-items:flex-start;gap:8px;color:#4b5563;font-size:.85rem;line-height:1.4}
+.spec-summary-box li i{display:grid;flex:0 0 16px;width:16px;height:16px;margin-top:1px;place-items:center;border-radius:50%;background:#0ea5b7;color:#fff;font-size:.68rem;font-weight:900;line-height:16px}
 .commerce-box-header{display:flex;height:38px;align-items:center;justify-content:space-between;gap:10px;padding:0 13px;border-bottom:1px solid var(--detail-border);background:#f7f7f8}
 .commerce-box-header span{display:flex;align-items:center;gap:6px;color:var(--detail-red);font-size:.8rem;font-weight:900}
 .commerce-box-header small{color:#9ca3af;font-size:.66rem}
-.upgrade-content{display:grid;gap:8px;padding:10px 12px}
-.upgrade-row{display:grid;grid-template-columns:90px minmax(0,1fr);gap:8px;align-items:start}
-.upgrade-label{padding-top:8px;color:#374151;font-size:.76rem;font-weight:800}
-.upgrade-options{display:flex;flex-wrap:wrap;gap:6px}
-.upgrade-option{position:relative;min-height:36px;max-width:100%;padding:6px 12px;overflow:hidden;border:1px solid #d1d5db;border-radius:6px;background:#fff;color:#4b5563;font-size:.78rem;line-height:1.25;text-align:left;cursor:pointer}
-.upgrade-option:hover{border-color:#fb7185}
-.upgrade-option.active{padding-right:25px;border-color:var(--detail-red);background:#fff7f7;color:#be123c}
-.upgrade-option .bi-check-lg{position:absolute;right:0;bottom:0;display:grid;width:17px;height:17px;place-items:center;border-radius:6px 0 0 0;background:var(--detail-red);color:#fff;font-size:.58rem}
 .product-promotion-list{gap:5px;padding:9px 13px 10px}
 .product-promotion-list li{color:#d9480f;font-size:.79rem;font-weight:600}
 .product-promotion-list li i{flex:0 0 auto;color:var(--detail-red);font-size:.78rem}
@@ -71,7 +63,7 @@
 .quantity-btn{border:0;background:#f8fafc;color:#1f2937;font-size:.95rem;font-weight:800}
 .quantity-btn:hover{background:#fee2e2;color:var(--detail-red)}
 .stock-note{margin-left:auto;color:#6b7280;font-size:.7rem}
-.detail-action-row{display:grid;grid-template-columns:1fr;gap:7px}
+.detail-action-row{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:8px}
 .detail-action-row .btn{display:flex;min-height:46px;align-items:center;justify-content:center;gap:8px;border-radius:8px;font-size:.8rem;font-weight:900;transition:.18s ease}
 .detail-action-row .btn:hover:not(:disabled){transform:translateY(-1px)}
 .product-buy-now{border:1px solid var(--detail-red);background:linear-gradient(90deg,#e81735,#ef233c);color:#fff;box-shadow:0 4px 10px rgba(239,35,60,.17)}
@@ -80,7 +72,10 @@
 .detail-action-row .product-add-cart{min-height:38px;border:1.5px solid var(--detail-red);background:#fff;color:var(--detail-red)}
 .product-add-cart:hover{background:#fff1f2;color:#d3122d}
 .detail-action-row .btn:disabled{opacity:.55}
-.product-compare-action .btn{width:100%;min-height:34px;border-radius:7px;font-size:.78rem}
+.product-compare-action{margin-top:8px}
+.product-compare-action form{margin:0}
+.product-compare-action .btn{width:100%;min-height:36px;border:1px solid #94a3b8;border-radius:7px;background:#fff;color:#475569;font-size:.78rem;font-weight:800}
+.product-compare-action .btn:hover{border-color:#64748b;background:#f8fafc;color:#334155}
 .bundle-section{margin-top:12px;padding:12px;border:1px solid var(--detail-border);border-radius:10px;background:#fff}
 .bundle-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px}
 .bundle-heading h2{display:inline-flex;align-items:center;gap:6px;margin:0;color:var(--detail-red);font-size:.82rem;font-weight:900}
@@ -138,8 +133,7 @@
 .bundle-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 .product-section-heading{padding:13px 15px}
 .product-name{font-size:1.35rem}
-.price-box{min-height:70px}
-.upgrade-row{grid-template-columns:78px minmax(0,1fr)}
+.price-box{min-height:0}
 }
 
 @media(max-width:575.98px){
@@ -147,17 +141,15 @@
 .product-gallery-main{height:78vw;min-height:275px}
 .product-gallery-thumbs{justify-content:flex-start}
 .product-info-card{gap:9px}
-.product-heading-meta,.price-box{align-items:flex-start}
-.price-box{flex-direction:column;gap:8px}
-.product-savings{min-width:0;padding:7px 0 0;border-top:1px solid rgba(255,255,255,.25);border-left:0;text-align:left}
+.product-heading-meta{align-items:flex-start}
+.price-box{flex-wrap:wrap;gap:10px 14px}
+.product-savings{margin-left:0;padding-left:14px}
 .product-meta-pill{font-size:.68rem}
 .stock-note{display:none}
 .detail-action-row{grid-template-columns:1fr}
 .detail-action-row .btn{width:100%}
 .bundle-heading{align-items:flex-start;flex-direction:column}
 .bundle-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-.upgrade-row{grid-template-columns:1fr;gap:3px}
-.upgrade-label{padding-top:0}
 .product-section-heading{align-items:flex-start}
 .product-section-heading>i{display:none}
 .product-related-grid{grid-template-columns:1fr;padding:13px}
