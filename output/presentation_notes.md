@@ -1,103 +1,280 @@
-# Presentation Notes - DATN PC Store
+# Ghi chú thuyết trình — DATN PC Store
 
-> Lời thuyết trình được tạo từ `output/presentation_script.md` và đồng bộ theo thứ tự slide.
+> Nội dung được đối chiếu với source code ngày 10/06/2026. Mỗi slide có lời thuyết trình ngắn và ghi chú ảnh thực tế cần bổ sung.
 
-## Slide 01 | DATN PC Store
+## Slide 01 — DATN PC STORE
 
-Kính chào thầy cô và các bạn. Sau đây em xin trình bày đồ án DATN PC Store, một website thương mại điện tử bán PC, laptop và linh kiện được xây dựng trên ASP.NET Core MVC.
+1. Kính thưa thầy cô và hội đồng, em xin trình bày đề tài DATN PC Store.
+2. Đề tài xây dựng website bán linh kiện máy tính trên nền ASP.NET Core MVC.
+3. Hệ thống bao quát quy trình từ tra cứu sản phẩm đến đặt hàng và quản trị.
+4. Phần trình bày tập trung vào vấn đề, giải pháp, triển khai và kết quả đạt được.
 
-## Slide 02 | Bài toán và mục tiêu
+**Ghi chú ảnh:** Không cần chèn ảnh.
 
-Đề tài giải quyết nhu cầu đưa hoạt động bán thiết bị máy tính lên môi trường trực tuyến. Hệ thống không chỉ hỗ trợ quy trình mua hàng cơ bản mà còn triển khai các nghiệp vụ phù hợp cửa hàng PC như build cấu hình, so sánh linh kiện, bảo hành và hỗ trợ khách hàng.
+## Slide 02 — Đặt vấn đề
 
-## Slide 03 | Phạm vi và vai trò sử dụng
+1. Thị trường linh kiện máy tính có nhiều chủng loại và thông số kỹ thuật.
+2. Người mua cần một kênh giúp tìm, lọc và đối chiếu sản phẩm nhanh hơn.
+3. Quy trình mua hàng cũng cần liên kết giỏ hàng, thanh toán và theo dõi đơn.
+4. Về phía cửa hàng, dữ liệu sản phẩm và đơn hàng cần được quản lý tập trung.
+5. Đó là bài toán thực tế mà đề tài hướng đến.
 
-Hệ thống có ba nhóm sử dụng. Khách vãng lai vẫn có thể duyệt hàng, dùng giỏ hàng phiên, tra cứu đơn và chat. Khách hàng có thêm hồ sơ, lịch sử mua hàng và bảo hành. Toàn bộ màn hình quản trị được bảo vệ bằng role Admin.
+**Ghi chú ảnh:** Không cần chèn ảnh.
 
-## Slide 04 | Kiến trúc tổng thể
+## Slide 03 — Lý do chọn đề tài
 
-Dự án tổ chức theo mô hình MVC monolith. Controller nhận request và điều phối, Razor View render HTML, service xử lý nghiệp vụ, còn Entity Framework Core làm việc với SQL Server. Các tích hợp bên ngoài được đặt sau interface hoặc service để giảm phụ thuộc trực tiếp từ controller.
+1. Slide này trình bày lý do chọn đề tài theo các nhóm nội dung chính.
+2. Các nhóm được rút gọn để tránh danh sách bullet dài.
+3. Mỗi nội dung đều đã được đối chiếu với controller, model, service hoặc view tương ứng.
+4. Cách trình bày dạng thẻ giúp phân biệt rõ vai trò của từng nhóm.
 
-## Slide 05 | Công nghệ sử dụng
+**Ghi chú ảnh:** Không cần chèn ảnh.
 
-Nền tảng chính là .NET 8. Giao diện sử dụng Razor, CSS và JavaScript. Dữ liệu được truy cập qua EF Core 8 với SQL Server. Cookie dùng cho đăng nhập, Session dùng cho trạng thái khách, SignalR phục vụ chat. Chức năng xuất đơn hàng tạo bảng HTML và trả về tệp `.xls` tương thích Excel.
+## Slide 04 — Mục tiêu đề tài
 
-## Slide 06 | Mô hình dữ liệu chính
+1. Mục tiêu trung tâm là xây dựng website thương mại điện tử cho linh kiện PC.
+2. Khách hàng có thể tìm kiếm, lọc và so sánh sản phẩm.
+3. Module Build PC hỗ trợ chọn linh kiện, tính tổng và đưa cảnh báo tương thích.
+4. Quy trình mua hàng bao gồm giỏ hàng, vận chuyển, thanh toán và theo dõi đơn.
+5. Admin có các màn hình quản lý dữ liệu vận hành chính.
 
-Cơ sở dữ liệu được chia theo các nhóm nghiệp vụ rõ ràng: tài khoản, catalog, bán hàng và hậu mãi. Ngoài các bảng thương mại điện tử quen thuộc, source còn có cấu hình build PC, vận chuyển, OTP đặt lại mật khẩu và các bảng hội thoại hỗ trợ.
+**Ghi chú ảnh:** Không cần chèn ảnh.
 
-## Slide 07 | Trang chủ và điều hướng mua sắm
+## Slide 05 — Đối tượng sử dụng
 
-Trang chủ lấy banner đang hoạt động và các nhóm sản phẩm để tạo điểm bắt đầu mua sắm. Thanh điều hướng kết nối trực tiếp đến tìm kiếm, trang tin, build PC, tài khoản và giỏ hàng. Khung bên phải là vị trí để bổ sung ảnh chụp giao diện thật.
+1. Slide này trình bày đối tượng sử dụng theo các nhóm nội dung chính.
+2. Các nhóm được rút gọn để tránh danh sách bullet dài.
+3. Mỗi nội dung đều đã được đối chiếu với controller, model, service hoặc view tương ứng.
+4. Cách trình bày dạng thẻ giúp phân biệt rõ vai trò của từng nhóm.
 
-**Ảnh cần bổ sung:** [THÊM ẢNH TRANG CHỦ]
+**Ghi chú ảnh:** Không cần chèn ảnh.
 
-## Slide 08 | Danh sách và chi tiết sản phẩm
+## Slide 06 — Phạm vi hệ thống
 
-Trang danh sách hỗ trợ nhiều tiêu chí lọc đã được triển khai trong controller, gồm danh mục, hãng, giá, CPU, RAM và GPU. Trang chi tiết trình bày thông tin sản phẩm, ảnh, tồn kho, thông số, sản phẩm mua kèm và các hành động mua hàng hoặc so sánh.
+1. Phạm vi đề tài là website thương mại điện tử cho PC và linh kiện.
+2. Nội dung bao gồm luồng khách hàng, quản trị và hỗ trợ sau bán hàng.
+3. Các tích hợp được trình bày chỉ khi có đăng ký service hoặc luồng xử lý trong source.
+4. Đề tài không tuyên bố các chức năng chưa được triển khai.
 
-**Ảnh cần bổ sung:** [THÊM ẢNH DANH SÁCH SẢN PHẨM]; [THÊM ẢNH CHI TIẾT SẢN PHẨM]
+**Ghi chú ảnh:** Không cần chèn ảnh.
 
-## Slide 09 | Tài khoản và phân quyền
+## Slide 07 — Yêu cầu chức năng
 
-Luồng tài khoản gồm đăng ký, đăng nhập, cập nhật hồ sơ, đổi mật khẩu và quên mật khẩu. Mã OTP đặt lại mật khẩu được gửi qua email, có thời hạn và số lần thử. Khi đăng nhập thành công, giỏ hàng của khách được hợp nhất vào giỏ của tài khoản.
+1. Nội dung yêu cầu chức năng được chia thành hai nhóm để dễ đối chiếu.
+2. Cột bên trái tập trung vào khách hàng.
+3. Cột bên phải tập trung vào quản trị viên.
+4. Các nhận định được giữ ở mức thực tế và phù hợp với phạm vi đồ án.
 
-## Slide 10 | Giỏ hàng đa trạng thái
+**Ghi chú ảnh:** Không cần chèn ảnh.
 
-CartService xử lý hai hình thức lưu trữ. Khách chưa đăng nhập dùng Session, còn người dùng đăng nhập dùng cơ sở dữ liệu. Các thao tác thay đổi số lượng đều kiểm tra tính hợp lệ và tồn kho trước khi cập nhật.
+## Slide 08 — Sơ đồ use case tổng quan
 
-**Ảnh cần bổ sung:** [THÊM ẢNH GIỎ HÀNG]
+1. Sơ đồ tổng quan có hai tác nhân chính là khách hàng và quản trị viên.
+2. Khách hàng sử dụng các chức năng tra cứu, so sánh, Build PC và mua hàng.
+3. Khách đã đăng nhập có thể theo dõi đơn và gửi yêu cầu bảo hành.
+4. Chat hỗ trợ kết nối khách hàng với phía quản trị qua SignalR.
+5. Admin tập trung vào quản lý sản phẩm, đơn hàng và dữ liệu vận hành.
 
-## Slide 11 | Checkout và tính phí vận chuyển
+**Ghi chú ảnh:** Không cần chèn ảnh.
 
-Checkout thu thập địa chỉ và gọi các service vận chuyển. Source có tích hợp danh mục địa chỉ và tính phí GHN, đồng thời có luồng bản đồ, định tuyến và bộ tính phí theo chính sách. Trước khi đặt hàng, hệ thống kiểm tra lại dữ liệu giỏ và tồn kho.
+## Slide 09 — Kiến trúc hệ thống
 
-**Ảnh cần bổ sung:** [THÊM ẢNH THANH TOÁN]
+1. Hệ thống sử dụng kiến trúc MVC truyền thống của ASP.NET Core.
+2. Request từ trình duyệt đi qua Controller rồi đến các service nghiệp vụ.
+3. Entity Framework Core đảm nhiệm truy cập cơ sở dữ liệu SQL Server.
+4. SignalR phục vụ chat hỗ trợ theo thời gian thực.
+5. Các nhánh tích hợp thực tế gồm GHN, dịch vụ tuyến đường, SMTP và QR chuyển khoản.
 
-## Slide 12 | Quy trình tạo đơn an toàn
+**Ghi chú ảnh:** Không cần chèn ảnh.
 
-Điểm quan trọng của quy trình đặt hàng là transaction. Đơn hàng, chi tiết đơn, cập nhật tồn kho và xóa giỏ được xử lý như một đơn vị công việc. Nếu có lỗi, transaction rollback để tránh trạng thái lưu một phần.
+## Slide 10 — Công nghệ sử dụng
 
-## Slide 13 | Thanh toán và chứng từ đơn hàng
+1. Slide này trình bày công nghệ sử dụng theo các nhóm nội dung chính.
+2. Các nhóm được rút gọn để tránh danh sách bullet dài.
+3. Mỗi nội dung đều đã được đối chiếu với controller, model, service hoặc view tương ứng.
+4. Cách trình bày dạng thẻ giúp phân biệt rõ vai trò của từng nhóm.
 
-Source triển khai COD và chuyển khoản ngân hàng. Với chuyển khoản, người mua xem thông tin thanh toán, xác nhận đã chuyển; Admin có thao tác xác nhận riêng. Đơn chờ thanh toán có thời hạn. Hệ thống cũng tạo trang báo giá để in và file Excel cho đơn hàng.
+**Ghi chú ảnh:** Không cần chèn ảnh.
 
-**Ảnh cần bổ sung:** [THÊM ẢNH CHUYỂN KHOẢN / BÁO GIÁ]
+## Slide 11 — Cơ sở dữ liệu
 
-## Slide 14 | Build PC theo linh kiện
+1. ApplicationDbContext khai báo 22 DbSet tương ứng 22 bảng dữ liệu chính.
+2. Nhóm sản phẩm quản lý danh mục, sản phẩm, ảnh và banner.
+3. Nhóm mua hàng gồm giỏ hàng, đơn hàng và chi tiết đơn.
+4. Build PC, bảo hành, vận chuyển và cấu hình website được lưu thành các thực thể riêng.
+5. Chat hỗ trợ sử dụng hai bảng Conversation và Message.
 
-Màn hình Build PC cho phép chọn từng nhóm linh kiện, tìm và sắp xếp sản phẩm. BuildCompatibilityService đưa ra các cảnh báo cần kiểm tra về socket CPU/Mainboard, chuẩn DDR và công suất nguồn; service hiện vẫn cho phép tiếp tục chọn linh kiện. Cấu hình có thể thêm vào giỏ, in, tải ảnh từ giao diện phía trình duyệt hoặc xuất CSV.
+**Ghi chú ảnh:** Không cần chèn ảnh.
 
-**Ảnh cần bổ sung:** [THÊM ẢNH BUILD PC]
+## Slide 12 — Quan hệ dữ liệu chính
 
-## Slide 15 | So sánh sản phẩm
+1. Quan hệ cốt lõi bắt đầu từ User tạo Order và Order chứa nhiều OrderDetail.
+2. Mỗi chi tiết đơn liên kết đến một Product.
+3. Product thuộc Category và có thể xuất hiện trong CartItem, Warranty hoặc BuildPcItem.
+4. Giỏ hàng được lưu cho người dùng đăng nhập; khách vãng lai dùng session.
+5. ChatConversation liên kết nhiều ChatMessage để giữ lịch sử hỗ trợ.
 
-Danh sách so sánh được lưu trong Session và giới hạn tối đa hai sản phẩm. Người dùng có thể thêm từ thẻ hoặc trang chi tiết, sau đó xem bảng thuộc tính, xóa từng sản phẩm hoặc xóa toàn bộ.
+**Ghi chú ảnh:** Không cần chèn ảnh.
 
-**Ảnh cần bổ sung:** [THÊM ẢNH SO SÁNH SẢN PHẨM]
+## Slide 13 — Các module chính
 
-## Slide 16 | Theo dõi đơn và bảo hành
+1. Slide này trình bày các module chính theo các nhóm nội dung chính.
+2. Các nhóm được rút gọn để tránh danh sách bullet dài.
+3. Mỗi nội dung đều đã được đối chiếu với controller, model, service hoặc view tương ứng.
+4. Cách trình bày dạng thẻ giúp phân biệt rõ vai trò của từng nhóm.
 
-Hệ thống hỗ trợ cả khách và người dùng đăng nhập theo dõi đơn. Khách cần mã đơn và số điện thoại, còn tài khoản xem các đơn thuộc chính mình. Sau mua hàng, người dùng đăng nhập có thể gửi yêu cầu bảo hành và Admin cập nhật trạng thái xử lý.
+**Ghi chú ảnh:** Không cần chèn ảnh.
 
-**Ảnh cần bổ sung:** [THÊM ẢNH THEO DÕI ĐƠN / BẢO HÀNH]
+## Slide 14 — Trang chủ
 
-## Slide 17 | Nội dung và phản hồi khách hàng
+1. Slide này minh họa màn hình trang chủ của hệ thống.
+2. Source code xác nhận các nội dung chính gồm: banner và nhóm sản phẩm, điều hướng danh mục nhanh, tìm kiếm toàn site.
+3. Khung bên cạnh được dành để chèn ảnh chụp giao diện thật khi chạy ứng dụng.
+4. Cách bố trí nhấn mạnh kết quả triển khai thay vì trình bày quá nhiều chữ.
 
-Ngoài bán hàng, website có module bài viết và liên hệ. Bài viết có danh sách, chi tiết theo slug và các thao tác quản trị. Feedback được lưu lại và có màn hình quản lý. Banner cùng một số thiết lập giao diện cũng được cấu hình trong Admin.
+**Ghi chú ảnh:** TRANG CHỦ — chụp tại /Home/Index
 
-## Slide 18 | Hỗ trợ trực tuyến với SignalR
+## Slide 15 — Danh sách sản phẩm
 
-Module chat sử dụng API controller kết hợp SignalR. Khách giữ access token để truy cập đúng hội thoại. Admin có màn hình xem hội thoại, đọc và gửi tin nhắn, sau đó đóng cuộc trò chuyện khi hoàn tất.
+1. Slide này minh họa màn hình danh sách sản phẩm của hệ thống.
+2. Source code xác nhận các nội dung chính gồm: tìm theo từ khóa, lọc danh mục và khoảng giá, sắp xếp kết quả.
+3. Khung bên cạnh được dành để chèn ảnh chụp giao diện thật khi chạy ứng dụng.
+4. Cách bố trí nhấn mạnh kết quả triển khai thay vì trình bày quá nhiều chữ.
 
-**Ảnh cần bổ sung:** [THÊM ẢNH CHAT HỖ TRỢ]
+**Ghi chú ảnh:** DANH SÁCH SẢN PHẨM — chụp tại /Products
 
-## Slide 19 | Hệ thống quản trị
+## Slide 16 — Chi tiết sản phẩm
 
-Khu vực Admin tập trung các nghiệp vụ vận hành: dashboard, sản phẩm, danh mục, đơn hàng, người dùng, banner, cài đặt, chat và bảo hành. Các controller quản trị đều được gắn Authorize với role Admin.
+1. Slide này minh họa màn hình chi tiết sản phẩm của hệ thống.
+2. Source code xác nhận các nội dung chính gồm: giá và khuyến mãi, ảnh, mô tả, thông số, thêm giỏ và so sánh.
+3. Khung bên cạnh được dành để chèn ảnh chụp giao diện thật khi chạy ứng dụng.
+4. Cách bố trí nhấn mạnh kết quả triển khai thay vì trình bày quá nhiều chữ.
 
-**Ảnh cần bổ sung:** [THÊM ẢNH DASHBOARD QUẢN TRỊ]; [THÊM ẢNH QUẢN LÝ SẢN PHẨM / ĐƠN HÀNG]
+**Ghi chú ảnh:** CHI TIẾT SẢN PHẨM — chụp tại /Products/Detail/{id}
 
-## Slide 20 | Đánh giá và kết luận
+## Slide 17 — Giỏ hàng
 
-Tóm lại, source hiện tại đã bao phủ một chu trình thương mại điện tử tương đối đầy đủ và có các điểm nhấn phù hợp đề tài cửa hàng PC. Những giới hạn được nêu chỉ dựa trên repository: chưa thấy test tự động và CI/CD. Hướng phát triển là nâng chuẩn xác thực, kiểm thử và vận hành production.
+1. Quy trình giỏ hàng được mô tả theo thứ tự từ trái sang phải.
+2. Mỗi bước tương ứng với một trạng thái hoặc thao tác có trong luồng xử lý thực tế.
+3. Giỏ session cho khách; giỏ database cho tài khoản.
+4. Timeline giúp hội đồng theo dõi luồng nghiệp vụ mà không cần đọc nhiều bullet.
+
+**Ghi chú ảnh:** ẢNH GIỎ HÀNG — chụp tại /Cart
+
+## Slide 18 — Quy trình đặt hàng
+
+1. Quy trình quy trình đặt hàng được mô tả theo thứ tự từ trái sang phải.
+2. Mỗi bước tương ứng với một trạng thái hoặc thao tác có trong luồng xử lý thực tế.
+3. GHN cung cấp địa chỉ và phí giao hàng khi cấu hình hợp lệ.
+4. Timeline giúp hội đồng theo dõi luồng nghiệp vụ mà không cần đọc nhiều bullet.
+
+**Ghi chú ảnh:** Không cần chèn ảnh.
+
+## Slide 19 — Thanh toán QR / chuyển khoản
+
+1. Nội dung thanh toán qr / chuyển khoản được chia thành hai nhóm để dễ đối chiếu.
+2. Cột bên trái tập trung vào thông tin đơn hàng.
+3. Cột bên phải tập trung vào qr & trạng thái.
+4. Các nhận định được giữ ở mức thực tế và phù hợp với phạm vi đồ án.
+
+**Ghi chú ảnh:** Thanh toán chuyển khoản — /Orders/BankTransfer/{id}
+
+## Slide 20 — Theo dõi đơn hàng
+
+1. Quy trình theo dõi đơn hàng được mô tả theo thứ tự từ trái sang phải.
+2. Mỗi bước tương ứng với một trạng thái hoặc thao tác có trong luồng xử lý thực tế.
+3. Trạng thái thật: PendingPayment → PendingConfirmation → Processing → Delivering → Completed.
+4. Timeline giúp hội đồng theo dõi luồng nghiệp vụ mà không cần đọc nhiều bullet.
+
+**Ghi chú ảnh:** ẢNH THEO DÕI ĐƠN — chụp tại /Orders/Tracking/{id}
+
+## Slide 21 — Build PC
+
+1. Slide này minh họa màn hình build pc của hệ thống.
+2. Source code xác nhận các nội dung chính gồm: chọn linh kiện theo nhóm, cảnh báo socket, ddr, psu, tính tổng và thêm cả bộ vào giỏ.
+3. Khung bên cạnh được dành để chèn ảnh chụp giao diện thật khi chạy ứng dụng.
+4. Cách bố trí nhấn mạnh kết quả triển khai thay vì trình bày quá nhiều chữ.
+
+**Ghi chú ảnh:** BUILD PC — chụp tại /BuildPc
+
+## Slide 22 — So sánh sản phẩm
+
+1. Hệ thống cho phép lưu tối đa hai sản phẩm trong session để so sánh.
+2. Màn hình so sánh tổng hợp giá và các hàng thông số kỹ thuật.
+3. ViewModel hỗ trợ các dòng CPU, RAM, GPU, SSD, mainboard, nguồn, case và tản nhiệt.
+4. Bảng trên minh họa cách đối chiếu hai sản phẩm theo cùng tiêu chí.
+
+**Ghi chú ảnh:** Màn hình so sánh — chụp tại /Compare
+
+## Slide 23 — Dịch vụ sau bán hàng
+
+1. Slide này minh họa màn hình dịch vụ sau bán hàng của hệ thống.
+2. Source code xác nhận các nội dung chính gồm: gửi yêu cầu bảo hành, theo dõi trạng thái xử lý, xuất báo giá đơn hàng.
+3. Khung bên cạnh được dành để chèn ảnh chụp giao diện thật khi chạy ứng dụng.
+4. Cách bố trí nhấn mạnh kết quả triển khai thay vì trình bày quá nhiều chữ.
+
+**Ghi chú ảnh:** BẢO HÀNH / BÁO GIÁ — chụp tại /Warranty • /Orders/Quotation
+
+## Slide 24 — Chat hỗ trợ SignalR
+
+1. Chat hỗ trợ được triển khai bằng SignalR và ChatHub.
+2. Khách vãng lai hoặc người dùng đăng nhập đều có thể mở hội thoại.
+3. Tin nhắn được lưu vào ChatConversation và ChatMessage.
+4. Admin xem danh sách hội thoại, phản hồi, đánh dấu đã đọc và đóng phiên chat.
+
+**Ghi chú ảnh:** Chat widget và Admin Chat — widget toàn site, /AdminChat
+
+## Slide 25 — Trang quản trị
+
+1. Khu vực quản trị được bảo vệ bằng quyền Admin.
+2. Dashboard hiển thị số sản phẩm, đơn hàng, người dùng và yêu cầu bảo hành.
+3. Menu quản trị còn có danh mục, banner, cài đặt website và chat hỗ trợ.
+4. Các module phản ánh trực tiếp các controller và Razor View trong source.
+
+**Ghi chú ảnh:** Dashboard quản trị — chụp tại /AdminDashboard
+
+## Slide 26 — Quản lý sản phẩm và đơn hàng
+
+1. Nội dung quản lý sản phẩm và đơn hàng được chia thành hai nhóm để dễ đối chiếu.
+2. Cột bên trái tập trung vào quản lý sản phẩm.
+3. Cột bên phải tập trung vào quản lý đơn hàng.
+4. Các nhận định được giữ ở mức thực tế và phù hợp với phạm vi đồ án.
+
+**Ghi chú ảnh:** Ảnh /AdminProducts và /AdminOrders
+
+## Slide 27 — Kết quả đạt được
+
+1. Kết quả được lượng hóa trực tiếp từ cấu trúc source code.
+2. ApplicationDbContext hiện khai báo 22 DbSet và thư mục Controllers có 20 controller.
+3. Hệ thống phục vụ khách vãng lai cùng ba vai trò được seed: Customer, Staff và Admin.
+4. Tám nhóm công nghệ chính đã được áp dụng xuyên suốt ứng dụng.
+5. Các con số này không dựa trên dữ liệu giả lập hay ước lượng ngoài source.
+
+**Ghi chú ảnh:** Không cần chèn ảnh.
+
+## Slide 28 — Hạn chế
+
+1. Nội dung hạn chế được chia thành hai nhóm để dễ đối chiếu.
+2. Cột bên trái tập trung vào hiện tại.
+3. Cột bên phải tập trung vào cần cải thiện.
+4. Các nhận định được giữ ở mức thực tế và phù hợp với phạm vi đồ án.
+
+**Ghi chú ảnh:** Không cần chèn ảnh.
+
+## Slide 29 — Hướng phát triển
+
+1. Quy trình hướng phát triển được mô tả theo thứ tự từ trái sang phải.
+2. Mỗi bước tương ứng với một trạng thái hoặc thao tác có trong luồng xử lý thực tế.
+3. Roadmap ưu tiên tự động hóa, thông minh hóa và mở rộng vận hành.
+4. Timeline giúp hội đồng theo dõi luồng nghiệp vụ mà không cần đọc nhiều bullet.
+
+**Ghi chú ảnh:** Không cần chèn ảnh.
+
+## Slide 30 — Xin chân thành cảm ơn
+
+1. Phần trình bày của em xin được kết thúc tại đây.
+2. Em xin chân thành cảm ơn giảng viên hướng dẫn và hội đồng đã lắng nghe.
+3. Em mong nhận được các góp ý để tiếp tục hoàn thiện hệ thống.
+4. Em xin phép được trả lời các câu hỏi của thầy cô.
+
+**Ghi chú ảnh:** Không cần chèn ảnh.

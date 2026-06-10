@@ -1,61 +1,40 @@
 # Hướng dẫn tạo PowerPoint DATN PC Store
 
-File PowerPoint là sản phẩm sinh tự động nên không được lưu trong Git repository.
-Repository chỉ lưu source generator và các tệp nội dung Markdown.
+Bài thuyết trình bảo vệ đồ án gồm **30 slide**, được sinh hoàn toàn từ
+`Scripts/generate_presentation.py`. File PowerPoint là sản phẩm build local và
+không được lưu trong Git.
 
-## Tệp đầu vào
+## Nội dung đã xác minh
 
-Script sử dụng các tệp sau:
+Nội dung slide được đối chiếu với `Controllers`, `Models`, `ViewModels`, `Views`,
+`Services`, `wwwroot/js`, `wwwroot/css`, `Program.cs`, `ApplicationDbContext` và
+các migration. Deck chỉ trình bày chức năng có trong source: sản phẩm, tài khoản,
+giỏ hàng, đặt hàng, COD/chuyển khoản QR, GHN, Build PC, so sánh, bảo hành, báo
+giá, SignalR chat và quản trị.
 
-- `output/presentation_outline.md`: tiêu đề và nội dung bullet của 20 slide.
-- `output/presentation_script.md`: lời thuyết trình cho từng slide.
-- `output/slide_image_placeholders.md`: danh sách slide cần chèn ảnh chụp thật.
+## Cách tạo
 
-## Yêu cầu
-
-- Python 3.10 trở lên.
-- Khuyến nghị cài thư viện `python-pptx`:
-
-```bash
-python -m pip install python-pptx
-```
-
-Script có phương án OOXML dự phòng cho môi trường ngoại tuyến không cài được
-`python-pptx`, nhưng nên sử dụng `python-pptx` trên máy local để có khả năng tương
-thích tốt nhất với Microsoft PowerPoint.
-
-## Tạo bài thuyết trình
-
-Chạy lệnh sau từ thư mục gốc của repository:
+Từ thư mục gốc repository, chạy:
 
 ```bash
 python Scripts/generate_presentation.py
 ```
 
-Sau khi chạy thành công, file PowerPoint sẽ được sinh tại:
+Script không cần tải ảnh và không dùng base64. Trong môi trường không có
+`python-pptx`, generator tạo trực tiếp gói OOXML chuẩn 16:9.
 
-```text
-output/DATN_PC_Store_Gioi_Thieu.pptx
-```
+Kết quả:
 
-Script đồng thời cập nhật file lời thuyết trình:
-
-```text
-output/presentation_notes.md
-```
+- `output/DATN_PC_Store_Gioi_Thieu.pptx`
+- `output/presentation_notes.md`
 
 ## Chèn ảnh giao diện thật
 
-Các slide cần ảnh đã có khung placeholder. Danh sách đầy đủ nằm trong:
+Các slide 14, 15, 16, 17, 19, 20, 21, 22, 23, 24, 25 và 26 có placeholder nét
+đứt, kèm URL cần chụp. Hãy chạy ứng dụng, chụp đúng màn hình thật và thay
+placeholder trong PowerPoint.
 
-```text
-output/slide_image_placeholders.md
-```
+## Lưu ý Git
 
-Mở file PowerPoint vừa tạo và thay các khung `[THÊM ẢNH ...]` bằng ảnh chụp giao
-diện thực tế. Không cần sửa hoặc nhúng ảnh vào source generator.
-
-## Lưu ý về Git
-
-Các file `*.pptx` đã được khai báo trong `.gitignore`. Không dùng `git add -f` để
-đưa file PowerPoint đã sinh vào repository.
+`*.pptx` nằm trong `.gitignore`. Không dùng `git add -f` để commit file PowerPoint.
+Chỉ commit script và các file Markdown liên quan.
