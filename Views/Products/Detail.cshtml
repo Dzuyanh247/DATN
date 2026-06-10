@@ -121,17 +121,14 @@
                     </div>
 
                     <div class="price-box">
-                        <div class="price-copy">
-                            <small>Giá bán</small>
-                            <span class="price-current">@finalPrice.ToString("N0", culture) đ</span>
-                        </div>
+                        <span class="price-current">@finalPrice.ToString("N0", culture) đ</span>
                         @if (finalPrice < Model.Price)
                         {
-                            <div class="price-original"><small>Giá gốc</small><span class="price-old">@Model.Price.ToString("N0", culture) đ</span></div>
+                            <span class="price-old">@Model.Price.ToString("N0", culture) đ</span>
                         }
                         @if (savings > 0)
                         {
-                            <div class="product-savings"><small>Tiết kiệm</small><strong>@savings.ToString("N0", culture)đ</strong></div>
+                            <span class="product-savings">Tiết kiệm: @savings.ToString("N0", culture)đ</span>
                         }
                     </div>
 

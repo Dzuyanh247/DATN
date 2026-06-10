@@ -51,14 +51,14 @@ public class CartController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> BuyNow(int productId, int quantity = 1)
     {
-        var result = await _cartService.AddToCartAsync(GetUserId(), productId, quantity);
+        var result = await _cartService.SetBuyNowCartAsync(GetUserId(), productId, quantity);
         if (!result.Ok)
         {
             TempData["ErrorMessage"] = result.Error ?? "Không thể mua sản phẩm này lúc này.";
             return RedirectToAction("Detail", "Products", new { id = productId });
         }
 
-        return RedirectToAction("Checkout", "Orders");
+        return Redirect("/Checkout");
     }
 
     [HttpPost]

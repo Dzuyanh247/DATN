@@ -7,6 +7,7 @@ public interface ICartService
 {
     Task<CartViewVm> GetCartAsync(int? userId);
     Task<(bool Ok, string? Error)> AddToCartAsync(int? userId, int productId, int quantity = 1);
+    Task<(bool Ok, string? Error)> SetBuyNowCartAsync(int? userId, int productId, int quantity = 1);
     Task<(bool Ok, string? Error)> UpdateQuantityAsync(int? userId, int cartItemId, int quantity);
     Task RemoveItemAsync(int? userId, int cartItemId);
     Task ClearCartAsync(int? userId);
