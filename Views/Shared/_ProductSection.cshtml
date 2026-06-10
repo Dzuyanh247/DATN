@@ -6,7 +6,7 @@
     var sectionBackground = ImageUrlHelper.ResolveImageUrl(Model.Item3, defaultBg);
     var sectionStyle = $"background-image:url('{sectionBackground}')";
 }
-<section class="ttg-section @(isDeal ? "promo-section" : string.Empty)" style="@(isDeal ? sectionStyle : string.Empty)">
+<section class="ttg-section @(isDeal ? "promo-section" : "standard-product-section")" style="@(isDeal ? sectionStyle : string.Empty)">
     <div class="ttg-section-head">
         <div class="d-flex align-items-center gap-2 flex-wrap">
             <h4 class="ttg-section-title">@(sectionTitle == "Deal hot mỗi ngày" ? "DEAL HOT MỖI NGÀY - KHUYẾN MÃI LIỀN TAY" : sectionTitle.ToUpperInvariant())</h4>
@@ -24,7 +24,7 @@
                 </div>
             }
         </div>
-        <a class="ttg-view-all" asp-controller="Products" asp-action="Index">Xem tất cả</a>
+        <a class="ttg-view-all" asp-controller="Products" asp-action="Index">Xem tất cả &gt;&gt;</a>
     </div>
     <div class="ttg-products-grid @(isDeal ? "promo-product-grid" : string.Empty)">
         @if (Model.Item2 != null && Model.Item2.Any())
