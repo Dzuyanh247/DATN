@@ -50,6 +50,37 @@ public static class OrderStatusHelper
         _ => status.ToString()
     };
 
+    public static string BadgeClass(OrderStatus status) => status switch
+    {
+        OrderStatus.PendingPayment => "order-badge--pending-payment",
+        OrderStatus.Pending or OrderStatus.PendingConfirmation => "order-badge--pending-confirmation",
+        OrderStatus.Processing => "order-badge--processing",
+        OrderStatus.Delivering => "order-badge--delivering",
+        OrderStatus.Completed => "order-badge--completed",
+        OrderStatus.Cancelled => "order-badge--cancelled",
+        OrderStatus.Expired => "order-badge--expired",
+        _ => "order-badge--neutral"
+    };
+
+    public static string PaymentBadgeClass(string? paymentStatus, OrderStatus? orderStatus = null)
+    {
+        if (orderStatus == OrderStatus.Expired
+            || string.Equals(paymentStatus, PaymentStatuses.Expired, StringComparison.OrdinalIgnoreCase))
+        {
+            return "payment-badge--expired";
+        }
+
+        return paymentStatus switch
+        {
+            PaymentStatuses.Paid => "payment-badge--paid",
+            PaymentStatuses.Pending or PaymentStatuses.Unpaid => "payment-badge--pending",
+            PaymentStatuses.PendingConfirmation => "payment-badge--confirmation",
+            PaymentStatuses.Failed => "payment-badge--failed",
+            PaymentStatuses.Refunded => "payment-badge--refunded",
+            _ => "payment-badge--unpaid"
+        };
+    }
+
     public static string PaymentLabel(string? paymentStatus, OrderStatus? orderStatus = null) => paymentStatus switch
     {
         PaymentStatuses.Paid => "Đã thanh toán",

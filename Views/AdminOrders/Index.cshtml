@@ -1,59 +1,269 @@
-@model IEnumerable<Order>
+@model AdminOrdersIndexVm
 @{
     ViewData["Title"] = "Quản lý đơn hàng";
     var nowUtc = DateTimeHelper.UtcNow();
-}
-<h3>Quản lý đơn hàng</h3>
-<table class="table table-striped align-middle">
-    <thead><tr><th>Mã</th><th>Khách</th><th>Tổng tiền</th><th>Trạng thái đơn</th><th>Thanh toán</th><th>Hạn TT</th><th>Còn lại</th><th>Cập nhật</th><th></th></tr></thead>
-    <tbody>
-    @foreach (var o in Model)
+    var returnUrl = $"{Context.Request.Path}{Context.Request.QueryString}";
+    var paymentFilters = new[]
     {
-        var canPayNow = OrderStatusHelper.CanPayNow(o, nowUtc);
-        var remaining = TimeSpan.FromSeconds(OrderStatusHelper.RemainingSeconds(o, nowUtc));
-        <tr>
-            <td>@($"DH{o.Id:D6}")</td>
-            <td>@o.ReceiverName</td>
-            <td>@o.TotalAmount.ToString("N0") đ</td>
-            <td>@OrderStatusHelper.Label(o.Status)</td>
-            <td>@OrderStatusHelper.PaymentLabel(o.PaymentStatus, o.Status)</td>
-            <td>@(o.PaymentExpireAt.HasValue ? DateTimeHelper.FormatVietnam(o.PaymentExpireAt, "dd/MM/yyyy HH:mm") : "-")</td>
-            <td>
-                @if (canPayNow)
+        PaymentStatuses.Unpaid,
+        PaymentStatuses.Pending,
+        PaymentStatuses.PendingConfirmation,
+        PaymentStatuses.Paid,
+        PaymentStatuses.Expired,
+        PaymentStatuses.Failed,
+        PaymentStatuses.Refunded
+    };
+}
+
+<div class="admin-order-header">
+    <div>
+        <h2>Quản lý đơn hàng</h2>
+        <p>Theo dõi sản phẩm, thanh toán và tiến độ xử lý đơn hàng.</p>
+    </div>
+    <span class="admin-order-result"><i class="bi bi-receipt-cutoff"></i> @Model.Orders.Count kết quả</span>
+</div>
+
+<div class="row g-3 admin-order-stats">
+    <div class="col-6 col-xl-3">
+        <div class="admin-stat-card admin-order-stat">
+            <div><span>Tổng đơn</span><strong>@Model.Stats.TotalOrders</strong></div>
+            <i class="bi bi-bag-check admin-order-stat-icon stat-neutral"></i>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="admin-stat-card admin-order-stat">
+            <div><span>Chờ thanh toán</span><strong>@Model.Stats.PendingPaymentOrders</strong></div>
+            <i class="bi bi-hourglass-split admin-order-stat-icon stat-warning"></i>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="admin-stat-card admin-order-stat">
+            <div><span>Đã thanh toán</span><strong>@Model.Stats.PaidOrders</strong></div>
+            <i class="bi bi-credit-card-2-front admin-order-stat-icon stat-success"></i>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="admin-stat-card admin-order-stat">
+            <div><span>Hết hạn thanh toán</span><strong>@Model.Stats.ExpiredPaymentOrders</strong></div>
+            <i class="bi bi-exclamation-octagon admin-order-stat-icon stat-danger"></i>
+        </div>
+    </div>
+</div>
+
+<div class="admin-order-panel">
+    <form method="get" class="admin-order-filters">
+        <div class="admin-order-search">
+            <label for="orderSearch">Tìm kiếm</label>
+            <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                <input id="orderSearch" name="search" value="@Model.Search" class="form-control" placeholder="Mã đơn, tên khách, số điện thoại" />
+            </div>
+        </div>
+        <div>
+            <label for="orderStatus">Trạng thái đơn</label>
+            <select id="orderStatus" name="status" class="form-select">
+                <option value="">Tất cả trạng thái</option>
+                @foreach (var item in Enum.GetValues<OrderStatus>())
                 {
-                    <span>@remaining.ToString(@"hh\:mm\:ss")</span>
+                    if (Model.Status == item)
+                    {
+                        <option value="@item" selected>@OrderStatusHelper.Label(item)</option>
+                    }
+                    else
+                    {
+                        <option value="@item">@OrderStatusHelper.Label(item)</option>
+                    }
                 }
-                else if (OrderStatusHelper.IsExpiredPayment(o, nowUtc))
+            </select>
+        </div>
+        <div>
+            <label for="paymentStatus">Thanh toán</label>
+            <select id="paymentStatus" name="paymentStatus" class="form-select">
+                <option value="">Tất cả thanh toán</option>
+                @foreach (var item in paymentFilters)
                 {
-                    <span class="text-danger">Hết hạn thanh toán</span>
+                    if (Model.PaymentStatus == item)
+                    {
+                        <option value="@item" selected>@OrderStatusHelper.PaymentLabel(item)</option>
+                    }
+                    else
+                    {
+                        <option value="@item">@OrderStatusHelper.PaymentLabel(item)</option>
+                    }
                 }
-                else
-                {
-                    <span>-</span>
-                }
-            </td>
-            <td>
-                <form method="post" asp-action="UpdateStatus" class="d-flex gap-2">
-                    @Html.AntiForgeryToken()
-                    <input type="hidden" name="id" value="@o.Id" />
-                    <select name="status" class="form-select form-select-sm">
-                        @foreach (var s in Enum.GetValues<OrderStatus>())
+            </select>
+        </div>
+        <div>
+            <label for="fromDate">Từ ngày</label>
+            <input id="fromDate" type="date" name="fromDate" value="@Model.FromDate?.ToString("yyyy-MM-dd")" class="form-control" />
+        </div>
+        <div>
+            <label for="toDate">Đến ngày</label>
+            <input id="toDate" type="date" name="toDate" value="@Model.ToDate?.ToString("yyyy-MM-dd")" class="form-control" />
+        </div>
+        <div class="admin-order-filter-actions">
+            <button class="btn btn-primary" type="submit"><i class="bi bi-funnel"></i> Lọc</button>
+            <a class="btn btn-light" asp-action="Index" title="Đặt lại bộ lọc"><i class="bi bi-arrow-counterclockwise"></i></a>
+        </div>
+    </form>
+
+    <div class="table-responsive admin-orders-table-wrap">
+        <table class="table align-middle admin-orders-table">
+            <thead>
+                <tr>
+                    <th>Đơn hàng</th>
+                    <th>Khách</th>
+                    <th>Sản phẩm</th>
+                    <th class="text-end">Tổng tiền</th>
+                    <th>Trạng thái</th>
+                    <th>Thanh toán / hạn</th>
+                    <th>Cập nhật</th>
+                    <th class="text-end">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+            @if (!Model.Orders.Any())
+            {
+                <tr>
+                    <td colspan="8">
+                        <div class="admin-order-empty">
+                            <i class="bi bi-inbox"></i>
+                            <strong>Không tìm thấy đơn hàng</strong>
+                            <span>Hãy thử thay đổi từ khóa hoặc bộ lọc.</span>
+                        </div>
+                    </td>
+                </tr>
+            }
+            @foreach (var order in Model.Orders)
+            {
+                var isExpired = order.Status == OrderStatus.Expired
+                    || string.Equals(order.PaymentStatus, PaymentStatuses.Expired, StringComparison.OrdinalIgnoreCase);
+                var canCountDown = order.Status == OrderStatus.PendingPayment
+                    && order.PaymentDeadline.HasValue
+                    && order.PaymentDeadline.Value > nowUtc
+                    && !string.Equals(order.PaymentStatus, PaymentStatuses.Paid, StringComparison.OrdinalIgnoreCase);
+                var deadlineUnix = order.PaymentDeadline.HasValue
+                    ? new DateTimeOffset(DateTime.SpecifyKind(order.PaymentDeadline.Value, DateTimeKind.Utc)).ToUnixTimeSeconds()
+                    : 0;
+                <tr>
+                    <td class="admin-order-code-cell">
+                        <a asp-action="Detail" asp-route-id="@order.Id">@order.OrderCode</a>
+                        <small><i class="bi bi-calendar3"></i> @DateTimeHelper.FormatVietnam(order.CreatedAt, "dd/MM/yyyy HH:mm")</small>
+                    </td>
+                    <td class="admin-order-customer">
+                        <strong>@order.CustomerName</strong>
+                        <small><i class="bi bi-telephone"></i> @order.CustomerPhone</small>
+                    </td>
+                    <td class="admin-order-products-cell">
+                        @if (!order.Products.Any())
                         {
-                            if (s == o.Status)
+                            <span class="text-muted small">Không có dữ liệu sản phẩm</span>
+                        }
+                        @foreach (var product in order.Products.Take(2))
+                        {
+                            var imageUrl = ImageUrlHelper.ResolveImageUrl(product.ImageUrl, string.Empty);
+                            <div class="admin-order-product-mini">
+                                <div class="admin-order-thumb-wrap">
+                                    @if (!string.IsNullOrWhiteSpace(imageUrl))
+                                    {
+                                        <img src="@imageUrl" alt="@product.Name" loading="lazy" onerror="this.hidden=true;this.nextElementSibling.hidden=false;" />
+                                        <span class="admin-order-no-image" hidden><i class="bi bi-image"></i></span>
+                                    }
+                                    else
+                                    {
+                                        <span class="admin-order-no-image"><i class="bi bi-image"></i></span>
+                                    }
+                                </div>
+                                <div>
+                                    <span class="admin-order-product-name" title="@product.Name">@product.Name</span>
+                                    <small>SL: @product.Quantity · @product.UnitPrice.ToString("N0") đ</small>
+                                </div>
+                            </div>
+                        }
+                        @if (order.Products.Count > 2)
+                        {
+                            <a class="admin-order-more-products" asp-action="Detail" asp-route-id="@order.Id">+@(order.Products.Count - 2) sản phẩm khác</a>
+                        }
+                    </td>
+                    <td class="text-end admin-order-total">@order.TotalAmount.ToString("N0") đ</td>
+                    <td>
+                        <span class="order-status-badge @OrderStatusHelper.BadgeClass(order.Status)">@OrderStatusHelper.Label(order.Status)</span>
+                    </td>
+                    <td class="admin-order-payment-cell">
+                        <span class="payment-status-badge @OrderStatusHelper.PaymentBadgeClass(order.PaymentStatus, order.Status)">@OrderStatusHelper.PaymentLabel(order.PaymentStatus, order.Status)</span>
+                        @if (order.PaymentDeadline.HasValue && (order.Status == OrderStatus.PendingPayment || isExpired))
+                        {
+                            <small class="admin-order-deadline"><i class="bi bi-clock"></i> @DateTimeHelper.FormatVietnam(order.PaymentDeadline, "dd/MM/yyyy HH:mm")</small>
+                            if (canCountDown)
                             {
-                                <option value="@s" selected>@OrderStatusHelper.Label(s)</option>
+                                <span class="admin-order-countdown" data-payment-countdown data-deadline="@deadlineUnix">--:--:--</span>
                             }
-                            else
+                            else if (isExpired)
                             {
-                                <option value="@s">@OrderStatusHelper.Label(s)</option>
+                                <span class="admin-order-countdown is-expired">Hết hạn thanh toán</span>
                             }
                         }
-                    </select>
-                    <button class="btn btn-sm btn-primary">Lưu</button>
-                </form>
-            </td>
-            <td><a class="btn btn-sm btn-outline-secondary" asp-action="Detail" asp-route-id="@o.Id">Chi tiết</a></td>
-        </tr>
-    }
-    </tbody>
-</table>
+                        else
+                        {
+                            <small class="admin-order-no-deadline">—</small>
+                        }
+                    </td>
+                    <td>
+                        <form method="post" asp-action="UpdateStatus" class="admin-order-update-form">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="id" value="@order.Id" />
+                            <input type="hidden" name="returnUrl" value="@returnUrl" />
+                            <select name="status" class="form-select form-select-sm" aria-label="Trạng thái đơn @order.OrderCode">
+                                @foreach (var item in Enum.GetValues<OrderStatus>())
+                                {
+                                    if (item == order.Status)
+                                    {
+                                        <option value="@item" selected>@OrderStatusHelper.Label(item)</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="@item">@OrderStatusHelper.Label(item)</option>
+                                    }
+                                }
+                            </select>
+                            <button class="btn btn-sm btn-primary" type="submit"><i class="bi bi-check2"></i> Lưu</button>
+                        </form>
+                    </td>
+                    <td class="text-end">
+                        <a class="btn btn-sm btn-outline-primary admin-order-detail-button" asp-action="Detail" asp-route-id="@order.Id"><i class="bi bi-eye"></i> Chi tiết</a>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+(() => {
+    const nodes = document.querySelectorAll('[data-payment-countdown]');
+    if (!nodes.length) return;
+
+    const updateCountdowns = () => {
+        const now = Math.floor(Date.now() / 1000);
+        nodes.forEach(node => {
+            const remaining = Math.max(0, Number(node.dataset.deadline) - now);
+            if (remaining <= 0) {
+                node.textContent = 'Hết hạn thanh toán';
+                node.classList.add('is-expired');
+                return;
+            }
+
+            const hours = Math.floor(remaining / 3600);
+            const minutes = Math.floor((remaining % 3600) / 60);
+            const seconds = remaining % 60;
+            node.textContent = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        });
+    };
+
+    updateCountdowns();
+    window.setInterval(updateCountdowns, 1000);
+})();
+</script>
+}

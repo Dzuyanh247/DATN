@@ -1,59 +1,149 @@
-@model Order
+@model AdminOrderDetailVm
 @{
-    ViewData["Title"] = $"Chi tiết đơn DH{Model.Id:D6}";
+    ViewData["Title"] = $"Chi tiết đơn {Model.OrderCode}";
     var nowUtc = DateTimeHelper.UtcNow();
-    var canPayNow = OrderStatusHelper.CanPayNow(Model, nowUtc);
-    var remaining = TimeSpan.FromSeconds(OrderStatusHelper.RemainingSeconds(Model, nowUtc));
+    var canCountDown = Model.Status == OrderStatus.PendingPayment
+        && Model.PaymentDeadline.HasValue
+        && Model.PaymentDeadline.Value > nowUtc
+        && !string.Equals(Model.PaymentStatus, PaymentStatuses.Paid, StringComparison.OrdinalIgnoreCase);
+    var isExpired = Model.Status == OrderStatus.Expired
+        || string.Equals(Model.PaymentStatus, PaymentStatuses.Expired, StringComparison.OrdinalIgnoreCase);
+    var deadlineUnix = Model.PaymentDeadline.HasValue
+        ? new DateTimeOffset(DateTime.SpecifyKind(Model.PaymentDeadline.Value, DateTimeKind.Utc)).ToUnixTimeSeconds()
+        : 0;
 }
-<h3>Chi tiết đơn @($"DH{Model.Id:D6}")</h3>
-<div class="card mb-3">
-    <div class="card-body">
-        <div><b>Trạng thái:</b> @OrderStatusHelper.Label(Model.Status)</div>
-        <div><b>Khách:</b> @Model.ReceiverName (@Model.ReceiverPhone)</div>
-        <div><b>Địa chỉ:</b> @Model.ShippingAddress</div>
-        <div><b>Thanh toán:</b> @PaymentMethods.Label(Model.PaymentMethod)</div>
-        <div><b>Trạng thái thanh toán:</b> @OrderStatusHelper.PaymentLabel(Model.PaymentStatus, Model.Status)</div>
-        <div><b>Hạn thanh toán:</b> @(Model.PaymentExpireAt.HasValue ? DateTimeHelper.FormatVietnam(Model.PaymentExpireAt, "dd/MM/yyyy HH:mm") : "-")</div>
-        <div>
-            <b>Còn lại:</b>
-            @if (canPayNow)
+
+<div class="admin-order-detail-header">
+    <div>
+        <a class="admin-order-back" asp-action="Index"><i class="bi bi-arrow-left"></i> Danh sách đơn hàng</a>
+        <h2>Chi tiết đơn @Model.OrderCode</h2>
+        <p>Đặt lúc @DateTimeHelper.FormatVietnam(Model.CreatedAt, "dd/MM/yyyy HH:mm")</p>
+    </div>
+    <span class="order-status-badge @OrderStatusHelper.BadgeClass(Model.Status)">@OrderStatusHelper.Label(Model.Status)</span>
+</div>
+
+<div class="row g-3">
+    <div class="col-xl-8">
+        <section class="admin-order-detail-panel">
+            <div class="admin-order-section-title">
+                <div><i class="bi bi-box-seam"></i><span>Sản phẩm trong đơn</span></div>
+                <span>@Model.Products.Count sản phẩm</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table align-middle admin-order-detail-products">
+                    <thead><tr><th>Sản phẩm</th><th class="text-center">SL</th><th class="text-end">Đơn giá</th><th class="text-end">Thành tiền</th></tr></thead>
+                    <tbody>
+                    @if (!Model.Products.Any())
+                    {
+                        <tr><td colspan="4" class="text-center text-muted py-4">Không có dữ liệu sản phẩm.</td></tr>
+                    }
+                    @foreach (var product in Model.Products)
+                    {
+                        var imageUrl = ImageUrlHelper.ResolveImageUrl(product.ImageUrl, string.Empty);
+                        <tr>
+                            <td>
+                                <div class="admin-order-detail-product">
+                                    <div class="admin-order-detail-thumb">
+                                        @if (!string.IsNullOrWhiteSpace(imageUrl))
+                                        {
+                                            <img src="@imageUrl" alt="@product.Name" loading="lazy" onerror="this.hidden=true;this.nextElementSibling.hidden=false;" />
+                                            <span class="admin-order-no-image" hidden><i class="bi bi-image"></i></span>
+                                        }
+                                        else
+                                        {
+                                            <span class="admin-order-no-image"><i class="bi bi-image"></i></span>
+                                        }
+                                    </div>
+                                    <strong>@product.Name</strong>
+                                </div>
+                            </td>
+                            <td class="text-center">@product.Quantity</td>
+                            <td class="text-end">@product.UnitPrice.ToString("N0") đ</td>
+                            <td class="text-end fw-semibold">@product.LineTotal.ToString("N0") đ</td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="admin-order-detail-panel mt-3">
+            <div class="admin-order-section-title"><div><i class="bi bi-person"></i><span>Thông tin nhận hàng</span></div></div>
+            <div class="admin-order-info-grid">
+                <div><span>Khách hàng</span><strong>@Model.CustomerName</strong></div>
+                <div><span>Số điện thoại</span><strong>@Model.CustomerPhone</strong></div>
+                <div><span>Email</span><strong>@(string.IsNullOrWhiteSpace(Model.CustomerEmail) ? "—" : Model.CustomerEmail)</strong></div>
+                <div class="info-wide"><span>Địa chỉ giao hàng</span><strong>@Model.ShippingAddress</strong></div>
+                @if (!string.IsNullOrWhiteSpace(Model.Note))
+                {
+                    <div class="info-wide"><span>Ghi chú</span><strong>@Model.Note</strong></div>
+                }
+            </div>
+        </section>
+    </div>
+
+    <div class="col-xl-4">
+        <section class="admin-order-detail-panel">
+            <div class="admin-order-section-title"><div><i class="bi bi-credit-card"></i><span>Thanh toán</span></div></div>
+            <div class="admin-order-payment-summary">
+                <div><span>Phương thức</span><strong>@PaymentMethods.Label(Model.PaymentMethod)</strong></div>
+                <div><span>Trạng thái</span><span class="payment-status-badge @OrderStatusHelper.PaymentBadgeClass(Model.PaymentStatus, Model.Status)">@OrderStatusHelper.PaymentLabel(Model.PaymentStatus, Model.Status)</span></div>
+                <div><span>Hạn thanh toán</span><strong>@(Model.PaymentDeadline.HasValue ? DateTimeHelper.FormatVietnam(Model.PaymentDeadline, "dd/MM/yyyy HH:mm") : "—")</strong></div>
+                @if (canCountDown)
+                {
+                    <div><span>Còn lại</span><strong class="admin-order-countdown" data-payment-countdown data-deadline="@deadlineUnix">--:--:--</strong></div>
+                }
+                else if (isExpired)
+                {
+                    <div><span>Còn lại</span><strong class="admin-order-countdown is-expired">Hết hạn thanh toán</strong></div>
+                }
+                @if (Model.PaidAt.HasValue)
+                {
+                    <div><span>Đã thanh toán lúc</span><strong>@DateTimeHelper.FormatVietnam(Model.PaidAt, "dd/MM/yyyy HH:mm")</strong></div>
+                }
+            </div>
+
+            @if (Model.PaymentMethod == PaymentMethods.BankTransfer && Model.PaymentStatus == PaymentStatuses.PendingConfirmation)
             {
-                <span>@remaining.ToString(@"hh\:mm\:ss")</span>
+                <form asp-action="ConfirmBankTransfer" method="post" class="mt-3">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" value="@Model.Id" />
+                    <button class="btn btn-success w-100"><i class="bi bi-check-circle"></i> Xác nhận đã nhận tiền</button>
+                </form>
             }
-            else if (OrderStatusHelper.IsExpiredPayment(Model, nowUtc))
-            {
-                <span class="text-danger">Hết hạn thanh toán</span>
-            }
-            else
-            {
-                <span>-</span>
-            }
-        </div>
-        <div><b>Tổng tiền:</b> <span class="text-danger fw-bold">@Model.TotalAmount.ToString("N0") đ</span></div>
+        </section>
+
+        <section class="admin-order-detail-panel mt-3">
+            <div class="admin-order-section-title"><div><i class="bi bi-receipt"></i><span>Tổng thanh toán</span></div></div>
+            <div class="admin-order-totals">
+                <div><span>Tạm tính</span><strong>@Model.SubtotalAmount.ToString("N0") đ</strong></div>
+                <div><span>Giảm giá</span><strong>-@Model.DiscountAmount.ToString("N0") đ</strong></div>
+                <div><span>Phí vận chuyển</span><strong>@Model.ShippingFee.ToString("N0") đ</strong></div>
+                <div class="admin-order-grand-total"><span>Tổng cộng</span><strong>@Model.TotalAmount.ToString("N0") đ</strong></div>
+            </div>
+        </section>
     </div>
 </div>
-<table class="table table-bordered">
-    <thead><tr><th>Sản phẩm</th><th>SL</th><th>Đơn giá</th><th>Thành tiền</th></tr></thead>
-    <tbody>
-    @foreach (var d in Model.Details)
-    {
-        <tr>
-            <td>@(d.Product?.Name ?? d.ProductName)</td>
-            <td>@d.Quantity</td>
-            <td>@d.UnitPrice.ToString("N0") đ</td>
-            <td>@((d.UnitPrice * d.Quantity).ToString("N0")) đ</td>
-        </tr>
-    }
-    </tbody>
-</table>
 
-@if (Model.PaymentMethod == PaymentMethods.BankTransfer && Model.PaymentStatus == PaymentStatuses.PendingConfirmation)
-{
-    <form asp-action="ConfirmBankTransfer" method="post" class="mb-3">
-        @Html.AntiForgeryToken()
-        <input type="hidden" name="id" value="@Model.Id" />
-        <button class="btn btn-success">Xác nhận đã nhận tiền</button>
-    </form>
+@section Scripts {
+<script>
+(() => {
+    const node = document.querySelector('[data-payment-countdown]');
+    if (!node) return;
+    const update = () => {
+        const remaining = Math.max(0, Number(node.dataset.deadline) - Math.floor(Date.now() / 1000));
+        if (remaining <= 0) {
+            node.textContent = 'Hết hạn thanh toán';
+            node.classList.add('is-expired');
+            return;
+        }
+        const hours = Math.floor(remaining / 3600);
+        const minutes = Math.floor((remaining % 3600) / 60);
+        const seconds = remaining % 60;
+        node.textContent = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    };
+    update();
+    window.setInterval(update, 1000);
+})();
+</script>
 }
-
-<a class="btn btn-outline-secondary" asp-action="Index">Quay lại danh sách</a>
