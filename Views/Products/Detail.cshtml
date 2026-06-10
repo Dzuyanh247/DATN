@@ -33,6 +33,8 @@
         .ToList();
     var promotionLines = ProductPromotionHelper.GetPromotionLines(Model);
 
+    // Tạm ẩn lựa chọn nâng cấp cho đến khi có logic tính lại giá theo cấu hình.
+    var showUpgradeOptions = false;
     var upgradeGroups = componentSpecs
         .Select(spec => new { Spec = spec, Group = ProductSpecDisplayHelper.GetSpecGroup(spec.Description) })
         .Where(item => item.Group is "CPU" or "RAM" or "SSD")
@@ -179,7 +181,7 @@
                         </div>
                     }
 
-                    @if (upgradeGroups.Any())
+                    @if (showUpgradeOptions && upgradeGroups.Any())
                     {
                         <div class="upgrade-box">
                             <div class="commerce-box-header"><span><i class="bi bi-gear-fill" aria-hidden="true"></i>UPGRADE</span><small>Tùy chọn cấu hình</small></div>
