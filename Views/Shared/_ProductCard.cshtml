@@ -26,24 +26,35 @@
         }
     </a>
     <h6 class="ttg-product-title">@Model.Name</h6>
-    <div class="ttg-price">@finalPrice.ToString("N0") VNĐ</div>
-    <div class="ttg-old-price">@(finalPrice < Model.Price ? $"{Model.Price:N0} VNĐ" : "")</div>
-    <span class="ttg-stock">@(Model.IsInStock ? "Còn hàng" : "Hết hàng")</span>
+    <div class="ttg-price-row">
+        <div class="ttg-price-stack">
+            <div class="ttg-price">@finalPrice.ToString("N0") VNĐ</div>
+            <div class="ttg-old-price">@(finalPrice < Model.Price ? $"{Model.Price:N0} VNĐ" : "")</div>
+        </div>
+        @if (discount > 0)
+        {
+            <span class="ttg-price-discount">-@discount%</span>
+        }
+    </div>
+    <span class="ttg-stock ttg-card-stock">@(Model.IsInStock ? "Còn hàng" : "Hết hàng")</span>
     <div class="ttg-product-promotion" title="@(string.Join("; ", promotionLines))">
         <span aria-hidden="true">🎁</span>
         <span>@promotionLines[0]@(promotionLines.Count > 1 ? $" (+{promotionLines.Count - 1})" : string.Empty)</span>
     </div>
-    @if (Model.IsInStock)
-    {
-        <form method="post" asp-controller="Cart" asp-action="Add" class="mt-auto pt-2">
-            <input type="hidden" name="productId" value="@Model.Id" />
-            <button class="ttg-add-btn w-100"><i class="bi bi-cart-plus"></i> Thêm vào giỏ</button>
-        </form>
-    }
-    else
-    {
-        <button class="ttg-add-btn w-100 mt-auto" disabled>Thêm vào giỏ</button>
-    }
+    <div class="ttg-card-actions">
+        @if (Model.IsInStock)
+        {
+            <form method="post" asp-controller="Cart" asp-action="Add">
+                <input type="hidden" name="productId" value="@Model.Id" />
+                <button class="ttg-add-btn"><i class="bi bi-cart-plus"></i> Thêm vào giỏ</button>
+            </form>
+        }
+        else
+        {
+            <button class="ttg-add-btn" disabled>Thêm vào giỏ</button>
+        }
+        <span class="ttg-action-stock @(Model.IsInStock ? string.Empty : "is-out-of-stock")">@(Model.IsInStock ? "Còn hàng" : "Hết hàng")</span>
+    </div>
     <div class="ttg-compare-slot">
         <partial name="_CompareButton" model="Model" />
     </div>

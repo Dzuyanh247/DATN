@@ -239,6 +239,7 @@ const showProductHover=(card)=>{
     placeProductHover(card);
 };
 document.querySelectorAll('.ttg-product-image-wrap').forEach(function(card){
+    if(card.closest('.standard-product-section')) return;
     card.addEventListener('mouseenter',()=>showProductHover(card));
     card.addEventListener('mouseleave',hideProductHover);
     card.addEventListener('focus',()=>showProductHover(card));
