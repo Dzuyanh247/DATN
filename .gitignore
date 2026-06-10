@@ -6,3 +6,5 @@ wwwroot/uploads/*
 !wwwroot/uploads/products/.gitkeep
 !wwwroot/uploads/logo/
 !wwwroot/uploads/logo/.gitkeep
+output/*.pptx
+*.pptx
