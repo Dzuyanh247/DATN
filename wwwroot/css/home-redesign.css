@@ -130,7 +130,7 @@ body { background: var(--ttg-bg) !important; color: var(--ttg-text); font-family
   display: block;
   width: 100%;
   min-width: 0;
-  height: 145px;
+  height: 165px;
   border-radius: 10px;
   overflow: hidden;
   background: #fff;
