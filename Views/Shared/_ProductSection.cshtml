@@ -5,8 +5,9 @@
     var defaultBg = sectionTitle == "Deal hot mỗi ngày" ? "/images/defaults/deal-bg.jpg" : "/images/defaults/hot-promotion-bg.jpg";
     var sectionBackground = ImageUrlHelper.ResolveImageUrl(Model.Item3, defaultBg);
     var sectionStyle = $"background-image:url('{sectionBackground}')";
+    ViewData["CompactProductCard"] = true;
 }
-<section class="ttg-section @(isDeal ? "promo-section" : "standard-product-section")" style="@(isDeal ? sectionStyle : string.Empty)">
+<section class="ttg-section standard-product-section @(isDeal ? "promo-section" : string.Empty)" style="@(isDeal ? sectionStyle : string.Empty)">
     <div class="ttg-section-head">
         <div class="d-flex align-items-center gap-2 flex-wrap">
             <h4 class="ttg-section-title">@(sectionTitle == "Deal hot mỗi ngày" ? "DEAL HOT MỖI NGÀY - KHUYẾN MÃI LIỀN TAY" : sectionTitle.ToUpperInvariant())</h4>

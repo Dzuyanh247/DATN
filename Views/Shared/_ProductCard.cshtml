@@ -8,6 +8,7 @@
     var hoverSpecs = ProductSpecDisplayHelper.GetHoverSpecs(Model);
     var hoverSummary = ProductSpecDisplayHelper.GetSummaryText(Model);
     var promotionLines = ProductPromotionHelper.GetPromotionLines(Model);
+    var isCompact = ViewData["CompactProductCard"] is true;
 }
 <div class="ttg-product-card">
     <a asp-controller="Products" asp-action="Detail" asp-route-id="@Model.Id" class="ttg-product-image-wrap text-decoration-none"
@@ -20,7 +21,7 @@
        data-pp-spec-lines='@string.Join("||", hoverSpecs)'
        data-pp-promo-lines='@string.Join("||", promotionLines)'>
         <img src="@image" class="ttg-product-image" alt="@Model.Name" onerror="this.onerror=null;this.src='/images/banners/banner_main1.png';" />
-        @if (discount > 0)
+        @if (!isCompact && discount > 0)
         {
             <span class="ttg-discount-badge">-@discount%</span>
         }
@@ -36,11 +37,14 @@
             <span class="ttg-price-discount">-@discount%</span>
         }
     </div>
-    <span class="ttg-stock ttg-card-stock">@(Model.IsInStock ? "Còn hàng" : "Hết hàng")</span>
-    <div class="ttg-product-promotion" title="@(string.Join("; ", promotionLines))">
-        <span aria-hidden="true">🎁</span>
-        <span>@promotionLines[0]@(promotionLines.Count > 1 ? $" (+{promotionLines.Count - 1})" : string.Empty)</span>
-    </div>
+    @if (!isCompact)
+    {
+        <span class="ttg-stock ttg-card-stock">@(Model.IsInStock ? "Còn hàng" : "Hết hàng")</span>
+        <div class="ttg-product-promotion" title="@(string.Join("; ", promotionLines))">
+            <span aria-hidden="true">🎁</span>
+            <span>@promotionLines[0]@(promotionLines.Count > 1 ? $" (+{promotionLines.Count - 1})" : string.Empty)</span>
+        </div>
+    }
     <div class="ttg-card-actions">
         @if (Model.IsInStock)
         {
@@ -55,7 +59,10 @@
         }
         <span class="ttg-action-stock @(Model.IsInStock ? string.Empty : "is-out-of-stock")">@(Model.IsInStock ? "Còn hàng" : "Hết hàng")</span>
     </div>
-    <div class="ttg-compare-slot">
-        <partial name="_CompareButton" model="Model" />
-    </div>
+    @if (!isCompact)
+    {
+        <div class="ttg-compare-slot">
+            <partial name="_CompareButton" model="Model" />
+        </div>
+    }
 </div>
