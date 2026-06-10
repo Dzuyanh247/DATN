@@ -94,6 +94,11 @@
 .product-section-heading h2{margin:1px 0 0;color:#26374f;font-size:1.06rem;font-weight:900}
 .product-section-heading>i{color:#cbd5e1;font-size:1.7rem}
 .product-section-kicker{color:var(--detail-red);font-size:.64rem;font-weight:900;letter-spacing:.07em;text-transform:uppercase}
+.product-description-section{overflow:hidden;border:1px solid var(--detail-border);border-radius:10px;background:#fff;box-shadow:0 5px 18px rgba(15,23,42,.04)}
+.product-description-content{padding:20px 22px;color:#374151;font-size:.92rem;line-height:1.75;overflow-wrap:anywhere;word-break:break-word}
+.product-description-text{max-width:100%;white-space:pre-line}
+.product-description-content.is-empty{color:#94a3b8;font-style:italic}
+.product-description-content p{margin:0}
 .spec-table{color:#374151;font-size:.82rem}
 .spec-table thead th{padding:11px 14px;border:0;background:var(--detail-navy);color:#fff;font-size:.69rem;letter-spacing:.04em;text-transform:uppercase}
 .spec-table tbody td{padding:11px 14px;border-color:#edf0f4;vertical-align:middle}
@@ -129,6 +134,7 @@
 .thumb-btn{flex-basis:68px;width:68px;height:68px}
 .bundle-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 .product-section-heading{padding:13px 15px}
+.product-description-content{padding:17px 16px;font-size:.88rem;line-height:1.7}
 .product-name{font-size:1.35rem}
 .price-box{min-height:0}
 }

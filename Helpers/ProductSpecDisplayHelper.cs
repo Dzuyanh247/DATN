@@ -1,3 +1,4 @@
+using System.Net;
 using System.Text.RegularExpressions;
 using Datn.PcStore.Models;
 using Datn.PcStore.ViewModels;
@@ -93,9 +94,55 @@ public static class ProductSpecDisplayHelper
         return GetSafeTextLines(product, 1, maxLength).FirstOrDefault() ?? string.Empty;
     }
 
+    public static string GetFullDescriptionText(Product product)
+    {
+        var description = FirstMeaningfulText(
+            product.Description,
+            product.DetailDescription,
+            product.ShortDescription);
+
+        if (!string.IsNullOrWhiteSpace(description))
+        {
+            return ConvertHtmlToSafeText(description);
+        }
+
+        var componentDescriptions = TryParseComponentSpecs(product.TechnicalSpecifications)
+            .Select(spec => spec.Description?.Trim())
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .ToList();
+
+        if (componentDescriptions.Count > 0)
+        {
+            return string.Join(Environment.NewLine, componentDescriptions);
+        }
+
+        return ContainsRawJsonMarkers(product.Specifications)
+            ? string.Empty
+            : ConvertHtmlToSafeText(product.Specifications);
+    }
+
     public static string GetPromotionText(Product product, int maxLength = 220)
     {
         return Truncate(string.Join(" | ", ProductPromotionHelper.GetPromotionLines(product)), maxLength);
+    }
+
+    private static string FirstMeaningfulText(params string?[] values)
+        => values.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value))?.Trim() ?? string.Empty;
+
+    private static string ConvertHtmlToSafeText(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return string.Empty;
+
+        var text = WebUtility.HtmlDecode(value.Trim());
+        text = Regex.Replace(text, @"<(script|style)(?:\s[^>]*)?>.*?</\1\s*>", string.Empty, RegexOptions.IgnoreCase | RegexOptions.Singleline);
+        text = Regex.Replace(text, @"<br\s*/?>", "\n", RegexOptions.IgnoreCase);
+        text = Regex.Replace(text, @"</(p|div|li|tr|h[1-6])\s*>", "\n", RegexOptions.IgnoreCase);
+        text = Regex.Replace(text, @"<li(?:\s[^>]*)?>", "• ", RegexOptions.IgnoreCase);
+        text = Regex.Replace(text, @"<[^>]+>", string.Empty);
+        text = text.Replace("\r\n", "\n").Replace('\r', '\n');
+        text = Regex.Replace(text, @"[ \t]+(?=\n)", string.Empty);
+        text = Regex.Replace(text, @"\n{3,}", "\n\n");
+        return text.Trim();
     }
 
     private static IEnumerable<string> GetSafeFallbackLines(params string?[] values)
