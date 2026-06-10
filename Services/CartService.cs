@@ -43,6 +43,48 @@ public class CartService : ICartService
         return (true, null);
     }
 
+    public async Task<(bool Ok, string? Error)> SetBuyNowCartAsync(int? userId, int productId, int quantity = 1)
+    {
+        quantity = Math.Max(quantity, 1);
+        var product = await _db.Products.FirstOrDefaultAsync(x => x.Id == productId && x.IsActive);
+        if (product == null) return (false, "Sản phẩm không tồn tại.");
+        if (product.StockQuantity < quantity) return (false, "Sản phẩm không đủ tồn kho.");
+
+        if (userId.HasValue)
+        {
+            var cart = await GetOrCreateCartAsync(userId.Value);
+            var existingItems = await _db.CartItems.Where(x => x.CartId == cart.Id).ToListAsync();
+            var buyNowItem = existingItems.FirstOrDefault(x => x.ProductId == productId);
+            _db.CartItems.RemoveRange(existingItems.Where(x => x.ProductId != productId));
+            if (buyNowItem == null)
+            {
+                _db.CartItems.Add(new CartItem
+                {
+                    CartId = cart.Id,
+                    ProductId = productId,
+                    Quantity = quantity
+                });
+            }
+            else
+            {
+                buyNowItem.Quantity = quantity;
+            }
+            await _db.SaveChangesAsync();
+            return (true, null);
+        }
+
+        SaveSessionItems(new List<CartLineVm>
+        {
+            new()
+            {
+                CartItemId = -productId,
+                ProductId = productId,
+                Quantity = quantity
+            }
+        });
+        return (true, null);
+    }
+
     public async Task<(bool Ok, string? Error)> UpdateQuantityAsync(int? userId, int cartItemId, int quantity)
     {
         quantity = Math.Max(quantity, 1);
