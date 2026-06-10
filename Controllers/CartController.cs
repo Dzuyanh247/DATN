@@ -48,6 +48,20 @@ public class CartController : Controller
     }
 
     [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> BuyNow(int productId, int quantity = 1)
+    {
+        var result = await _cartService.AddToCartAsync(GetUserId(), productId, quantity);
+        if (!result.Ok)
+        {
+            TempData["ErrorMessage"] = result.Error ?? "Không thể mua sản phẩm này lúc này.";
+            return RedirectToAction("Detail", "Products", new { id = productId });
+        }
+
+        return RedirectToAction("Checkout", "Orders");
+    }
+
+    [HttpPost]
     public async Task<IActionResult> Update(int cartItemId, int quantity)
     {
         var result = await _cartService.UpdateQuantityAsync(GetUserId(), cartItemId, quantity);
