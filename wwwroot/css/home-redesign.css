@@ -100,7 +100,7 @@ body { background: var(--ttg-bg) !important; color: var(--ttg-text); font-family
 .standard-product-section .ttg-tab { padding:5px 9px; border-radius:4px; background:#f3f4f6; font-size:.76rem; }
 .standard-product-section .ttg-view-all { padding:5px 2px; border-radius:0; background:transparent; color:#ea580c; font-size:.8rem; }
 .standard-product-section .ttg-products-grid { grid-template-columns:repeat(6,minmax(0,1fr)); gap:8px; align-items:stretch; }
-.standard-product-section .ttg-product-card { height:300px; min-width:0; padding:9px; border:1px solid #e5e7eb; border-radius:6px; background:#fff; box-shadow:0 1px 3px rgba(15,23,42,.04); transition:border-color .18s ease,box-shadow .18s ease; }
+.standard-product-section .ttg-product-card { height:315px; min-width:0; padding:9px; border:1px solid #e5e7eb; border-radius:6px; background:#fff; box-shadow:0 1px 3px rgba(15,23,42,.04); transition:border-color .18s ease,box-shadow .18s ease; }
 .standard-product-section .ttg-product-card:hover { border-color:#cbd5e1; box-shadow:0 3px 10px rgba(15,23,42,.09); }
 .standard-product-section .ttg-product-image-wrap { display:flex; align-items:center; justify-content:center; flex:0 0 135px; height:135px; margin-bottom:8px; overflow:hidden; }
 .standard-product-section .ttg-product-image { display:block; width:100%; height:100%; border-radius:3px; background:#fff; object-fit:contain; }
@@ -110,13 +110,15 @@ body { background: var(--ttg-bg) !important; color: var(--ttg-text); font-family
 .standard-product-section .ttg-price { color:#e60000; font-size:15px; line-height:18px; font-weight:700; white-space:nowrap; }
 .standard-product-section .ttg-old-price { min-height:15px; color:#888; font-size:12px; line-height:15px; }
 .standard-product-section .ttg-price-discount { display:inline-flex; flex:0 0 auto; align-items:center; justify-content:center; margin-bottom:1px; padding:2px 5px; border-radius:3px; background:#e60000; color:#fff; font-size:11px; line-height:14px; font-weight:700; }
-.standard-product-section .ttg-card-actions { display:grid; grid-template-columns:minmax(0,1fr) auto auto; align-items:center; gap:5px; margin-top:auto; padding-top:7px; }
-.standard-product-section .ttg-card-actions form { min-width:0; margin:0; }
-.standard-product-section .ttg-add-btn { width:100%; height:28px; min-height:28px; padding:0 7px; border-radius:4px; background:#0f4c5c; font-size:11px; line-height:28px; white-space:nowrap; }
-.standard-product-section .ttg-compare-btn { display:inline-flex; align-items:center; justify-content:center; gap:3px; width:auto; min-width:0; height:28px; padding:0 7px; border:1px solid #e5e7eb; border-radius:4px; background:#fff; color:#475569; font-size:11px; line-height:26px; white-space:nowrap; }
+.standard-product-section .ttg-card-actions { display:flex; flex-direction:column; gap:5px; margin-top:auto; padding-top:7px; }
+.standard-product-section .ttg-card-actions>form { width:100%; min-width:0; margin:0; }
+.standard-product-section .ttg-add-btn { display:inline-flex; align-items:center; justify-content:center; gap:4px; width:100%; height:30px; min-height:30px; padding:0 7px; border-radius:5px; background:#0f4c5c; font-size:12px; line-height:30px; white-space:nowrap; }
+.standard-product-section .ttg-secondary-actions { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:5px; width:100%; }
+.standard-product-section .ttg-secondary-actions .ttg-compare-form { width:100%; min-width:0; margin:0; }
+.standard-product-section .ttg-compare-btn { display:inline-flex; align-items:center; justify-content:center; gap:3px; width:100%; min-width:0; height:27px; padding:0 7px; border:1px solid #e5e7eb; border-radius:5px; background:#fff; color:#475569; font-size:11px; line-height:25px; white-space:nowrap; }
 .standard-product-section .ttg-compare-btn:hover { border-color:#cbd5e1; background:#f8fafc; color:#0f4c5c; }
 .standard-product-section .ttg-compare-btn.is-selected { border-color:#cbd5e1; background:#f8fafc; }
-.standard-product-section .ttg-action-stock { display:inline-flex; align-items:center; justify-content:center; height:28px; padding:0 7px; border-radius:4px; background:#dcfce7; color:#15803d; font-size:11px; line-height:28px; font-weight:700; white-space:nowrap; }
+.standard-product-section .ttg-action-stock { display:inline-flex; align-items:center; justify-content:center; width:100%; height:27px; padding:0 7px; border-radius:5px; background:#dcfce7; color:#15803d; font-size:11px; line-height:27px; font-weight:700; white-space:nowrap; }
 .standard-product-section .ttg-action-stock.is-out-of-stock { background:#f3f4f6; color:#6b7280; }
 .ttg-empty-state { grid-column: 1 / -1; text-align:center; padding: 12px; background:#ffffffd1; border:1px dashed #cbd5e1; border-radius:12px; color:#334155; }
 
