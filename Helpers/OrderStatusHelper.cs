@@ -62,42 +62,88 @@ public static class OrderStatusHelper
         _ => "order-badge--neutral"
     };
 
-    public static string PaymentBadgeClass(string? paymentStatus, OrderStatus? orderStatus = null)
+    public static string NormalizePaymentStatus(OrderStatus orderStatus, string? paymentStatus)
     {
-        if (orderStatus == OrderStatus.Expired
-            || string.Equals(paymentStatus, PaymentStatuses.Expired, StringComparison.OrdinalIgnoreCase))
+        if (orderStatus == OrderStatus.Completed)
         {
-            return "payment-badge--expired";
+            return string.Equals(paymentStatus, PaymentStatuses.Refunded, StringComparison.OrdinalIgnoreCase)
+                ? PaymentStatuses.Refunded
+                : PaymentStatuses.Paid;
         }
 
-        return paymentStatus switch
+        if (orderStatus == OrderStatus.Expired)
+        {
+            return PaymentStatuses.Expired;
+        }
+
+        if (orderStatus == OrderStatus.PendingPayment && IsPendingPaymentStatus(paymentStatus))
+        {
+            return PaymentStatuses.Pending;
+        }
+
+        if (orderStatus == OrderStatus.Cancelled
+            && !string.Equals(paymentStatus, PaymentStatuses.Paid, StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(paymentStatus, PaymentStatuses.Refunded, StringComparison.OrdinalIgnoreCase))
+        {
+            return PaymentStatuses.Failed;
+        }
+
+        return string.IsNullOrWhiteSpace(paymentStatus) ? PaymentStatuses.Unpaid : paymentStatus;
+    }
+
+    public static bool ShouldShowPaymentStatus(OrderStatus orderStatus, string? paymentStatus)
+    {
+        var normalizedPaymentStatus = NormalizePaymentStatus(orderStatus, paymentStatus);
+        return PaymentLabel(normalizedPaymentStatus, orderStatus) != Label(orderStatus);
+    }
+
+    public static bool IsEffectivelyPaid(OrderStatus orderStatus, string? paymentStatus)
+        => orderStatus != OrderStatus.Expired
+           && string.Equals(
+               NormalizePaymentStatus(orderStatus, paymentStatus),
+               PaymentStatuses.Paid,
+               StringComparison.OrdinalIgnoreCase);
+
+    public static string PaymentBadgeClass(string? paymentStatus, OrderStatus? orderStatus = null)
+    {
+        var normalizedPaymentStatus = orderStatus.HasValue
+            ? NormalizePaymentStatus(orderStatus.Value, paymentStatus)
+            : paymentStatus;
+
+        return normalizedPaymentStatus switch
         {
             PaymentStatuses.Paid => "payment-badge--paid",
             PaymentStatuses.Pending or PaymentStatuses.Unpaid => "payment-badge--pending",
             PaymentStatuses.PendingConfirmation => "payment-badge--confirmation",
+            PaymentStatuses.Expired => "payment-badge--expired",
             PaymentStatuses.Failed => "payment-badge--failed",
             PaymentStatuses.Refunded => "payment-badge--refunded",
             _ => "payment-badge--unpaid"
         };
     }
 
-    public static string PaymentLabel(string? paymentStatus, OrderStatus? orderStatus = null) => paymentStatus switch
+    public static string PaymentLabel(string? paymentStatus, OrderStatus? orderStatus = null)
     {
-        PaymentStatuses.Paid => "Đã thanh toán",
-        PaymentStatuses.Pending => "Chờ thanh toán",
-        PaymentStatuses.PendingConfirmation => "Chờ xác nhận thanh toán",
-        PaymentStatuses.Unpaid => orderStatus == OrderStatus.PendingPayment ? "Chờ thanh toán" : "Chưa thanh toán",
-        PaymentStatuses.Failed => "Thanh toán thất bại",
-        PaymentStatuses.Expired => "Hết hạn thanh toán",
-        PaymentStatuses.Refunded => "Đã hoàn tiền",
-        _ when orderStatus == OrderStatus.Expired => "Hết hạn thanh toán",
-        _ when orderStatus == OrderStatus.Cancelled => "Đã hủy",
-        null or "" => "Chưa thanh toán",
-        _ => paymentStatus!
-    };
+        var normalizedPaymentStatus = orderStatus.HasValue
+            ? NormalizePaymentStatus(orderStatus.Value, paymentStatus)
+            : paymentStatus;
+
+        return normalizedPaymentStatus switch
+        {
+            PaymentStatuses.Paid => "Đã thanh toán",
+            PaymentStatuses.Pending => "Chờ thanh toán",
+            PaymentStatuses.PendingConfirmation => "Chờ xác nhận thanh toán",
+            PaymentStatuses.Unpaid => "Chưa thanh toán",
+            PaymentStatuses.Failed => orderStatus == OrderStatus.Cancelled ? "Không thanh toán" : "Thanh toán thất bại",
+            PaymentStatuses.Expired => "Hết hạn thanh toán",
+            PaymentStatuses.Refunded => "Đã hoàn tiền",
+            null or "" => "Chưa thanh toán",
+            _ => normalizedPaymentStatus!
+        };
+    }
 
     public static bool IsPaid(Order order)
-        => string.Equals(order.PaymentStatus, PaymentStatuses.Paid, StringComparison.OrdinalIgnoreCase);
+        => IsEffectivelyPaid(order.Status, order.PaymentStatus);
 
     public static bool IsPendingPaymentStatus(string? paymentStatus)
         => string.Equals(paymentStatus, PaymentStatuses.Pending, StringComparison.OrdinalIgnoreCase)

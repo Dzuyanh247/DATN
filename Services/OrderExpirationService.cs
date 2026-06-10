@@ -15,6 +15,7 @@ public interface IOrderExpirationService
     void MarkPaidByAdmin(Order order, DateTime? utcNow = null);
     Task MarkCancelledAsync(Order order, CancellationToken cancellationToken = default);
     Task MarkExpiredAsync(Order order, CancellationToken cancellationToken = default);
+    Task MarkExpiredByAdminAsync(Order order, CancellationToken cancellationToken = default);
 }
 
 public class OrderExpirationService : IOrderExpirationService
@@ -98,6 +99,7 @@ public class OrderExpirationService : IOrderExpirationService
     {
         order.Status = OrderStatus.PendingConfirmation;
         order.PaymentStatus = PaymentStatuses.PendingConfirmation;
+        order.PaymentExpireAt = null;
         order.PaidAt ??= utcNow ?? DateTimeHelper.UtcNow();
     }
 
@@ -105,6 +107,7 @@ public class OrderExpirationService : IOrderExpirationService
     {
         order.PaymentStatus = PaymentStatuses.Paid;
         order.Status = OrderStatus.Processing;
+        order.PaymentExpireAt = null;
         order.PaidAt ??= utcNow ?? DateTimeHelper.UtcNow();
     }
 
@@ -115,8 +118,10 @@ public class OrderExpirationService : IOrderExpirationService
             await ReleaseReservedStockAsync(order, cancellationToken);
         }
 
+        var wasPaid = OrderStatusHelper.IsPaid(order);
         order.Status = OrderStatus.Cancelled;
-        if (!OrderStatusHelper.IsPaid(order))
+        order.PaymentExpireAt = null;
+        if (!wasPaid)
         {
             order.PaymentStatus = PaymentStatuses.Failed;
         }
@@ -145,6 +150,18 @@ public class OrderExpirationService : IOrderExpirationService
         }
 
         LogExpiration(order, utcNow, order.Status, PaymentStatuses.Expired);
+        order.Status = OrderStatus.Expired;
+        order.PaymentStatus = PaymentStatuses.Expired;
+    }
+
+    public async Task MarkExpiredByAdminAsync(Order order, CancellationToken cancellationToken = default)
+    {
+        if (order.Status != OrderStatus.Expired && order.Status != OrderStatus.Cancelled)
+        {
+            await ReleaseReservedStockAsync(order, cancellationToken);
+        }
+
+        LogExpiration(order, DateTimeHelper.UtcNow(), order.Status, PaymentStatuses.Expired);
         order.Status = OrderStatus.Expired;
         order.PaymentStatus = PaymentStatuses.Expired;
     }
