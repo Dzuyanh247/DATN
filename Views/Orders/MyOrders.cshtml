@@ -9,13 +9,8 @@
 <div class="my-orders-page">
     <section class="my-orders-card" aria-labelledby="my-orders-title">
         <header class="my-orders-header">
-            <span class="my-orders-header__icon" aria-hidden="true">
-                <i class="bi bi-box-seam"></i>
-            </span>
-            <div>
-                <h1 id="my-orders-title">Đơn hàng của tôi</h1>
-                <p>Theo dõi trạng thái đơn hàng, thanh toán và lịch sử mua hàng của bạn.</p>
-            </div>
+            <h1 id="my-orders-title">Đơn hàng của tôi</h1>
+            <p>Theo dõi trạng thái đơn hàng, thanh toán và lịch sử mua hàng của bạn.</p>
         </header>
 
         @if (hasOrders)
@@ -45,13 +40,11 @@
                                 </td>
                                 <td data-label="Trạng thái" class="my-orders-cell--center">
                                     <span class="order-status-badge @OrderStatusHelper.BadgeClass(o.Status)">
-                                        <span class="status-badge-dot" aria-hidden="true"></span>
                                         @OrderStatusHelper.Label(o.Status)
                                     </span>
                                 </td>
                                 <td data-label="Thanh toán" class="my-orders-cell--center">
                                     <span class="payment-status-badge @OrderStatusHelper.PaymentBadgeClass(o.PaymentStatus, o.Status)">
-                                        <i class="bi bi-credit-card" aria-hidden="true"></i>
                                         @OrderStatusHelper.PaymentLabel(o.PaymentStatus, o.Status)
                                     </span>
                                 </td>
@@ -59,7 +52,6 @@
                                     @if (o.PaymentExpireAt.HasValue)
                                     {
                                         <span class="my-orders-deadline">
-                                            <i class="bi bi-clock" aria-hidden="true"></i>
                                             @DateTimeHelper.FormatVietnam(o.PaymentExpireAt, "dd/MM/yyyy HH:mm")
                                         </span>
                                     }
@@ -72,10 +64,7 @@
                                     <strong>@o.TotalAmount.ToString("N0") <span>đ</span></strong>
                                 </td>
                                 <td data-label="Thao tác" class="my-orders-cell--action">
-                                    <a class="my-orders-detail-btn" asp-action="Tracking" asp-route-id="@o.Id">
-                                        <span>Xem chi tiết</span>
-                                        <i class="bi bi-arrow-right" aria-hidden="true"></i>
-                                    </a>
+                                    <a class="my-orders-detail-btn" asp-action="Tracking" asp-route-id="@o.Id">Xem chi tiết</a>
                                 </td>
                             </tr>
                         }

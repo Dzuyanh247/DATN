@@ -16,31 +16,15 @@
 }
 
 .my-orders-header {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    padding: 25px 28px 22px;
+    padding: 22px 24px 20px;
     border-bottom: 1px solid var(--orders-border);
     background: linear-gradient(135deg, #fff 0%, #f4f8ff 100%);
 }
 
-.my-orders-header__icon {
-    display: grid;
-    flex: 0 0 48px;
-    width: 48px;
-    height: 48px;
-    place-items: center;
-    border-radius: 14px;
-    color: #fff;
-    background: linear-gradient(135deg, var(--orders-primary), #2f80ed);
-    box-shadow: 0 8px 18px rgba(10, 85, 194, 0.22);
-    font-size: 1.25rem;
-}
-
 .my-orders-header h1 {
-    margin: 0 0 5px;
+    margin: 0 0 4px;
     color: var(--orders-text);
-    font-size: clamp(1.35rem, 2.2vw, 1.75rem);
+    font-size: 24px;
     font-weight: 800;
     letter-spacing: -0.025em;
 }
@@ -48,7 +32,8 @@
 .my-orders-header p {
     margin: 0;
     color: var(--orders-muted);
-    font-size: 0.93rem;
+    font-size: 14px;
+    line-height: 1.45;
 }
 
 .my-orders-table-wrap {
@@ -82,7 +67,7 @@
 }
 
 .my-orders-table td {
-    padding: 18px;
+    padding: 15px 16px;
     border-bottom: 1px solid var(--orders-border);
     background: #fff;
     font-size: 0.88rem;
@@ -136,22 +121,13 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
-    min-height: 30px;
-    padding: 6px 10px;
+    min-height: 26px;
+    padding: 4px 9px;
     border-radius: 999px;
-    font-size: 0.74rem;
+    font-size: 0.71rem;
     font-weight: 750;
     line-height: 1.2;
     white-space: nowrap;
-}
-
-.status-badge-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: currentColor;
-    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.65);
 }
 
 .order-badge--pending-payment,
@@ -201,16 +177,10 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
     color: #475569;
     font-size: 0.78rem;
     line-height: 1.35;
     white-space: nowrap;
-}
-
-.my-orders-deadline i {
-    color: #f59e0b;
-    font-size: 0.86rem;
 }
 
 .my-orders-deadline--none {
@@ -223,15 +193,14 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 7px;
-    border-radius: 9px;
+    border-radius: 8px;
     font-weight: 750;
     text-decoration: none;
     transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .my-orders-detail-btn {
-    padding: 8px 12px;
+    padding: 6px 10px;
     border: 1px solid #bfdbfe;
     color: var(--orders-primary);
     background: #eff6ff;
@@ -246,15 +215,6 @@
     background: var(--orders-primary);
     box-shadow: 0 7px 16px rgba(10, 85, 194, 0.2);
     transform: translateY(-1px);
-}
-
-.my-orders-detail-btn i {
-    font-size: 0.8rem;
-    transition: transform 0.2s ease;
-}
-
-.my-orders-detail-btn:hover i {
-    transform: translateX(2px);
 }
 
 .my-orders-empty {
@@ -319,16 +279,7 @@
     }
 
     .my-orders-header {
-        align-items: flex-start;
         padding: 20px 18px;
-    }
-
-    .my-orders-header__icon {
-        flex-basis: 42px;
-        width: 42px;
-        height: 42px;
-        border-radius: 12px;
-        font-size: 1.1rem;
     }
 
     .my-orders-header p {
@@ -421,10 +372,6 @@
     .my-orders-deadline {
         text-align: right;
         white-space: normal;
-    }
-
-    .my-orders-detail-btn {
-        padding: 9px 13px;
     }
 
     .my-orders-empty {
