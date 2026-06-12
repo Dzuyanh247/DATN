@@ -1,22 +1,101 @@
 @model List<Order>
 @{
     ViewData["Title"] = "Đơn hàng của tôi";
+    var hasOrders = Model?.Any() == true;
 }
-<h3>Đơn hàng của tôi</h3>
-<table class="table table-bordered">
-    <thead><tr><th>Mã</th><th>Ngày</th><th>Trạng thái</th><th>Thanh toán</th><th>Hạn TT</th><th>Tổng tiền</th><th></th></tr></thead>
-    <tbody>
-    @foreach (var o in Model)
-    {
-        <tr>
-            <td>@($"DH{o.Id:D6}")</td>
-            <td>@DateTimeHelper.FormatVietnam(o.CreatedAt, "dd/MM/yyyy HH:mm")</td>
-            <td>@OrderStatusHelper.Label(o.Status)</td>
-            <td>@OrderStatusHelper.PaymentLabel(o.PaymentStatus, o.Status)</td>
-            <td>@(o.PaymentExpireAt.HasValue ? DateTimeHelper.FormatVietnam(o.PaymentExpireAt, "dd/MM/yyyy HH:mm") : "-")</td>
-            <td>@o.TotalAmount.ToString("N0") đ</td>
-            <td><a class="btn btn-sm btn-outline-primary" asp-action="Tracking" asp-route-id="@o.Id">Xem chi tiết</a></td>
-        </tr>
-    }
-    </tbody>
-</table>
+
+<link rel="stylesheet" href="~/css/my-orders.css" asp-append-version="true" />
+
+<div class="my-orders-page">
+    <section class="my-orders-card" aria-labelledby="my-orders-title">
+        <header class="my-orders-header">
+            <span class="my-orders-header__icon" aria-hidden="true">
+                <i class="bi bi-box-seam"></i>
+            </span>
+            <div>
+                <h1 id="my-orders-title">Đơn hàng của tôi</h1>
+                <p>Theo dõi trạng thái đơn hàng, thanh toán và lịch sử mua hàng của bạn.</p>
+            </div>
+        </header>
+
+        @if (hasOrders)
+        {
+            <div class="my-orders-table-wrap">
+                <table class="my-orders-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Mã đơn hàng</th>
+                            <th scope="col">Ngày đặt</th>
+                            <th scope="col" class="text-center">Trạng thái</th>
+                            <th scope="col" class="text-center">Thanh toán</th>
+                            <th scope="col" class="text-center">Hạn thanh toán</th>
+                            <th scope="col" class="text-end">Tổng tiền</th>
+                            <th scope="col" class="text-center">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var o in Model!)
+                        {
+                            <tr>
+                                <td data-label="Mã đơn hàng">
+                                    <span class="my-orders-code">@($"DH{o.Id:D6}")</span>
+                                </td>
+                                <td data-label="Ngày đặt">
+                                    <span class="my-orders-date">@DateTimeHelper.FormatVietnam(o.CreatedAt, "dd/MM/yyyy HH:mm")</span>
+                                </td>
+                                <td data-label="Trạng thái" class="my-orders-cell--center">
+                                    <span class="order-status-badge @OrderStatusHelper.BadgeClass(o.Status)">
+                                        <span class="status-badge-dot" aria-hidden="true"></span>
+                                        @OrderStatusHelper.Label(o.Status)
+                                    </span>
+                                </td>
+                                <td data-label="Thanh toán" class="my-orders-cell--center">
+                                    <span class="payment-status-badge @OrderStatusHelper.PaymentBadgeClass(o.PaymentStatus, o.Status)">
+                                        <i class="bi bi-credit-card" aria-hidden="true"></i>
+                                        @OrderStatusHelper.PaymentLabel(o.PaymentStatus, o.Status)
+                                    </span>
+                                </td>
+                                <td data-label="Hạn thanh toán" class="my-orders-cell--center">
+                                    @if (o.PaymentExpireAt.HasValue)
+                                    {
+                                        <span class="my-orders-deadline">
+                                            <i class="bi bi-clock" aria-hidden="true"></i>
+                                            @DateTimeHelper.FormatVietnam(o.PaymentExpireAt, "dd/MM/yyyy HH:mm")
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="my-orders-deadline my-orders-deadline--none">Không áp dụng</span>
+                                    }
+                                </td>
+                                <td data-label="Tổng tiền" class="my-orders-cell--total">
+                                    <strong>@o.TotalAmount.ToString("N0") <span>đ</span></strong>
+                                </td>
+                                <td data-label="Thao tác" class="my-orders-cell--action">
+                                    <a class="my-orders-detail-btn" asp-action="Tracking" asp-route-id="@o.Id">
+                                        <span>Xem chi tiết</span>
+                                        <i class="bi bi-arrow-right" aria-hidden="true"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="my-orders-empty">
+                <span class="my-orders-empty__icon" aria-hidden="true">
+                    <i class="bi bi-bag-x"></i>
+                </span>
+                <h2>Bạn chưa có đơn hàng nào</h2>
+                <p>Khám phá các sản phẩm công nghệ phù hợp và bắt đầu đơn hàng đầu tiên của bạn.</p>
+                <a class="my-orders-shopping-btn" asp-controller="Products" asp-action="Index">
+                    <i class="bi bi-cart3" aria-hidden="true"></i>
+                    Tiếp tục mua sắm
+                </a>
+            </div>
+        }
+    </section>
+</div>
