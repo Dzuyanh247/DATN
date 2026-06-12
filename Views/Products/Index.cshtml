@@ -7,18 +7,22 @@
 }
 
 <div class="products-page">
-    <div class="products-heading">
-        <div>
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb products-breadcrumb">
-                    <li class="breadcrumb-item"><a asp-controller="Home" asp-action="Index">Trang chủ</a></li>
-                    <li class="breadcrumb-item active" aria-current="page">@pageTitle</li>
-                </ol>
-            </nav>
+    <header class="products-heading">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb products-breadcrumb">
+                <li class="breadcrumb-item"><a asp-controller="Home" asp-action="Index">Trang chủ</a></li>
+                <li class="breadcrumb-item active" aria-current="page">@pageTitle</li>
+            </ol>
+        </nav>
+        <div class="products-heading-main">
             <h1>@pageTitle</h1>
-            <p>@resultText phù hợp với tiêu chí của bạn</p>
+            <span class="products-count-badge">@resultText</span>
+            @if (Model.HasSidebarFilters)
+            {
+                <span class="products-filter-status"><i class="bi bi-funnel-fill"></i> Đang lọc</span>
+            }
         </div>
-    </div>
+    </header>
 
     <div class="products-layout" id="product-filter">
         <aside class="products-filter-sidebar" aria-label="Bộ lọc sản phẩm">
@@ -139,14 +143,6 @@
         </aside>
 
         <section class="products-results" aria-live="polite">
-            <div class="products-results-header">
-                <strong>@resultText</strong>
-                @if (Model.HasSidebarFilters)
-                {
-                    <span><i class="bi bi-funnel-fill"></i> Đang áp dụng bộ lọc</span>
-                }
-            </div>
-
             @if (Model.Products.Count == 0)
             {
                 <div class="products-empty-state">
