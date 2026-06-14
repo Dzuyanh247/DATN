@@ -61,10 +61,12 @@
 {
     <div class="admin-shell">
         <aside class="admin-sidebar">
-            <a class="admin-brand" asp-controller="AdminDashboard" asp-action="Index">
+            <a class="admin-brand" asp-controller="@(User.IsInRole("Admin") ? "AdminDashboard" : "AdminChat")" asp-action="Index">
                 <i class="bi bi-grid-1x2-fill"></i><span>KKSHOP Admin</span>
             </a>
             <nav class="admin-nav">
+                @if (User.IsInRole("Admin"))
+                {
                 <a class="@(controllerName == "AdminDashboard" ? "active" : "")" asp-controller="AdminDashboard" asp-action="Index"><i class="bi bi-speedometer2"></i> Dashboard</a>
                 <a class="@(controllerName == "AdminProducts" ? "active" : "")" asp-controller="AdminProducts" asp-action="Index"><i class="bi bi-box-seam"></i> Sản phẩm</a>
                 <a class="@(controllerName == "AdminCategories" ? "active" : "")" asp-controller="AdminCategories" asp-action="Index"><i class="bi bi-tags"></i> Danh mục</a>
@@ -72,8 +74,12 @@
                 <a class="@(controllerName == "AdminWarranty" ? "active" : "")" asp-controller="AdminWarranty" asp-action="Index"><i class="bi bi-shield-check"></i> Bảo hành</a>
                 <a class="@(controllerName == "AdminUsers" ? "active" : "")" asp-controller="AdminUsers" asp-action="Index"><i class="bi bi-people"></i> Người dùng</a>
                 <a class="@(controllerName == "AdminBanners" ? "active" : "")" asp-controller="AdminBanners" asp-action="Index"><i class="bi bi-image"></i> Banner</a>
+                }
                 <a class="@(controllerName == "AdminChat" ? "active" : "")" asp-controller="AdminChat" asp-action="Index"><i class="bi bi-chat-dots"></i> Hỗ trợ khách hàng</a>
+                @if (User.IsInRole("Admin"))
+                {
                 <a class="@(controllerName == "AdminSettings" ? "active" : "")" asp-controller="AdminSettings" asp-action="Index"><i class="bi bi-gear"></i> Cài đặt</a>
+                }
             </nav>
         </aside>
 
@@ -107,9 +113,9 @@ else
             {
                 <a class="text-light text-decoration-none" asp-controller="Account" asp-action="Profile">Thông tin tài khoản</a>
                 <a class="text-light text-decoration-none" asp-controller="Orders" asp-action="MyOrders">Đơn hàng</a>
-                @if (User.IsInRole("Admin"))
+                @if (User.IsInRole("Admin") || User.IsInRole("SupportStaff") || User.IsInRole("CustomerSupport"))
                 {
-                    <a class="text-light text-decoration-none" asp-controller="AdminDashboard" asp-action="Index">Quản trị</a>
+                    <a class="text-light text-decoration-none" asp-controller="@(User.IsInRole("Admin") ? "AdminDashboard" : "AdminChat")" asp-action="Index">Quản trị</a>
                 }
                 <form method="post" asp-controller="Account" asp-action="Logout" class="d-inline"><button class="btn btn-sm btn-outline-light py-0">Đăng xuất</button></form>
             }

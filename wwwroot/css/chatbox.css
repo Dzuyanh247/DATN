@@ -229,6 +229,7 @@
 .kk-chat-messages { flex: 1; min-height: 0; overflow-y: auto; padding: 10px 10px 8px; scroll-behavior: smooth; }
 .kk-chat-message { display: flex; flex-direction: column; align-items: flex-start; margin-bottom: 8px; }
 .kk-chat-message.customer { align-items: flex-end; }
+.kk-chat-message.system { align-items: center; margin: 9px 0; }
 
 .kk-chat-bubble {
     max-width: 86%;
@@ -330,3 +331,5 @@
     .kk-chat-welcome { padding-top: 7px; }
     .kk-chat-start-form { padding-bottom: 8px; }
 }
+
+.kk-chat-message.system .kk-chat-bubble { max-width: 94%; padding: 6px 9px; border: 1px dashed #cbd5e1; border-radius: 12px; background: #f8fafc; color: #64748b; box-shadow: none; text-align: center; font-size: 11px; }

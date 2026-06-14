@@ -35,7 +35,15 @@
                 <div class="admin-chat-customer-info">
                     <h3 id="admin-chat-name">Khách hàng</h3>
                     <div><span id="admin-chat-contact"></span> <span id="admin-chat-status" class="admin-chat-status"></span></div>
+                    <div class="admin-chat-assignment"><i class="bi bi-person-check"></i> <span id="admin-chat-assignee">Chưa phân công</span></div>
                 </div>
+                <button type="button" class="btn btn-sm btn-primary" id="admin-chat-claim"><i class="bi bi-person-plus"></i> Nhận xử lý</button>
+                @if (User.IsInRole("Admin"))
+                {
+                    <select id="admin-chat-staff" class="form-select form-select-sm admin-chat-staff" aria-label="Đổi nhân viên phụ trách">
+                        <option value="">Đổi phụ trách...</option>
+                    </select>
+                }
                 <button type="button" class="btn btn-sm btn-outline-danger" id="admin-chat-close-conversation"><i class="bi bi-check2-circle"></i> Đóng hội thoại</button>
             </header>
             <div class="admin-chat-messages" id="admin-chat-messages" aria-live="polite"></div>

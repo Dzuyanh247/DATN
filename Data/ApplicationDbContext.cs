@@ -111,8 +111,15 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<ChatConversation>(entity =>
         {
             entity.Property(x => x.AccessToken).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.GuestId).HasMaxLength(64);
+            entity.Property(x => x.CustomerName).HasMaxLength(100);
+            entity.Property(x => x.CustomerEmail).HasMaxLength(120);
+            entity.Property(x => x.CustomerPhone).HasMaxLength(20);
+            entity.Property(x => x.AssignedStaffName).HasMaxLength(100);
             entity.HasIndex(x => x.AccessToken).IsUnique();
-            entity.HasIndex(x => new { x.Status, x.UpdatedAt });
+            entity.HasIndex(x => new { x.Status, x.LastMessageAt });
+            entity.HasIndex(x => new { x.CustomerId, x.Status });
+            entity.HasIndex(x => new { x.GuestId, x.Status });
             entity.HasOne(x => x.User)
                 .WithMany()
                 .HasForeignKey(x => x.UserId)
@@ -122,6 +129,7 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<ChatMessage>(entity =>
         {
             entity.Property(x => x.Message).HasMaxLength(1000).IsRequired();
+            entity.Property(x => x.SenderName).HasMaxLength(100);
             entity.HasIndex(x => new { x.ConversationId, x.CreatedAt });
             entity.HasOne(x => x.Conversation)
                 .WithMany(x => x.Messages)
@@ -218,4 +226,3 @@ public class ApplicationDbContext : DbContext
         });
     }
 }
-

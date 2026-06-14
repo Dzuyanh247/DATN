@@ -16,216 +16,151 @@ namespace Datn.PcStore.Controllers;
 public class SupportChatController : Controller
 {
     private const string GreetingMessage = "KKSHOP xin chào 👋 Cảm ơn bạn đã liên hệ. Bạn vui lòng để lại nội dung cần hỗ trợ, nhân viên sẽ phản hồi trong giây lát.";
-    private const string CloseMessage = "Cảm ơn bạn đã liên hệ KKSHOP. Nếu cần hỗ trợ thêm, bạn có thể nhắn lại bất cứ lúc nào.";
+    private const string CloseMessage = "Cảm ơn bạn đã liên hệ KKSHOP. Nếu cần hỗ trợ thêm, bạn có thể bắt đầu một hội thoại mới.";
     private readonly ApplicationDbContext _db;
     private readonly IHubContext<ChatHub> _hub;
     private readonly ILogger<SupportChatController> _logger;
 
-    public SupportChatController(
-        ApplicationDbContext db,
-        IHubContext<ChatHub> hub,
-        ILogger<SupportChatController> logger)
-    {
-        _db = db;
-        _hub = hub;
-        _logger = logger;
-    }
+    public SupportChatController(ApplicationDbContext db, IHubContext<ChatHub> hub, ILogger<SupportChatController> logger)
+        => (_db, _hub, _logger) = (db, hub, logger);
 
     [HttpPost("conversations")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CreateConversation([FromBody] CreateChatConversationRequest? request)
     {
-        if (request == null) return BadRequest(JsonError("Dữ liệu cuộc trò chuyện không hợp lệ."));
-
-        request.Message = request.Message?.Trim() ?? string.Empty;
+        if (request == null) return BadRequest(Api(false, "Dữ liệu cuộc trò chuyện không hợp lệ."));
+        Normalize(request);
         var userId = CurrentUserId();
-        User? user = null;
+        var user = userId.HasValue ? await _db.Users.AsNoTracking().FirstOrDefaultAsync(x => x.Id == userId) : null;
+        if (userId.HasValue && user == null) return Unauthorized(Api(false, "Không tìm thấy tài khoản đang đăng nhập."));
 
-        if (userId.HasValue)
+        if (user == null)
         {
-            user = await _db.Users.AsNoTracking().FirstOrDefaultAsync(x => x.Id == userId.Value);
-            if (user == null) return Unauthorized(JsonError("Không tìm thấy tài khoản đang đăng nhập."));
-        }
-        else
-        {
-            request.Name = request.Name?.Trim();
-            request.Email = request.Email?.Trim();
-            request.Phone = request.Phone?.Trim();
-            if (string.IsNullOrWhiteSpace(request.Name))
-                ModelState.AddModelError(nameof(request.Name), "Vui lòng nhập tên của bạn.");
+            if (string.IsNullOrWhiteSpace(request.Name)) ModelState.AddModelError(nameof(request.Name), "Vui lòng nhập tên của bạn.");
             if (string.IsNullOrWhiteSpace(request.Email) && string.IsNullOrWhiteSpace(request.Phone))
                 ModelState.AddModelError(nameof(request.Email), "Vui lòng nhập email hoặc số điện thoại.");
         }
-
         if (!ModelState.IsValid || string.IsNullOrWhiteSpace(request.Message))
-            return BadRequest(JsonError(FirstModelError("Thông tin chat chưa hợp lệ.")));
+            return BadRequest(Api(false, FirstModelError("Thông tin chat chưa hợp lệ.")));
 
-        var conversation = new ChatConversation
+        var guestId = user == null ? NormalizeGuestId(request.GuestId) : null;
+        var conversation = await FindOpenConversation(user?.Id, guestId, request.Email, request.Phone);
+        var isNew = conversation == null;
+        if (conversation == null)
         {
-            UserId = user?.Id,
-            GuestName = user?.FullName ?? request.Name,
-            GuestEmail = user?.Email ?? request.Email,
-            GuestPhone = user?.Phone ?? request.Phone,
-            AccessToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(32)),
-            Status = ChatConversationStatus.Open
-        };
-        var greeting = new ChatMessage
-        {
-            Conversation = conversation,
-            SenderType = ChatSenderType.System,
-            Message = GreetingMessage,
-            IsRead = true
-        };
+            conversation = new ChatConversation
+            {
+                UserId = user?.Id,
+                CustomerId = user?.Id,
+                GuestId = guestId,
+                GuestName = user?.FullName ?? request.Name,
+                GuestEmail = user?.Email ?? request.Email,
+                GuestPhone = user?.Phone ?? request.Phone,
+                CustomerName = user?.FullName ?? request.Name,
+                CustomerEmail = user?.Email ?? request.Email,
+                CustomerPhone = user?.Phone ?? request.Phone,
+                AccessToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(32)),
+                Status = ChatConversationStatus.Open
+            };
+            _db.ChatConversations.Add(conversation);
+            _db.ChatMessages.Add(new ChatMessage
+            {
+                Conversation = conversation, SenderType = ChatSenderType.System, SenderName = "KKSHOP",
+                Message = GreetingMessage, IsSystem = true, IsRead = true, ReadAt = DateTime.UtcNow
+            });
+        }
+
         var customerMessage = new ChatMessage
         {
-            Conversation = conversation,
-            SenderType = ChatSenderType.Customer,
-            Message = request.Message,
-            IsRead = false
+            Conversation = conversation, SenderType = ChatSenderType.Customer, SenderUserId = user?.Id,
+            SenderName = user?.FullName ?? request.Name ?? "Khách hàng", Message = request.Message, IsRead = false
         };
-
-        _db.ChatMessages.AddRange(greeting, customerMessage);
+        _db.ChatMessages.Add(customerMessage);
+        conversation.LastMessageAt = DateTime.UtcNow;
+        conversation.StaffUnreadCount++;
         await _db.SaveChangesAsync();
 
-        var greetingPayload = MessagePayload(greeting);
-        var customerPayload = MessagePayload(customerMessage);
-        await NotifyAdmins(conversation.Id, greetingPayload);
-        await NotifyAdmins(conversation.Id, customerPayload);
-
-        return Ok(new
+        var messages = await LoadMessages(conversation.Id);
+        await NotifyStaff(conversation.Id, MessagePayload(customerMessage));
+        return Ok(Api(true, isNew ? "Đã bắt đầu cuộc trò chuyện." : "Đã tiếp tục cuộc trò chuyện đang mở.", new
         {
-            success = true,
-            conversationId = conversation.Id,
-            accessToken = conversation.AccessToken,
-            status = conversation.Status.ToString(),
-            messages = new[] { greetingPayload, customerPayload }
-        });
+            conversationId = conversation.Id, accessToken = conversation.AccessToken,
+            status = conversation.Status.ToString(), messages
+        }));
     }
 
     [HttpGet("conversations/{conversationId:int}/messages")]
     public async Task<IActionResult> GetMessages(int conversationId, [FromQuery] string? accessToken)
     {
         var conversation = await FindOwnedConversation(conversationId, accessToken);
-        if (conversation == null) return NotFound(JsonError("Không tìm thấy cuộc trò chuyện."));
-
-        var unread = await _db.ChatMessages
-            .Where(x => x.ConversationId == conversationId && x.SenderType == ChatSenderType.Admin && !x.IsRead)
-            .ToListAsync();
-        if (unread.Count > 0)
-        {
-            foreach (var item in unread) item.IsRead = true;
-            await _db.SaveChangesAsync();
-        }
-
-        var messages = await _db.ChatMessages.AsNoTracking()
-            .Where(x => x.ConversationId == conversationId)
-            .OrderBy(x => x.CreatedAt)
-            .Select(x => new { x.Id, senderType = x.SenderType.ToString(), x.Message, x.IsRead, x.CreatedAt })
-            .ToListAsync();
-
-        return Ok(new { success = true, status = conversation.Status.ToString(), messages });
+        if (conversation == null) return NotFound(Api(false, "Không tìm thấy cuộc trò chuyện."));
+        var now = DateTime.UtcNow;
+        var unread = await _db.ChatMessages.Where(x => x.ConversationId == conversationId && x.SenderType == ChatSenderType.Staff && !x.IsRead).ToListAsync();
+        unread.ForEach(x => { x.IsRead = true; x.ReadAt = now; });
+        if (unread.Count > 0) await _db.SaveChangesAsync();
+        return Ok(Api(true, data: new { status = conversation.Status.ToString(), messages = await LoadMessages(conversationId) }));
     }
 
     [HttpPost("conversations/{conversationId:int}/messages")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SendMessage(int conversationId, [FromBody] SendChatMessageRequest? request)
     {
-        if (request == null) return BadRequest(JsonError("Dữ liệu tin nhắn không hợp lệ."));
-
-        request.Message = request.Message?.Trim() ?? string.Empty;
-        if (!ModelState.IsValid || string.IsNullOrWhiteSpace(request.Message))
-            return BadRequest(JsonError(FirstModelError("Tin nhắn không được để trống.")));
-
+        if (request == null) return BadRequest(Api(false, "Dữ liệu tin nhắn không hợp lệ."));
+        request.Message = request.Message?.Trim() ?? "";
+        if (!ModelState.IsValid || string.IsNullOrWhiteSpace(request.Message)) return BadRequest(Api(false, "Tin nhắn không được để trống và tối đa 1000 ký tự."));
         var conversation = await FindOwnedConversation(conversationId, request.AccessToken);
-        if (conversation == null) return NotFound(JsonError("Không tìm thấy cuộc trò chuyện."));
-        if (conversation.Status == ChatConversationStatus.Closed)
-            return BadRequest(JsonError("Cuộc trò chuyện đã đóng. Vui lòng bắt đầu cuộc trò chuyện mới."));
+        if (conversation == null) return NotFound(Api(false, "Không tìm thấy cuộc trò chuyện."));
+        if (conversation.Status == ChatConversationStatus.Closed) return BadRequest(Api(false, "Cuộc trò chuyện đã đóng. Vui lòng bắt đầu cuộc trò chuyện mới."));
 
-        var message = new ChatMessage
-        {
-            ConversationId = conversation.Id,
-            SenderType = ChatSenderType.Customer,
-            Message = request.Message,
-            IsRead = false
-        };
-        conversation.UpdatedAt = DateTime.UtcNow;
+        var message = new ChatMessage { ConversationId = conversation.Id, SenderType = ChatSenderType.Customer, SenderUserId = CurrentUserId(), SenderName = conversation.CustomerName ?? conversation.GuestName ?? "Khách hàng", Message = request.Message };
+        conversation.LastMessageAt = DateTime.UtcNow;
+        conversation.StaffUnreadCount++;
         _db.ChatMessages.Add(message);
         await _db.SaveChangesAsync();
-
         var payload = MessagePayload(message);
-        await NotifyAdmins(conversation.Id, payload);
-        return Ok(new { success = true, message = payload });
+        await NotifyStaff(conversation.Id, payload);
+        return Ok(Api(true, "Đã gửi tin nhắn.", payload));
     }
 
     [HttpPost("conversations/{conversationId:int}/system-message")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AddSystemMessage(int conversationId, [FromBody] SystemChatMessageRequest? request)
     {
-        if (request == null) return BadRequest(JsonError("Dữ liệu tin nhắn hệ thống không hợp lệ."));
-        if (!ModelState.IsValid || !string.Equals(request.MessageType, "close", StringComparison.OrdinalIgnoreCase))
-            return BadRequest(JsonError(FirstModelError("Loại tin nhắn hệ thống không hợp lệ.")));
-
+        if (request == null || !string.Equals(request.MessageType, "close", StringComparison.OrdinalIgnoreCase)) return BadRequest(Api(false, "Loại tin nhắn hệ thống không hợp lệ."));
         var conversation = await FindOwnedConversation(conversationId, request.AccessToken);
-        if (conversation == null) return NotFound(JsonError("Không tìm thấy cuộc trò chuyện."));
-
-        var existingMessage = await _db.ChatMessages.AsNoTracking()
-            .FirstOrDefaultAsync(x => x.ConversationId == conversationId &&
-                                      x.SenderType == ChatSenderType.System &&
-                                      x.Message == CloseMessage);
-        if (existingMessage != null)
-            return Ok(new { success = true, created = false, message = MessagePayload(existingMessage) });
-
-        var message = new ChatMessage
-        {
-            ConversationId = conversation.Id,
-            SenderType = ChatSenderType.System,
-            Message = CloseMessage,
-            IsRead = true
-        };
-        conversation.UpdatedAt = DateTime.UtcNow;
+        if (conversation == null) return NotFound(Api(false, "Không tìm thấy cuộc trò chuyện."));
+        if (conversation.Status != ChatConversationStatus.Closed) return BadRequest(Api(false, "Chỉ gửi lời cảm ơn sau khi hội thoại đã đóng."));
+        var existing = await _db.ChatMessages.AsNoTracking().FirstOrDefaultAsync(x => x.ConversationId == conversationId && x.IsSystem && x.Message == CloseMessage);
+        if (existing != null) return Ok(Api(true, data: MessagePayload(existing)));
+        var message = new ChatMessage { ConversationId = conversationId, SenderType = ChatSenderType.System, SenderName = "KKSHOP", Message = CloseMessage, IsSystem = true, IsRead = true, ReadAt = DateTime.UtcNow };
         _db.ChatMessages.Add(message);
         await _db.SaveChangesAsync();
-
-        var payload = MessagePayload(message);
-        await NotifyAdmins(conversation.Id, payload);
-        return Ok(new { success = true, created = true, message = payload });
+        return Ok(Api(true, "Đã gửi lời cảm ơn.", MessagePayload(message)));
     }
 
-    private async Task NotifyAdmins(int conversationId, object payload)
+    private async Task<ChatConversation?> FindOpenConversation(int? userId, string? guestId, string? email, string? phone)
     {
-        try
-        {
-            await _hub.Clients.Group(ChatHub.AdminGroup).SendAsync("MessageReceived", conversationId, payload);
-            await _hub.Clients.Group(ChatHub.AdminGroup).SendAsync("ConversationUpdated", conversationId);
-        }
-        catch (Exception exception)
-        {
-            _logger.LogWarning(exception, "Conversation {ConversationId} was saved but realtime admin notification failed.", conversationId);
-        }
+        if (userId.HasValue) return await _db.ChatConversations.FirstOrDefaultAsync(x => x.Status == ChatConversationStatus.Open && (x.CustomerId == userId || x.UserId == userId));
+        if (!string.IsNullOrWhiteSpace(guestId)) return await _db.ChatConversations.FirstOrDefaultAsync(x => x.Status == ChatConversationStatus.Open && x.GuestId == guestId);
+        return await _db.ChatConversations.FirstOrDefaultAsync(x => x.Status == ChatConversationStatus.Open && ((!string.IsNullOrEmpty(email) && (x.CustomerEmail == email || x.GuestEmail == email)) || (!string.IsNullOrEmpty(phone) && (x.CustomerPhone == phone || x.GuestPhone == phone))));
     }
 
-    private async Task<ChatConversation?> FindOwnedConversation(int id, string? accessToken)
+    private async Task<ChatConversation?> FindOwnedConversation(int id, string? token)
     {
         var userId = CurrentUserId();
-        return await _db.ChatConversations.FirstOrDefaultAsync(x => x.Id == id &&
-            ((userId.HasValue && x.UserId == userId.Value) ||
-             (!string.IsNullOrWhiteSpace(accessToken) && x.AccessToken == accessToken)));
+        return await _db.ChatConversations.FirstOrDefaultAsync(x => x.Id == id && ((userId.HasValue && (x.CustomerId == userId || x.UserId == userId)) || (!string.IsNullOrWhiteSpace(token) && x.AccessToken == token)));
     }
 
-    private int? CurrentUserId() =>
-        int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : null;
-
-    private string FirstModelError(string fallback) =>
-        ModelState.Values.SelectMany(x => x.Errors).Select(x => x.ErrorMessage).FirstOrDefault() ?? fallback;
-
-    private static object JsonError(string error) => new { success = false, error };
-
-    private static object MessagePayload(ChatMessage message) => new
+    private async Task<List<object>> LoadMessages(int id)
     {
-        message.Id,
-        senderType = message.SenderType.ToString(),
-        message.Message,
-        message.IsRead,
-        message.CreatedAt
-    };
+        var rows = await _db.ChatMessages.AsNoTracking().Where(x => x.ConversationId == id).OrderBy(x => x.CreatedAt).ThenBy(x => x.Id).ToListAsync();
+        return rows.Select(x => MessagePayload(x)).ToList();
+    }
+    private async Task NotifyStaff(int id, object payload) { try { await _hub.Clients.Group(ChatHub.StaffGroup).SendAsync("MessageReceived", id, payload); await _hub.Clients.Group(ChatHub.StaffGroup).SendAsync("ConversationUpdated", id); } catch (Exception e) { _logger.LogWarning(e, "Realtime notification failed for conversation {ConversationId}", id); } }
+    private int? CurrentUserId() => int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : null;
+    private string FirstModelError(string fallback) => ModelState.Values.SelectMany(x => x.Errors).Select(x => x.ErrorMessage).FirstOrDefault() ?? fallback;
+    private static string NormalizeGuestId(string? value) => string.IsNullOrWhiteSpace(value) || value.Length > 64 ? Convert.ToHexString(RandomNumberGenerator.GetBytes(16)) : value.Trim();
+    private static void Normalize(CreateChatConversationRequest r) { r.Name = r.Name?.Trim(); r.Email = r.Email?.Trim().ToLowerInvariant(); r.Phone = r.Phone?.Trim(); r.Message = r.Message?.Trim() ?? ""; }
+    private static object Api(bool success, string? message = null, object? data = null) => new { success, message, data };
+    private static object MessagePayload(ChatMessage x) => new { x.Id, senderType = x.SenderType == ChatSenderType.Staff ? "Staff" : x.SenderType.ToString(), x.SenderName, x.Message, x.IsSystem, x.IsRead, x.ReadAt, x.CreatedAt };
 }

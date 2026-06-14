@@ -7,7 +7,7 @@ public static class SeedData
 {
     public static async Task InitializeAsync(ApplicationDbContext db)
     {
-        var roleNames = new[] { "Admin", "Staff", "Customer" };
+        var roleNames = new[] { "Admin", "Staff", "SupportStaff", "CustomerSupport", "Customer" };
         foreach (var roleName in roleNames)
         {
             if (!await db.Roles.AnyAsync(r => r.Name == roleName))

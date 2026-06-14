@@ -10,6 +10,7 @@
      data-authenticated="@authenticated.ToString().ToLowerInvariant()"
      data-name="@fullName"
      data-email="@email"
+     data-guest-id-key="kkshop-support-guest-id"
      data-storage-key="kkshop-support-chat-@userId"
      data-create-url="@Url.Action("CreateConversation", "SupportChat")"
      data-messages-url-template="@Url.Action("GetMessages", "SupportChat", new { conversationId = 987654321 })"
