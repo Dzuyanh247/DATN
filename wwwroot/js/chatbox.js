@@ -20,6 +20,9 @@
     const messagesUrlTemplate = root.dataset.messagesUrlTemplate;
     const sendUrlTemplate = root.dataset.sendUrlTemplate;
     const systemMessageUrlTemplate = root.dataset.systemMessageUrlTemplate;
+    const guestIdKey = root.dataset.guestIdKey || 'kkshop-support-guest-id';
+    let guestId = localStorage.getItem(guestIdKey);
+    if (!guestId) { guestId = (window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`).replace(/[^a-zA-Z0-9-]/g, '').slice(0, 64); localStorage.setItem(guestIdKey, guestId); }
     const csrf = document.querySelector('#kk-chat-antiforgery input[name="__RequestVerificationToken"]')?.value || '';
     let session = readSession();
     let connection;
@@ -61,15 +64,17 @@
     function addMessage(message) {
         if (message.id && messagesElement.querySelector(`[data-chat-message-id="${message.id}"]`)) return;
         const item = document.createElement('div');
-        const customer = String(message.senderType).toLowerCase() === 'customer';
-        item.className = `kk-chat-message ${customer ? 'customer' : 'admin'}`;
+        const type = String(message.senderType).toLowerCase();
+        const customer = type === 'customer';
+        const system = message.isSystem === true || type === 'system';
+        item.className = `kk-chat-message ${system ? 'system' : (customer ? 'customer' : 'admin')}`;
         if (message.id) item.dataset.chatMessageId = message.id;
         const bubble = document.createElement('div');
         bubble.className = 'kk-chat-bubble';
         bubble.textContent = message.message;
         const time = document.createElement('div');
         time.className = 'kk-chat-time';
-        time.textContent = `${customer ? 'Bạn' : 'KKSHOP'} • ${formatTime(message.createdAt)}`;
+        time.textContent = `${system ? 'Hệ thống' : (customer ? 'Bạn' : (message.senderName || 'KKSHOP'))} • ${formatTime(message.createdAt)}`;
         item.append(bubble, time);
         messagesElement.appendChild(item);
         scrollToLatest();
@@ -135,7 +140,7 @@
             console.error('[SupportChat] Server rejected request', { url, status: response.status, data });
             throw new Error(serverError);
         }
-        return data;
+        return data.data ?? data;
     }
     async function loadMessages() {
         if (!session?.conversationId || !session?.accessToken) return resetConversation();
@@ -190,16 +195,14 @@
     }
 
     launcher.addEventListener('click', () => setOpen(true));
-    closeButton.addEventListener('click', () => {
-        setOpen(false);
-        void addCloseMessage();
-    });
+    closeButton.addEventListener('click', () => setOpen(false));
     document.getElementById('kk-chat-new-conversation').addEventListener('click', resetConversation);
     startForm.addEventListener('submit', async event => {
         event.preventDefault();
         errorElement.textContent = '';
         const button = startForm.querySelector('button[type="submit"]');
         const payload = {
+            guestId,
             name: document.getElementById('kk-chat-name')?.value.trim() || root.dataset.name || null,
             email: document.getElementById('kk-chat-email')?.value.trim() || root.dataset.email || null,
             phone: document.getElementById('kk-chat-phone')?.value.trim() || null,

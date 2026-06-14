@@ -24,9 +24,11 @@ public class ChatHub : Hub
         return true;
     }
 
-    [Authorize(Roles = "Admin")]
-    public Task JoinAdmin() => Groups.AddToGroupAsync(Context.ConnectionId, AdminGroup);
+    [Authorize(Roles = "Admin,SupportStaff,CustomerSupport")]
+    public Task JoinStaff() => Groups.AddToGroupAsync(Context.ConnectionId, StaffGroup);
 
-    public const string AdminGroup = "support-chat-admin";
+    // Alias retained so older deployed clients continue to receive events.
+    public const string StaffGroup = "support-chat-staff";
+    public const string AdminGroup = StaffGroup;
     public static string ConversationGroup(int conversationId) => $"support-chat-{conversationId}";
 }

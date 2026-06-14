@@ -29,7 +29,7 @@ builder.Services.AddAuthentication(options =>
             if (ExpectsJson(context.Request))
             {
                 context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                await context.Response.WriteAsJsonAsync(new { success = false, error = "Vui lòng đăng nhập để tiếp tục." });
+                await context.Response.WriteAsJsonAsync(new { success = false, message = "Vui lòng đăng nhập để tiếp tục.", data = (object?)null });
                 return;
             }
 
@@ -40,7 +40,7 @@ builder.Services.AddAuthentication(options =>
             if (ExpectsJson(context.Request))
             {
                 context.Response.StatusCode = StatusCodes.Status403Forbidden;
-                await context.Response.WriteAsJsonAsync(new { success = false, error = "Bạn không có quyền thực hiện thao tác này." });
+                await context.Response.WriteAsJsonAsync(new { success = false, message = "Bạn không có quyền thực hiện thao tác này.", data = (object?)null });
                 return;
             }
 
@@ -126,7 +126,8 @@ app.Use(async (context, next) =>
             await context.Response.WriteAsJsonAsync(new
             {
                 success = false,
-                error = "Yêu cầu chat không hợp lệ hoặc mã bảo mật đã hết hạn. Vui lòng tải lại trang và thử lại."
+                message = "Yêu cầu chat không hợp lệ hoặc mã bảo mật đã hết hạn. Vui lòng tải lại trang và thử lại.",
+                data = (object?)null
             });
         }
     }
@@ -138,7 +139,8 @@ app.Use(async (context, next) =>
         await context.Response.WriteAsJsonAsync(new
         {
             success = false,
-            error = "Hệ thống chat đang gặp sự cố. Vui lòng thử lại sau."
+            message = "Hệ thống chat đang gặp sự cố. Vui lòng thử lại sau.",
+            data = (object?)null
         });
     }
 });

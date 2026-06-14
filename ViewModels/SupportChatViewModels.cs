@@ -4,6 +4,7 @@ namespace Datn.PcStore.ViewModels;
 
 public class CreateChatConversationRequest
 {
+    [MaxLength(64)] public string? GuestId { get; set; }
     [MaxLength(100)] public string? Name { get; set; }
     [EmailAddress, MaxLength(120)] public string? Email { get; set; }
     [MaxLength(20)] public string? Phone { get; set; }
@@ -25,4 +26,9 @@ public class SystemChatMessageRequest
 {
     [Required, StringLength(64)] public string AccessToken { get; set; } = string.Empty;
     [Required, RegularExpression("close")] public string MessageType { get; set; } = string.Empty;
+}
+
+public class AssignChatConversationRequest
+{
+    public int? StaffId { get; set; }
 }
