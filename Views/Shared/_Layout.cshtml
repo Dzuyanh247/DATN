@@ -10,6 +10,11 @@
     var compareCount = compareProducts.Count;
     var controllerName = ViewContext.RouteData.Values["controller"]?.ToString() ?? string.Empty;
     var actionName = ViewContext.RouteData.Values["action"]?.ToString() ?? string.Empty;
+    var selectedHeaderCategoryId = Context.Request.Query["categoryId"].FirstOrDefault();
+    var currentHeaderKeyword = Context.Request.Query["keyword"].FirstOrDefault();
+    var selectedHeaderCategory = int.TryParse(selectedHeaderCategoryId, out var parsedHeaderCategoryId)
+        ? menuCategories.FirstOrDefault(c => c.Id == parsedHeaderCategoryId)
+        : null;
     var isAdminPage = controllerName.StartsWith("Admin") ||
                       controllerName == "Contact" && actionName == "Manage" ||
                       controllerName == "Articles" && (actionName == "Create" || actionName == "Edit");
@@ -128,11 +133,37 @@ else
                      decoding="async" />
             }
         </a>
-        <form class="ttg-search" asp-controller="Products" asp-action="Index" method="get">
-            <div class="input-group">
-                <select class="form-select" style="max-width:180px"><option>Tất cả danh mục</option></select>
-                <input class="form-control" name="Keyword" placeholder="Tìm kiếm sản phẩm..." />
-                <button class="btn text-white" type="submit"><i class="bi bi-search"></i></button>
+        <form class="ttg-search" asp-controller="Products" asp-action="Index" method="get" data-header-search>
+            <input type="hidden" name="categoryId" value="@selectedHeaderCategory?.Id" data-search-category-id />
+            <div class="ttg-search-group">
+                <div class="dropdown ttg-search-category">
+                    <button class="ttg-search-category-toggle dropdown-toggle"
+                            type="button"
+                            id="headerSearchCategory"
+                            data-bs-toggle="dropdown"
+                            aria-expanded="false">
+                        <span data-search-category-label>@(selectedHeaderCategory?.Name ?? "Tất cả danh mục")</span>
+                    </button>
+                    <ul class="dropdown-menu" aria-labelledby="headerSearchCategory">
+                        <li>
+                            <button class="dropdown-item @(selectedHeaderCategory is null ? "active" : "")"
+                                    type="button"
+                                    data-category-id=""
+                                    data-category-name="Tất cả danh mục">Tất cả danh mục</button>
+                        </li>
+                        @foreach (var category in menuCategories)
+                        {
+                            <li>
+                                <button class="dropdown-item @(selectedHeaderCategory?.Id == category.Id ? "active" : "")"
+                                        type="button"
+                                        data-category-id="@category.Id"
+                                        data-category-name="@category.Name">@category.Name</button>
+                            </li>
+                        }
+                    </ul>
+                </div>
+                <input class="form-control" name="keyword" value="@currentHeaderKeyword" placeholder="Tìm kiếm sản phẩm..." aria-label="Tìm kiếm sản phẩm" />
+                <button class="ttg-search-submit" type="submit" aria-label="Tìm kiếm"><i class="bi bi-search"></i></button>
             </div>
         </form>
         <div class="ttg-header-actions">
@@ -145,7 +176,26 @@ else
     </div>
     <div class="ttg-cat-nav-wrap">
         <div class="container ttg-shell ttg-cat-row">
-            <button class="ttg-cat-btn" type="button"><i class="bi bi-list"></i> DANH MỤC SẢN PHẨM</button>
+            <div class="ttg-all-categories">
+                <button class="ttg-cat-btn"
+                        type="button"
+                        aria-expanded="false"
+                        aria-controls="headerCategoryMenu"
+                        data-category-menu-toggle>
+                    <i class="bi bi-list" aria-hidden="true"></i>
+                    <span>DANH MỤC SẢN PHẨM</span>
+                    <i class="bi bi-chevron-down ttg-cat-chevron" aria-hidden="true"></i>
+                </button>
+                <div id="headerCategoryMenu" class="ttg-category-menu" hidden data-category-menu>
+                    @foreach (var category in menuCategories)
+                    {
+                        <a asp-controller="Products" asp-action="Index" asp-route-categoryId="@category.Id">
+                            <i class="bi bi-chevron-right" aria-hidden="true"></i>
+                            <span>@category.Name</span>
+                        </a>
+                    }
+                </div>
+            </div>
             <div class="ttg-cat-nav" aria-label="Danh mục nổi bật">
                 <a class="ttg-cat-link" asp-controller="Products" asp-action="Index" asp-route-categoryId="@(categoryIdByName.GetValueOrDefault("PC Gaming"))" asp-route-categorySlug="pc-gaming"><i class="bi bi-pc-display"></i>PC Gaming</a>
                 <a class="ttg-cat-link" asp-controller="Products" asp-action="Index" asp-route-categoryId="@(categoryIdByName.GetValueOrDefault("Workstation"))" asp-route-categorySlug="workstation"><i class="bi bi-cpu"></i>Workstation</a>
@@ -265,6 +315,7 @@ window.addEventListener('resize',hideProductHover);
 </script>
 @if (!isAdminPage)
 {
+    <script src="~/js/header.js" asp-append-version="true"></script>
     <script src="https://cdn.jsdelivr.net/npm/@@microsoft/signalr@8.0.7/dist/browser/signalr.min.js"></script>
     <script src="~/js/chatbox.js" asp-append-version="true"></script>
 }
