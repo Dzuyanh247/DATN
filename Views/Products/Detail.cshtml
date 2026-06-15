@@ -208,8 +208,6 @@
             </div>
         </section>
 
-        <partial name="_ProductReviews" model="reviewSection" />
-
         @if (componentSpecs.Any())
         {
             <section class="product-detail-section product-spec-section" aria-labelledby="product-spec-title">
@@ -231,6 +229,8 @@
                 </div>
             </section>
         }
+
+        <partial name="_ProductReviews" model="reviewSection" />
 
         @if (suggestions.Any())
         {
