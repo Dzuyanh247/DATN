@@ -112,9 +112,31 @@
         cluster.className = 'kk-chat-response-cluster';
         (data?.messages || []).forEach(message => cluster.append(addMessage(message)));
         renderCards(data?.cards || [], cluster);
+        renderMessageActions(data?.messageActions || [], cluster);
         renderQuickReplies(data?.quickReplies || [], cluster);
         if (cluster.childElementCount) messagesElement.append(cluster);
         scrollToLatest();
+    }
+    function renderMessageActions(actions, parent) {
+        if (!parent || actions.length === 0) return;
+        const list = document.createElement('div');
+        list.className = 'chat-message-actions';
+        actions.forEach(action => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = `chat-message-action chat-message-action--${action.style === 'secondary' ? 'secondary' : 'primary'}`;
+            button.textContent = action.label;
+            button.onclick = () => {
+                if (action.url) {
+                    if (action.target === 'newTab') window.open(action.url, '_blank', 'noopener');
+                    else window.location.href = action.url;
+                    return;
+                }
+                if (action.actionType) runQuickAction(action.actionType, action.payload);
+            };
+            list.append(button);
+        });
+        parent.append(list);
     }
     function renderQuickReplies(replies, parent) {
         if (!parent || replies.length === 0) return;
