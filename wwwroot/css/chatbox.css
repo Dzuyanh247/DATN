@@ -76,10 +76,10 @@
     position: fixed;
     right: 22px;
     bottom: 22px;
-    width: 312px;
+    width: 332px;
     max-width: calc(100vw - 44px);
-    height: 420px;
-    max-height: calc(100vh - 110px);
+    height: 560px;
+    max-height: calc(100vh - 88px);
     background: #fff;
     border: 1px solid rgba(18, 61, 115, .1);
     border-radius: 15px;
@@ -165,11 +165,6 @@
     overflow: hidden;
 }
 
-.kk-chat-welcome { text-align: center; padding: 8px 14px 2px; }
-.kk-chat-avatar { width: 36px; height: 36px; margin: 0 auto 5px; border-radius: 50%; background: #e8f1fb; color: var(--kk-chat-blue); display: grid; place-items: center; font-size: 1rem; }
-.kk-chat-welcome h6 { margin: 0 0 2px; font-weight: 750; color: #17324f; font-size: .88rem; }
-.kk-chat-welcome p { margin: 0; color: #64748b; font-size: .74rem; line-height: 1.3; }
-
 .kk-chat-start-form {
     flex: 1;
     min-height: 0;
@@ -206,6 +201,13 @@
 .kk-chat-user-note { padding: 7px 9px; border-radius: 9px; background: #eaf5ff; color: #24527f; font-size: .74rem; }
 
 .kk-chat-start-greeting { margin-bottom: 6px; }
+.kk-chat-quick-wrap { padding: 2px 0 5px; }
+.kk-chat-quick-wrap > span { display: block; margin-bottom: 5px; color: #64748b; font-size: .68rem; font-weight: 650; }
+.kk-chat-quick-list { display: flex; flex-wrap: wrap; gap: 5px; }
+.kk-chat-quick-chip { border: 1px solid #bfd4e8; border-radius: 999px; background: #fff; color: #174d82; padding: 5px 8px; font-size: .68rem; line-height: 1.2; text-align: left; }
+.kk-chat-quick-chip:hover { border-color: #f97316; color: #c2410c; background: #fff7ed; }
+.kk-chat-quick-compose { flex-shrink: 0; padding: 6px 9px 3px; background: #f5f8fc; }
+.kk-chat-enter-hint { display: block; margin-top: 3px; color: #94a3b8; font-size: .62rem; }
 
 .kk-chat-primary {
     width: 100%;
@@ -224,6 +226,8 @@
 .kk-chat-compose button:disabled { opacity: .6; }
 
 .kk-chat-error { min-height: 15px; color: #dc2626; font-size: .7rem; margin-top: 2px; }
+.kk-chat-send-error { flex-shrink: 0; min-height: 0; padding: 0 10px; background: #fff; }
+.kk-chat-send-error:not(:empty) { padding-top: 6px; }
 
 .kk-chat-conversation { display: flex; flex: 1; min-height: 0; flex-direction: column; }
 .kk-chat-messages { flex: 1; min-height: 0; overflow-y: auto; padding: 10px 10px 8px; scroll-behavior: smooth; }
@@ -321,7 +325,7 @@
         bottom: 12px;
         width: calc(100vw - 24px);
         max-width: calc(100vw - 24px);
-        height: min(430px, calc(100vh - 90px));
+        height: min(560px, calc(100vh - 90px));
         max-height: calc(100vh - 90px);
         border-radius: 14px;
     }

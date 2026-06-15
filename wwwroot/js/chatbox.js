@@ -7,11 +7,16 @@
     const closeButton = document.getElementById('kk-chat-close');
     const startForm = document.getElementById('kk-chat-start-form');
     const conversationView = document.getElementById('kk-chat-conversation');
-    const welcome = document.getElementById('kk-chat-welcome');
     const messageForm = document.getElementById('kk-chat-message-form');
     const messageInput = document.getElementById('kk-chat-message');
     const messagesElement = document.getElementById('kk-chat-messages');
     const errorElement = document.getElementById('kk-chat-start-error');
+    const sendErrorElement = document.getElementById('kk-chat-send-error');
+    const firstMessageInput = document.getElementById('kk-chat-first-message');
+    const quickQuestions = (() => {
+        try { return JSON.parse(document.getElementById('kk-chat-quick-questions')?.textContent || '[]'); }
+        catch (error) { console.error('[SupportChat] Invalid quick question configuration', error); return []; }
+    })();
     const connectionElement = document.getElementById('kk-chat-connection');
     const closedElement = document.getElementById('kk-chat-closed');
     const unreadElement = document.getElementById('kk-chat-unread');
@@ -80,7 +85,6 @@
         scrollToLatest();
     }
     function showConversation(status) {
-        welcome.classList.add('d-none');
         startForm.classList.add('d-none');
         conversationView.classList.remove('d-none');
         const closed = String(status).toLowerCase() === 'closed';
@@ -91,10 +95,31 @@
         saveSession(null);
         messagesElement.replaceChildren();
         conversationView.classList.add('d-none');
-        welcome.classList.remove('d-none');
         startForm.classList.remove('d-none');
         closedElement.classList.add('d-none');
         messageForm.classList.remove('d-none');
+    }
+    function hideConversationSuggestions() {
+        document.querySelector('[data-chat-quick-container]')?.classList.add('d-none');
+    }
+    function renderQuickQuestions() {
+        document.querySelectorAll('[data-chat-quick-list]').forEach(list => {
+            quickQuestions.forEach(question => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'kk-chat-quick-chip';
+                button.textContent = question;
+                button.addEventListener('click', () => {
+                    const target = session ? messageInput : firstMessageInput;
+                    target.value = question;
+                    target.focus();
+                    if (session || root.dataset.authenticated === 'true') {
+                        (session ? messageForm : startForm).requestSubmit();
+                    }
+                });
+                list.append(button);
+            });
+        });
     }
     function conversationUrl(template, conversationId) {
         return template.replace('987654321', encodeURIComponent(conversationId));
@@ -149,8 +174,10 @@
             messagesElement.replaceChildren();
             data.messages.forEach(addMessage);
             showConversation(data.status);
-        } catch {
+        } catch (error) {
+            console.error('[SupportChat] Could not restore conversation', error);
             resetConversation();
+            errorElement.textContent = error.message;
         }
     }
     async function addCloseMessage() {
@@ -164,7 +191,7 @@
                 method: 'POST',
                 body: JSON.stringify({ accessToken: session.accessToken, messageType: 'close' })
             });
-            if (data.message) addMessage(data.message);
+            if (data?.id) addMessage(data);
         } catch (error) {
             localStorage.removeItem(closeMessageKey);
             console.error('[SupportChat] Could not add close message', error);
@@ -219,6 +246,7 @@
             messagesElement.replaceChildren();
             (data.messages || []).forEach(addMessage);
             showConversation(data.status);
+            hideConversationSuggestions();
             await connectRealtime();
         } catch (error) {
             console.error('[SupportChat] Could not start conversation', error);
@@ -230,20 +258,22 @@
         event.preventDefault();
         const text = messageInput.value.trim();
         if (!text || !session) return;
+        sendErrorElement.textContent = '';
         const button = messageForm.querySelector('button');
         button.disabled = true;
         try {
             const data = await jsonFetch(conversationUrl(sendUrlTemplate, session.conversationId), {
                 method: 'POST', body: JSON.stringify({ accessToken: session.accessToken, message: text })
             });
-            addMessage(data.message);
+            addMessage(data);
             messageInput.value = '';
             messageInput.style.height = '';
+            messageInput.focus();
+            hideConversationSuggestions();
             scrollToLatest();
         } catch (error) {
             console.error('[SupportChat] Could not send message', error);
-            if (window.showGlobalToast) window.showGlobalToast(error.message, 'danger');
-            else window.alert(error.message);
+            sendErrorElement.textContent = error.message;
         }
         finally { button.disabled = false; }
     });
@@ -254,6 +284,10 @@
     messageInput.addEventListener('keydown', event => {
         if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); messageForm.requestSubmit(); }
     });
+    firstMessageInput.addEventListener('keydown', event => {
+        if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); startForm.requestSubmit(); }
+    });
 
+    renderQuickQuestions();
     if (session) { loadMessages(); connectRealtime(); } else setConnection(false);
 })();
