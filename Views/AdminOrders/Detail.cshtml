@@ -19,7 +19,13 @@
         <h2>Chi tiết đơn @Model.OrderCode</h2>
         <p>Đặt lúc @DateTimeHelper.FormatVietnam(Model.CreatedAt, "dd/MM/yyyy HH:mm")</p>
     </div>
-    <span class="order-status-badge @OrderStatusHelper.BadgeClass(Model.Status)">@OrderStatusHelper.Label(Model.Status)</span>
+    <div class="d-flex align-items-center gap-2">
+        @if (Model.Status is not OrderStatus.Cancelled and not OrderStatus.Expired)
+        {
+            <a class="btn btn-sm btn-outline-primary" asp-controller="Orders" asp-action="Quotation" asp-route-orderId="@Model.Id" target="_blank"><i class="bi bi-printer"></i> In hóa đơn</a>
+        }
+        <span class="order-status-badge @OrderStatusHelper.BadgeClass(Model.Status)">@OrderStatusHelper.Label(Model.Status)</span>
+    </div>
 </div>
 
 <div class="row g-3">

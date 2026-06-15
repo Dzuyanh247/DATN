@@ -196,6 +196,10 @@
                         </td>
                         <td class="text-end">
                             <a class="btn btn-sm btn-outline-primary admin-order-detail-button" asp-action="Detail" asp-route-id="@order.Id"><i class="bi bi-eye"></i> Chi tiết</a>
+                            @if (order.Status is not OrderStatus.Cancelled and not OrderStatus.Expired)
+                            {
+                                <a class="btn btn-sm btn-outline-secondary admin-order-detail-button mt-1" asp-controller="Orders" asp-action="Quotation" asp-route-orderId="@order.Id" target="_blank"><i class="bi bi-printer"></i> In hóa đơn</a>
+                            }
                         </td>
                     </tr>
                 }

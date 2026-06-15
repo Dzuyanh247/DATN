@@ -1,64 +1,58 @@
-@model Datn.PcStore.ViewModels.AdminDashboardVm
+@model AdminDashboardVm
 @{
     ViewData["Title"] = "Dashboard quản trị";
+    var maxRevenue = Model.RevenueLastSevenDays.Any() ? Model.RevenueLastSevenDays.Max(x => x.Revenue) : 0;
+    var hasAlerts = Model.PendingOrderCount + Model.BankTransferConfirmationCount + Model.NewWarrantyCount + Model.UnreadSupportCount + Model.LowStockCount > 0;
 }
+<header class="dashboard-hero">
+    <div><span class="admin-eyebrow">Tổng quan vận hành</span><h2>Dashboard quản trị</h2><p>Theo dõi tổng quan hoạt động bán hàng và vận hành KKSHOP.</p></div>
+    <div class="dashboard-welcome"><i class="bi bi-calendar3"></i><div><small>Xin chào, @Model.AdminDisplayName</small><strong>@DateTimeHelper.FormatVietnam(DateTime.UtcNow, "dddd, dd/MM/yyyy")</strong></div></div>
+</header>
 
-<h3 class="mb-3">Tổng quan quản trị</h3>
-<div class="row g-3 mb-4">
-    <div class="col-md-6 col-xl-3">
-        <div class="admin-stat-card">
-            <div class="d-flex justify-content-between align-items-start">
-                <div>
-                    <div class="admin-stat-label">Sản phẩm</div>
-                    <div class="admin-stat-value">@Model.ProductCount</div>
-                </div>
-                <div class="admin-stat-icon bg-primary-subtle text-primary"><i class="bi bi-box-seam"></i></div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-6 col-xl-3">
-        <div class="admin-stat-card">
-            <div class="d-flex justify-content-between align-items-start">
-                <div>
-                    <div class="admin-stat-label">Đơn hàng</div>
-                    <div class="admin-stat-value">@Model.OrderCount</div>
-                </div>
-                <div class="admin-stat-icon bg-success-subtle text-success"><i class="bi bi-receipt"></i></div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-6 col-xl-3">
-        <div class="admin-stat-card">
-            <div class="d-flex justify-content-between align-items-start">
-                <div>
-                    <div class="admin-stat-label">Người dùng</div>
-                    <div class="admin-stat-value">@Model.UserCount</div>
-                </div>
-                <div class="admin-stat-icon bg-warning-subtle text-warning"><i class="bi bi-people"></i></div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-6 col-xl-3">
-        <div class="admin-stat-card">
-            <div class="d-flex justify-content-between align-items-start">
-                <div>
-                    <div class="admin-stat-label">Yêu cầu bảo hành</div>
-                    <div class="admin-stat-value">@Model.WarrantyRequestCount</div>
-                </div>
-                <div class="admin-stat-icon bg-danger-subtle text-danger"><i class="bi bi-shield-check"></i></div>
-            </div>
-        </div>
-    </div>
+<div class="dashboard-stat-grid">
+@foreach (var stat in new[] {
+    ("Tổng sản phẩm", Model.ProductCount.ToString("N0"), "bi-box-seam", "blue"), ("Tổng đơn hàng", Model.OrderCount.ToString("N0"), "bi-bag-check", "indigo"),
+    ("Người dùng", Model.UserCount.ToString("N0"), "bi-people", "cyan"), ("Yêu cầu bảo hành", Model.WarrantyRequestCount.ToString("N0"), "bi-shield-check", "purple"),
+    ("Đơn chờ xử lý", Model.PendingOrderCount.ToString("N0"), "bi-hourglass-split", "orange"), ("Chờ thanh toán", Model.PendingPaymentCount.ToString("N0"), "bi-credit-card", "amber"),
+    ("Doanh thu hôm nay", Model.TodayRevenue.ToString("N0") + " đ", "bi-graph-up-arrow", "green"), ("Doanh thu tháng này", Model.MonthRevenue.ToString("N0") + " đ", "bi-cash-stack", "emerald") })
+{
+    <article class="dashboard-stat-card"><span class="dashboard-stat-icon is-@stat.Item4"><i class="bi @stat.Item3"></i></span><div><small>@stat.Item1</small><strong class="@(stat.Item1.StartsWith("Doanh") ? "is-money" : "")">@stat.Item2</strong></div></article>
+}
 </div>
 
-<div class="list-group">
-    <a class="list-group-item list-group-item-action" asp-controller="AdminCategories" asp-action="Index">Quản lý danh mục</a>
-    <a class="list-group-item list-group-item-action" asp-controller="AdminProducts" asp-action="Index">Quản lý sản phẩm</a>
-    <a class="list-group-item list-group-item-action" asp-controller="AdminUsers" asp-action="Index">Quản lý tài khoản</a>
-    <a class="list-group-item list-group-item-action" asp-controller="AdminOrders" asp-action="Index">Quản lý đơn hàng</a>
-    <a class="list-group-item list-group-item-action" asp-controller="AdminBanners" asp-action="Index">Quản lý banner</a>
-    <a class="list-group-item list-group-item-action" asp-controller="AdminWarranty" asp-action="Index">Yêu cầu bảo hành</a>
-    <a class="list-group-item list-group-item-action" asp-controller="Articles" asp-action="Index">Tin tức / khuyến mãi</a>
-    <a class="list-group-item list-group-item-action" asp-controller="Contact" asp-action="Manage">Feedback liên hệ</a>
-    <a class="list-group-item list-group-item-action" asp-controller="AdminChat" asp-action="Index">Hỗ trợ khách hàng</a>
+<div class="dashboard-main-grid">
+<section class="dashboard-panel dashboard-alerts"><div class="dashboard-panel-heading"><div><span class="admin-eyebrow">Ưu tiên</span><h3>Việc cần xử lý</h3></div><i class="bi bi-bell"></i></div>
+@if (!hasAlerts) { <div class="admin-empty-state compact"><i class="bi bi-check-circle"></i><strong>Không có việc cần xử lý</strong><span>Mọi hoạt động đang ổn định.</span></div> }
+else { <div class="dashboard-alert-list">
+<a asp-controller="AdminOrders" asp-action="Index" asp-route-status="PendingConfirmation"><span class="alert-icon blue"><i class="bi bi-bag"></i></span><div><strong>Đơn hàng mới/chờ xử lý</strong><small>Cần kiểm tra và xác nhận đơn</small></div><b>@Model.PendingOrderCount</b></a>
+<a asp-controller="AdminOrders" asp-action="Index" asp-route-paymentStatus="@PaymentStatuses.PendingConfirmation"><span class="alert-icon amber"><i class="bi bi-bank"></i></span><div><strong>Chuyển khoản cần xác nhận</strong><small>Đối soát thanh toán ngân hàng</small></div><b>@Model.BankTransferConfirmationCount</b></a>
+<a asp-controller="AdminWarranty" asp-action="Index" asp-route-status="@WarrantyStatuses.Pending"><span class="alert-icon purple"><i class="bi bi-shield-exclamation"></i></span><div><strong>Yêu cầu bảo hành mới</strong><small>Chờ tiếp nhận hậu mãi</small></div><b>@Model.NewWarrantyCount</b></a>
+<a asp-controller="AdminChat" asp-action="Index"><span class="alert-icon cyan"><i class="bi bi-chat-dots"></i></span><div><strong>Tin nhắn hỗ trợ chưa đọc</strong><small>Phản hồi khách hàng</small></div><b>@Model.UnreadSupportCount</b></a>
+<a asp-controller="AdminProducts" asp-action="Index"><span class="alert-icon red"><i class="bi bi-box2"></i></span><div><strong>Sản phẩm sắp hết hàng</strong><small>Tồn kho từ 5 sản phẩm trở xuống</small></div><b>@Model.LowStockCount</b></a>
+</div> }
+</section>
+<section class="dashboard-panel"><div class="dashboard-panel-heading"><div><span class="admin-eyebrow">7 ngày gần nhất</span><h3>Doanh thu thực thu</h3></div><i class="bi bi-bar-chart"></i></div>
+@if (maxRevenue <= 0) { <div class="admin-empty-state compact"><i class="bi bi-bar-chart-line"></i><strong>Chưa có doanh thu</strong><span>Biểu đồ sẽ cập nhật khi có đơn đã thanh toán hợp lệ.</span></div> }
+else { <div class="dashboard-chart">@foreach(var point in Model.RevenueLastSevenDays){var height = Math.Max(8, (double)(point.Revenue / maxRevenue * 100));<div class="chart-column" title="@point.Revenue.ToString("N0") đ · @point.OrderCount đơn"><span>@(point.Revenue > 0 ? point.Revenue.ToString("N0") : "0")</span><div><i style="height:@height%"></i></div><small>@point.Date.ToString("dd/MM")</small></div>}</div> }
+</section>
+</div>
+
+<section class="dashboard-section"><div class="dashboard-panel-heading"><div><span class="admin-eyebrow">Truy cập nhanh</span><h3>Thao tác quản trị</h3></div></div><div class="dashboard-actions">
+<a asp-controller="AdminProducts" asp-action="Create"><i class="bi bi-plus-circle"></i><span><strong>Thêm sản phẩm</strong><small>Cập nhật danh mục bán</small></span></a>
+<a asp-controller="AdminOrders" asp-action="Index"><i class="bi bi-bag-check"></i><span><strong>Quản lý đơn hàng</strong><small>Xử lý và giao hàng</small></span></a>
+<a asp-controller="AdminOrders" asp-action="Index" asp-route-paymentStatus="@PaymentStatuses.PendingConfirmation"><i class="bi bi-bank"></i><span><strong>Xác nhận thanh toán</strong><small>Đối soát chuyển khoản</small></span></a>
+<a asp-controller="AdminInvoices" asp-action="Index"><i class="bi bi-receipt-cutoff"></i><span><strong>Quản lý hóa đơn</strong><small>Xem và in từ đơn hàng</small></span></a>
+<a asp-controller="AdminWarranty" asp-action="Index"><i class="bi bi-shield-check"></i><span><strong>Yêu cầu bảo hành</strong><small>Chăm sóc hậu mãi</small></span></a>
+<a asp-controller="AdminChat" asp-action="Index"><i class="bi bi-chat-square-dots"></i><span><strong>Chat hỗ trợ</strong><small>Phản hồi khách hàng</small></span></a>
+<a asp-controller="AdminBanners" asp-action="Index"><i class="bi bi-images"></i><span><strong>Quản lý banner</strong><small>Nội dung trang chủ</small></span></a>
+<a asp-controller="AdminSettings" asp-action="Index"><i class="bi bi-gear"></i><span><strong>Cài đặt website</strong><small>Thông tin và vận chuyển</small></span></a>
+</div></section>
+
+<div class="dashboard-content-grid">
+<section class="dashboard-panel dashboard-orders"><div class="dashboard-panel-heading"><div><span class="admin-eyebrow">Mới nhất</span><h3>Đơn hàng gần đây</h3></div><a asp-controller="AdminOrders" asp-action="Index">Xem tất cả <i class="bi bi-arrow-right"></i></a></div>
+@if(!Model.RecentOrders.Any()){<div class="admin-empty-state"><i class="bi bi-bag-x"></i><strong>Chưa có đơn hàng</strong><span>Đơn hàng mới sẽ được hiển thị tại đây.</span></div>}else{<div class="table-responsive"><table class="table align-middle dashboard-table"><thead><tr><th>Đơn hàng</th><th>Khách hàng</th><th class="text-end">Tổng tiền</th><th>Trạng thái</th><th>Ngày đặt</th><th></th></tr></thead><tbody>@foreach(var order in Model.RecentOrders){var image=ImageUrlHelper.ResolveImageUrl(order.ProductImage,"/images/placeholders/product.svg");<tr><td><div class="dashboard-order-code"><img src="@image" alt=""/><strong>@order.OrderCode</strong></div></td><td>@order.CustomerName</td><td class="text-end fw-bold">@order.TotalAmount.ToString("N0") đ</td><td><span class="order-status-badge @OrderStatusHelper.BadgeClass(order.Status)">@OrderStatusHelper.Label(order.Status)</span><span class="payment-status-badge @OrderStatusHelper.PaymentBadgeClass(order.PaymentStatus,order.Status)">@OrderStatusHelper.PaymentLabel(order.PaymentStatus,order.Status)</span></td><td>@DateTimeHelper.FormatVietnam(order.CreatedAt,"dd/MM HH:mm")</td><td><a class="btn btn-sm btn-light" asp-controller="AdminOrders" asp-action="Detail" asp-route-id="@order.Id"><i class="bi bi-eye"></i></a></td></tr>}</tbody></table></div>}
+</section>
+<section class="dashboard-panel"><div class="dashboard-panel-heading"><div><span class="admin-eyebrow">Tồn kho thấp</span><h3>Sản phẩm cần chú ý</h3></div><a asp-controller="AdminProducts" asp-action="Index">Xem tất cả <i class="bi bi-arrow-right"></i></a></div>
+@if(!Model.AttentionProducts.Any()){<div class="admin-empty-state"><i class="bi bi-box"></i><strong>Chưa có sản phẩm</strong><span>Danh sách sẽ cập nhật từ kho sản phẩm.</span></div>}else{<div class="dashboard-product-list">@foreach(var product in Model.AttentionProducts){var image=ImageUrlHelper.ResolveImageUrl(product.ImageUrl,"/images/placeholders/product.svg");<a asp-controller="AdminProducts" asp-action="Edit" asp-route-id="@product.Id"><img src="@image" alt="@product.Name"/><div><strong>@product.Name</strong><small>@product.CategoryName · @product.Price.ToString("N0") đ</small><span class="@(product.StockQuantity <= 5 ? "stock-low" : "")">Tồn @product.StockQuantity · @(product.IsActive ? "Đang hiển thị" : "Đang ẩn")</span></div><i class="bi bi-chevron-right"></i></a>}</div>}
+</section>
 </div>

@@ -1,0 +1,19 @@
+@model AdminInvoicesVm
+@{
+    ViewData["Title"] = "Quản lý hóa đơn";
+    var paymentStatuses = new[] { PaymentStatuses.Paid, PaymentStatuses.PendingConfirmation, PaymentStatuses.Pending, PaymentStatuses.Unpaid, PaymentStatuses.Failed, PaymentStatuses.Expired, PaymentStatuses.Refunded };
+}
+<div class="admin-page-heading">
+    <div><span class="admin-eyebrow">Bán hàng</span><h2>Hóa đơn bán hàng</h2><p>Mỗi đơn hàng tương ứng một hóa đơn; dữ liệu được lấy trực tiếp từ đơn hàng hiện có.</p></div>
+    <span class="admin-result-pill"><i class="bi bi-receipt-cutoff"></i> @Model.Invoices.Count hóa đơn</span>
+</div>
+<form method="get" class="admin-inline-filters">
+    <div class="input-group"><span class="input-group-text"><i class="bi bi-search"></i></span><input name="search" value="@Model.Search" class="form-control" placeholder="Mã hóa đơn, mã đơn, khách hàng, SĐT" /></div>
+    <select name="paymentStatus" class="form-select"><option value="">Tất cả thanh toán</option>@foreach (var status in paymentStatuses){<option value="@status" selected="@(Model.PaymentStatus == status)">@OrderStatusHelper.PaymentLabel(status)</option>}</select>
+    <button class="btn btn-primary"><i class="bi bi-funnel"></i> Lọc</button><a class="btn btn-outline-secondary" asp-action="Index">Đặt lại</a>
+</form>
+<div class="table-responsive admin-data-panel">
+<table class="table align-middle admin-invoice-table"><thead><tr><th>Hóa đơn / đơn hàng</th><th>Khách hàng</th><th>Ngày lập</th><th class="text-end">Tổng tiền</th><th>Thanh toán</th><th>Trạng thái hóa đơn</th><th class="text-end">Hành động</th></tr></thead><tbody>
+@if (!Model.Invoices.Any()) { <tr><td colspan="7"><div class="admin-empty-state"><i class="bi bi-receipt"></i><strong>Chưa có hóa đơn phù hợp</strong><span>Hóa đơn sẽ xuất hiện khi có đơn hàng trong hệ thống.</span></div></td></tr> }
+@foreach (var invoice in Model.Invoices) { <tr><td><strong>@invoice.InvoiceCode</strong><small class="d-block text-muted">@invoice.OrderCode</small></td><td>@invoice.CustomerName</td><td>@DateTimeHelper.FormatVietnam(invoice.CreatedAt, "dd/MM/yyyy HH:mm")</td><td class="text-end fw-bold text-danger">@invoice.TotalAmount.ToString("N0") đ</td><td><span class="payment-status-badge @OrderStatusHelper.PaymentBadgeClass(invoice.PaymentStatus, invoice.OrderStatus)">@OrderStatusHelper.PaymentLabel(invoice.PaymentStatus, invoice.OrderStatus)</span></td><td><span class="order-status-badge @OrderStatusHelper.BadgeClass(invoice.OrderStatus)">@(invoice.IsPrintable ? "Có thể in" : OrderStatusHelper.Label(invoice.OrderStatus))</span></td><td class="text-end text-nowrap"><a class="btn btn-sm btn-outline-primary" asp-controller="AdminOrders" asp-action="Detail" asp-route-id="@invoice.OrderId"><i class="bi bi-eye"></i> Xem</a> @if(invoice.IsPrintable){<a class="btn btn-sm btn-primary" asp-controller="Orders" asp-action="Quotation" asp-route-orderId="@invoice.OrderId" target="_blank"><i class="bi bi-printer"></i> In</a>}</td></tr> }
+</tbody></table></div>
