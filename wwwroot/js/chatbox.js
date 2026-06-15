@@ -13,6 +13,8 @@
     const errorElement = document.getElementById('kk-chat-start-error');
     const sendErrorElement = document.getElementById('kk-chat-send-error');
     const firstMessageInput = document.getElementById('kk-chat-first-message');
+    const startSubmit = document.getElementById('kk-chat-start-submit');
+    const startSubmitLabel = startSubmit?.querySelector('span');
     const quickQuestions = (() => {
         try { return JSON.parse(document.getElementById('kk-chat-quick-questions')?.textContent || '[]'); }
         catch (error) { console.error('[SupportChat] Invalid quick question configuration', error); return []; }
@@ -102,6 +104,9 @@
     function hideConversationSuggestions() {
         document.querySelector('[data-chat-quick-container]')?.classList.add('d-none');
     }
+    function updateStartButton() {
+        if (startSubmitLabel) startSubmitLabel.textContent = firstMessageInput.value.trim() ? 'Gửi' : 'Bắt đầu trò chuyện';
+    }
     function renderQuickQuestions() {
         document.querySelectorAll('[data-chat-quick-list]').forEach(list => {
             quickQuestions.forEach(question => {
@@ -112,10 +117,9 @@
                 button.addEventListener('click', () => {
                     const target = session ? messageInput : firstMessageInput;
                     target.value = question;
+                    target.dispatchEvent(new Event('input', { bubbles: true }));
                     target.focus();
-                    if (session || root.dataset.authenticated === 'true') {
-                        (session ? messageForm : startForm).requestSubmit();
-                    }
+                    if (session) messageForm.requestSubmit();
                 });
                 list.append(button);
             });
@@ -247,6 +251,8 @@
             (data.messages || []).forEach(addMessage);
             showConversation(data.status);
             hideConversationSuggestions();
+            firstMessageInput.value = '';
+            updateStartButton();
             await connectRealtime();
         } catch (error) {
             console.error('[SupportChat] Could not start conversation', error);
@@ -287,7 +293,9 @@
     firstMessageInput.addEventListener('keydown', event => {
         if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); startForm.requestSubmit(); }
     });
+    firstMessageInput.addEventListener('input', updateStartButton);
 
     renderQuickQuestions();
+    updateStartButton();
     if (session) { loadMessages(); connectRealtime(); } else setConnection(false);
 })();
