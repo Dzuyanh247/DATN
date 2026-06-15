@@ -1,0 +1,51 @@
+@model CreateProductReviewVm
+@{
+    ViewData["Title"] = "Đánh giá sản phẩm";
+    var image = ImageUrlHelper.ResolveImageUrl(Model.ProductImage, "/images/placeholders/product-placeholder.png");
+}
+<div class="container py-5" style="max-width:850px">
+    <div class="card border-0 shadow-sm overflow-hidden">
+        <div class="card-header bg-dark text-white p-4">
+            <h1 class="h3 mb-1"><i class="bi bi-star-fill text-warning"></i> Đánh giá sản phẩm</h1>
+            <p class="mb-0 text-white-50">Chia sẻ trải nghiệm thực tế của bạn với sản phẩm đã mua.</p>
+        </div>
+        <div class="card-body p-4 p-lg-5">
+            <div class="d-flex gap-3 align-items-center p-3 bg-light rounded-3 mb-4">
+                <img src="@image" alt="@Model.ProductName" class="rounded bg-white" style="width:100px;height:100px;object-fit:contain" />
+                <div>
+                    <h2 class="h5 mb-2">@Model.ProductName</h2>
+                    <div class="text-muted"><i class="bi bi-receipt"></i> @Model.OrderCode</div>
+                    <div class="text-muted"><i class="bi bi-calendar3"></i> Ngày mua: @DateTimeHelper.FormatVietnam(Model.PurchaseDate, "dd/MM/yyyy")</div>
+                </div>
+            </div>
+            <form asp-action="Create" method="post">
+                <input asp-for="OrderId" type="hidden" />
+                <input asp-for="ProductId" type="hidden" />
+                <div class="mb-4">
+                    <label class="form-label fw-semibold">Mức độ hài lòng</label>
+                    <div class="d-flex flex-row-reverse justify-content-end gap-2 fs-2 review-stars">
+                        @for (var star = 5; star >= 1; star--)
+                        {
+                            <input class="visually-hidden" type="radio" asp-for="Rating" id="quick-rating-@star" value="@star" />
+                            <label for="quick-rating-@star" title="@star sao" style="cursor:pointer;color:#d1d5db"><i class="bi bi-star-fill"></i></label>
+                        }
+                    </div>
+                    <span asp-validation-for="Rating" class="text-danger"></span>
+                </div>
+                <div class="mb-4">
+                    <label asp-for="Comment" class="form-label fw-semibold">Nhận xét của bạn</label>
+                    <textarea asp-for="Comment" class="form-control" rows="6" placeholder="Hãy chia sẻ chất lượng sản phẩm, đóng gói và trải nghiệm sử dụng..."></textarea>
+                    <span asp-validation-for="Comment" class="text-danger"></span>
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                    <button class="btn btn-danger px-4" type="submit"><i class="bi bi-send"></i> Gửi đánh giá</button>
+                    <a class="btn btn-outline-secondary" asp-controller="Orders" asp-action="Detail" asp-route-id="@Model.OrderId"><i class="bi bi-arrow-left"></i> Quay lại đơn hàng</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<style>
+    .review-stars label:hover,.review-stars label:hover~label,.review-stars input:checked~label{color:#f59e0b!important}
+</style>
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

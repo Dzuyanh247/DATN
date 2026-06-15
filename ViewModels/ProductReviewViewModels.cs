@@ -11,6 +11,10 @@ public class CreateProductReviewVm
     [Required(ErrorMessage = "Vui lòng nhập nội dung đánh giá.")]
     [StringLength(1000, MinimumLength = 10, ErrorMessage = "Nội dung đánh giá phải từ 10 đến 1000 ký tự.")]
     public string Comment { get; set; } = string.Empty;
+    public string ProductName { get; set; } = string.Empty;
+    public string ProductImage { get; set; } = string.Empty;
+    public string OrderCode { get; set; } = string.Empty;
+    public DateTime PurchaseDate { get; set; }
 }
 
 public class ProductReviewItemVm

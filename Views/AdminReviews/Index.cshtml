@@ -1,4 +1,40 @@
 @model AdminReviewIndexVm
-@{ViewData["Title"]="Quản lý đánh giá";}
-<section class="admin-card"><form method="get" class="row g-2 mb-3"><div class="col-lg-3"><input class="form-control" name="keyword" value="@Model.Keyword" placeholder="Sản phẩm, khách hàng, nội dung..."/></div><div class="col"><select class="form-select" name="rating"><option value="">Tất cả số sao</option>@for(var i=5;i>=1;i--){<option value="@i" selected="@(Model.Rating==i)">@i sao</option>}</select></div><div class="col"><select class="form-select" name="status"><option value="">Tất cả trạng thái</option>@foreach(var s in Enum.GetValues<ReviewStatus>()){<option value="@s" selected="@(Model.Status==s)">@s</option>}</select></div><div class="col-lg-3"><select class="form-select" name="productId"><option value="">Tất cả sản phẩm</option>@foreach(var p in Model.Products){<option value="@p.Id" selected="@(Model.ProductId==p.Id)">@p.Name</option>}</select></div><div class="col"><button class="btn btn-primary w-100"><i class="bi bi-funnel"></i> Lọc</button></div></form>
-<div class="table-responsive"><table class="table align-middle"><thead><tr><th>Sản phẩm</th><th>Khách hàng</th><th>Sao</th><th>Nội dung</th><th>Ngày</th><th>Trạng thái</th><th></th></tr></thead><tbody>@foreach(var r in Model.Reviews){<tr><td><div class="d-flex align-items-center gap-2"><img src="@ImageUrlHelper.ResolveImageUrl(r.Product?.ThumbnailImage,"/images/no-image.png")" style="width:48px;height:48px;object-fit:cover"/><strong>@r.Product?.Name</strong></div></td><td>@r.User?.FullName<br/><span class="badge text-bg-success">Đã mua hàng</span></td><td class="text-warning text-nowrap">@r.Rating <i class="bi bi-star-fill"></i></td><td style="max-width:300px"><span class="text-truncate d-block">@r.Comment</span></td><td>@DateTimeHelper.FormatVietnam(r.CreatedAt,"dd/MM/yyyy")</td><td><span class="badge @(r.Status==ReviewStatus.Approved?"text-bg-success":r.Status==ReviewStatus.Hidden?"text-bg-secondary":"text-bg-warning")">@r.Status</span></td><td class="text-nowrap"><a class="btn btn-sm btn-outline-primary" asp-action="Detail" asp-route-id="@r.Id">Chi tiết</a><form asp-action="ToggleVisibility" asp-route-id="@r.Id" method="post" class="d-inline"><button class="btn btn-sm btn-outline-secondary">@(r.Status==ReviewStatus.Hidden?"Hiện":"Ẩn")</button></form></td></tr>}@if(!Model.Reviews.Any()){<tr><td colspan="7" class="text-center py-5 text-muted">Chưa có đánh giá phù hợp.</td></tr>}</tbody></table></div></section>
+@{
+    ViewData["Title"] = "Quản lý đánh giá";
+}
+<div class="admin-page-heading">
+    <div><span class="admin-eyebrow">Chăm sóc khách hàng</span><h2>Quản lý đánh giá</h2><p>Duyệt nội dung, phản hồi khách hàng và theo dõi người xử lý.</p></div>
+    <span class="admin-result-pill"><i class="bi bi-star"></i> @Model.Reviews.Count đánh giá</span>
+</div>
+<section class="admin-card">
+    <form method="get" class="row g-2 mb-4">
+        <div class="col-lg-4"><input class="form-control" name="keyword" value="@Model.Keyword" placeholder="Sản phẩm, khách hàng, nội dung..." /></div>
+        <div class="col-md-3"><select class="form-select" name="rating"><option value="">Tất cả số sao</option>@for(var i=5;i>=1;i--){<option value="@i" selected="@(Model.Rating==i)">@i sao</option>}</select></div>
+        <div class="col-md-3"><select class="form-select" name="status"><option value="">Tất cả trạng thái</option>@foreach(var s in Enum.GetValues<ReviewStatus>()){<option value="@s" selected="@(Model.Status==s)">@ReviewStatusHelper.Label(s)</option>}</select></div>
+        <div class="col-md-2"><button class="btn btn-primary w-100"><i class="bi bi-funnel"></i> Lọc</button></div>
+    </form>
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead><tr><th>Sản phẩm</th><th>Khách hàng</th><th>Sao</th><th>Nội dung</th><th>Trạng thái</th><th>Ngày đánh giá</th><th>Người xử lý</th><th>Hành động</th></tr></thead>
+            <tbody>
+            @foreach(var r in Model.Reviews){
+                <tr>
+                    <td><div class="d-flex align-items-center gap-2" style="min-width:220px"><img src="@ImageUrlHelper.ResolveImageUrl(r.Product?.ThumbnailImage,"/images/placeholders/product-placeholder.png")" class="rounded border" style="width:52px;height:52px;object-fit:contain"/><strong>@r.Product?.Name</strong></div></td>
+                    <td>@r.User?.FullName<br/><span class="badge text-bg-success">Đã mua hàng</span></td>
+                    <td class="text-warning text-nowrap">@r.Rating <i class="bi bi-star-fill"></i></td>
+                    <td style="max-width:280px"><span class="text-truncate d-block">@r.Comment</span></td>
+                    <td><span class="badge @ReviewStatusHelper.BadgeClass(r.Status)">@ReviewStatusHelper.Label(r.Status)</span></td>
+                    <td>@DateTimeHelper.FormatVietnam(r.CreatedAt,"dd/MM/yyyy HH:mm")</td>
+                    <td><strong>@(r.HandledByStaffName ?? "Chưa phân công")</strong>@if(r.HandledAt.HasValue){<small class="d-block text-muted">@DateTimeHelper.FormatVietnam(r.HandledAt,"dd/MM HH:mm")</small>}</td>
+                    <td class="text-nowrap">
+                        <a class="btn btn-sm btn-outline-primary" asp-action="Detail" asp-route-id="@r.Id"><i class="bi bi-eye"></i> Chi tiết</a>
+                        <form asp-action="SetStatus" method="post" class="d-inline"><input type="hidden" name="id" value="@r.Id"/><input type="hidden" name="status" value="@ReviewStatus.Approved"/><button class="btn btn-sm btn-outline-success">Duyệt</button></form>
+                        <form asp-action="SetStatus" method="post" class="d-inline"><input type="hidden" name="id" value="@r.Id"/><input type="hidden" name="status" value="@ReviewStatus.Hidden"/><button class="btn btn-sm btn-outline-secondary">Ẩn</button></form>
+                    </td>
+                </tr>
+            }
+            @if(!Model.Reviews.Any()){<tr><td colspan="8" class="text-center py-5 text-muted">Chưa có đánh giá phù hợp.</td></tr>}
+            </tbody>
+        </table>
+    </div>
+</section>

@@ -16,6 +16,28 @@ public class ProductReviewsController : Controller
     private readonly IProductReviewService _reviewService;
     public ProductReviewsController(ApplicationDbContext db, IProductReviewService reviewService) { _db = db; _reviewService = reviewService; }
 
+    [HttpGet]
+    public async Task<IActionResult> Create(int orderId, int productId)
+    {
+        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var detail = await _reviewService.FindEligibleOrderDetailAsync(userId, productId, orderId);
+        if (detail == null)
+        {
+            TempData["ErrorMessage"] = "Sản phẩm không thuộc đơn hàng hoàn thành của bạn hoặc đã được đánh giá.";
+            return RedirectToAction("Detail", "Orders", new { id = orderId });
+        }
+
+        return View(new CreateProductReviewVm
+        {
+            OrderId = orderId,
+            ProductId = productId,
+            ProductName = detail.ProductName,
+            ProductImage = detail.ProductImage,
+            OrderCode = $"DH{detail.OrderId:D6}",
+            PurchaseDate = detail.Order!.CreatedAt
+        });
+    }
+
     [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(CreateProductReviewVm vm)
     {
@@ -24,14 +46,14 @@ public class ProductReviewsController : Controller
         if (!ModelState.IsValid)
         {
             TempData["ErrorMessage"] = ModelState.Values.SelectMany(x => x.Errors).FirstOrDefault()?.ErrorMessage ?? "Đánh giá không hợp lệ.";
-            return RedirectToProduct(vm.ProductId);
+            return RedirectToReviewOrProduct(vm);
         }
         var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         var detail = await _reviewService.FindEligibleOrderDetailAsync(userId, vm.ProductId, vm.OrderId);
         if (detail == null)
         {
             TempData["ErrorMessage"] = "Bạn chỉ có thể đánh giá sản phẩm thuộc đơn hàng đã hoàn thành và chưa được đánh giá.";
-            return RedirectToProduct(vm.ProductId);
+            return RedirectToReviewOrProduct(vm);
         }
         _db.ProductReviews.Add(new ProductReview
         {
@@ -42,11 +64,16 @@ public class ProductReviewsController : Controller
         catch (DbUpdateException)
         {
             TempData["ErrorMessage"] = "Sản phẩm trong đơn hàng này đã được đánh giá.";
-            return RedirectToProduct(vm.ProductId);
+            return RedirectToReviewOrProduct(vm);
         }
         TempData["SuccessMessage"] = "Cảm ơn bạn đã đánh giá sản phẩm.";
-        return RedirectToProduct(vm.ProductId);
+        return RedirectToAction("Detail", "Orders", new { id = detail.OrderId });
     }
+
+    private IActionResult RedirectToReviewOrProduct(CreateProductReviewVm vm) =>
+        vm.OrderId.HasValue
+            ? RedirectToAction(nameof(Create), new { orderId = vm.OrderId, productId = vm.ProductId })
+            : RedirectToProduct(vm.ProductId);
 
     private IActionResult RedirectToProduct(int productId) => Redirect($"/Products/Detail/{productId}#product-reviews");
 }

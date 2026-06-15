@@ -510,6 +510,12 @@ public class OrdersController : Controller
         {
             await _orderExpirationService.ExpireOrderIfNeededAsync(order);
         }
+        ViewBag.ReviewedOrderProducts = (await _db.ProductReviews
+            .Where(x => x.UserId == userId)
+            .Select(x => new { x.OrderId, x.ProductId })
+            .ToListAsync())
+            .Select(x => $"{x.OrderId}:{x.ProductId}")
+            .ToHashSet();
         return View(orders);
     }
 

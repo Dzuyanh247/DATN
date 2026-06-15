@@ -262,7 +262,7 @@
                                             }
                                             else
                                             {
-                                                <a class="btn btn-sm btn-outline-danger mt-2" href="/Products/Detail/@d.ProductId#product-reviews"><i class="bi bi-star"></i> Đánh giá</a>
+                                                <a class="btn btn-sm btn-outline-danger mt-2" asp-controller="ProductReviews" asp-action="Create" asp-route-orderId="@Model.Id" asp-route-productId="@d.ProductId"><i class="bi bi-star"></i> Đánh giá ngay</a>
                                             }
                                         }
                                     </div>

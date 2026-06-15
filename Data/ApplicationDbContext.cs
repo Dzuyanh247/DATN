@@ -163,6 +163,7 @@ public class ApplicationDbContext : DbContext
         {
             entity.Property(x => x.Comment).HasMaxLength(1000).IsRequired();
             entity.Property(x => x.AdminReply).HasMaxLength(1000);
+            entity.Property(x => x.HandledByStaffName).HasMaxLength(100);
             entity.Property(x => x.Status).HasDefaultValue(ReviewStatus.Approved);
             entity.Property(x => x.HelpfulCount).HasDefaultValue(0);
             entity.HasIndex(x => x.ProductId);
