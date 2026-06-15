@@ -117,7 +117,7 @@ public class AdminChatController : Controller
         return rows.Select(x => MessagePayload(x)).ToList();
     }
     private static object ConversationPayload(ChatConversation x) => new { x.Id, name = x.CustomerName ?? x.User?.FullName ?? x.GuestName, email = x.CustomerEmail ?? x.User?.Email ?? x.GuestEmail, phone = x.CustomerPhone ?? x.User?.Phone ?? x.GuestPhone, status = x.Status.ToString(), x.CreatedAt, x.ClosedAt, x.AssignedStaffId, x.AssignedStaffName, x.Topic, x.NeedsStaff, x.Priority, x.AutomationContext };
-    private static object MessagePayload(ChatMessage x) => new { x.Id, senderType = x.SenderType == ChatSenderType.Staff ? "Staff" : x.SenderType.ToString(), x.SenderName, x.Message, x.IsSystem, x.IsRead, x.ReadAt, x.CreatedAt };
+    private static object MessagePayload(ChatMessage x) => new { x.Id, senderType = x.SenderType == ChatSenderType.Staff ? "Staff" : x.SenderType.ToString(), x.SenderName, x.Message, x.IsSystem, x.IsRead, x.ReadAt, x.CreatedAt, x.MetadataJson };
     private async Task Notify(Func<Task> action, int id) { try { await action(); } catch (Exception e) { _logger.LogWarning(e, "Realtime notification failed for conversation {ConversationId}", id); } }
     private static object Api(bool success, string? message = null, object? data = null) => new { success, message, data };
 }

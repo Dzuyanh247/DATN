@@ -74,6 +74,8 @@
     function addMessage(message) {
         const existing = message.id && messagesElement.querySelector(`[data-chat-message-id="${message.id}"]`);
         if (existing) return existing;
+        const cluster = document.createElement('div');
+        cluster.className = 'kk-chat-response-cluster';
         const item = document.createElement('div');
         const type = String(message.senderType).toLowerCase();
         const customer = type === 'customer';
@@ -88,9 +90,16 @@
         const sender = system ? 'KKSHOP' : (customer ? 'Bạn' : (message.displaySenderName || message.senderName || 'KKSHOP'));
         time.textContent = `${sender}${formatTime(message.createdAt) ? ` • ${formatTime(message.createdAt)}` : ''}`;
         item.append(bubble, time);
-        messagesElement.appendChild(item);
+        cluster.appendChild(item);
+        const metadata = message.metadata || null;
+        if (metadata) {
+            renderCards(metadata.cards || [], cluster);
+            renderMessageActions(metadata.messageActions || [], cluster);
+            renderQuickReplies(metadata.quickReplies || [], cluster);
+        }
+        messagesElement.appendChild(cluster);
         scrollToLatest();
-        return item;
+        return cluster;
     }
     function showConversation(status) {
         startForm.classList.add('d-none');
@@ -108,13 +117,7 @@
         messageForm.classList.remove('d-none');
     }
     function renderAutomation(data) {
-        const cluster = document.createElement('div');
-        cluster.className = 'kk-chat-response-cluster';
-        (data?.messages || []).forEach(message => cluster.append(addMessage(message)));
-        renderCards(data?.cards || [], cluster);
-        renderMessageActions(data?.messageActions || [], cluster);
-        renderQuickReplies(data?.quickReplies || [], cluster);
-        if (cluster.childElementCount) messagesElement.append(cluster);
+        (data?.messages || []).forEach(addMessage);
         scrollToLatest();
     }
     function renderMessageActions(actions, parent) {
@@ -158,16 +161,58 @@
             wrapper.className = `kk-chat-card kk-chat-card--${String(card.type || '').toLowerCase()}`;
             if (card.imageUrl) { const image = document.createElement('img'); image.src = card.imageUrl; image.alt = ''; wrapper.append(image); }
             const body = document.createElement('div'); body.className = 'kk-chat-card-body';
+            if (card.type === 'order' && card.orderCode) {
+                const header = document.createElement('div'); header.className = 'kk-chat-card-header';
+                const code = document.createElement('b'); code.textContent = card.orderCode;
+                const badge = document.createElement('span'); badge.className = 'kk-chat-status-badge'; badge.textContent = card.orderStatus || '';
+                header.append(code, badge); body.append(header);
+            }
             const title = document.createElement('strong'); title.textContent = card.title; title.title = card.title;
             body.append(title);
             if (card.subtitle) { const subtitle = document.createElement('small'); subtitle.textContent = card.subtitle; body.append(subtitle); }
+            if (card.type === 'order') {
+                const details = document.createElement('div'); details.className = 'kk-chat-order-details';
+                if (card.paymentStatus) details.append(detailLine('Thanh toán', card.paymentStatus));
+                if (card.orderedAt) details.append(detailLine('Ngày đặt', formatDateTime(card.orderedAt)));
+                if (card.totalAmount != null) {
+                    const total = detailLine('Tổng tiền', formatMoney(card.totalAmount));
+                    total.classList.add('kk-chat-card-total'); details.append(total);
+                }
+                body.append(details);
+            } else if (card.type === 'product') {
+                const details = document.createElement('div'); details.className = 'kk-chat-order-details';
+                if (card.orderCode) details.append(detailLine('Đơn hàng', card.orderCode));
+                if (card.orderedAt) details.append(detailLine('Ngày mua', formatDate(card.orderedAt)));
+                if (card.warrantyStatus) details.append(detailLine('Bảo hành', card.warrantyStatus));
+                body.append(details);
+            }
+            const buttons = document.createElement('div'); buttons.className = 'kk-chat-card-actions';
             (card.actions || []).forEach(action => {
                 const button = document.createElement('button'); button.type = 'button'; button.textContent = action.label;
                 button.onclick = () => action.url ? (window.location.href = action.url) : runQuickAction(action.actionType, action.payload);
-                body.append(button);
+                buttons.append(button);
             });
+            if (buttons.childElementCount) body.append(buttons);
             wrapper.append(body); parent.append(wrapper);
         });
+    }
+    function detailLine(label, value) {
+        const line = document.createElement('span');
+        const name = document.createElement('span'); name.textContent = label;
+        const content = document.createElement('b'); content.textContent = value;
+        line.append(name, content);
+        return line;
+    }
+    function formatMoney(value) {
+        return `${Number(value || 0).toLocaleString('vi-VN')} đ`;
+    }
+    function formatDate(value) {
+        const date = new Date(value);
+        return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString('vi-VN');
+    }
+    function formatDateTime(value) {
+        const date = new Date(value);
+        return Number.isNaN(date.getTime()) ? '' : date.toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' });
     }
     function setBotLoading(show) {
         document.getElementById('kk-chat-bot-loading')?.remove();

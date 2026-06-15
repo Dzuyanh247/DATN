@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using System.Security.Cryptography;
+using System.Text.Json;
 using Datn.PcStore.Data;
 using Datn.PcStore.Constants;
 using Datn.PcStore.Hubs;
@@ -204,8 +205,22 @@ public class SupportChatController : Controller
         x.IsSystem,
         x.IsRead,
         x.ReadAt,
-        x.CreatedAt
+        x.CreatedAt,
+        metadata = ParseMetadata(x.MetadataJson)
     };
+    private static JsonElement? ParseMetadata(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return null;
+        try
+        {
+            using var document = JsonDocument.Parse(json);
+            return document.RootElement.Clone();
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
     private static object AutomationPayload(SupportAutomationResult result) => new
     {
         messages = result.Messages.Select(MessagePayload),
