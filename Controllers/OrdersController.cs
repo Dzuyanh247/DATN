@@ -264,7 +264,10 @@ public class OrdersController : Controller
         var lastOrderId = HttpContext.Session.GetInt32("LastOrderId");
         if (lastOrderId != id) return RedirectToAction(nameof(Tracking), new { id });
 
-        var order = await _db.Orders.Include(x => x.Details).FirstOrDefaultAsync(x => x.Id == id);
+        var order = await _db.Orders
+            .Include(x => x.Details)
+                .ThenInclude(x => x.Product)
+            .FirstOrDefaultAsync(x => x.Id == id);
         if (order != null)
         {
             await _orderExpirationService.ExpireOrderIfNeededAsync(order);
@@ -276,6 +279,14 @@ public class OrdersController : Controller
             if (User.Identity?.IsAuthenticated != true) return Forbid();
             var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
             if (order.UserId.Value != userId) return Forbid();
+        }
+
+        if (order.Status is OrderStatus.Cancelled or OrderStatus.Expired)
+        {
+            TempData["InfoMessage"] = order.Status == OrderStatus.Expired
+                ? "Đơn hàng đã hết hạn thanh toán. Vui lòng kiểm tra chi tiết đơn hàng."
+                : "Đơn hàng đã bị hủy. Vui lòng kiểm tra chi tiết đơn hàng.";
+            return RedirectToAction(nameof(Tracking), new { id = order.Id });
         }
 
         return View(order);

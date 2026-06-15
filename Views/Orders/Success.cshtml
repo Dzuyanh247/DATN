@@ -2,24 +2,126 @@
 @{
     ViewData["Title"] = "Đặt hàng thành công";
     var orderCode = $"DH{Model.Id:D6}";
+    var address = string.IsNullOrWhiteSpace(Model.FullAddress) ? Model.ShippingAddress : Model.FullAddress;
+    var isCod = PaymentMethods.IsCod(Model.PaymentMethod);
+    var isBankTransfer = Model.PaymentMethod == PaymentMethods.BankTransfer;
+    var isPaid = OrderStatusHelper.IsPaid(Model);
+    var canPayNow = isBankTransfer && OrderStatusHelper.CanPayNow(Model, DateTimeHelper.UtcNow());
+    var paymentLabel = isPaid
+        ? "Đã thanh toán"
+        : isCod
+            ? "Thanh toán khi nhận hàng"
+            : "Chờ xác nhận thanh toán";
+    var visibleItems = Model.Details.Take(3).ToList();
+    var remainingItems = Math.Max(0, Model.Details.Count - visibleItems.Count);
 }
-<div class="card shadow-sm">
-    <div class="card-body p-4">
-        <h3 class="text-success mb-3">Đặt hàng thành công</h3>
-        <p>Cảm ơn bạn đã mua hàng. Mã đơn hàng của bạn là <strong>@orderCode</strong>.</p>
-        <ul class="list-unstyled">
-            <li><strong>Mã đơn hàng:</strong> @orderCode</li>
-            <li><strong>Ngày đặt:</strong> @DateTimeHelper.FormatVietnam(Model.CreatedAt, "dd/MM/yyyy HH:mm")</li>
-            <li><strong>Người nhận:</strong> @Model.ReceiverName - @Model.ReceiverPhone</li>
-            <li><strong>Địa chỉ:</strong> @Model.ShippingAddress</li>
-            <li><strong>Tổng tiền:</strong> @Model.TotalAmount.ToString("N0") đ</li>
-            <li><strong>Trạng thái:</strong> Chờ xác nhận</li>
-        </ul>
-        <div class="d-flex gap-2">
-            <a asp-controller="Products" asp-action="Index" class="btn btn-primary">Tiếp tục mua hàng</a>
-            <a asp-action="Tracking" asp-route-id="@Model.Id" class="btn btn-outline-secondary">Theo dõi đơn hàng</a>
-            <a asp-action="Quotation" asp-route-orderId="@Model.Id" class="btn btn-danger">In hóa đơn</a>
-            <a asp-action="ExportExcel" asp-route-orderId="@Model.Id" class="btn report-action-btn report-action-btn--excel"><i class="bi bi-file-earmark-spreadsheet"></i> Tải file Excel</a>
+
+<main class="order-success-page">
+    <section class="success-card" aria-labelledby="success-title">
+        <header class="success-hero">
+            <span class="success-check-icon" aria-hidden="true"><i class="bi bi-check-lg"></i></span>
+            <p class="success-eyebrow">Xác nhận đơn hàng</p>
+            <h1 id="success-title">Đặt hàng thành công</h1>
+            <p class="success-subtitle">Cảm ơn bạn đã mua hàng tại KKSHOP. Đơn hàng của bạn đang được xử lý.</p>
+            <span class="success-order-code"><span>Mã đơn hàng</span><strong>@orderCode</strong></span>
+        </header>
+
+        <div class="success-card-body">
+            <div class="success-summary-grid">
+                <section class="success-info-panel">
+                    <div class="success-section-heading">
+                        <span><i class="bi bi-receipt"></i></span>
+                        <h2>Thông tin đơn hàng</h2>
+                    </div>
+                    <dl class="success-detail-list">
+                        <div><dt>Mã đơn hàng</dt><dd>@orderCode</dd></div>
+                        <div><dt>Ngày đặt</dt><dd>@DateTimeHelper.FormatVietnam(Model.CreatedAt, "dd/MM/yyyy HH:mm")</dd></div>
+                        <div><dt>Trạng thái</dt><dd><span class="success-status-pill">@OrderStatusHelper.Label(Model.Status)</span></dd></div>
+                        <div><dt>Phương thức</dt><dd>@PaymentMethods.Label(Model.PaymentMethod)</dd></div>
+                    </dl>
+                </section>
+
+                <section class="success-info-panel">
+                    <div class="success-section-heading">
+                        <span><i class="bi bi-geo-alt"></i></span>
+                        <h2>Thông tin nhận hàng</h2>
+                    </div>
+                    <dl class="success-detail-list">
+                        <div><dt>Người nhận</dt><dd>@Model.ReceiverName</dd></div>
+                        <div><dt>Số điện thoại</dt><dd>@Model.ReceiverPhone</dd></div>
+                        <div class="success-detail-list__full"><dt>Địa chỉ</dt><dd>@address</dd></div>
+                    </dl>
+                </section>
+            </div>
+
+            <section class="success-payment-panel">
+                <div>
+                    <span class="success-payment-label">Tổng thanh toán</span>
+                    <strong class="success-total">@Model.TotalAmount.ToString("N0") đ</strong>
+                </div>
+                <div class="success-payment-state">
+                    <span>Trạng thái thanh toán</span>
+                    <strong class="@(isPaid ? "is-paid" : "is-pending")"><i class="bi @(isPaid ? "bi-check-circle-fill" : "bi-clock-fill")"></i> @paymentLabel</strong>
+                </div>
+                @if (!isPaid)
+                {
+                    <p class="success-payment-note">
+                        <i class="bi bi-info-circle"></i>
+                        @if (isCod)
+                        {
+                            <span>Bạn sẽ thanh toán cho nhân viên giao hàng khi nhận được sản phẩm.</span>
+                        }
+                        else
+                        {
+                            <span>KKSHOP sẽ xử lý đơn hàng sau khi khoản chuyển được xác nhận.</span>
+                        }
+                    </p>
+                }
+                @if (canPayNow)
+                {
+                    <a asp-action="BankTransfer" asp-route-id="@Model.Id" class="success-payment-link">
+                        Tiếp tục thanh toán <i class="bi bi-arrow-right"></i>
+                    </a>
+                }
+            </section>
+
+            @if (visibleItems.Count > 0)
+            {
+                <section class="success-products">
+                    <div class="success-products-heading">
+                        <div class="success-section-heading">
+                            <span><i class="bi bi-box-seam"></i></span>
+                            <h2>Sản phẩm đã đặt</h2>
+                        </div>
+                        <span>@Model.Details.Count sản phẩm</span>
+                    </div>
+                    <div class="success-product-list">
+                        @foreach (var item in visibleItems)
+                        {
+                            var imageUrl = ImageUrlHelper.ResolveImageUrl(item.ProductImage ?? item.Product?.ThumbnailImage, "/images/placeholders/product.svg");
+                            <article class="success-product-item">
+                                <img src="@imageUrl" alt="@item.ProductName" loading="lazy" />
+                                <div class="success-product-name">
+                                    <strong>@item.ProductName</strong>
+                                    <span>Số lượng: @item.Quantity</span>
+                                </div>
+                                <strong class="success-product-price">@item.TotalPrice.ToString("N0") đ</strong>
+                            </article>
+                        }
+                    </div>
+                    @if (remainingItems > 0)
+                    {
+                        <p class="success-more-products">+ @remainingItems sản phẩm khác trong đơn hàng</p>
+                    }
+                </section>
+            }
+
+            <nav class="success-actions" aria-label="Thao tác đơn hàng">
+                <a asp-action="Tracking" asp-route-id="@Model.Id" class="success-action success-action--primary"><i class="bi bi-truck"></i> Theo dõi đơn hàng</a>
+                <a asp-controller="Products" asp-action="Index" class="success-action success-action--secondary"><i class="bi bi-bag"></i> Tiếp tục mua hàng</a>
+                <a asp-action="Quotation" asp-route-orderId="@Model.Id" class="success-action success-action--secondary"><i class="bi bi-printer"></i> In hóa đơn</a>
+                <a asp-action="ExportExcel" asp-route-orderId="@Model.Id" class="success-action success-action--excel"><i class="bi bi-file-earmark-spreadsheet"></i> Tải file Excel</a>
+            </nav>
         </div>
-    </div>
-</div>
+    </section>
+</main>
