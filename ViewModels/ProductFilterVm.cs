@@ -22,8 +22,10 @@ public class ProductFilterVm
     public List<ProductFilterOptionVm> CpuOptions { get; set; } = new();
     public List<ProductFilterOptionVm> RamOptions { get; set; } = new();
     public List<ProductFilterOptionVm> GpuOptions { get; set; } = new();
+    public bool IsEquivalentSearch { get; set; }
 
     public bool HasSidebarFilters => PriceRanges.Length > 0 || Brands.Length > 0 || Cpu.Length > 0 || Ram.Length > 0 || Gpu.Length > 0;
+    public bool HasKeyword => !string.IsNullOrWhiteSpace(Keyword);
 }
 
 public class ProductFilterOptionVm

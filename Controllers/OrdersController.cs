@@ -18,17 +18,20 @@ public class OrdersController : Controller
     private readonly ICartService _cartService;
     private readonly IOrderExpirationService _orderExpirationService;
     private readonly ILogger<OrdersController> _logger;
+    private readonly IConfiguration _configuration;
 
     public OrdersController(
         ApplicationDbContext db,
         ICartService cartService,
         IOrderExpirationService orderExpirationService,
-        ILogger<OrdersController> logger)
+        ILogger<OrdersController> logger,
+        IConfiguration configuration)
     {
         _db = db;
         _cartService = cartService;
         _orderExpirationService = orderExpirationService;
         _logger = logger;
+        _configuration = configuration;
     }
 
     private static string ToOrderCode(int orderId) => $"DH{orderId:D6}";
@@ -356,17 +359,42 @@ public class OrdersController : Controller
         }
 
         await _orderExpirationService.ExpireOrderIfNeededAsync(order);
+        var siteSettings = await _db.SiteSettings.AsNoTracking().OrderBy(x => x.Id).FirstOrDefaultAsync();
+        var shopLocation = await _db.ShopLocations.AsNoTracking()
+            .OrderByDescending(x => x.IsDefault)
+            .ThenBy(x => x.Id)
+            .FirstOrDefaultAsync();
+        var configuredAddress = string.Join(", ", new[]
+        {
+            _configuration["ShopAddress:AddressDetail"],
+            _configuration["ShopAddress:Ward"],
+            _configuration["ShopAddress:District"],
+            _configuration["ShopAddress:Province"]
+        }.Where(value => !string.IsNullOrWhiteSpace(value)));
 
         var vm = new QuotationViewModel
         {
             OrderId = order.Id,
             OrderCode = ToOrderCode(order.Id),
-            QuotationDate = DateTime.Now,
+            QuotationDate = DateTimeHelper.UtcNow(),
+            OrderDate = order.CreatedAt,
+            ShopName = string.IsNullOrWhiteSpace(siteSettings?.SiteName) ? "KKSHOP" : siteSettings.SiteName,
+            ShopAddress = string.IsNullOrWhiteSpace(shopLocation?.Address) ? configuredAddress : shopLocation.Address,
+            ShopPhone = _configuration["ShopContact:Phone"],
+            ShopEmail = _configuration["EmailSettings:SenderEmail"],
             CustomerName = order.ReceiverName,
             CustomerAddress = string.IsNullOrWhiteSpace(order.FullAddress) ? order.ShippingAddress : order.FullAddress,
             CustomerPhone = order.ReceiverPhone,
             CustomerEmail = order.CustomerEmail,
-            TotalAmount = order.Details.Sum(x => x.TotalPrice),
+            PaymentMethod = PaymentMethods.Label(order.PaymentMethod),
+            PaymentStatus = OrderStatusHelper.PaymentLabel(order.PaymentStatus, order.Status),
+            OrderStatus = OrderStatusHelper.Label(order.Status),
+            IsCancelledOrExpired = order.Status is OrderStatus.Cancelled or OrderStatus.Expired,
+            SubtotalAmount = order.SubtotalAmount > 0 ? order.SubtotalAmount : order.Details.Sum(x => x.TotalPrice),
+            DiscountAmount = order.DiscountAmount,
+            ShippingFee = order.ShippingFee,
+            TotalAmount = order.TotalAmount,
+            Note = order.Note,
             Items = order.Details.Select(x => new QuotationItemViewModel
             {
                 ProductId = x.ProductId,
