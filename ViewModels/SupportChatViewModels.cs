@@ -32,3 +32,19 @@ public class AssignChatConversationRequest
 {
     public int? StaffId { get; set; }
 }
+
+public class SupportChatQuickActionRequest
+{
+    [Range(1, int.MaxValue)] public int ConversationId { get; set; }
+    [Required, StringLength(64)] public string AccessToken { get; set; } = string.Empty;
+    [Required, StringLength(50)] public string ActionType { get; set; } = string.Empty;
+    public SupportChatQuickActionPayload? Payload { get; set; }
+}
+
+public class SupportChatQuickActionPayload
+{
+    public int? OrderId { get; set; }
+    public int? OrderDetailId { get; set; }
+    [StringLength(50)] public string? Budget { get; set; }
+    [StringLength(50)] public string? NeedType { get; set; }
+}

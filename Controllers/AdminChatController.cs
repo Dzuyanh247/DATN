@@ -25,8 +25,8 @@ public class AdminChatController : Controller
     public async Task<IActionResult> GetConversations()
     {
         var rows = await _db.ChatConversations.AsNoTracking().Include(x => x.User).Include(x => x.Messages)
-            .OrderBy(x => x.Status == ChatConversationStatus.Closed).ThenByDescending(x => x.LastMessageAt ?? x.UpdatedAt).ToListAsync();
-        var conversations = rows.Select(x => new { x.Id, name = x.CustomerName ?? x.User?.FullName ?? x.GuestName, email = x.CustomerEmail ?? x.User?.Email ?? x.GuestEmail, phone = x.CustomerPhone ?? x.User?.Phone ?? x.GuestPhone, status = x.Status.ToString(), x.CreatedAt, x.UpdatedAt, x.LastMessageAt, x.StaffUnreadCount, unreadCount = x.StaffUnreadCount, x.AssignedStaffId, x.AssignedStaffName, lastMessage = x.Messages.OrderByDescending(m => m.CreatedAt).ThenByDescending(m => m.Id).Select(m => m.Message).FirstOrDefault() }).ToList();
+            .OrderBy(x => x.Status == ChatConversationStatus.Closed).ThenByDescending(x => x.NeedsStaff).ThenByDescending(x => x.Priority).ThenByDescending(x => x.LastMessageAt ?? x.UpdatedAt).ToListAsync();
+        var conversations = rows.Select(x => new { x.Id, name = x.CustomerName ?? x.User?.FullName ?? x.GuestName, email = x.CustomerEmail ?? x.User?.Email ?? x.GuestEmail, phone = x.CustomerPhone ?? x.User?.Phone ?? x.GuestPhone, status = x.Status.ToString(), x.CreatedAt, x.UpdatedAt, x.LastMessageAt, x.StaffUnreadCount, unreadCount = x.StaffUnreadCount, x.AssignedStaffId, x.AssignedStaffName, x.Topic, x.NeedsStaff, x.Priority, x.AutomationContext, lastMessage = x.Messages.OrderByDescending(m => m.CreatedAt).ThenByDescending(m => m.Id).Select(m => m.Message).FirstOrDefault() }).ToList();
         return Ok(Api(true, data: new { conversations }));
     }
 
@@ -82,6 +82,7 @@ public class AdminChatController : Controller
             if (target == null) return BadRequest(Api(false, "Nhân viên được chọn không hợp lệ."));
         }
         conversation.AssignedStaffId = target.Id; conversation.AssignedStaffName = target.FullName;
+        conversation.NeedsStaff = false;
         await _db.SaveChangesAsync();
         await Notify(() => _hub.Clients.Group(ChatHub.StaffGroup).SendAsync("ConversationUpdated", id), id);
         return Ok(Api(true, $"Đã giao hội thoại cho {target.FullName}.", new { conversation.AssignedStaffId, conversation.AssignedStaffName }));
@@ -115,7 +116,7 @@ public class AdminChatController : Controller
         var rows = await _db.ChatMessages.AsNoTracking().Where(x => x.ConversationId == id).OrderBy(x => x.CreatedAt).ThenBy(x => x.Id).ToListAsync();
         return rows.Select(x => MessagePayload(x)).ToList();
     }
-    private static object ConversationPayload(ChatConversation x) => new { x.Id, name = x.CustomerName ?? x.User?.FullName ?? x.GuestName, email = x.CustomerEmail ?? x.User?.Email ?? x.GuestEmail, phone = x.CustomerPhone ?? x.User?.Phone ?? x.GuestPhone, status = x.Status.ToString(), x.CreatedAt, x.ClosedAt, x.AssignedStaffId, x.AssignedStaffName };
+    private static object ConversationPayload(ChatConversation x) => new { x.Id, name = x.CustomerName ?? x.User?.FullName ?? x.GuestName, email = x.CustomerEmail ?? x.User?.Email ?? x.GuestEmail, phone = x.CustomerPhone ?? x.User?.Phone ?? x.GuestPhone, status = x.Status.ToString(), x.CreatedAt, x.ClosedAt, x.AssignedStaffId, x.AssignedStaffName, x.Topic, x.NeedsStaff, x.Priority, x.AutomationContext };
     private static object MessagePayload(ChatMessage x) => new { x.Id, senderType = x.SenderType == ChatSenderType.Staff ? "Staff" : x.SenderType.ToString(), x.SenderName, x.Message, x.IsSystem, x.IsRead, x.ReadAt, x.CreatedAt };
     private async Task Notify(Func<Task> action, int id) { try { await action(); } catch (Exception e) { _logger.LogWarning(e, "Realtime notification failed for conversation {ConversationId}", id); } }
     private static object Api(bool success, string? message = null, object? data = null) => new { success, message, data };
