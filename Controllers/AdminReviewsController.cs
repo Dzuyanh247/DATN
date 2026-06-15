@@ -1,4 +1,6 @@
+using System.Security.Claims;
 using Datn.PcStore.Data;
+using Datn.PcStore.Helpers;
 using Datn.PcStore.Models;
 using Datn.PcStore.ViewModels;
 using Microsoft.AspNetCore.Authorization;
@@ -41,6 +43,7 @@ public class AdminReviewsController : Controller
         if (adminReply?.Length > 1000) { TempData["ErrorMessage"] = "Phản hồi không được vượt quá 1000 ký tự."; return RedirectToAction(nameof(Detail), new { id }); }
         review.AdminReply = string.IsNullOrWhiteSpace(adminReply) ? null : adminReply;
         review.AdminRepliedAt = review.AdminReply == null ? null : DateTime.UtcNow;
+        SetHandler(review);
         await _db.SaveChangesAsync();
         TempData["SuccessMessage"] = "Đã cập nhật đánh giá.";
         return RedirectToAction(nameof(Detail), new { id });
@@ -52,8 +55,28 @@ public class AdminReviewsController : Controller
         var review = await _db.ProductReviews.FindAsync(id);
         if (review == null) return NotFound();
         review.Status = review.Status == ReviewStatus.Hidden ? ReviewStatus.Approved : ReviewStatus.Hidden;
+        SetHandler(review);
         await _db.SaveChangesAsync();
         TempData["SuccessMessage"] = review.Status == ReviewStatus.Hidden ? "Đã ẩn đánh giá." : "Đã hiển thị đánh giá.";
         return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> SetStatus(int id, ReviewStatus status)
+    {
+        var review = await _db.ProductReviews.FindAsync(id);
+        if (review == null) return NotFound();
+        review.Status = status;
+        SetHandler(review);
+        await _db.SaveChangesAsync();
+        TempData["SuccessMessage"] = $"Đã cập nhật trạng thái: {ReviewStatusHelper.Label(status)}.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    private void SetHandler(ProductReview review)
+    {
+        review.HandledByStaffId = int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : null;
+        review.HandledByStaffName = User.FindFirstValue(ClaimTypes.Name) ?? User.Identity?.Name ?? "Quản trị viên";
+        review.HandledAt = DateTime.UtcNow;
     }
 }

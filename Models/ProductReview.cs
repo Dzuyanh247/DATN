@@ -25,5 +25,8 @@ public class ProductReview : BaseEntity
     public ReviewStatus Status { get; set; } = ReviewStatus.Approved;
     [MaxLength(1000)] public string? AdminReply { get; set; }
     public DateTime? AdminRepliedAt { get; set; }
+    public int? HandledByStaffId { get; set; }
+    [MaxLength(100)] public string? HandledByStaffName { get; set; }
+    public DateTime? HandledAt { get; set; }
     public int HelpfulCount { get; set; }
 }
