@@ -91,12 +91,7 @@
         time.textContent = `${sender}${formatTime(message.createdAt) ? ` • ${formatTime(message.createdAt)}` : ''}`;
         item.append(bubble, time);
         cluster.appendChild(item);
-        const metadata = message.metadata || null;
-        if (metadata) {
-            renderCards(metadata.cards || [], cluster);
-            renderMessageActions(metadata.messageActions || [], cluster);
-            renderQuickReplies(metadata.quickReplies || [], cluster);
-        }
+        renderMessageMetadata(message.metadata, cluster);
         messagesElement.appendChild(cluster);
         scrollToLatest();
         return cluster;
@@ -117,8 +112,49 @@
         messageForm.classList.remove('d-none');
     }
     function renderAutomation(data) {
-        (data?.messages || []).forEach(addMessage);
+        const messages = data?.messages || [];
+        messages.forEach((message, index) => {
+            if (index === messages.length - 1) {
+                message.metadata = mergeMetadata(message.metadata, {
+                    cards: data?.cards,
+                    messageActions: data?.messageActions,
+                    quickReplies: data?.quickReplies
+                });
+            }
+            addMessage(message);
+        });
         scrollToLatest();
+    }
+    function metadataValue(metadata, camelName, pascalName) {
+        return metadata?.[camelName] ?? metadata?.[pascalName];
+    }
+    function normalizeMetadataValue(value) {
+        if (Array.isArray(value)) return value.map(normalizeMetadataValue);
+        if (!value || typeof value !== 'object') return value;
+        return Object.fromEntries(Object.entries(value).map(([key, item]) => [
+            key.charAt(0).toLowerCase() + key.slice(1),
+            normalizeMetadataValue(item)
+        ]));
+    }
+    function mergeMetadata(metadata, fallback) {
+        metadata = normalizeMetadataValue(metadata);
+        const normalized = {
+            type: metadataValue(metadata, 'type', 'Type') ?? metadataValue(metadata, 'messageType', 'MessageType') ?? 'text',
+            cards: metadataValue(metadata, 'cards', 'Cards') || [],
+            messageActions: metadataValue(metadata, 'messageActions', 'MessageActions') || [],
+            quickReplies: metadataValue(metadata, 'quickReplies', 'QuickReplies') || []
+        };
+        if (!normalized.cards.length) normalized.cards = fallback?.cards || [];
+        if (!normalized.messageActions.length) normalized.messageActions = fallback?.messageActions || [];
+        if (!normalized.quickReplies.length) normalized.quickReplies = fallback?.quickReplies || [];
+        return normalized;
+    }
+    function renderMessageMetadata(metadata, parent) {
+        if (!metadata || !parent) return;
+        const normalized = mergeMetadata(metadata);
+        renderCards(normalized.cards, parent);
+        renderMessageActions(normalized.messageActions, parent);
+        renderQuickReplies(normalized.quickReplies, parent);
     }
     function renderMessageActions(actions, parent) {
         if (!parent || actions.length === 0) return;
