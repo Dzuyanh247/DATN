@@ -194,7 +194,18 @@ public class SupportChatController : Controller
     private static string NormalizeGuestId(string? value) => string.IsNullOrWhiteSpace(value) || value.Length > 64 ? Convert.ToHexString(RandomNumberGenerator.GetBytes(16)) : value.Trim();
     private static void Normalize(CreateChatConversationRequest r) { r.Name = r.Name?.Trim(); r.Email = r.Email?.Trim().ToLowerInvariant(); r.Phone = r.Phone?.Trim(); r.Message = r.Message?.Trim() ?? ""; }
     private static object Api(bool success, string? message = null, object? data = null) => new { success, message, data };
-    private static object MessagePayload(ChatMessage x) => new { x.Id, senderType = x.SenderType == ChatSenderType.Staff ? "Staff" : x.SenderType.ToString(), x.SenderName, x.Message, x.IsSystem, x.IsRead, x.ReadAt, x.CreatedAt };
+    private static object MessagePayload(ChatMessage x) => new
+    {
+        x.Id,
+        senderType = x.SenderType == ChatSenderType.Staff ? "Staff" : x.SenderType.ToString(),
+        senderName = x.IsSystem ? "KKSHOP" : x.SenderName,
+        displaySenderName = x.IsSystem ? "KKSHOP" : x.SenderName,
+        x.Message,
+        x.IsSystem,
+        x.IsRead,
+        x.ReadAt,
+        x.CreatedAt
+    };
     private static object AutomationPayload(SupportAutomationResult result) => new
     {
         messages = result.Messages.Select(MessagePayload),

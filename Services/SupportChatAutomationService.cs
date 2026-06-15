@@ -103,13 +103,13 @@ public partial class SupportChatAutomationService : ISupportChatAutomationServic
         var order = await OwnedOrders(userId.Value).FirstOrDefaultAsync(x => x.Id == orderId, ct);
         if (order == null) return Result(AddSystem(c, "Không tìm thấy đơn hàng thuộc tài khoản của bạn. KKSHOP không thể hiển thị dữ liệu đơn của tài khoản khác."), [StaffReply()]);
         SetContext(c, "Order", false, 1, new { orderCode = Code(order.Id) });
-        var message = $"Đơn {Code(order.Id)} hiện đang: {OrderStatusHelper.Label(order.Status)}. Thanh toán: {OrderStatusHelper.PaymentLabel(order.PaymentStatus, order.Status)}. Tổng tiền: {Money(order.TotalAmount)}. Ngày đặt: {order.CreatedAt.ToLocalTime():dd/MM/yyyy HH:mm}.";
+        var message = $"KKSHOP đã kiểm tra đơn {Code(order.Id)} của bạn. Đơn hàng hiện ở trạng thái {OrderStatusHelper.Label(order.Status).ToLowerInvariant()}, thanh toán {OrderStatusHelper.PaymentLabel(order.PaymentStatus, order.Status).ToLowerInvariant()}. Bạn có thể xem chi tiết hoặc gặp nhân viên nếu cần hỗ trợ thêm nhé.";
         return Result(AddSystem(c, message),
         [
             new("open_order", "Xem chi tiết đơn hàng", null, $"/Orders/Detail/{order.Id}"),
             new("track_order", "Theo dõi đơn hàng", null, $"/Orders/Detail/{order.Id}"),
             new("staff_support", "Cần nhân viên hỗ trợ đơn này", new { orderId = order.Id })
-        ]);
+        ], [OrderSummaryCard(order)]);
     }
 
     private async Task<SupportAutomationResult> WarrantyAsync(ChatConversation c, int? userId, CancellationToken ct)
@@ -136,12 +136,24 @@ public partial class SupportChatAutomationService : ISupportChatAutomationServic
         if (months <= 0)
         {
             c.NeedsStaff = true; c.Priority = 2;
-            return Result(AddSystem(c, "KKSHOP chưa xác định được thời hạn bảo hành cho sản phẩm này. Nhân viên sẽ kiểm tra thủ công giúp bạn."), [StaffReply()]);
+            return Result(
+                AddSystem(c, "KKSHOP chưa xác định được thời hạn bảo hành của sản phẩm này. Bạn vui lòng gặp nhân viên tư vấn để shop kiểm tra thủ công giúp bạn."),
+                [StaffReply()],
+                [WarrantyCard(detail, "Chưa xác định thời hạn bảo hành")]);
         }
         var expires = WarrantyPolicy.ExpiresAt(detail.Order!.CreatedAt, months);
-        var status = DateTime.UtcNow <= expires ? "Còn bảo hành" : "Hết bảo hành";
-        return Result(AddSystem(c, $"Sản phẩm {detail.ProductName} trong đơn {Code(detail.OrderId)}: ngày mua {detail.Order.CreatedAt.ToLocalTime():dd/MM/yyyy}, bảo hành {months} tháng, {status.ToLowerInvariant()} đến {expires.ToLocalTime():dd/MM/yyyy}."),
-        [new("open_warranty", "Tạo yêu cầu bảo hành", null, $"/Warranty/Create?orderDetailId={detail.Id}"), StaffReply()]);
+        var inWarranty = DateTime.UtcNow <= expires;
+        var text = inWarranty
+            ? $"KKSHOP đã kiểm tra sản phẩm của bạn. Sản phẩm hiện còn bảo hành đến {expires.ToLocalTime():dd/MM/yyyy}. Nếu sản phẩm đang gặp lỗi, bạn có thể tạo yêu cầu bảo hành để shop hỗ trợ tiếp nhé."
+            : "KKSHOP đã kiểm tra sản phẩm của bạn. Sản phẩm hiện đã hết thời hạn bảo hành. Bạn vẫn có thể gặp nhân viên tư vấn để được hỗ trợ phương án xử lý phù hợp.";
+        var replies = new List<SupportQuickReply>();
+        if (inWarranty)
+            replies.Add(new("open_warranty", "Tạo yêu cầu bảo hành", new { orderId = detail.OrderId, productId = detail.ProductId, orderItemId = detail.Id }, $"/Warranty/Create?orderDetailId={detail.Id}"));
+        replies.Add(StaffReply());
+        return Result(
+            AddSystem(c, text),
+            replies,
+            [WarrantyCard(detail, inWarranty ? $"Còn bảo hành đến {expires.ToLocalTime():dd/MM/yyyy}" : $"Đã hết bảo hành từ {expires.ToLocalTime():dd/MM/yyyy}")]);
     }
 
     private async Task<SupportAutomationResult> PaymentAsync(ChatConversation c, int? userId, CancellationToken ct)
@@ -161,13 +173,14 @@ public partial class SupportChatAutomationService : ISupportChatAutomationServic
         if (order == null) return Result(AddSystem(c, "Không tìm thấy đơn hàng thanh toán thuộc tài khoản của bạn."), [StaffReply()]);
         SetContext(c, "Payment", false, 1, new { orderCode = Code(order.Id) });
         var expired = OrderStatusHelper.IsExpiredPayment(order, DateTime.UtcNow);
-        var text = $"{Code(order.Id)} • Tổng tiền: {Money(order.TotalAmount)} • Phương thức: {PaymentMethods.Label(order.PaymentMethod)} • Trạng thái: {OrderStatusHelper.PaymentLabel(order.PaymentStatus, order.Status)}.";
-        if (expired) text += " Đơn đã hết hạn thanh toán.";
+        var text = $"KKSHOP đã kiểm tra thanh toán cho đơn {Code(order.Id)}. Trạng thái hiện tại là {OrderStatusHelper.PaymentLabel(order.PaymentStatus, order.Status).ToLowerInvariant()}.";
+        if (expired) text += " Đơn hàng này đã hết hạn thanh toán, bạn vui lòng gặp nhân viên để được hỗ trợ.";
+        else text += " Bạn có thể tiếp tục thanh toán hoặc gặp nhân viên nếu cần shop hỗ trợ thêm nhé.";
         var replies = new List<SupportQuickReply>();
         if (!expired && OrderStatusHelper.CanPayNow(order, DateTime.UtcNow))
             replies.Add(new("open_payment", "Mở trang thanh toán", null, string.IsNullOrWhiteSpace(order.PaymentUrl) ? $"/Order/Pay/{order.Id}" : order.PaymentUrl));
         replies.Add(StaffReply("Gặp nhân viên thanh toán"));
-        return Result(AddSystem(c, text), replies);
+        return Result(AddSystem(c, text), replies, [OrderSummaryCard(order, $"Thanh toán: {OrderStatusHelper.PaymentLabel(order.PaymentStatus, order.Status)}")]);
     }
 
     private SupportAutomationResult StaffSupport(ChatConversation c)
@@ -179,7 +192,7 @@ public partial class SupportChatAutomationService : ISupportChatAutomationServic
     private IQueryable<Order> OwnedOrders(int userId) => _db.Orders.AsNoTracking().Where(x => x.UserId == userId);
     private ChatMessage AddSystem(ChatConversation c, string text)
     {
-        var message = new ChatMessage { Conversation = c, SenderType = ChatSenderType.System, SenderName = "KKSHOP Bot", Message = text, IsSystem = true, IsRead = true, ReadAt = DateTime.UtcNow };
+        var message = new ChatMessage { Conversation = c, SenderType = ChatSenderType.System, SenderName = "KKSHOP", Message = text, IsSystem = true, IsRead = true, ReadAt = DateTime.UtcNow };
         _db.ChatMessages.Add(message);
         return message;
     }
@@ -189,6 +202,15 @@ public partial class SupportChatAutomationService : ISupportChatAutomationServic
     private static string Code(int id) => $"DH{id:000000}";
     private static string Money(decimal value) => $"{value:N0} đ";
     private static SupportCard OrderCard(Order x, string action = "select_order", string label = "") => new("order", $"{Code(x.Id)} - {OrderStatusHelper.Label(x.Status)}", $"{Money(x.TotalAmount)} • {x.CreatedAt.ToLocalTime():dd/MM/yyyy}", null, [new(action, string.IsNullOrEmpty(label) ? $"Xem {Code(x.Id)}" : label, new { orderId = x.Id })]);
+    private static SupportCard OrderSummaryCard(Order x, string? status = null) => new(
+        "order",
+        $"Đơn hàng {Code(x.Id)}",
+        $"{status ?? OrderStatusHelper.Label(x.Status)} • {Money(x.TotalAmount)} • {x.CreatedAt.ToLocalTime():dd/MM/yyyy}");
+    private static SupportCard WarrantyCard(OrderDetail detail, string status) => new(
+        "product",
+        detail.ProductName,
+        $"{Code(detail.OrderId)} • {status}",
+        detail.ProductImage);
     private static void SetContext(ChatConversation c, string topic, bool needsStaff, int priority, object? context = null)
     {
         c.Topic = topic; c.NeedsStaff = needsStaff; c.Priority = priority;
