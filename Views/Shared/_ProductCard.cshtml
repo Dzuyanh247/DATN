@@ -1,4 +1,6 @@
 @model Product
+@inject Datn.PcStore.Data.ApplicationDbContext ReviewDb
+@using Microsoft.EntityFrameworkCore
 @{
     var finalPrice = (Model.DiscountPrice ?? Model.SalePrice) ?? Model.Price;
     var discount = finalPrice < Model.Price && Model.Price > 0 ? (int)Math.Round((1 - finalPrice / Model.Price) * 100) : 0;
@@ -9,6 +11,11 @@
     var hoverSummary = ProductSpecDisplayHelper.GetSummaryText(Model);
     var promotionLines = ProductPromotionHelper.GetPromotionLines(Model);
     var isCompact = ViewData["CompactProductCard"] is true;
+    var ratingStats = await ReviewDb.ProductReviews.AsNoTracking()
+        .Where(x => x.ProductId == Model.Id && x.Status == ReviewStatus.Approved)
+        .GroupBy(_ => 1)
+        .Select(g => new { Average = g.Average(x => x.Rating), Count = g.Count() })
+        .FirstOrDefaultAsync();
 }
 <div class="ttg-product-card">
     <a asp-controller="Products" asp-action="Detail" asp-route-id="@Model.Id" class="ttg-product-image-wrap text-decoration-none"
@@ -23,6 +30,7 @@
         <img src="@image" class="ttg-product-image" alt="@Model.Name" onerror="this.onerror=null;this.src='/images/banners/banner_main1.png';" />
     </a>
     <h6 class="ttg-product-title">@Model.Name</h6>
+    <div class="ttg-product-rating"><i class="bi bi-star-fill"></i> <strong>@((ratingStats?.Average ?? 0).ToString("0.0"))</strong><span>(@(ratingStats?.Count ?? 0) đánh giá)</span></div>
     <div class="ttg-price-row">
         <div class="ttg-price-stack">
             <div class="ttg-price">@finalPrice.ToString("N0") VNĐ</div>

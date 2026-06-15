@@ -29,6 +29,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<PasswordResetOtp> PasswordResetOtps => Set<PasswordResetOtp>();
     public DbSet<ChatConversation> ChatConversations => Set<ChatConversation>();
     public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
+    public DbSet<ProductReview> ProductReviews => Set<ProductReview>();
 
 
     public override int SaveChanges()
@@ -157,6 +158,24 @@ public class ApplicationDbContext : DbContext
 
         modelBuilder.Entity<ProductImage>()
             .HasIndex(x => new { x.ProductId, x.SortOrder });
+
+        modelBuilder.Entity<ProductReview>(entity =>
+        {
+            entity.Property(x => x.Comment).HasMaxLength(1000).IsRequired();
+            entity.Property(x => x.AdminReply).HasMaxLength(1000);
+            entity.Property(x => x.Status).HasDefaultValue(ReviewStatus.Approved);
+            entity.Property(x => x.HelpfulCount).HasDefaultValue(0);
+            entity.HasIndex(x => x.ProductId);
+            entity.HasIndex(x => x.UserId);
+            entity.HasIndex(x => x.OrderId);
+            entity.HasIndex(x => x.CreatedAt);
+            entity.HasIndex(x => x.Rating);
+            entity.HasIndex(x => new { x.ProductId, x.UserId, x.OrderId }).IsUnique();
+            entity.HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.Order).WithMany().HasForeignKey(x => x.OrderId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.OrderDetail).WithMany().HasForeignKey(x => x.OrderDetailId).OnDelete(DeleteBehavior.Restrict);
+        });
 
         modelBuilder.Entity<WarrantyRequest>(entity =>
         {
