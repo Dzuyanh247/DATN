@@ -93,7 +93,7 @@ public partial class SupportChatAutomationService : ISupportChatAutomationServic
             [new("login", "Đăng nhập", null, "/Account/Login"), Reply("enter_order_code", "Tôi có mã đơn hàng"), StaffReply("Gặp nhân viên")]);
         var orders = await OwnedOrders(userId.Value).OrderByDescending(x => x.CreatedAt).Take(5).ToListAsync(ct);
         if (orders.Count == 0) return Result(AddSystem(c, "Hiện tài khoản của bạn chưa có đơn hàng để kiểm tra."), [StaffReply()]);
-        return Result(AddSystem(c, "Đây là các đơn hàng gần nhất của bạn. Hãy chọn một đơn để xem tình trạng:"), cards: orders.Select(OrderCard).ToList());
+        return Result(AddSystem(c, "Đây là các đơn hàng gần nhất của bạn. Hãy chọn một đơn để xem tình trạng:"), cards: orders.Select<Order, SupportCard>(order => OrderCard(order)).ToList());
     }
 
     private async Task<SupportAutomationResult> SelectOrderAsync(ChatConversation c, int? userId, int? orderId, CancellationToken ct)
