@@ -502,21 +502,74 @@ public class OrdersController : Controller
     }
 
     [Authorize]
-    public async Task<IActionResult> MyOrders()
+    public async Task<IActionResult> MyOrders(string status = "all", string? keyword = null)
     {
         var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        var orders = await _db.Orders.Include(o => o.Details).ThenInclude(d => d.Product).Where(o => o.UserId == userId).OrderByDescending(o => o.CreatedAt).ToListAsync();
+        var orders = await _db.Orders
+            .AsSplitQuery()
+            .Include(o => o.Details)
+                .ThenInclude(d => d.Product)
+            .Where(o => o.UserId == userId)
+            .OrderByDescending(o => o.CreatedAt)
+            .ToListAsync();
+
         foreach (var order in orders)
         {
             await _orderExpirationService.ExpireOrderIfNeededAsync(order);
         }
-        ViewBag.ReviewedOrderProducts = (await _db.ProductReviews
+
+        var reviewedOrderProducts = (await _db.ProductReviews
+            .AsNoTracking()
             .Where(x => x.UserId == userId)
             .Select(x => new { x.OrderId, x.ProductId })
             .ToListAsync())
-            .Select(x => $"{x.OrderId}:{x.ProductId}")
+            .Select(x => (x.OrderId, x.ProductId))
             .ToHashSet();
-        return View(orders);
+
+        keyword = keyword?.Trim() ?? string.Empty;
+        var normalizedStatus = status.Trim().ToLowerInvariant();
+        var allowedStatuses = new[] { "all", "confirmation", "payment", "processing", "completed", "closed" };
+        if (!allowedStatuses.Contains(normalizedStatus))
+        {
+            normalizedStatus = "all";
+        }
+
+        static bool MatchesStatus(Order order, string filter) => filter switch
+        {
+            "confirmation" => order.Status is OrderStatus.Pending or OrderStatus.PendingConfirmation,
+            "payment" => order.Status == OrderStatus.PendingPayment,
+            "processing" => order.Status is OrderStatus.Processing or OrderStatus.Delivering,
+            "completed" => order.Status == OrderStatus.Completed,
+            "closed" => order.Status is OrderStatus.Cancelled or OrderStatus.Expired,
+            _ => true
+        };
+
+        var statusCounts = allowedStatuses.ToDictionary(
+            filter => filter,
+            filter => orders.Count(order => MatchesStatus(order, filter)));
+
+        var filteredOrders = orders
+            .Where(order => MatchesStatus(order, normalizedStatus))
+            .Where(order => string.IsNullOrWhiteSpace(keyword)
+                            || $"DH{order.Id:D6}".Contains(keyword, StringComparison.OrdinalIgnoreCase)
+                            || order.Id.ToString().Contains(keyword, StringComparison.OrdinalIgnoreCase))
+            .Select(order => new MyOrderRowViewModel
+            {
+                Order = order,
+                ReviewedProductCount = order.Details
+                    .Select(detail => detail.ProductId)
+                    .Distinct()
+                    .Count(productId => reviewedOrderProducts.Contains((order.Id, productId)))
+            })
+            .ToList();
+
+        return View(new MyOrdersViewModel
+        {
+            Orders = filteredOrders,
+            Status = normalizedStatus,
+            Keyword = keyword,
+            StatusCounts = statusCounts
+        });
     }
 
     [Authorize]

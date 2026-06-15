@@ -1,109 +1,192 @@
-@model List<Order>
+@model MyOrdersViewModel
 @{
     ViewData["Title"] = "Đơn hàng của tôi";
-    var hasOrders = Model?.Any() == true;
-    var reviewedOrderProducts = ViewBag.ReviewedOrderProducts as HashSet<string> ?? [];
+    var nowUtc = DateTimeHelper.UtcNow();
+    var filters = new[]
+    {
+        (Key: "all", Label: "Tất cả"),
+        (Key: "confirmation", Label: "Chờ xác nhận"),
+        (Key: "payment", Label: "Chờ thanh toán"),
+        (Key: "processing", Label: "Đang xử lý"),
+        (Key: "completed", Label: "Hoàn thành"),
+        (Key: "closed", Label: "Đã hủy / Hết hạn")
+    };
 }
 
 <link rel="stylesheet" href="~/css/my-orders.css" asp-append-version="true" />
 
-<div class="my-orders-page">
-    <section class="my-orders-card" aria-labelledby="my-orders-title">
-        <header class="my-orders-header">
-            <h1 id="my-orders-title">Đơn hàng của tôi</h1>
-            <p>Theo dõi trạng thái đơn hàng, thanh toán và lịch sử mua hàng của bạn.</p>
-        </header>
-
-        @if (hasOrders)
-        {
-            <div class="my-orders-table-wrap">
-                <table class="my-orders-table">
-                    <thead>
-                        <tr>
-                            <th scope="col">Mã đơn hàng</th>
-                            <th scope="col">Ngày đặt</th>
-                            <th scope="col" class="text-center">Trạng thái</th>
-                            <th scope="col" class="text-center">Thanh toán</th>
-                            <th scope="col" class="text-center">Hạn thanh toán</th>
-                            <th scope="col" class="text-end">Tổng tiền</th>
-                            <th scope="col" class="text-center">Thao tác</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var o in Model!)
-                        {
-                            <tr>
-                                <td data-label="Mã đơn hàng">
-                                    <span class="my-orders-code">@($"DH{o.Id:D6}")</span>
-                                </td>
-                                <td data-label="Ngày đặt">
-                                    <span class="my-orders-date">@DateTimeHelper.FormatVietnam(o.CreatedAt, "dd/MM/yyyy HH:mm")</span>
-                                </td>
-                                <td data-label="Trạng thái" class="my-orders-cell--center">
-                                    <span class="order-status-badge @OrderStatusHelper.BadgeClass(o.Status)">
-                                        @OrderStatusHelper.Label(o.Status)
-                                    </span>
-                                </td>
-                                <td data-label="Thanh toán" class="my-orders-cell--center">
-                                    <span class="payment-status-badge @OrderStatusHelper.PaymentBadgeClass(o.PaymentStatus, o.Status)">
-                                        @OrderStatusHelper.PaymentLabel(o.PaymentStatus, o.Status)
-                                    </span>
-                                </td>
-                                <td data-label="Hạn thanh toán" class="my-orders-cell--center">
-                                    @if (o.PaymentExpireAt.HasValue)
-                                    {
-                                        <span class="my-orders-deadline">
-                                            @DateTimeHelper.FormatVietnam(o.PaymentExpireAt, "dd/MM/yyyy HH:mm")
-                                        </span>
-                                    }
-                                    else
-                                    {
-                                        <span class="my-orders-deadline my-orders-deadline--none">Không áp dụng</span>
-                                    }
-                                </td>
-                                <td data-label="Tổng tiền" class="my-orders-cell--total">
-                                    <strong>@o.TotalAmount.ToString("N0") <span>đ</span></strong>
-                                </td>
-                                <td data-label="Thao tác" class="my-orders-cell--action">
-                                    <a class="my-orders-detail-btn" asp-action="Tracking" asp-route-id="@o.Id">Xem chi tiết</a>
-                                    @if (o.Status == OrderStatus.Completed)
-                                    {
-                                        <div class="mt-2 d-flex flex-column gap-1">
-                                        @foreach (var detail in o.Details)
-                                        {
-                                            if (reviewedOrderProducts.Contains($"{o.Id}:{detail.ProductId}"))
-                                            {
-                                                <span class="badge text-bg-success">Đã đánh giá · @detail.ProductName</span>
-                                            }
-                                            else
-                                            {
-                                                <a class="btn btn-sm btn-outline-danger" asp-controller="ProductReviews" asp-action="Create" asp-route-orderId="@o.Id" asp-route-productId="@detail.ProductId">
-                                                    <i class="bi bi-star"></i> Đánh giá · @detail.ProductName
-                                                </a>
-                                            }
-                                        }
-                                        </div>
-                                    }
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
+<main class="my-orders-page">
+    <div class="my-orders-container">
+        <section class="my-orders-hero" aria-labelledby="my-orders-title">
+            <div>
+                <span class="my-orders-eyebrow"><i class="bi bi-bag-check"></i> Tài khoản KKSHOP</span>
+                <h1 id="my-orders-title">Đơn hàng của tôi</h1>
+                <p>Theo dõi trạng thái đơn hàng, thanh toán và lịch sử mua hàng.</p>
             </div>
+            <span class="my-orders-total"><strong>@Model.StatusCounts.GetValueOrDefault("all")</strong> đơn hàng</span>
+        </section>
+
+        <section class="my-orders-tools" aria-label="Lọc và tìm kiếm đơn hàng">
+            <nav class="my-orders-filters" aria-label="Lọc theo trạng thái">
+                @foreach (var filter in filters)
+                {
+                    <a class="my-orders-filter @(Model.Status == filter.Key ? "is-active" : null)"
+                       asp-action="MyOrders"
+                       asp-route-status="@filter.Key"
+                       asp-route-keyword="@Model.Keyword">
+                        @filter.Label
+                        <span>@Model.StatusCounts.GetValueOrDefault(filter.Key)</span>
+                    </a>
+                }
+            </nav>
+            <form asp-action="MyOrders" method="get" class="my-orders-search">
+                <input type="hidden" name="status" value="@Model.Status" />
+                <label for="order-keyword" class="visually-hidden">Tìm theo mã đơn hàng</label>
+                <i class="bi bi-search" aria-hidden="true"></i>
+                <input id="order-keyword" name="keyword" value="@Model.Keyword" placeholder="Tìm mã đơn hàng..." autocomplete="off" />
+                @if (!string.IsNullOrWhiteSpace(Model.Keyword))
+                {
+                    <a asp-action="MyOrders" asp-route-status="@Model.Status" title="Xóa tìm kiếm" aria-label="Xóa tìm kiếm"><i class="bi bi-x-lg"></i></a>
+                }
+                <button type="submit">Tìm kiếm</button>
+            </form>
+        </section>
+
+        @if (Model.Orders.Any())
+        {
+            <section class="my-orders-list" aria-live="polite">
+                @foreach (var item in Model.Orders)
+                {
+                    var order = item.Order;
+                    var canPay = OrderStatusHelper.CanPayNow(order, nowUtc);
+                    var showTracking = order.Status is OrderStatus.Processing or OrderStatus.Delivering;
+                    var canPrint = order.Status is not OrderStatus.Cancelled and not OrderStatus.Expired;
+                    var visibleProducts = order.Details.Take(2).ToList();
+                    var hiddenProductCount = Math.Max(0, order.Details.Count - visibleProducts.Count);
+                    var deadlineUnix = order.PaymentExpireAt.HasValue
+                        ? new DateTimeOffset(DateTime.SpecifyKind(order.PaymentExpireAt.Value, DateTimeKind.Utc)).ToUnixTimeSeconds()
+                        : 0;
+
+                    <article class="my-order-card">
+                        <header class="my-order-card__header">
+                            <div class="my-order-identity">
+                                <span>Mã đơn hàng</span>
+                                <a asp-action="Detail" asp-route-id="@order.Id">@($"DH{order.Id:D6}")</a>
+                                <time datetime="@order.CreatedAt.ToString("O")"><i class="bi bi-calendar3"></i> @DateTimeHelper.FormatVietnam(order.CreatedAt, "dd/MM/yyyy HH:mm")</time>
+                            </div>
+                            <div class="my-order-summary">
+                                <div class="my-order-badges">
+                                    <span class="order-status-badge @OrderStatusHelper.BadgeClass(order.Status)">@OrderStatusHelper.Label(order.Status)</span>
+                                    <span class="payment-status-badge @OrderStatusHelper.PaymentBadgeClass(order.PaymentStatus, order.Status)">@OrderStatusHelper.PaymentLabel(order.PaymentStatus, order.Status)</span>
+                                </div>
+                                <div class="my-order-total"><span>Tổng thanh toán</span><strong>@order.TotalAmount.ToString("N0") đ</strong></div>
+                            </div>
+                        </header>
+
+                        <div class="my-order-card__body">
+                            <div class="my-order-products">
+                                @foreach (var detail in visibleProducts)
+                                {
+                                    var image = ImageUrlHelper.ResolveImageUrl(detail.ProductImage, "/images/placeholders/product.svg");
+                                    <div class="my-order-product">
+                                        <img src="@image" alt="" loading="lazy" onerror="this.onerror=null;this.src='/images/placeholders/product.svg';" />
+                                        <div><strong>@detail.ProductName</strong><span>Số lượng: @detail.Quantity</span></div>
+                                    </div>
+                                }
+                                @if (hiddenProductCount > 0)
+                                {
+                                    <a class="my-order-more" asp-action="Detail" asp-route-id="@order.Id">+@hiddenProductCount sản phẩm khác</a>
+                                }
+                            </div>
+
+                            @if (order.Status == OrderStatus.PendingPayment && order.PaymentExpireAt.HasValue)
+                            {
+                                <div class="my-order-deadline @(canPay ? null : "is-expired")">
+                                    <i class="bi @(canPay ? "bi-clock-history" : "bi-exclamation-circle")"></i>
+                                    <span>
+                                        <small>@(canPay ? "Thời gian thanh toán còn lại" : "Thanh toán")</small>
+                                        <strong class="js-order-countdown" data-deadline="@deadlineUnix">@(canPay ? DateTimeHelper.FormatVietnam(order.PaymentExpireAt, "dd/MM/yyyy HH:mm") : "Đã hết hạn")</strong>
+                                    </span>
+                                </div>
+                            }
+                        </div>
+
+                        <footer class="my-order-card__footer">
+                            <div class="my-order-review-state">
+                                @if (item.HasProductsToReview)
+                                {
+                                    <span><i class="bi bi-star"></i> @item.RemainingReviewCount sản phẩm đang chờ đánh giá</span>
+                                }
+                                else if (item.HasReviewedAllProducts)
+                                {
+                                    <span class="is-reviewed"><i class="bi bi-check-circle-fill"></i> Đã đánh giá</span>
+                                }
+                            </div>
+                            <div class="my-order-actions">
+                                <a class="my-order-btn my-order-btn--primary" asp-action="Detail" asp-route-id="@order.Id"><i class="bi bi-eye"></i> Xem chi tiết</a>
+                                @if (showTracking)
+                                {
+                                    <a class="my-order-btn" asp-action="Tracking" asp-route-id="@order.Id"><i class="bi bi-truck"></i> Theo dõi</a>
+                                }
+                                @if (canPay)
+                                {
+                                    <a class="my-order-btn my-order-btn--pay" asp-action="Pay" asp-route-id="@order.Id"><i class="bi bi-credit-card"></i> Thanh toán</a>
+                                }
+                                @if (canPrint)
+                                {
+                                    <a class="my-order-btn" asp-action="Quotation" asp-route-orderId="@order.Id"><i class="bi bi-printer"></i> In hóa đơn</a>
+                                }
+                                @if (item.HasProductsToReview)
+                                {
+                                    <a class="my-order-btn my-order-btn--review" asp-action="Detail" asp-route-id="@order.Id"><i class="bi bi-star"></i> Đánh giá sản phẩm</a>
+                                }
+                            </div>
+                        </footer>
+                    </article>
+                }
+            </section>
         }
         else
         {
-            <div class="my-orders-empty">
-                <span class="my-orders-empty__icon" aria-hidden="true">
-                    <i class="bi bi-bag-x"></i>
-                </span>
-                <h2>Bạn chưa có đơn hàng nào</h2>
-                <p>Khám phá các sản phẩm công nghệ phù hợp và bắt đầu đơn hàng đầu tiên của bạn.</p>
-                <a class="my-orders-shopping-btn" asp-controller="Products" asp-action="Index">
-                    <i class="bi bi-cart3" aria-hidden="true"></i>
-                    Tiếp tục mua sắm
-                </a>
-            </div>
+            <section class="my-orders-empty">
+                <span class="my-orders-empty__icon"><i class="bi bi-bag-x"></i></span>
+                @if (!string.IsNullOrWhiteSpace(Model.Keyword) || Model.Status != "all")
+                {
+                    <h2>Không tìm thấy đơn hàng phù hợp</h2>
+                    <p>Hãy thử mã đơn hàng khác hoặc xem lại tất cả đơn hàng của bạn.</p>
+                    <a class="my-orders-shopping-btn" asp-action="MyOrders"><i class="bi bi-arrow-counterclockwise"></i> Xem tất cả đơn hàng</a>
+                }
+                else
+                {
+                    <h2>Bạn chưa có đơn hàng nào.</h2>
+                    <p>Khám phá sản phẩm công nghệ phù hợp và bắt đầu đơn hàng đầu tiên của bạn.</p>
+                    <a class="my-orders-shopping-btn" asp-controller="Products" asp-action="Index"><i class="bi bi-cart3"></i> Tiếp tục mua sắm</a>
+                }
+            </section>
         }
-    </section>
-</div>
+    </div>
+</main>
+
+<script>
+(() => {
+    const nodes = document.querySelectorAll('.js-order-countdown');
+    if (!nodes.length) return;
+    const render = () => {
+        const now = Math.floor(Date.now() / 1000);
+        nodes.forEach(node => {
+            const seconds = Math.max(0, Number(node.dataset.deadline) - now);
+            if (!seconds) {
+                node.textContent = 'Đã hết hạn';
+                node.closest('.my-order-deadline')?.classList.add('is-expired');
+                return;
+            }
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = seconds % 60;
+            node.textContent = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        });
+    };
+    render();
+    window.setInterval(render, 1000);
+})();
+</script>
