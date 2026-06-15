@@ -43,6 +43,10 @@
     {
         <link rel="stylesheet" href="~/css/bank-transfer.css" asp-append-version="true" />
     }
+    @if (controllerName == "Orders" && actionName == "Success")
+    {
+        <link rel="stylesheet" href="~/css/order-success.css" asp-append-version="true" />
+    }
     @if (controllerName == "Orders" && (actionName == "Tracking" || actionName == "Detail"))
     {
         <link rel="stylesheet" href="~/css/order-tracking.css" asp-append-version="true" />
@@ -245,7 +249,7 @@ else
 <div id="ttg-product-preview" class="product-hover-card" aria-hidden="true"></div>
 }
 
-<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1090;">
+<div class="toast-container global-toast-container position-fixed end-0 p-3">
     <div id="globalToast" class="toast align-items-center text-white border-0" role="alert" aria-live="assertive" aria-atomic="true">
         <div class="d-flex">
             <div class="toast-body" id="globalToastMessage"></div>

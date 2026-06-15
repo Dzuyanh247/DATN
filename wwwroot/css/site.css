@@ -793,3 +793,26 @@
     background: #0b5430;
     color: #fff;
 }
+
+.global-toast-container {
+    top: 108px;
+    z-index: 1090;
+    max-width: min(360px, calc(100vw - 16px));
+}
+
+.global-toast-container .toast {
+    max-width: 100%;
+    box-shadow: 0 10px 30px rgba(19, 42, 70, .18);
+}
+
+.global-toast-container .toast-body {
+    padding-block: 10px;
+    font-size: 14px;
+}
+
+@media (max-width: 767.98px) {
+    .global-toast-container {
+        top: 76px;
+        padding: 8px !important;
+    }
+}

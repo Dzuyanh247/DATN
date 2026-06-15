@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-labelledby="title">
+  <title id="title">Ảnh sản phẩm KKSHOP</title>
+  <rect width="120" height="120" rx="18" fill="#f4f7fa"/>
+  <path d="M33 42.5 60 28l27 14.5v35L60 92 33 77.5z" fill="#fff" stroke="#c8d3df" stroke-width="4"/>
+  <path d="m33 42.5 27 15 27-15M60 57.5V92" fill="none" stroke="#f58220" stroke-linejoin="round" stroke-width="4"/>
+</svg>
