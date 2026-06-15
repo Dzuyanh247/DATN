@@ -210,6 +210,7 @@ public class SupportChatController : Controller
     {
         messages = result.Messages.Select(MessagePayload),
         quickReplies = result.QuickReplies,
-        cards = result.Cards
+        cards = result.Cards,
+        messageActions = result.MessageActions
     };
 }

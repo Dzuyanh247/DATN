@@ -10,8 +10,13 @@ using Microsoft.EntityFrameworkCore;
 namespace Datn.PcStore.Services;
 
 public record SupportQuickReply(string ActionType, string Label, object? Payload = null, string? Url = null);
+public record SupportMessageAction(string Label, string? Url = null, string? ActionType = null, string Style = "primary", string Target = "sameTab", object? Payload = null);
 public record SupportCard(string Type, string Title, string? Subtitle = null, string? ImageUrl = null, IReadOnlyList<SupportQuickReply>? Actions = null);
-public record SupportAutomationResult(IReadOnlyList<ChatMessage> Messages, IReadOnlyList<SupportQuickReply> QuickReplies, IReadOnlyList<SupportCard> Cards);
+public record SupportAutomationResult(
+    IReadOnlyList<ChatMessage> Messages,
+    IReadOnlyList<SupportQuickReply> QuickReplies,
+    IReadOnlyList<SupportCard> Cards,
+    IReadOnlyList<SupportMessageAction> MessageActions);
 
 public interface ISupportChatAutomationService
 {
@@ -138,8 +143,8 @@ public partial class SupportChatAutomationService : ISupportChatAutomationServic
             c.NeedsStaff = true; c.Priority = 2;
             return Result(
                 AddSystem(c, "KKSHOP chưa xác định được thời hạn bảo hành của sản phẩm này. Bạn vui lòng gặp nhân viên tư vấn để shop kiểm tra thủ công giúp bạn."),
-                [StaffReply()],
-                [WarrantyCard(detail, "Chưa xác định thời hạn bảo hành")]);
+                cards: [WarrantyCard(detail, "Chưa xác định thời hạn bảo hành")],
+                messageActions: [StaffAction()]);
         }
         var expires = WarrantyPolicy.ExpiresAt(detail.Order!.CreatedAt, months);
         var inWarranty = DateTime.UtcNow <= expires;
@@ -159,11 +164,23 @@ public partial class SupportChatAutomationService : ISupportChatAutomationServic
             $"Thời hạn bảo hành: {months} tháng\n" +
             $"Tình trạng: {warrantyStatus}\n\n" +
             closingMessage;
-        var replies = new List<SupportQuickReply>();
+        var actions = new List<SupportMessageAction>();
         if (inWarranty)
-            replies.Add(new("open_warranty", "Tạo yêu cầu bảo hành", new { orderId = detail.OrderId, productId = detail.ProductId, orderItemId = detail.Id }, $"/Warranty/Create?orderDetailId={detail.Id}"));
-        replies.Add(StaffReply());
-        return Result(AddSystem(c, text), replies);
+        {
+            var phone = detail.Order.ReceiverPhone;
+            if (string.IsNullOrWhiteSpace(phone))
+                phone = await _db.Users.AsNoTracking().Where(x => x.Id == userId.Value).Select(x => x.Phone).FirstOrDefaultAsync(ct);
+            var warrantyUrl = $"/Warranty/Create?orderDetailId={detail.Id}";
+            if (!string.IsNullOrWhiteSpace(phone))
+                warrantyUrl += $"&phone={Uri.EscapeDataString(phone.Trim())}";
+            actions.Add(new("Tạo yêu cầu bảo hành", warrantyUrl));
+            actions.Add(StaffAction());
+        }
+        else
+        {
+            actions.Add(StaffAction());
+        }
+        return Result(AddSystem(c, text), messageActions: actions);
     }
 
     private async Task<SupportAutomationResult> PaymentAsync(ChatConversation c, int? userId, CancellationToken ct)
@@ -182,15 +199,47 @@ public partial class SupportChatAutomationService : ISupportChatAutomationServic
         var order = await OwnedOrders(userId.Value).FirstOrDefaultAsync(x => x.Id == orderId, ct);
         if (order == null) return Result(AddSystem(c, "Không tìm thấy đơn hàng thanh toán thuộc tài khoản của bạn."), [StaffReply()]);
         SetContext(c, "Payment", false, 1, new { orderCode = Code(order.Id) });
-        var expired = OrderStatusHelper.IsExpiredPayment(order, DateTime.UtcNow);
+        var now = DateTime.UtcNow;
+        var expired = OrderStatusHelper.IsExpiredPayment(order, now);
+        var paid = OrderStatusHelper.IsPaid(order);
+        var isCod = PaymentMethods.IsCod(order.PaymentMethod);
         var text = $"KKSHOP đã kiểm tra thanh toán cho đơn {Code(order.Id)}. Trạng thái hiện tại là {OrderStatusHelper.PaymentLabel(order.PaymentStatus, order.Status).ToLowerInvariant()}.";
-        if (expired) text += " Đơn hàng này đã hết hạn thanh toán, bạn vui lòng gặp nhân viên để được hỗ trợ.";
-        else text += " Bạn có thể tiếp tục thanh toán hoặc gặp nhân viên nếu cần shop hỗ trợ thêm nhé.";
-        var replies = new List<SupportQuickReply>();
-        if (!expired && OrderStatusHelper.CanPayNow(order, DateTime.UtcNow))
-            replies.Add(new("open_payment", "Mở trang thanh toán", null, string.IsNullOrWhiteSpace(order.PaymentUrl) ? $"/Order/Pay/{order.Id}" : order.PaymentUrl));
-        replies.Add(StaffReply("Gặp nhân viên thanh toán"));
-        return Result(AddSystem(c, text), replies, [OrderSummaryCard(order, $"Thanh toán: {OrderStatusHelper.PaymentLabel(order.PaymentStatus, order.Status)}")]);
+        var actions = new List<SupportMessageAction>();
+        if (isCod)
+        {
+            text += " Đơn hàng sẽ thanh toán khi nhận hàng.";
+            actions.Add(new("Xem chi tiết đơn hàng", $"/Orders/Detail/{order.Id}"));
+        }
+        else if (paid)
+        {
+            text += " Đơn hàng đã được thanh toán. Bạn có thể xem chi tiết đơn hàng.";
+            actions.Add(new("Xem chi tiết đơn hàng", $"/Orders/Detail/{order.Id}"));
+        }
+        else if (expired)
+        {
+            text += " Đơn hàng này đã hết hạn thanh toán, bạn có thể xem chi tiết hoặc gặp nhân viên để được hỗ trợ.";
+            actions.Add(new("Xem chi tiết đơn hàng", $"/Orders/Detail/{order.Id}"));
+            actions.Add(StaffAction());
+        }
+        else if (OrderStatusHelper.CanPayNow(order, now))
+        {
+            text += " Bạn có thể tiếp tục thanh toán đơn hàng ngay bên dưới.";
+            var paymentUrl = string.IsNullOrWhiteSpace(order.PaymentUrl)
+                ? $"/Orders/BankTransfer/{order.Id}"
+                : order.PaymentUrl;
+            actions.Add(new("Thanh toán đơn hàng", paymentUrl));
+            actions.Add(StaffAction());
+        }
+        else
+        {
+            text += " Đơn hàng hiện không thể thanh toán online. Bạn có thể xem chi tiết hoặc gặp nhân viên để được hỗ trợ.";
+            actions.Add(new("Xem chi tiết đơn hàng", $"/Orders/Detail/{order.Id}"));
+            actions.Add(StaffAction());
+        }
+        return Result(
+            AddSystem(c, text),
+            cards: [OrderSummaryCard(order, $"Thanh toán: {OrderStatusHelper.PaymentLabel(order.PaymentStatus, order.Status)}")],
+            messageActions: actions);
     }
 
     private SupportAutomationResult StaffSupport(ChatConversation c)
@@ -206,9 +255,15 @@ public partial class SupportChatAutomationService : ISupportChatAutomationServic
         _db.ChatMessages.Add(message);
         return message;
     }
-    private static SupportAutomationResult Result(ChatMessage message, IReadOnlyList<SupportQuickReply>? replies = null, IReadOnlyList<SupportCard>? cards = null) => new([message], replies ?? [], cards ?? []);
+    private static SupportAutomationResult Result(
+        ChatMessage message,
+        IReadOnlyList<SupportQuickReply>? replies = null,
+        IReadOnlyList<SupportCard>? cards = null,
+        IReadOnlyList<SupportMessageAction>? messageActions = null)
+        => new([message], replies ?? [], cards ?? [], messageActions ?? []);
     private static SupportQuickReply Reply(string action, string label) => new(action, label);
     private static SupportQuickReply StaffReply(string label = "Gặp nhân viên tư vấn") => new("staff_support", label);
+    private static SupportMessageAction StaffAction(string label = "Gặp nhân viên tư vấn") => new(label, ActionType: "staff_support", Style: "secondary");
     private static string Code(int id) => $"DH{id:000000}";
     private static string Money(decimal value) => $"{value:N0} đ";
     private static SupportCard OrderCard(Order x, string action = "select_order", string label = "") => new("order", $"{Code(x.Id)} - {OrderStatusHelper.Label(x.Status)}", $"{Money(x.TotalAmount)} • {x.CreatedAt.ToLocalTime():dd/MM/yyyy}", null, [new(action, string.IsNullOrEmpty(label) ? $"Xem {Code(x.Id)}" : label, new { orderId = x.Id })]);
