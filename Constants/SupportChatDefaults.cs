@@ -9,8 +9,8 @@ public static class SupportChatDefaults
     public static readonly IReadOnlyList<object> QuickQuestions =
     [
         new { actionType = "pc_consultation", label = "Tư vấn cấu hình PC" },
-        new { actionType = "order_status", label = "Hỏi tình trạng đơn hàng" },
         new { actionType = "warranty_check", label = "Kiểm tra bảo hành" },
+        new { actionType = "order_status", label = "Hỏi tình trạng đơn hàng" },
         new { actionType = "payment_support", label = "Hỗ trợ thanh toán" },
         new { actionType = "staff_support", label = "Gặp nhân viên" }
     ];
