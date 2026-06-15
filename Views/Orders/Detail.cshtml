@@ -28,6 +28,7 @@
             : Model.Status == OrderStatus.Completed
                 ? "order-status-badge--success"
                 : "order-status-badge--info";
+    var reviewedProductIds = (ViewBag.ReviewedProductIds as List<int> ?? []).ToHashSet();
 }
 
 <div class="order-tracking-page">
@@ -253,6 +254,17 @@
                                         <strong>@d.ProductName</strong>
                                         <small class="d-block text-muted mt-1">Mã bảo hành: @WarrantyCodeHelper.BuildWarrantyCode(Model.Id, d.Id)</small>
                                         <a class="d-block small mt-1 text-danger text-decoration-none" asp-controller="Warranty" asp-action="Check" asp-route-query="@(WarrantyCodeHelper.BuildWarrantyCode(Model.Id, d.Id))"><i class="bi bi-shield-check"></i> Kiểm tra bảo hành</a>
+                                        @if (Model.Status == OrderStatus.Completed)
+                                        {
+                                            if (reviewedProductIds.Contains(d.ProductId))
+                                            {
+                                                <span class="badge text-bg-success mt-2"><i class="bi bi-check-circle"></i> Đã đánh giá</span>
+                                            }
+                                            else
+                                            {
+                                                <a class="btn btn-sm btn-outline-danger mt-2" href="/Products/Detail/@d.ProductId#product-reviews"><i class="bi bi-star"></i> Đánh giá</a>
+                                            }
+                                        }
                                     </div>
                                 </div>
                             </td>

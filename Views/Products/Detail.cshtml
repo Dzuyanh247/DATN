@@ -36,6 +36,7 @@
 
     var bundleProducts = suggestions.Take(4).ToList();
     var bundleLabels = new[] { "Màn hình", "Bàn phím", "Chuột", "Tai nghe" };
+    var reviewSection = ViewBag.ReviewSection as ProductReviewSectionVm ?? new ProductReviewSectionVm { ProductId = Model.Id };
 }
 
 <div class="product-detail-page">
@@ -206,6 +207,8 @@
                 }
             </div>
         </section>
+
+        <partial name="_ProductReviews" model="reviewSection" />
 
         @if (componentSpecs.Any())
         {

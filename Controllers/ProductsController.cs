@@ -4,13 +4,20 @@ using Datn.PcStore.Models;
 using Datn.PcStore.ViewModels;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
+using Datn.PcStore.Services;
 
 namespace Datn.PcStore.Controllers;
 
 public class ProductsController : Controller
 {
     private readonly ApplicationDbContext _db;
-    public ProductsController(ApplicationDbContext db) => _db = db;
+    private readonly IProductReviewService _reviewService;
+    public ProductsController(ApplicationDbContext db, IProductReviewService reviewService)
+    {
+        _db = db;
+        _reviewService = reviewService;
+    }
 
     public async Task<IActionResult> Index(
         string? keyword,
@@ -84,7 +91,7 @@ public class ProductsController : Controller
         return View(vm);
     }
 
-    public async Task<IActionResult> Detail(int id)
+    public async Task<IActionResult> Detail(int id, int? rating)
     {
         var product = await _db.Products
             .Include(p => p.Category)
@@ -98,6 +105,10 @@ public class ProductsController : Controller
             .OrderBy(p => p.Price)
             .Take(4)
             .ToListAsync();
+        var userId = User.Identity?.IsAuthenticated == true
+            ? int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!)
+            : (int?)null;
+        ViewBag.ReviewSection = await _reviewService.GetSectionAsync(id, userId, rating is >= 1 and <= 5 ? rating : null);
 
         return View(product);
     }

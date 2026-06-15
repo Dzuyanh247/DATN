@@ -517,9 +517,13 @@ public class OrdersController : Controller
     public async Task<IActionResult> Detail(int id)
     {
         var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        var order = await _db.Orders.Include(x => x.Details).FirstOrDefaultAsync(x => x.Id == id && x.UserId == userId);
+        var order = await _db.Orders.Include(x => x.Details).ThenInclude(x => x.Product).FirstOrDefaultAsync(x => x.Id == id && x.UserId == userId);
         if (order == null) return NotFound();
         await _orderExpirationService.ExpireOrderIfNeededAsync(order);
+        ViewBag.ReviewedProductIds = await _db.ProductReviews
+            .Where(x => x.UserId == userId && x.OrderId == id)
+            .Select(x => x.ProductId)
+            .ToListAsync();
         ViewBag.PaymentRemainingSeconds = OrderStatusHelper.RemainingSeconds(order, DateTimeHelper.UtcNow());
         ViewBag.EnableTrackingStatusPolling = false;
         return View(order);

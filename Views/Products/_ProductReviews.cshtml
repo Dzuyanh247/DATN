@@ -1,0 +1,18 @@
+@model ProductReviewSectionVm
+<section id="product-reviews" class="product-detail-section review-section" aria-labelledby="reviews-title">
+    <div class="product-section-heading"><div><span class="product-section-kicker">Khách hàng đã mua</span><h2 id="reviews-title">Đánh giá sản phẩm</h2></div><i class="bi bi-star-fill"></i></div>
+    <div class="review-summary">
+        <div class="review-score"><strong>@Model.AverageRating.ToString("0.0")</strong><span>/5</span><div class="review-stars">@for(var i=1;i<=5;i++){<i class="bi @(i <= Math.Round(Model.AverageRating) ? "bi-star-fill" : "bi-star")"></i>}</div><small>@Model.TotalCount đánh giá</small></div>
+        <div class="review-breakdown">@for(var star=5;star>=1;star--){var count=Model.RatingCounts.GetValueOrDefault(star);var percent=Model.TotalCount == 0 ? 0 : count * 100 / Model.TotalCount;<a href="?rating=@star#product-reviews"><span>@star <i class="bi bi-star-fill"></i></span><div><b style="width:@percent%"></b></div><small>@count</small></a>}</div>
+    </div>
+    <div class="review-form-state">
+        @if(!Model.IsAuthenticated){<p><i class="bi bi-person-lock"></i> Vui lòng <a asp-controller="Account" asp-action="Login" asp-route-returnUrl="@Context.Request.Path#product-reviews">đăng nhập</a> để đánh giá.</p>}
+        else if(Model.CanReview){<form asp-controller="ProductReviews" asp-action="Create" method="post" class="review-form"><input type="hidden" name="ProductId" value="@Model.ProductId"/><input type="hidden" name="OrderId" value="@Model.EligibleOrderId"/><label>Chất lượng sản phẩm</label><div class="star-input">@for(var star=5;star>=1;star--){<input id="rating-@star" type="radio" name="Rating" value="@star" required/><label for="rating-@star" title="@star sao"><i class="bi bi-star-fill"></i></label>}</div><textarea name="Comment" minlength="10" maxlength="1000" required placeholder="Chia sẻ cảm nhận của bạn về sản phẩm..."></textarea><button class="btn btn-danger" type="submit"><i class="bi bi-send"></i> Gửi đánh giá</button></form>}
+        else if(Model.HasReviewed){<p class="review-notice success"><i class="bi bi-check-circle"></i> Bạn đã đánh giá sản phẩm này trong các đơn hàng đủ điều kiện.</p>}
+        else{<p class="review-notice"><i class="bi bi-bag-check"></i> Bạn cần mua sản phẩm này và hoàn tất đơn hàng trước khi đánh giá.</p>}
+    </div>
+    <div class="review-list">
+        @if(!Model.Reviews.Any()){<div class="review-empty"><i class="bi bi-chat-square-heart"></i><p>Sản phẩm chưa có đánh giá. Hãy là người đầu tiên đánh giá sau khi mua hàng.</p></div>}
+        @foreach(var review in Model.Reviews){<article class="review-item"><div class="review-avatar">@review.CustomerName[0]</div><div class="review-body"><div class="review-meta"><strong>@review.CustomerName</strong><span class="verified-badge"><i class="bi bi-patch-check-fill"></i> Đã mua hàng</span></div><div class="review-stars">@for(var i=1;i<=5;i++){<i class="bi @(i<=review.Rating ? "bi-star-fill" : "bi-star")"></i>}</div><time>@DateTimeHelper.FormatVietnam(review.CreatedAt,"dd/MM/yyyy HH:mm")</time><p>@review.Comment</p>@if(!string.IsNullOrWhiteSpace(review.AdminReply)){<div class="shop-reply"><strong><i class="bi bi-shop"></i> Phản hồi từ KKSHOP</strong><p>@review.AdminReply</p></div>}</div></article>}
+    </div>
+</section>
