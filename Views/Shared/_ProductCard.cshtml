@@ -30,7 +30,14 @@
         <img src="@image" class="ttg-product-image" alt="@Model.Name" onerror="this.onerror=null;this.src='/images/banners/banner_main1.png';" />
     </a>
     <h6 class="ttg-product-title">@Model.Name</h6>
-    <div class="ttg-product-rating"><i class="bi bi-star-fill"></i> <strong>@((ratingStats?.Average ?? 0).ToString("0.0"))</strong><span>(@(ratingStats?.Count ?? 0) đánh giá)</span></div>
+    <div class="ttg-product-rating @(ratingStats is null ? "is-empty" : string.Empty)" aria-hidden="@(ratingStats is null ? "true" : "false")">
+        @if (ratingStats is not null)
+        {
+            <i class="bi bi-star-fill"></i>
+            <strong>@ratingStats.Average.ToString("0.0")</strong>
+            <span>(@ratingStats.Count đánh giá)</span>
+        }
+    </div>
     <div class="ttg-price-row">
         <div class="ttg-price-stack">
             <div class="ttg-price">@finalPrice.ToString("N0") VNĐ</div>
