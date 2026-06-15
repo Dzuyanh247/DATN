@@ -1,85 +1,108 @@
 @model QuotationViewModel
 @using System.Globalization
 @{
-    ViewData["Title"] = $"Báo giá {Model.OrderCode}";
+    ViewData["Title"] = $"Hóa đơn {Model.OrderCode}";
     var viCulture = CultureInfo.GetCultureInfo("vi-VN");
+    string Money(decimal value) => $"{value.ToString("N0", viCulture)} đ";
 }
-<link rel="stylesheet" href="~/css/quotation.css" />
+<link rel="stylesheet" href="~/css/quotation.css" asp-append-version="true" />
 
-<div class="quotation-page">
-    <section class="quotation-sheet">
-        <header class="quotation-header">
-            <div class="quotation-logo" aria-label="Logo TTGSHOP">
-                <div class="logo-mark">TTG</div>
-                <div class="logo-text">TTGSHOP</div>
+<div class="invoice-preview">
+    <div class="invoice-toolbar print-hidden">
+        <a class="invoice-back" asp-action="Tracking" asp-route-id="@Model.OrderId"><i class="bi bi-arrow-left"></i> Quay lại đơn hàng</a>
+        <button class="invoice-print" type="button" onclick="window.print()"><i class="bi bi-printer"></i> In hóa đơn</button>
+    </div>
+
+    <article class="invoice-sheet" aria-label="Hóa đơn bán hàng @Model.OrderCode">
+        <header class="invoice-header">
+            <div class="invoice-brand">
+                <div class="invoice-logo">KK</div>
+                <div>
+                    <strong>@Model.ShopName</strong>
+                    <span>PC STORE</span>
+                </div>
             </div>
-            <div class="store-info">
-                <h1>TTGSHOP</h1>
-                <p><strong>HÀ NỘI:</strong> Số 83-85 Thái Hà, Trung Liệt, Đống Đa, Hà Nội</p>
-                <p><strong>TP.HCM:</strong> Số 83A Cửu Long, Phường 15, Quận 10, TP Hồ Chí Minh</p>
-                <p><strong>Hotline:</strong> 098.688.0497</p>
-                <p><strong>Email:</strong> phamxuandong123@gmail.com</p>
-            </div>
+            <address class="invoice-shop-info">
+                <strong>@Model.ShopName</strong>
+                <span>Địa chỉ: @(string.IsNullOrWhiteSpace(Model.ShopAddress) ? "—" : Model.ShopAddress)</span>
+                <span>SĐT: @(string.IsNullOrWhiteSpace(Model.ShopPhone) ? "—" : Model.ShopPhone)</span>
+                <span>Email: @(string.IsNullOrWhiteSpace(Model.ShopEmail) ? "—" : Model.ShopEmail)</span>
+            </address>
         </header>
 
-        <h2 class="quotation-title">BẢNG BÁO GIÁ SẢN PHẨM</h2>
-        <div class="quotation-date">Ngày báo giá: @Model.QuotationDate.ToString("dd/MM/yyyy")</div>
-
-        <section class="customer-info" aria-label="Thông tin khách hàng">
-            <div><span>Ông/bà:</span> <strong>@Model.CustomerName</strong></div>
-            <div><span>Đơn vị:</span></div>
-            <div><span>Địa chỉ:</span> @Model.CustomerAddress</div>
-            <div><span>Điện thoại:</span> @Model.CustomerPhone</div>
-            <div><span>Email:</span> @Model.CustomerEmail</div>
-            <div><span>Fax:</span></div>
+        <section class="invoice-title-block">
+            <h1>HÓA ĐƠN BÁN HÀNG</h1>
+            <p>Mã hóa đơn: <strong>@Model.OrderCode</strong></p>
+            <p>Ngày lập: @DateTimeHelper.FormatVietnam(Model.QuotationDate, "dd/MM/yyyy HH:mm")</p>
         </section>
 
-        <p class="quotation-intro">TTG xin trân trọng gửi tới quý khách hàng bảng chào giá sau:</p>
+        @if (Model.IsCancelledOrExpired)
+        {
+            <div class="invoice-status-warning"><strong>Lưu ý:</strong> Đơn hàng đang ở trạng thái “@Model.OrderStatus” và không được ghi nhận là hóa đơn đã thanh toán.</div>
+        }
 
-        <table class="quotation-table">
-            <thead>
-                <tr>
-                    <th>Mã sản phẩm</th>
-                    <th>Hình ảnh</th>
-                    <th>Tên sản phẩm</th>
-                    <th>Số lượng</th>
-                    <th>Đơn giá</th>
-                    <th>Bảo hành</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var item in Model.Items)
+        <div class="invoice-info-grid">
+            <section class="invoice-info-card">
+                <h2>Thông tin khách hàng</h2>
+                <dl>
+                    <div><dt>Họ tên</dt><dd>@Model.CustomerName</dd></div>
+                    <div><dt>Số điện thoại</dt><dd>@Model.CustomerPhone</dd></div>
+                    <div><dt>Email</dt><dd>@(string.IsNullOrWhiteSpace(Model.CustomerEmail) ? "—" : Model.CustomerEmail)</dd></div>
+                    <div><dt>Địa chỉ</dt><dd>@Model.CustomerAddress</dd></div>
+                </dl>
+            </section>
+            <section class="invoice-info-card">
+                <h2>Thông tin thanh toán</h2>
+                <dl>
+                    <div><dt>Ngày đặt</dt><dd>@DateTimeHelper.FormatVietnam(Model.OrderDate, "dd/MM/yyyy HH:mm")</dd></div>
+                    <div><dt>Phương thức</dt><dd>@Model.PaymentMethod</dd></div>
+                    <div><dt>Thanh toán</dt><dd><strong>@Model.PaymentStatus</strong></dd></div>
+                    <div><dt>Đơn hàng</dt><dd><strong>@Model.OrderStatus</strong></dd></div>
+                </dl>
+            </section>
+        </div>
+
+        <div class="invoice-table-wrap">
+            <table class="invoice-table">
+                <thead><tr><th class="col-index">STT</th><th>Tên sản phẩm</th><th class="col-warranty">Bảo hành</th><th class="col-quantity">SL</th><th class="col-money">Đơn giá</th><th class="col-money">Thành tiền</th></tr></thead>
+                <tbody>
+                @for (var index = 0; index < Model.Items.Count; index++)
                 {
-                    var img = ImageUrlHelper.ResolveImageUrl(item.ProductImage, "/images/placeholders/product-placeholder.png");
+                    var item = Model.Items[index];
                     <tr>
-                        <td class="product-code">@item.ProductCode</td>
-                        <td class="product-image-cell">
-                            <img src="@img" alt="@item.ProductName" onerror="this.onerror=null;this.src='/images/placeholders/product-placeholder.png';" />
-                        </td>
-                        <td class="product-name">
-                            <strong>@item.ProductName</strong>
-                            @if (!string.IsNullOrWhiteSpace(item.Warranty))
-                            {
-                                <span>Bảo hành: @item.Warranty</span>
-                            }
-                        </td>
+                        <td class="text-center">@(index + 1)</td>
+                        <td class="invoice-product"><strong>@item.ProductName</strong><small>@item.ProductCode</small></td>
+                        <td class="text-center">@(string.IsNullOrWhiteSpace(item.Warranty) ? "—" : item.Warranty)</td>
                         <td class="text-center">@item.Quantity</td>
-                        <td class="text-end">@item.UnitPrice.ToString("N0", viCulture)</td>
-                        <td class="text-center">@item.Warranty</td>
+                        <td class="text-right">@Money(item.UnitPrice)</td>
+                        <td class="text-right"><strong>@Money(item.LineTotal)</strong></td>
                     </tr>
                 }
-            </tbody>
-            <tfoot>
-                <tr>
-                    <td colspan="4" class="total-label">Tổng cộng</td>
-                    <td colspan="2" class="total-amount">@Model.TotalAmount.ToString("N0", viCulture) đ</td>
-                </tr>
-            </tfoot>
-        </table>
-
-        <div class="quotation-actions print-hidden">
-            <a class="btn-buy" asp-controller="Products" asp-action="Index">Đặt mua</a>
-            <button class="btn-print" type="button" onclick="window.print()">In đơn hàng</button>
+                </tbody>
+            </table>
         </div>
-    </section>
+
+        <section class="invoice-summary">
+            <div><span>Tạm tính</span><strong>@Money(Model.SubtotalAmount)</strong></div>
+            @if (Model.DiscountAmount > 0)
+            {
+                <div><span>Giảm giá</span><strong>-@Money(Model.DiscountAmount)</strong></div>
+            }
+            <div><span>Phí vận chuyển</span><strong>@(Model.ShippingFee > 0 ? Money(Model.ShippingFee) : "—")</strong></div>
+            <div class="invoice-grand-total"><span>TỔNG THANH TOÁN</span><strong>@Money(Model.TotalAmount)</strong></div>
+        </section>
+
+        @if (!string.IsNullOrWhiteSpace(Model.Note))
+        {
+            <div class="invoice-note"><strong>Ghi chú đơn hàng:</strong> @Model.Note</div>
+        }
+
+        <footer class="invoice-footer">
+            <div class="invoice-thanks"><strong>Cảm ơn quý khách đã mua hàng tại @Model.ShopName.</strong><span>Vui lòng giữ hóa đơn để được hỗ trợ bảo hành.</span></div>
+            <div class="invoice-signatures">
+                <div><strong>Người mua hàng</strong><span>(Ký, ghi rõ họ tên)</span></div>
+                <div><strong>Người bán hàng</strong><span>(Ký, ghi rõ họ tên)</span></div>
+            </div>
+        </footer>
+    </article>
 </div>

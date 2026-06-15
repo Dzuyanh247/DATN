@@ -143,15 +143,33 @@
         </aside>
 
         <section class="products-results" aria-live="polite">
+            @if (Model.IsEquivalentSearch)
+            {
+                <div class="products-equivalent-notice">
+                    <span aria-hidden="true">⇄</span>
+                    <strong>Kết quả tương đương cho:</strong> “@Model.Keyword”
+                </div>
+            }
             @if (Model.Products.Count == 0)
             {
                 <div class="products-empty-state">
-                    <i class="bi bi-search"></i>
-                    <h2>Không tìm thấy sản phẩm phù hợp</h2>
-                    <p>Hãy thử bỏ bớt tiêu chí hoặc xóa bộ lọc để xem thêm sản phẩm.</p>
+                    <span class="products-empty-icon" aria-hidden="true">⇄</span>
+                    <h2>@(Model.HasKeyword ? "Không tìm thấy sản phẩm khớp hoàn toàn" : "Không tìm thấy sản phẩm phù hợp")</h2>
+                    <p>@(Model.HasKeyword
+                        ? "Bạn có thể thử tìm theo tên ngắn hơn, hãng, dòng CPU/VGA hoặc khoảng giá."
+                        : "Hãy thử bỏ bớt tiêu chí hoặc xóa bộ lọc để xem thêm sản phẩm.")</p>
+                    @if (Model.HasKeyword)
+                    {
+                        <div class="products-search-tips">
+                            <span><i class="bi bi-check2"></i> Bỏ bớt từ mô tả</span>
+                            <span><i class="bi bi-check2"></i> Thử “RTX 3060”, “Ryzen 5”</span>
+                            <span><i class="bi bi-check2"></i> Xóa bớt bộ lọc đang chọn</span>
+                        </div>
+                    }
                     <a asp-controller="Products" asp-action="Index"
                        asp-route-categoryId="@Model.CategoryId"
                        asp-route-categorySlug="@Model.CategorySlug"
+                       asp-route-keyword="@Model.Keyword"
                        class="btn btn-primary" data-preserve-filter-scroll>Xóa bộ lọc</a>
                 </div>
             }

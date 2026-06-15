@@ -1,4 +1,3 @@
-using System.Linq.Expressions;
 using Datn.PcStore.Data;
 using Datn.PcStore.Helpers;
 using Datn.PcStore.Models;
@@ -41,10 +40,8 @@ public class ProductsController : Controller
             Gpu = CleanSelections(gpu)
         };
 
-        var query = _db.Products.Include(p => p.Category).AsQueryable();
-
-        if (!string.IsNullOrWhiteSpace(vm.Keyword))
-            query = query.Where(p => p.Name.Contains(vm.Keyword));
+        vm.Keyword = vm.Keyword?.Trim();
+        var query = _db.Products.Include(p => p.Category).AsNoTracking().AsQueryable();
         if (!vm.CategoryId.HasValue && !string.IsNullOrWhiteSpace(vm.CategorySlug))
         {
             var normalizedSlug = vm.CategorySlug.Trim().ToLowerInvariant();
@@ -63,24 +60,26 @@ public class ProductsController : Controller
         if (vm.MaxPrice.HasValue)
             query = query.Where(p => ((p.DiscountPrice ?? p.SalePrice) ?? p.Price) <= vm.MaxPrice.Value);
 
-        var facetProducts = await query.AsNoTracking().ToListAsync();
+        var candidateProducts = await query
+            .Include(product => product.ProductImages)
+            .OrderByDescending(product => product.CreatedAt)
+            .ToListAsync();
+        var facetProducts = ApplyKeywordSearch(candidateProducts, vm);
         var parsedFacets = facetProducts.ToDictionary(product => product.Id, ProductFilterFacetHelper.Parse);
         PopulateFilterOptions(vm, facetProducts, parsedFacets);
 
+        IEnumerable<Product> filteredProducts = facetProducts;
         if (vm.PriceRanges.Length > 0)
-            query = ApplyPriceRangeFilter(query, vm.PriceRanges);
+            filteredProducts = ApplyPriceRangeFilter(filteredProducts, vm.PriceRanges);
         if (vm.Brands.Length > 0)
-            query = query.Where(product => vm.Brands.Contains(product.Brand));
+            filteredProducts = filteredProducts.Where(product => vm.Brands.Contains(product.Brand, StringComparer.OrdinalIgnoreCase));
 
         var matchingIds = GetMatchingParsedFacetIds(facetProducts, parsedFacets, vm);
         if (matchingIds is not null)
-            query = query.Where(product => matchingIds.Contains(product.Id));
+            filteredProducts = filteredProducts.Where(product => matchingIds.Contains(product.Id));
 
         vm.Categories = await _db.Categories.OrderBy(category => category.Name).ToListAsync();
-        vm.Products = await query
-            .Include(p => p.ProductImages)
-            .OrderByDescending(p => p.CreatedAt)
-            .ToListAsync();
+        vm.Products = filteredProducts.ToList();
 
         return View(vm);
     }
@@ -181,32 +180,58 @@ public class ProductsController : Controller
     private static bool MatchesAny(HashSet<string> productValues, string[] selectedValues) =>
         selectedValues.Length == 0 || selectedValues.Any(productValues.Contains);
 
-    private static IQueryable<Product> ApplyPriceRangeFilter(IQueryable<Product> query, string[] selectedValues)
+    private static List<Product> ApplyKeywordSearch(List<Product> products, ProductFilterVm vm)
+    {
+        if (!vm.HasKeyword)
+            return products;
+
+        var normalizedKeyword = SearchTextHelper.NormalizeSearchText(vm.Keyword);
+        var searchableProducts = products.Select(product => new
+        {
+            Product = product,
+            SearchText = SearchTextHelper.NormalizeSearchText(string.Join(' ',
+                product.Name, product.Brand, product.Category?.Name, product.ShortDescription,
+                product.Description, product.DetailDescription, product.Specifications,
+                product.ComponentType, product.CpuSocket, product.RamType))
+        }).ToList();
+
+        var exactMatches = searchableProducts
+            .Where(item => item.SearchText.Contains(normalizedKeyword, StringComparison.Ordinal))
+            .Select(item => item.Product)
+            .ToList();
+        if (exactMatches.Count > 0)
+            return exactMatches;
+
+        var tokens = SearchTextHelper.Tokenize(vm.Keyword);
+        if (tokens.Length == 0)
+            return [];
+
+        var minimumMatches = tokens.Length == 1 ? 1 : Math.Max(2, (int)Math.Ceiling(tokens.Length * 0.6));
+        var fallbackMatches = searchableProducts
+            .Select(item => new
+            {
+                item.Product,
+                Score = tokens.Count(token => item.SearchText.Contains(token, StringComparison.Ordinal))
+            })
+            .Where(item => item.Score >= minimumMatches)
+            .OrderByDescending(item => item.Score)
+            .ThenByDescending(item => item.Product.CreatedAt)
+            .Select(item => item.Product)
+            .ToList();
+
+        vm.IsEquivalentSearch = fallbackMatches.Count > 0;
+        return fallbackMatches;
+    }
+
+    private static IEnumerable<Product> ApplyPriceRangeFilter(IEnumerable<Product> products, string[] selectedValues)
     {
         var selectedRanges = ProductFilterFacetHelper.PriceRanges
             .Where(range => selectedValues.Contains(range.Value, StringComparer.OrdinalIgnoreCase))
             .ToList();
         if (selectedRanges.Count == 0)
-            return query;
+            return products;
 
-        var product = Expression.Parameter(typeof(Product), "product");
-        var discountPrice = Expression.Property(product, nameof(Product.DiscountPrice));
-        var salePrice = Expression.Property(product, nameof(Product.SalePrice));
-        var price = Expression.Property(product, nameof(Product.Price));
-        var effectivePrice = Expression.Coalesce(Expression.Coalesce(discountPrice, salePrice), price);
-        Expression? rangeExpression = null;
-
-        foreach (var range in selectedRanges)
-        {
-            Expression current = Expression.Constant(true);
-            if (range.MinPrice.HasValue)
-                current = Expression.AndAlso(current, Expression.GreaterThanOrEqual(effectivePrice, Expression.Constant(range.MinPrice.Value)));
-            if (range.MaxPrice.HasValue)
-                current = Expression.AndAlso(current, Expression.LessThan(effectivePrice, Expression.Constant(range.MaxPrice.Value)));
-            rangeExpression = rangeExpression is null ? current : Expression.OrElse(rangeExpression, current);
-        }
-
-        var predicate = Expression.Lambda<Func<Product, bool>>(rangeExpression!, product);
-        return query.Where(predicate);
+        return products.Where(product => selectedRanges.Any(range =>
+            ProductFilterFacetHelper.IsInPriceRange(ProductFilterFacetHelper.GetEffectivePrice(product), range)));
     }
 }

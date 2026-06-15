@@ -18,7 +18,7 @@
         <div class="d-flex gap-2">
             <a asp-controller="Products" asp-action="Index" class="btn btn-primary">Tiếp tục mua hàng</a>
             <a asp-action="Tracking" asp-route-id="@Model.Id" class="btn btn-outline-secondary">Theo dõi đơn hàng</a>
-            <a asp-action="Quotation" asp-route-orderId="@Model.Id" class="btn btn-danger">In báo giá</a>
+            <a asp-action="Quotation" asp-route-orderId="@Model.Id" class="btn btn-danger">In hóa đơn</a>
             <a asp-action="ExportExcel" asp-route-orderId="@Model.Id" class="btn report-action-btn report-action-btn--excel"><i class="bi bi-file-earmark-spreadsheet"></i> Tải file Excel</a>
         </div>
     </div>
