@@ -117,6 +117,8 @@ public class ApplicationDbContext : DbContext
             entity.Property(x => x.CustomerEmail).HasMaxLength(120);
             entity.Property(x => x.CustomerPhone).HasMaxLength(20);
             entity.Property(x => x.AssignedStaffName).HasMaxLength(100);
+            entity.Property(x => x.Topic).HasMaxLength(50);
+            entity.Property(x => x.AutomationContext).HasMaxLength(2000);
             entity.HasIndex(x => x.AccessToken).IsUnique();
             entity.HasIndex(x => new { x.Status, x.LastMessageAt });
             entity.HasIndex(x => new { x.CustomerId, x.Status });

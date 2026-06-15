@@ -4,6 +4,7 @@ using Datn.PcStore.Data;
 using Datn.PcStore.Constants;
 using Datn.PcStore.Hubs;
 using Datn.PcStore.Models;
+using Datn.PcStore.Services;
 using Datn.PcStore.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -19,9 +20,10 @@ public class SupportChatController : Controller
     private readonly ApplicationDbContext _db;
     private readonly IHubContext<ChatHub> _hub;
     private readonly ILogger<SupportChatController> _logger;
+    private readonly ISupportChatAutomationService _automation;
 
-    public SupportChatController(ApplicationDbContext db, IHubContext<ChatHub> hub, ILogger<SupportChatController> logger)
-        => (_db, _hub, _logger) = (db, hub, logger);
+    public SupportChatController(ApplicationDbContext db, IHubContext<ChatHub> hub, ILogger<SupportChatController> logger, ISupportChatAutomationService automation)
+        => (_db, _hub, _logger, _automation) = (db, hub, logger, automation);
 
     [HttpPost("conversations")]
     [ValidateAntiForgeryToken]
@@ -118,7 +120,37 @@ public class SupportChatController : Controller
         await _db.SaveChangesAsync();
         var payload = MessagePayload(message);
         await NotifyStaff(conversation.Id, payload);
-        return Ok(Api(true, "Đã gửi tin nhắn.", payload));
+        var automated = await _automation.TryHandleTextAsync(conversation, CurrentUserId(), request.Message);
+        if (automated != null)
+        {
+            await _db.SaveChangesAsync();
+            foreach (var systemMessage in automated.Messages)
+                await NotifyConversation(conversation.Id, MessagePayload(systemMessage));
+            return Ok(Api(true, "Đã gửi tin nhắn.", new
+            {
+                customerMessage = payload,
+                automation = AutomationPayload(automated)
+            }));
+        }
+        return Ok(Api(true, "Đã gửi tin nhắn.", new { customerMessage = payload }));
+    }
+
+    [HttpPost("quick-action")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> QuickAction([FromBody] SupportChatQuickActionRequest? request)
+    {
+        if (request == null || !ModelState.IsValid) return BadRequest(Api(false, "Quick action không hợp lệ."));
+        var conversation = await FindOwnedConversation(request.ConversationId, request.AccessToken);
+        if (conversation == null) return NotFound(Api(false, "Không tìm thấy cuộc trò chuyện."));
+        if (conversation.Status == ChatConversationStatus.Closed) return BadRequest(Api(false, "Cuộc trò chuyện đã đóng."));
+        var result = await _automation.ExecuteAsync(conversation, CurrentUserId(), request.ActionType, request.Payload);
+        foreach (var message in result.Messages)
+        {
+            var messagePayload = MessagePayload(message);
+            await NotifyConversation(conversation.Id, messagePayload);
+            await NotifyStaff(conversation.Id, messagePayload);
+        }
+        return Ok(Api(true, data: AutomationPayload(result)));
     }
 
     [HttpPost("conversations/{conversationId:int}/system-message")]
@@ -156,10 +188,17 @@ public class SupportChatController : Controller
         return rows.Select(x => MessagePayload(x)).ToList();
     }
     private async Task NotifyStaff(int id, object payload) { try { await _hub.Clients.Group(ChatHub.StaffGroup).SendAsync("MessageReceived", id, payload); await _hub.Clients.Group(ChatHub.StaffGroup).SendAsync("ConversationUpdated", id); } catch (Exception e) { _logger.LogWarning(e, "Realtime notification failed for conversation {ConversationId}", id); } }
+    private async Task NotifyConversation(int id, object payload) { try { await _hub.Clients.Group(ChatHub.ConversationGroup(id)).SendAsync("MessageReceived", id, payload); } catch (Exception e) { _logger.LogWarning(e, "Realtime customer notification failed for conversation {ConversationId}", id); } }
     private int? CurrentUserId() => int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : null;
     private string FirstModelError(string fallback) => ModelState.Values.SelectMany(x => x.Errors).Select(x => x.ErrorMessage).FirstOrDefault() ?? fallback;
     private static string NormalizeGuestId(string? value) => string.IsNullOrWhiteSpace(value) || value.Length > 64 ? Convert.ToHexString(RandomNumberGenerator.GetBytes(16)) : value.Trim();
     private static void Normalize(CreateChatConversationRequest r) { r.Name = r.Name?.Trim(); r.Email = r.Email?.Trim().ToLowerInvariant(); r.Phone = r.Phone?.Trim(); r.Message = r.Message?.Trim() ?? ""; }
     private static object Api(bool success, string? message = null, object? data = null) => new { success, message, data };
     private static object MessagePayload(ChatMessage x) => new { x.Id, senderType = x.SenderType == ChatSenderType.Staff ? "Staff" : x.SenderType.ToString(), x.SenderName, x.Message, x.IsSystem, x.IsRead, x.ReadAt, x.CreatedAt };
+    private static object AutomationPayload(SupportAutomationResult result) => new
+    {
+        messages = result.Messages.Select(MessagePayload),
+        quickReplies = result.QuickReplies,
+        cards = result.Cards
+    };
 }

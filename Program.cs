@@ -80,6 +80,7 @@ builder.Services.AddScoped<IShippingFeeCalculator, ShippingFeeCalculator>();
 builder.Services.AddScoped<IShippingService, ShippingService>();
 builder.Services.AddScoped<IOrderExpirationService, OrderExpirationService>();
 builder.Services.AddScoped<IProductReviewService, ProductReviewService>();
+builder.Services.AddScoped<ISupportChatAutomationService, SupportChatAutomationService>();
 builder.Services.AddHttpClient<IGhnShippingService, GhnShippingService>((sp, client) =>
 {
     var options = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<GhnOptions>>().Value;

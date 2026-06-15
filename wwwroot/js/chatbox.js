@@ -27,6 +27,7 @@
     const messagesUrlTemplate = root.dataset.messagesUrlTemplate;
     const sendUrlTemplate = root.dataset.sendUrlTemplate;
     const systemMessageUrlTemplate = root.dataset.systemMessageUrlTemplate;
+    const quickActionUrl = root.dataset.quickActionUrl;
     const guestIdKey = root.dataset.guestIdKey || 'kkshop-support-guest-id';
     let guestId = localStorage.getItem(guestIdKey);
     if (!guestId) { guestId = (window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`).replace(/[^a-zA-Z0-9-]/g, '').slice(0, 64); localStorage.setItem(guestIdKey, guestId); }
@@ -34,6 +35,7 @@
     let session = readSession();
     let connection;
     let unread = 0;
+    let pendingStartAction = null;
 
     function readSession() {
         try { return JSON.parse(localStorage.getItem(storageKey) || 'null'); } catch { return null; }
@@ -104,6 +106,68 @@
     function hideConversationSuggestions() {
         document.querySelector('[data-chat-quick-container]')?.classList.add('d-none');
     }
+    function renderAutomation(data) {
+        (data?.messages || []).forEach(addMessage);
+        renderQuickReplies(data?.quickReplies || []);
+        renderCards(data?.cards || []);
+    }
+    function renderQuickReplies(replies) {
+        const container = document.querySelector('[data-chat-quick-container]');
+        const list = container?.querySelector('[data-chat-quick-list]');
+        if (!container || !list) return;
+        list.replaceChildren();
+        replies.forEach(reply => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'kk-chat-quick-chip';
+            button.textContent = reply.label;
+            button.onclick = () => reply.url ? (window.location.href = reply.url) : runQuickAction(reply.actionType, reply.payload);
+            list.append(button);
+        });
+        container.classList.toggle('d-none', replies.length === 0);
+        scrollToLatest();
+    }
+    function renderCards(cards) {
+        cards.forEach(card => {
+            const wrapper = document.createElement('div');
+            wrapper.className = `kk-chat-card kk-chat-card--${String(card.type || '').toLowerCase()}`;
+            if (card.imageUrl) { const image = document.createElement('img'); image.src = card.imageUrl; image.alt = ''; wrapper.append(image); }
+            const body = document.createElement('div'); body.className = 'kk-chat-card-body';
+            const title = document.createElement('strong'); title.textContent = card.title; title.title = card.title;
+            body.append(title);
+            if (card.subtitle) { const subtitle = document.createElement('small'); subtitle.textContent = card.subtitle; body.append(subtitle); }
+            (card.actions || []).forEach(action => {
+                const button = document.createElement('button'); button.type = 'button'; button.textContent = action.label;
+                button.onclick = () => action.url ? (window.location.href = action.url) : runQuickAction(action.actionType, action.payload);
+                body.append(button);
+            });
+            wrapper.append(body); messagesElement.append(wrapper);
+        });
+        scrollToLatest();
+    }
+    function setBotLoading(show) {
+        document.getElementById('kk-chat-bot-loading')?.remove();
+        if (!show) return;
+        const loading = document.createElement('div'); loading.id = 'kk-chat-bot-loading'; loading.className = 'kk-chat-bot-loading';
+        loading.innerHTML = '<span></span><span></span><span></span>'; messagesElement.append(loading); scrollToLatest();
+    }
+    async function runQuickAction(actionType, payload = null) {
+        if (!session) {
+            pendingStartAction = { actionType, payload };
+            const question = quickQuestions.find(x => x.actionType === actionType);
+            firstMessageInput.value = question?.label || 'Yêu cầu hỗ trợ';
+            firstMessageInput.dispatchEvent(new Event('input', { bubbles: true }));
+            if (root.dataset.authenticated === 'true') startForm.requestSubmit();
+            else firstMessageInput.focus();
+            return;
+        }
+        sendErrorElement.textContent = ''; setBotLoading(true);
+        try {
+            await new Promise(resolve => setTimeout(resolve, 350));
+            const data = await jsonFetch(quickActionUrl, { method: 'POST', body: JSON.stringify({ conversationId: session.conversationId, accessToken: session.accessToken, actionType, payload }) });
+            setBotLoading(false); renderAutomation(data);
+        } catch (error) { setBotLoading(false); sendErrorElement.textContent = error.message; }
+    }
     function updateStartButton() {
         if (startSubmitLabel) startSubmitLabel.textContent = firstMessageInput.value.trim() ? 'Gửi' : 'Bắt đầu trò chuyện';
     }
@@ -113,13 +177,9 @@
                 const button = document.createElement('button');
                 button.type = 'button';
                 button.className = 'kk-chat-quick-chip';
-                button.textContent = question;
+                button.textContent = question.label;
                 button.addEventListener('click', () => {
-                    const target = session ? messageInput : firstMessageInput;
-                    target.value = question;
-                    target.dispatchEvent(new Event('input', { bubbles: true }));
-                    target.focus();
-                    if (session) messageForm.requestSubmit();
+                    runQuickAction(question.actionType);
                 });
                 list.append(button);
             });
@@ -254,6 +314,10 @@
             firstMessageInput.value = '';
             updateStartButton();
             await connectRealtime();
+            if (pendingStartAction) {
+                const action = pendingStartAction; pendingStartAction = null;
+                await runQuickAction(action.actionType, action.payload);
+            }
         } catch (error) {
             console.error('[SupportChat] Could not start conversation', error);
             errorElement.textContent = error.message;
@@ -271,7 +335,8 @@
             const data = await jsonFetch(conversationUrl(sendUrlTemplate, session.conversationId), {
                 method: 'POST', body: JSON.stringify({ accessToken: session.accessToken, message: text })
             });
-            addMessage(data);
+            addMessage(data.customerMessage || data);
+            if (data.automation) renderAutomation(data.automation);
             messageInput.value = '';
             messageInput.style.height = '';
             messageInput.focus();

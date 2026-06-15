@@ -57,3 +57,10 @@
 @media(max-width:1200px){.dashboard-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.dashboard-actions{grid-template-columns:repeat(2,minmax(0,1fr))}.dashboard-content-grid{grid-template-columns:1fr}.dashboard-main-grid{grid-template-columns:1fr}}
 @media(max-width:992px){.admin-sidebar{height:auto;max-height:45vh;overflow-y:auto}.admin-main{max-width:none}.admin-nav{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}.admin-nav-label{grid-column:1/-1}.admin-nav a.active:before{display:none}}
 @media(max-width:700px){.dashboard-hero,.admin-page-heading{align-items:flex-start;flex-direction:column}.dashboard-stat-grid,.dashboard-actions{grid-template-columns:1fr}.admin-inline-filters{grid-template-columns:1fr}.admin-nav{grid-template-columns:repeat(2,minmax(0,1fr))}.dashboard-stat-card strong.is-money{font-size:1.05rem}.dashboard-welcome{width:100%}}
+
+.admin-chat-item.needs-staff { border-left:4px solid #ef4444; background:#fff7f7; }
+.admin-chat-topic { display:inline-flex; width:max-content; margin:2px 0; padding:2px 7px; border-radius:999px; background:#eaf3ff; color:#18558e; font-size:.68rem; font-weight:700; }
+.admin-chat-item.needs-staff .admin-chat-topic { background:#fee2e2; color:#b91c1c; }
+.admin-chat-context { margin-top:3px; color:#9a3412; font-size:.72rem; font-weight:650; }
+.admin-chat-quick-replies { display:flex; flex-wrap:wrap; gap:5px; padding:6px 12px 0; border-top:1px solid #e5e7eb; background:#fff; }
+.admin-chat-quick-replies button { border:1px solid #bfdbfe; border-radius:999px; padding:4px 9px; background:#eff6ff; color:#1d4f82; font-size:.72rem; }

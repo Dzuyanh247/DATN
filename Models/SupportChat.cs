@@ -57,6 +57,12 @@ public class ChatConversation : BaseEntity
     public DateTime? ClosedAt { get; set; }
     public DateTime? LastMessageAt { get; set; }
     public int StaffUnreadCount { get; set; }
+    [MaxLength(50)]
+    public string? Topic { get; set; }
+    public bool NeedsStaff { get; set; }
+    public int Priority { get; set; }
+    [MaxLength(2000)]
+    public string? AutomationContext { get; set; }
     public ICollection<ChatMessage> Messages { get; set; } = new List<ChatMessage>();
 }
 

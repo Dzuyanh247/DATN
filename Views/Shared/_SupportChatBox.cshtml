@@ -17,6 +17,7 @@
      data-create-url="@Url.Action("CreateConversation", "SupportChat")"
      data-messages-url-template="@Url.Action("GetMessages", "SupportChat", new { conversationId = 987654321 })"
      data-send-url-template="@Url.Action("SendMessage", "SupportChat", new { conversationId = 987654321 })"
+     data-quick-action-url="@Url.Action("QuickAction", "SupportChat")"
      data-system-message-url-template="@Url.Action("AddSystemMessage", "SupportChat", new { conversationId = 987654321 })">
     <script type="application/json" id="kk-chat-quick-questions">@Html.Raw(JsonSerializer.Serialize(SupportChatDefaults.QuickQuestions))</script>
     <form class="d-none" id="kk-chat-antiforgery">@Html.AntiForgeryToken()</form>

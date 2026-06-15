@@ -36,6 +36,7 @@
                     <h3 id="admin-chat-name">Khách hàng</h3>
                     <div><span id="admin-chat-contact"></span> <span id="admin-chat-status" class="admin-chat-status"></span></div>
                     <div class="admin-chat-assignment"><i class="bi bi-person-check"></i> <span id="admin-chat-assignee">Chưa phân công</span></div>
+                    <div class="admin-chat-context" id="admin-chat-context"></div>
                 </div>
                 <button type="button" class="btn btn-sm btn-primary" id="admin-chat-claim"><i class="bi bi-person-plus"></i> Nhận xử lý</button>
                 @if (User.IsInRole("Admin"))
@@ -48,6 +49,11 @@
             </header>
             <div class="admin-chat-messages" id="admin-chat-messages" aria-live="polite"></div>
             <div class="admin-chat-closed d-none" id="admin-chat-closed">Cuộc trò chuyện này đã đóng.</div>
+            <div class="admin-chat-quick-replies">
+                <button type="button" data-reply="KKSHOP đã tiếp nhận yêu cầu của bạn và sẽ hỗ trợ trong thời gian sớm nhất.">Đã tiếp nhận</button>
+                <button type="button" data-reply="Bạn vui lòng gửi thêm hình ảnh/video lỗi để KKSHOP kiểm tra chính xác hơn.">Yêu cầu ảnh/video</button>
+                <button type="button" data-reply="Nhân viên đang kiểm tra đơn hàng cho bạn, vui lòng chờ trong ít phút.">Đang kiểm tra đơn</button>
+            </div>
             <form class="admin-chat-compose" id="admin-chat-compose">
                 <textarea id="admin-chat-message" maxlength="1000" rows="2" placeholder="Nhập phản hồi cho khách hàng..."></textarea>
                 <button type="submit"><i class="bi bi-send-fill"></i><span>Gửi</span></button>

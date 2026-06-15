@@ -337,3 +337,16 @@
 }
 
 .kk-chat-message.system .kk-chat-bubble { max-width: 94%; padding: 6px 9px; border: 1px dashed #cbd5e1; border-radius: 12px; background: #f8fafc; color: #64748b; box-shadow: none; text-align: center; font-size: 11px; }
+
+.kk-chat-message.system .kk-chat-bubble { background:#eef6ff; color:#174d82; border:1px solid #d5e8fa; box-shadow:none; }
+.kk-chat-quick-list { max-height:92px; overflow-y:auto; }
+.kk-chat-card { margin:0 0 7px; width:94%; align-self:flex-start; display:flex; gap:8px; padding:8px; border:1px solid #dbe5ef; border-radius:11px; background:#fff; box-shadow:0 2px 7px rgba(15,23,42,.06); }
+.kk-chat-card>img { width:48px; height:48px; object-fit:contain; border-radius:7px; background:#f8fafc; flex:none; }
+.kk-chat-card-body { min-width:0; flex:1; display:flex; flex-direction:column; gap:3px; }
+.kk-chat-card-body strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:.75rem; color:#172b42; }
+.kk-chat-card-body small { font-size:.66rem; color:#64748b; }
+.kk-chat-card-body button { align-self:flex-start; border:0; border-radius:6px; padding:4px 8px; background:#1764aa; color:#fff; font-size:.65rem; font-weight:700; }
+.kk-chat-bot-loading { display:flex; gap:3px; width:max-content; padding:8px 10px; margin:0 0 7px; border-radius:12px; background:#eef6ff; }
+.kk-chat-bot-loading span { width:5px; height:5px; border-radius:50%; background:#4d86bd; animation:kk-chat-dot .8s infinite alternate; }
+.kk-chat-bot-loading span:nth-child(2){animation-delay:.15s}.kk-chat-bot-loading span:nth-child(3){animation-delay:.3s}
+@keyframes kk-chat-dot { to { transform:translateY(-3px); opacity:.45; } }
