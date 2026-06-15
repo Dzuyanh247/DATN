@@ -71,22 +71,25 @@
         return Number.isNaN(date.getTime()) ? '' : date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
     }
     function addMessage(message) {
-        if (message.id && messagesElement.querySelector(`[data-chat-message-id="${message.id}"]`)) return;
+        const existing = message.id && messagesElement.querySelector(`[data-chat-message-id="${message.id}"]`);
+        if (existing) return existing;
         const item = document.createElement('div');
         const type = String(message.senderType).toLowerCase();
         const customer = type === 'customer';
         const system = message.isSystem === true || type === 'system';
-        item.className = `kk-chat-message ${system ? 'system' : (customer ? 'customer' : 'admin')}`;
+        item.className = `kk-chat-message ${system ? 'shop' : (customer ? 'customer' : 'admin')}`;
         if (message.id) item.dataset.chatMessageId = message.id;
         const bubble = document.createElement('div');
         bubble.className = 'kk-chat-bubble';
         bubble.textContent = message.message;
         const time = document.createElement('div');
         time.className = 'kk-chat-time';
-        time.textContent = `${system ? 'Hệ thống' : (customer ? 'Bạn' : (message.senderName || 'KKSHOP'))} • ${formatTime(message.createdAt)}`;
+        const sender = system ? 'KKSHOP' : (customer ? 'Bạn' : (message.displaySenderName || message.senderName || 'KKSHOP'));
+        time.textContent = `${sender}${formatTime(message.createdAt) ? ` • ${formatTime(message.createdAt)}` : ''}`;
         item.append(bubble, time);
         messagesElement.appendChild(item);
         scrollToLatest();
+        return item;
     }
     function showConversation(status) {
         startForm.classList.add('d-none');
@@ -107,27 +110,29 @@
         document.querySelector('[data-chat-quick-container]')?.classList.add('d-none');
     }
     function renderAutomation(data) {
-        (data?.messages || []).forEach(addMessage);
-        renderQuickReplies(data?.quickReplies || []);
-        renderCards(data?.cards || []);
+        const cluster = document.createElement('div');
+        cluster.className = 'kk-chat-response-cluster';
+        (data?.messages || []).forEach(message => cluster.append(addMessage(message)));
+        renderCards(data?.cards || [], cluster);
+        renderQuickReplies(data?.quickReplies || [], cluster);
+        if (cluster.childElementCount) messagesElement.append(cluster);
+        scrollToLatest();
     }
-    function renderQuickReplies(replies) {
-        const container = document.querySelector('[data-chat-quick-container]');
-        const list = container?.querySelector('[data-chat-quick-list]');
-        if (!container || !list) return;
-        list.replaceChildren();
+    function renderQuickReplies(replies, parent) {
+        if (!parent || replies.length === 0) return;
+        const list = document.createElement('div');
+        list.className = 'kk-chat-inline-actions';
         replies.forEach(reply => {
             const button = document.createElement('button');
             button.type = 'button';
-            button.className = 'kk-chat-quick-chip';
+            button.className = 'kk-chat-action-button';
             button.textContent = reply.label;
             button.onclick = () => reply.url ? (window.location.href = reply.url) : runQuickAction(reply.actionType, reply.payload);
             list.append(button);
         });
-        container.classList.toggle('d-none', replies.length === 0);
-        scrollToLatest();
+        parent.append(list);
     }
-    function renderCards(cards) {
+    function renderCards(cards, parent = messagesElement) {
         cards.forEach(card => {
             const wrapper = document.createElement('div');
             wrapper.className = `kk-chat-card kk-chat-card--${String(card.type || '').toLowerCase()}`;
@@ -141,9 +146,8 @@
                 button.onclick = () => action.url ? (window.location.href = action.url) : runQuickAction(action.actionType, action.payload);
                 body.append(button);
             });
-            wrapper.append(body); messagesElement.append(wrapper);
+            wrapper.append(body); parent.append(wrapper);
         });
-        scrollToLatest();
     }
     function setBotLoading(show) {
         document.getElementById('kk-chat-bot-loading')?.remove();
