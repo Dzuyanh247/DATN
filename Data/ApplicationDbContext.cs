@@ -133,6 +133,7 @@ public class ApplicationDbContext : DbContext
         {
             entity.Property(x => x.Message).HasMaxLength(1000).IsRequired();
             entity.Property(x => x.SenderName).HasMaxLength(100);
+            entity.Property(x => x.MetadataJson).HasColumnType("nvarchar(max)");
             entity.HasIndex(x => new { x.ConversationId, x.CreatedAt });
             entity.HasOne(x => x.Conversation)
                 .WithMany(x => x.Messages)

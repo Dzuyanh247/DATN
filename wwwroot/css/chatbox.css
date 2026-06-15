@@ -346,13 +346,21 @@
 
 .kk-chat-quick-list { max-height:92px; overflow-y:auto; }
 .kk-chat-response-cluster { width:94%; display:flex; flex-direction:column; align-items:flex-start; gap:6px; margin:0 0 11px; }
+.kk-chat-message.customer + .kk-chat-card { display:none; }
 .kk-chat-response-cluster .kk-chat-message { width:100%; }
 .kk-chat-card { width:100%; min-width:0; display:flex; gap:8px; padding:8px; border:1px solid #dbe5ef; border-radius:11px; background:#fff; box-shadow:0 2px 7px rgba(15,23,42,.05); }
 .kk-chat-card>img { width:48px; height:48px; object-fit:contain; border-radius:7px; background:#f8fafc; flex:none; }
 .kk-chat-card-body { min-width:0; flex:1; display:flex; flex-direction:column; gap:3px; }
+.kk-chat-card-header { display:flex; align-items:center; justify-content:space-between; gap:6px; color:#174d82; font-size:.68rem; }
+.kk-chat-status-badge { max-width:54%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding:2px 5px; border-radius:999px; background:#e8f2fc; color:#17558e; font-size:.58rem; font-weight:700; }
 .kk-chat-card-body strong { display:-webkit-box; overflow:hidden; -webkit-box-orient:vertical; -webkit-line-clamp:2; font-size:.75rem; line-height:1.25; color:#172b42; }
 .kk-chat-card-body small { font-size:.66rem; color:#64748b; }
-.kk-chat-card-body button { align-self:flex-start; border:0; border-radius:6px; padding:4px 8px; background:#1764aa; color:#fff; font-size:.65rem; font-weight:700; }
+.kk-chat-order-details { display:flex; flex-direction:column; gap:1px; margin-top:2px; }
+.kk-chat-order-details>span { display:flex; justify-content:space-between; gap:8px; color:#64748b; font-size:.62rem; }
+.kk-chat-order-details b { color:#334155; text-align:right; font-weight:700; }
+.kk-chat-order-details .kk-chat-card-total b { color:#ea580c; font-size:.7rem; }
+.kk-chat-card-actions { display:flex; flex-wrap:wrap; gap:5px; margin-top:3px; }
+.kk-chat-card-body button { align-self:flex-start; border:0; border-radius:6px; padding:5px 8px; background:#1764aa; color:#fff; font-size:.65rem; font-weight:700; }
 .kk-chat-inline-actions { display:flex; flex-wrap:wrap; gap:5px; padding:0 2px; }
 .kk-chat-action-button { border:1px solid #b9d4ec; border-radius:999px; padding:5px 9px; background:#fff; color:#17558e; font-size:.65rem; line-height:1.2; font-weight:700; }
 .kk-chat-action-button:hover { border-color:#f97316; background:#fff7ed; color:#c2410c; }

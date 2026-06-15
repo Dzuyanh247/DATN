@@ -79,6 +79,8 @@ public class ChatMessage : BaseEntity
     [Required, MaxLength(1000)]
     public string Message { get; set; } = string.Empty;
 
+    public string? MetadataJson { get; set; }
+
     public bool IsSystem { get; set; }
     public bool IsRead { get; set; }
     public DateTime? ReadAt { get; set; }
