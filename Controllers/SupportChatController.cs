@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using System.Security.Cryptography;
 using Datn.PcStore.Data;
+using Datn.PcStore.Constants;
 using Datn.PcStore.Hubs;
 using Datn.PcStore.Models;
 using Datn.PcStore.ViewModels;
@@ -15,8 +16,6 @@ namespace Datn.PcStore.Controllers;
 [Route("support-chat")]
 public class SupportChatController : Controller
 {
-    private const string GreetingMessage = "KKSHOP xin chào 👋 Cảm ơn bạn đã liên hệ. Bạn vui lòng để lại nội dung cần hỗ trợ, nhân viên sẽ phản hồi trong giây lát.";
-    private const string CloseMessage = "Cảm ơn bạn đã liên hệ KKSHOP. Nếu cần hỗ trợ thêm, bạn có thể bắt đầu một hội thoại mới.";
     private readonly ApplicationDbContext _db;
     private readonly IHubContext<ChatHub> _hub;
     private readonly ILogger<SupportChatController> _logger;
@@ -66,7 +65,7 @@ public class SupportChatController : Controller
             _db.ChatMessages.Add(new ChatMessage
             {
                 Conversation = conversation, SenderType = ChatSenderType.System, SenderName = "KKSHOP",
-                Message = GreetingMessage, IsSystem = true, IsRead = true, ReadAt = DateTime.UtcNow
+                Message = SupportChatDefaults.GreetingMessage, IsSystem = true, IsRead = true, ReadAt = DateTime.UtcNow
             });
         }
 
@@ -130,9 +129,9 @@ public class SupportChatController : Controller
         var conversation = await FindOwnedConversation(conversationId, request.AccessToken);
         if (conversation == null) return NotFound(Api(false, "Không tìm thấy cuộc trò chuyện."));
         if (conversation.Status != ChatConversationStatus.Closed) return BadRequest(Api(false, "Chỉ gửi lời cảm ơn sau khi hội thoại đã đóng."));
-        var existing = await _db.ChatMessages.AsNoTracking().FirstOrDefaultAsync(x => x.ConversationId == conversationId && x.IsSystem && x.Message == CloseMessage);
+        var existing = await _db.ChatMessages.AsNoTracking().FirstOrDefaultAsync(x => x.ConversationId == conversationId && x.IsSystem && x.Message == SupportChatDefaults.CloseMessage);
         if (existing != null) return Ok(Api(true, data: MessagePayload(existing)));
-        var message = new ChatMessage { ConversationId = conversationId, SenderType = ChatSenderType.System, SenderName = "KKSHOP", Message = CloseMessage, IsSystem = true, IsRead = true, ReadAt = DateTime.UtcNow };
+        var message = new ChatMessage { ConversationId = conversationId, SenderType = ChatSenderType.System, SenderName = "KKSHOP", Message = SupportChatDefaults.CloseMessage, IsSystem = true, IsRead = true, ReadAt = DateTime.UtcNow };
         _db.ChatMessages.Add(message);
         await _db.SaveChangesAsync();
         return Ok(Api(true, "Đã gửi lời cảm ơn.", MessagePayload(message)));

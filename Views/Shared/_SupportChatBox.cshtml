@@ -1,4 +1,6 @@
 @using System.Security.Claims
+@using System.Text.Json
+@using Datn.PcStore.Constants
 @{
     var authenticated = User.Identity?.IsAuthenticated == true;
     var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "guest";
@@ -16,6 +18,7 @@
      data-messages-url-template="@Url.Action("GetMessages", "SupportChat", new { conversationId = 987654321 })"
      data-send-url-template="@Url.Action("SendMessage", "SupportChat", new { conversationId = 987654321 })"
      data-system-message-url-template="@Url.Action("AddSystemMessage", "SupportChat", new { conversationId = 987654321 })">
+    <script type="application/json" id="kk-chat-quick-questions">@Html.Raw(JsonSerializer.Serialize(SupportChatDefaults.QuickQuestions))</script>
     <form class="d-none" id="kk-chat-antiforgery">@Html.AntiForgeryToken()</form>
 
     <button type="button" class="kk-chat-launcher" id="kk-chat-launcher" aria-label="Mở KKSHOP hỗ trợ" aria-expanded="false">
@@ -29,22 +32,20 @@
             <div class="kk-chat-brand-icon"><i class="bi bi-chat-heart-fill"></i></div>
             <div>
                 <strong>KKSHOP hỗ trợ</strong>
-                <small id="kk-chat-connection"><span></span> Đang kết nối...</small>
+                <small id="kk-chat-connection"><span></span> Shop sẽ phản hồi sớm</small>
             </div>
             <button type="button" id="kk-chat-close" class="kk-chat-close" aria-label="Thu nhỏ"><i class="bi bi-dash-lg"></i></button>
         </header>
 
         <div class="kk-chat-body">
-            <div class="kk-chat-welcome" id="kk-chat-welcome">
-                <div class="kk-chat-avatar"><i class="bi bi-headset"></i></div>
-                <h6>KKSHOP xin chào!</h6>
-                <p>Hãy để lại lời nhắn, shop sẽ phản hồi bạn sớm nhất.</p>
-            </div>
-
             <form id="kk-chat-start-form" class="kk-chat-start-form">
                 <div class="kk-chat-message admin kk-chat-start-greeting" aria-live="polite">
-                    <div class="kk-chat-bubble">KKSHOP xin chào 👋 Cảm ơn bạn đã liên hệ. Bạn vui lòng để lại nội dung cần hỗ trợ, nhân viên sẽ phản hồi trong giây lát.</div>
+                    <div class="kk-chat-bubble">@SupportChatDefaults.GreetingMessage</div>
                     <div class="kk-chat-time">KKSHOP</div>
+                </div>
+                <div class="kk-chat-quick-wrap">
+                    <span>Chọn câu hỏi nhanh</span>
+                    <div class="kk-chat-quick-list" data-chat-quick-list></div>
                 </div>
                 @if (!authenticated)
                 {
@@ -68,13 +69,18 @@
                 }
                 <label for="kk-chat-first-message">Bạn cần KKSHOP hỗ trợ gì?</label>
                 <textarea id="kk-chat-first-message" maxlength="1000" rows="3" placeholder="Nhập nội dung cần hỗ trợ..." required></textarea>
+                <small class="kk-chat-enter-hint">Enter để gửi • Shift + Enter để xuống dòng</small>
                 <div class="kk-chat-error" id="kk-chat-start-error" role="alert"></div>
                 <button type="submit" class="kk-chat-primary"><i class="bi bi-send-fill"></i> Bắt đầu trò chuyện</button>
             </form>
 
             <div class="kk-chat-conversation d-none" id="kk-chat-conversation">
                 <div class="kk-chat-messages" id="kk-chat-messages" aria-live="polite"></div>
+                <div class="kk-chat-quick-wrap kk-chat-quick-compose" data-chat-quick-container>
+                    <div class="kk-chat-quick-list" data-chat-quick-list></div>
+                </div>
                 <div class="kk-chat-closed d-none" id="kk-chat-closed">Cuộc trò chuyện đã đóng.<button type="button" id="kk-chat-new-conversation">Bắt đầu hội thoại mới</button></div>
+                <div class="kk-chat-error kk-chat-send-error" id="kk-chat-send-error" role="alert"></div>
                 <form class="kk-chat-compose" id="kk-chat-message-form">
                     <textarea id="kk-chat-message" maxlength="1000" rows="1" placeholder="Nhập tin nhắn..." aria-label="Tin nhắn"></textarea>
                     <button type="submit" aria-label="Gửi tin nhắn"><i class="bi bi-send-fill"></i></button>

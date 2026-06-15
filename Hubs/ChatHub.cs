@@ -17,7 +17,8 @@ public class ChatHub : Hub
         var userId = int.TryParse(Context.User?.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : (int?)null;
         var canJoin = await _db.ChatConversations.AnyAsync(x =>
             x.Id == conversationId &&
-            ((userId.HasValue && x.UserId == userId) || x.AccessToken == accessToken));
+            ((userId.HasValue && (x.CustomerId == userId || x.UserId == userId)) ||
+             (!string.IsNullOrWhiteSpace(accessToken) && x.AccessToken == accessToken)));
 
         if (!canJoin) return false;
         await Groups.AddToGroupAsync(Context.ConnectionId, ConversationGroup(conversationId));
