@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using Datn.PcStore.Data;
 using Datn.PcStore.Helpers;
@@ -29,10 +30,10 @@ public record SupportCard(
     string? WarrantyStatus = null,
     int AdditionalProductCount = 0);
 public record SupportMessageMetadata(
-    string MessageType,
-    IReadOnlyList<SupportCard> Cards,
-    IReadOnlyList<SupportMessageAction> MessageActions,
-    IReadOnlyList<SupportQuickReply> QuickReplies);
+    [property: JsonPropertyName("type")] string Type,
+    [property: JsonPropertyName("cards")] IReadOnlyList<SupportCard> Cards,
+    [property: JsonPropertyName("messageActions")] IReadOnlyList<SupportMessageAction> MessageActions,
+    [property: JsonPropertyName("quickReplies")] IReadOnlyList<SupportQuickReply> QuickReplies);
 public record SupportAutomationResult(
     IReadOnlyList<ChatMessage> Messages,
     IReadOnlyList<SupportQuickReply> QuickReplies,
@@ -47,6 +48,7 @@ public interface ISupportChatAutomationService
 
 public partial class SupportChatAutomationService : ISupportChatAutomationService
 {
+    private static readonly JsonSerializerOptions MetadataJsonOptions = new(JsonSerializerDefaults.Web);
     private readonly ApplicationDbContext _db;
     public SupportChatAutomationService(ApplicationDbContext db) => _db = db;
 
@@ -295,12 +297,14 @@ public partial class SupportChatAutomationService : ISupportChatAutomationServic
         var actualActions = messageActions ?? [];
         var messageType = actualCards.FirstOrDefault()?.Type switch
         {
-            "order" => "orderCard",
-            "product" => message.Message.Contains("bảo hành", StringComparison.OrdinalIgnoreCase) ? "warrantyResult" : "productCard",
-            _ when message.Message.Contains("thanh toán", StringComparison.OrdinalIgnoreCase) => "paymentResult",
+            "order" when message.Message.Contains("Chọn đơn hàng", StringComparison.OrdinalIgnoreCase) => "order_selection",
+            "order" => "order_result",
+            "product" when actualCards.Any(x => x.Actions?.Any(a => a.ActionType == "select_warranty_product") == true) => "warranty_selection",
+            "product" => "warranty_result",
+            _ when message.Message.Contains("thanh toán", StringComparison.OrdinalIgnoreCase) => "payment_result",
             _ => "text"
         };
-        message.MetadataJson = JsonSerializer.Serialize(new SupportMessageMetadata(messageType, actualCards, actualActions, actualReplies));
+        message.MetadataJson = JsonSerializer.Serialize(new SupportMessageMetadata(messageType, actualCards, actualActions, actualReplies), MetadataJsonOptions);
         return new([message], actualReplies, actualCards, actualActions);
     }
     private static SupportQuickReply Reply(string action, string label) => new(action, label);
@@ -318,7 +322,7 @@ public partial class SupportChatAutomationService : ISupportChatAutomationServic
         var first = x.Details.OrderBy(d => d.Id).FirstOrDefault();
         var actions = new List<SupportQuickReply>();
         if (includeSelectionAction)
-            actions.Add(new(action, string.IsNullOrEmpty(label) ? "Kiểm tra đơn hàng" : label, new { orderId = x.Id }));
+            actions.Add(new(action, string.IsNullOrEmpty(label) ? $"Xem {Code(x.Id)}" : label, new { orderId = x.Id }));
         actions.Add(new("open_order", "Xem chi tiết", Url: $"/Orders/Detail/{x.Id}"));
         if (OrderStatusHelper.CanPayNow(x, DateTime.UtcNow))
             actions.Add(new("pay_order", "Thanh toán", Url: string.IsNullOrWhiteSpace(x.PaymentUrl) ? $"/Orders/BankTransfer/{x.Id}" : x.PaymentUrl));
@@ -360,7 +364,7 @@ public partial class SupportChatAutomationService : ISupportChatAutomationServic
         return new(
             "product", detail.ProductName,
             $"Mua ngày {detail.Order!.CreatedAt.ToLocalTime():dd/MM/yyyy} • {months switch { > 0 => $"{months} tháng", _ => "Chưa rõ thời hạn" }}",
-            detail.ProductImage, [new("select_warranty_product", "Kiểm tra", new { orderDetailId = detail.Id })],
+            detail.ProductImage, [new("select_warranty_product", "Kiểm tra", new { orderDetailId = detail.Id, productId = detail.ProductId, orderId = detail.OrderId })],
             ProductId: detail.ProductId, OrderDetailId: detail.Id, OrderCode: Code(detail.OrderId),
             OrderedAt: detail.Order.CreatedAt, WarrantyUntil: expires, WarrantyStatus: status);
     }

@@ -45,6 +45,7 @@ public class SupportChatQuickActionPayload
 {
     public int? OrderId { get; set; }
     public int? OrderDetailId { get; set; }
+    public int? ProductId { get; set; }
     [StringLength(50)] public string? Budget { get; set; }
     [StringLength(50)] public string? NeedType { get; set; }
 }
