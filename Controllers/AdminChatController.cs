@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Text.Json;
 using Datn.PcStore.Data;
 using Datn.PcStore.Hubs;
 using Datn.PcStore.Models;
@@ -26,7 +27,7 @@ public class AdminChatController : Controller
     {
         var rows = await _db.ChatConversations.AsNoTracking().Include(x => x.User).Include(x => x.Messages)
             .OrderBy(x => x.Status == ChatConversationStatus.Closed).ThenByDescending(x => x.NeedsStaff).ThenByDescending(x => x.Priority).ThenByDescending(x => x.LastMessageAt ?? x.UpdatedAt).ToListAsync();
-        var conversations = rows.Select(x => new { x.Id, name = x.CustomerName ?? x.User?.FullName ?? x.GuestName, email = x.CustomerEmail ?? x.User?.Email ?? x.GuestEmail, phone = x.CustomerPhone ?? x.User?.Phone ?? x.GuestPhone, status = x.Status.ToString(), x.CreatedAt, x.UpdatedAt, x.LastMessageAt, x.StaffUnreadCount, unreadCount = x.StaffUnreadCount, x.AssignedStaffId, x.AssignedStaffName, x.Topic, x.NeedsStaff, x.Priority, x.AutomationContext, lastMessage = x.Messages.OrderByDescending(m => m.CreatedAt).ThenByDescending(m => m.Id).Select(m => m.Message).FirstOrDefault() }).ToList();
+        var conversations = rows.Select(x => new { x.Id, name = x.CustomerName ?? x.User?.FullName ?? x.GuestName, email = x.CustomerEmail ?? x.User?.Email ?? x.GuestEmail, phone = x.CustomerPhone ?? x.User?.Phone ?? x.GuestPhone, customerType = x.CustomerId.HasValue || x.UserId.HasValue ? "Tài khoản" : "Khách vãng lai", status = x.Status.ToString(), x.CreatedAt, x.UpdatedAt, x.LastMessageAt, x.StaffUnreadCount, unreadCount = x.StaffUnreadCount, x.AssignedStaffId, x.AssignedStaffName, x.Topic, x.NeedsStaff, x.Priority, x.AutomationContext, lastMessage = x.Messages.OrderByDescending(m => m.CreatedAt).ThenByDescending(m => m.Id).Select(m => m.Message).FirstOrDefault() }).ToList();
         return Ok(Api(true, data: new { conversations }));
     }
 
@@ -116,8 +117,14 @@ public class AdminChatController : Controller
         var rows = await _db.ChatMessages.AsNoTracking().Where(x => x.ConversationId == id).OrderBy(x => x.CreatedAt).ThenBy(x => x.Id).ToListAsync();
         return rows.Select(x => MessagePayload(x)).ToList();
     }
-    private static object ConversationPayload(ChatConversation x) => new { x.Id, name = x.CustomerName ?? x.User?.FullName ?? x.GuestName, email = x.CustomerEmail ?? x.User?.Email ?? x.GuestEmail, phone = x.CustomerPhone ?? x.User?.Phone ?? x.GuestPhone, status = x.Status.ToString(), x.CreatedAt, x.ClosedAt, x.AssignedStaffId, x.AssignedStaffName, x.Topic, x.NeedsStaff, x.Priority, x.AutomationContext };
-    private static object MessagePayload(ChatMessage x) => new { x.Id, senderType = x.SenderType == ChatSenderType.Staff ? "Staff" : x.SenderType.ToString(), x.SenderName, x.Message, x.IsSystem, x.IsRead, x.ReadAt, x.CreatedAt, x.MetadataJson };
+    private static object ConversationPayload(ChatConversation x) => new { x.Id, name = x.CustomerName ?? x.User?.FullName ?? x.GuestName, email = x.CustomerEmail ?? x.User?.Email ?? x.GuestEmail, phone = x.CustomerPhone ?? x.User?.Phone ?? x.GuestPhone, customerType = x.CustomerId.HasValue || x.UserId.HasValue ? "Tài khoản" : "Khách vãng lai", status = x.Status.ToString(), x.CreatedAt, x.ClosedAt, x.AssignedStaffId, x.AssignedStaffName, x.Topic, x.NeedsStaff, x.Priority, x.AutomationContext };
+    private static object MessagePayload(ChatMessage x) => new { x.Id, senderType = x.SenderType == ChatSenderType.Staff ? "Staff" : x.SenderType.ToString(), x.SenderName, x.Message, x.IsSystem, x.IsRead, x.ReadAt, x.CreatedAt, metadata = ParseMetadata(x.MetadataJson) };
+    private static object? ParseMetadata(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return null;
+        try { return JsonSerializer.Deserialize<JsonElement>(value); }
+        catch (JsonException) { return null; }
+    }
     private async Task Notify(Func<Task> action, int id) { try { await action(); } catch (Exception e) { _logger.LogWarning(e, "Realtime notification failed for conversation {ConversationId}", id); } }
     private static object Api(bool success, string? message = null, object? data = null) => new { success, message, data };
 }

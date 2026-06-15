@@ -1,5 +1,5 @@
 @{
-    ViewData["Title"] = "Quản lý hỗ trợ khách hàng";
+    ViewData["Title"] = "Trung tâm hỗ trợ khách hàng";
 }
 <form id="admin-chat-antiforgery" class="d-none">@Html.AntiForgeryToken()</form>
 
@@ -7,15 +7,18 @@
     <aside class="admin-chat-list-panel">
         <div class="admin-chat-list-head">
             <div>
+                <span class="admin-chat-eyebrow">Chăm sóc khách hàng</span>
                 <h2>Hội thoại</h2>
-                <span id="admin-chat-summary">Đang tải...</span>
+                <small id="admin-chat-summary">Đang tải...</small>
             </div>
-            <button type="button" id="admin-chat-refresh" title="Làm mới"><i class="bi bi-arrow-clockwise"></i></button>
+            <button type="button" id="admin-chat-refresh" title="Làm mới danh sách" aria-label="Làm mới danh sách"><i class="bi bi-arrow-clockwise"></i></button>
         </div>
-        <div class="admin-chat-filters">
+        <div class="admin-chat-filters" aria-label="Lọc hội thoại">
             <button type="button" class="active" data-filter="all">Tất cả</button>
             <button type="button" data-filter="open">Đang mở</button>
             <button type="button" data-filter="unread">Chưa đọc</button>
+            <button type="button" data-filter="needs">Cần xử lý</button>
+            <button type="button" data-filter="closed">Đã đóng</button>
         </div>
         <div class="admin-chat-list" id="admin-chat-list">
             <div class="admin-chat-empty"><span class="spinner-border spinner-border-sm"></span> Đang tải hội thoại...</div>
@@ -25,41 +28,82 @@
     <section class="admin-chat-detail">
         <div class="admin-chat-placeholder" id="admin-chat-placeholder">
             <div><i class="bi bi-chat-square-text"></i></div>
-            <h3>Chọn một cuộc trò chuyện</h3>
-            <p>Tin nhắn của khách hàng sẽ xuất hiện tại đây theo thời gian thực.</p>
+            <h3>Chọn một hội thoại để bắt đầu</h3>
+            <p>Theo dõi yêu cầu và phản hồi khách hàng ngay tại đây.</p>
         </div>
         <div class="admin-chat-room d-none" id="admin-chat-room">
             <header class="admin-chat-customer">
-                <button type="button" class="admin-chat-back" id="admin-chat-back"><i class="bi bi-chevron-left"></i></button>
+                <button type="button" class="admin-chat-back" id="admin-chat-back" aria-label="Quay lại danh sách"><i class="bi bi-chevron-left"></i></button>
                 <div class="admin-chat-customer-avatar" id="admin-chat-avatar">K</div>
                 <div class="admin-chat-customer-info">
-                    <h3 id="admin-chat-name">Khách hàng</h3>
-                    <div><span id="admin-chat-contact"></span> <span id="admin-chat-status" class="admin-chat-status"></span></div>
+                    <div class="admin-chat-customer-name-row">
+                        <h3 id="admin-chat-name">Khách hàng</h3>
+                        <span id="admin-chat-status" class="admin-chat-status"></span>
+                        <span id="admin-chat-header-topic" class="admin-chat-topic"></span>
+                        <span id="admin-chat-priority" class="admin-chat-priority d-none"></span>
+                    </div>
+                    <div id="admin-chat-contact">Chưa có thông tin liên hệ</div>
                     <div class="admin-chat-assignment"><i class="bi bi-person-check"></i> <span id="admin-chat-assignee">Chưa phân công</span></div>
-                    <div class="admin-chat-context" id="admin-chat-context"></div>
                 </div>
-                <button type="button" class="btn btn-sm btn-primary" id="admin-chat-claim"><i class="bi bi-person-plus"></i> Nhận xử lý</button>
-                @if (User.IsInRole("Admin"))
-                {
-                    <select id="admin-chat-staff" class="form-select form-select-sm admin-chat-staff" aria-label="Đổi nhân viên phụ trách">
-                        <option value="">Đổi phụ trách...</option>
-                    </select>
-                }
-                <button type="button" class="btn btn-sm btn-outline-danger" id="admin-chat-close-conversation"><i class="bi bi-check2-circle"></i> Đóng hội thoại</button>
+                <div class="admin-chat-header-actions">
+                    <button type="button" class="btn btn-sm btn-primary" id="admin-chat-claim"><i class="bi bi-person-plus"></i> Nhận xử lý</button>
+                    @if (User.IsInRole("Admin"))
+                    {
+                        <select id="admin-chat-staff" class="form-select form-select-sm admin-chat-staff" aria-label="Đổi nhân viên phụ trách">
+                            <option value="">Đổi phụ trách</option>
+                        </select>
+                    }
+                    <button type="button" class="btn btn-sm btn-outline-danger" id="admin-chat-close-conversation"><i class="bi bi-check2-circle"></i> Đóng hội thoại</button>
+                </div>
             </header>
             <div class="admin-chat-messages" id="admin-chat-messages" aria-live="polite"></div>
-            <div class="admin-chat-closed d-none" id="admin-chat-closed">Cuộc trò chuyện này đã đóng.</div>
-            <div class="admin-chat-quick-replies">
-                <button type="button" data-reply="KKSHOP đã tiếp nhận yêu cầu của bạn và sẽ hỗ trợ trong thời gian sớm nhất.">Đã tiếp nhận</button>
-                <button type="button" data-reply="Bạn vui lòng gửi thêm hình ảnh/video lỗi để KKSHOP kiểm tra chính xác hơn.">Yêu cầu ảnh/video</button>
-                <button type="button" data-reply="Nhân viên đang kiểm tra đơn hàng cho bạn, vui lòng chờ trong ít phút.">Đang kiểm tra đơn</button>
+            <div class="admin-chat-closed d-none" id="admin-chat-closed"><i class="bi bi-lock"></i> Hội thoại này đã đóng và không thể gửi thêm tin nhắn.</div>
+            <div class="admin-chat-compose-area">
+                <div class="admin-chat-quick-replies">
+                    <span>Trả lời nhanh:</span>
+                    <button type="button" data-reply="KKSHOP đã tiếp nhận yêu cầu của bạn và sẽ hỗ trợ trong thời gian sớm nhất.">Đã tiếp nhận</button>
+                    <button type="button" data-reply="Bạn vui lòng gửi thêm hình ảnh/video lỗi để KKSHOP kiểm tra chính xác hơn.">Yêu cầu ảnh/video</button>
+                    <button type="button" data-reply="Nhân viên đang kiểm tra đơn hàng cho bạn, vui lòng chờ trong ít phút.">Đang kiểm tra đơn</button>
+                </div>
+                <form class="admin-chat-compose" id="admin-chat-compose">
+                    <textarea id="admin-chat-message" maxlength="1000" rows="2" placeholder="Nhập phản hồi cho khách hàng..."></textarea>
+                    <button type="submit"><i class="bi bi-send-fill"></i><span>Gửi</span></button>
+                </form>
+                <small class="admin-chat-compose-hint">Enter để gửi • Shift + Enter để xuống dòng</small>
             </div>
-            <form class="admin-chat-compose" id="admin-chat-compose">
-                <textarea id="admin-chat-message" maxlength="1000" rows="2" placeholder="Nhập phản hồi cho khách hàng..."></textarea>
-                <button type="submit"><i class="bi bi-send-fill"></i><span>Gửi</span></button>
-            </form>
         </div>
     </section>
+
+    <aside class="admin-chat-info-panel" id="admin-chat-info-panel">
+        <div class="admin-chat-info-empty" id="admin-chat-info-empty">
+            <i class="bi bi-person-vcard"></i>
+            <span>Thông tin hội thoại sẽ hiển thị khi bạn chọn khách hàng.</span>
+        </div>
+        <div class="admin-chat-info-content d-none" id="admin-chat-info-content">
+            <section class="admin-chat-info-card">
+                <h3><i class="bi bi-person"></i> Thông tin khách hàng</h3>
+                <dl>
+                    <div><dt>Tên</dt><dd id="admin-info-name">Chưa có thông tin</dd></div>
+                    <div><dt>Email</dt><dd id="admin-info-email">Chưa có thông tin</dd></div>
+                    <div><dt>Số điện thoại</dt><dd id="admin-info-phone">Chưa có thông tin</dd></div>
+                    <div><dt>Loại khách</dt><dd id="admin-info-type">Khách vãng lai</dd></div>
+                </dl>
+            </section>
+            <section class="admin-chat-info-card">
+                <h3><i class="bi bi-bookmark"></i> Ngữ cảnh hỗ trợ</h3>
+                <dl>
+                    <div><dt>Chủ đề</dt><dd id="admin-info-topic">Chưa có thông tin</dd></div>
+                    <div><dt>Đơn hàng</dt><dd id="admin-info-order">Chưa có thông tin</dd></div>
+                    <div><dt>Sản phẩm / bảo hành</dt><dd id="admin-info-product">Chưa có thông tin</dd></div>
+                    <div><dt>Nhu cầu</dt><dd id="admin-info-need">Chưa có thông tin</dd></div>
+                </dl>
+            </section>
+            <section class="admin-chat-info-card">
+                <h3><i class="bi bi-clock-history"></i> Lịch sử gần đây</h3>
+                <div class="admin-chat-history" id="admin-chat-history">Chưa có thông tin</div>
+            </section>
+        </div>
+    </aside>
 </div>
 
 @section Scripts {
