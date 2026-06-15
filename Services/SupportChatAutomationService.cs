@@ -143,17 +143,27 @@ public partial class SupportChatAutomationService : ISupportChatAutomationServic
         }
         var expires = WarrantyPolicy.ExpiresAt(detail.Order!.CreatedAt, months);
         var inWarranty = DateTime.UtcNow <= expires;
-        var text = inWarranty
-            ? $"KKSHOP đã kiểm tra sản phẩm của bạn. Sản phẩm hiện còn bảo hành đến {expires.ToLocalTime():dd/MM/yyyy}. Nếu sản phẩm đang gặp lỗi, bạn có thể tạo yêu cầu bảo hành để shop hỗ trợ tiếp nhé."
-            : "KKSHOP đã kiểm tra sản phẩm của bạn. Sản phẩm hiện đã hết thời hạn bảo hành. Bạn vẫn có thể gặp nhân viên tư vấn để được hỗ trợ phương án xử lý phù hợp.";
+        var purchaseDate = detail.Order.CreatedAt.ToLocalTime();
+        var expiryDate = expires.ToLocalTime();
+        var warrantyStatus = inWarranty
+            ? $"Còn bảo hành đến {expiryDate:dd/MM/yyyy}"
+            : $"Đã hết bảo hành từ {expiryDate:dd/MM/yyyy}";
+        var closingMessage = inWarranty
+            ? "Bạn có thể tạo yêu cầu bảo hành nếu sản phẩm đang gặp lỗi."
+            : "Bạn vẫn có thể gặp nhân viên tư vấn để được hỗ trợ phương án xử lý phù hợp.";
+        var text =
+            "KKSHOP đã kiểm tra bảo hành sản phẩm của bạn:\n\n" +
+            $"Sản phẩm: {detail.ProductName}\n" +
+            $"Đơn hàng: {Code(detail.OrderId)}\n" +
+            $"Ngày mua: {purchaseDate:dd/MM/yyyy}\n" +
+            $"Thời hạn bảo hành: {months} tháng\n" +
+            $"Tình trạng: {warrantyStatus}\n\n" +
+            closingMessage;
         var replies = new List<SupportQuickReply>();
         if (inWarranty)
             replies.Add(new("open_warranty", "Tạo yêu cầu bảo hành", new { orderId = detail.OrderId, productId = detail.ProductId, orderItemId = detail.Id }, $"/Warranty/Create?orderDetailId={detail.Id}"));
         replies.Add(StaffReply());
-        return Result(
-            AddSystem(c, text),
-            replies,
-            [WarrantyCard(detail, inWarranty ? $"Còn bảo hành đến {expires.ToLocalTime():dd/MM/yyyy}" : $"Đã hết bảo hành từ {expires.ToLocalTime():dd/MM/yyyy}")]);
+        return Result(AddSystem(c, text), replies);
     }
 
     private async Task<SupportAutomationResult> PaymentAsync(ChatConversation c, int? userId, CancellationToken ct)

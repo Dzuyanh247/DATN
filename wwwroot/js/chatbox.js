@@ -36,6 +36,7 @@
     let connection;
     let unread = 0;
     let pendingStartAction = null;
+    let quickActionPending = false;
 
     function readSession() {
         try { return JSON.parse(localStorage.getItem(storageKey) || 'null'); } catch { return null; }
@@ -106,9 +107,6 @@
         closedElement.classList.add('d-none');
         messageForm.classList.remove('d-none');
     }
-    function hideConversationSuggestions() {
-        document.querySelector('[data-chat-quick-container]')?.classList.add('d-none');
-    }
     function renderAutomation(data) {
         const cluster = document.createElement('div');
         cluster.className = 'kk-chat-response-cluster';
@@ -156,6 +154,7 @@
         loading.innerHTML = '<span></span><span></span><span></span>'; messagesElement.append(loading); scrollToLatest();
     }
     async function runQuickAction(actionType, payload = null) {
+        if (quickActionPending) return;
         if (!session) {
             pendingStartAction = { actionType, payload };
             const question = quickQuestions.find(x => x.actionType === actionType);
@@ -165,18 +164,25 @@
             else firstMessageInput.focus();
             return;
         }
+        quickActionPending = true;
         sendErrorElement.textContent = ''; setBotLoading(true);
         try {
             await new Promise(resolve => setTimeout(resolve, 350));
             const data = await jsonFetch(quickActionUrl, { method: 'POST', body: JSON.stringify({ conversationId: session.conversationId, accessToken: session.accessToken, actionType, payload }) });
             setBotLoading(false); renderAutomation(data);
-        } catch (error) { setBotLoading(false); sendErrorElement.textContent = error.message; }
+        } catch (error) {
+            setBotLoading(false);
+            sendErrorElement.textContent = error.message;
+        } finally {
+            quickActionPending = false;
+        }
     }
     function updateStartButton() {
         if (startSubmitLabel) startSubmitLabel.textContent = firstMessageInput.value.trim() ? 'Gửi' : 'Bắt đầu trò chuyện';
     }
     function renderQuickQuestions() {
         document.querySelectorAll('[data-chat-quick-list]').forEach(list => {
+            list.replaceChildren();
             quickQuestions.forEach(question => {
                 const button = document.createElement('button');
                 button.type = 'button';
@@ -314,7 +320,6 @@
             messagesElement.replaceChildren();
             (data.messages || []).forEach(addMessage);
             showConversation(data.status);
-            hideConversationSuggestions();
             firstMessageInput.value = '';
             updateStartButton();
             await connectRealtime();
@@ -344,7 +349,6 @@
             messageInput.value = '';
             messageInput.style.height = '';
             messageInput.focus();
-            hideConversationSuggestions();
             scrollToLatest();
         } catch (error) {
             console.error('[SupportChat] Could not send message', error);
