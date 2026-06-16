@@ -9,6 +9,11 @@ public partial class AddPasswordResetOtp : Migration
     protected override void Up(MigrationBuilder migrationBuilder)
     {
         migrationBuilder.Sql(@"
+IF OBJECT_ID('Users', 'U') IS NULL
+BEGIN
+    THROW 51000, 'Migration requires table Users. This project uses custom Users/Roles tables, not ASP.NET Identity AspNetUsers. Restore the base schema or run the initial schema script before applying feature migrations.', 1;
+END
+
 IF COL_LENGTH('Users', 'PasswordHash') IS NOT NULL
 BEGIN
     ALTER TABLE Users ALTER COLUMN PasswordHash nvarchar(500) NOT NULL;

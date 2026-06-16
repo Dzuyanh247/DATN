@@ -82,6 +82,30 @@ public class ApplicationDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
+        modelBuilder.Entity<Role>().ToTable("Roles");
+        modelBuilder.Entity<User>().ToTable("Users");
+        modelBuilder.Entity<Category>().ToTable("Categories");
+        modelBuilder.Entity<Product>().ToTable("Products");
+        modelBuilder.Entity<ProductImage>().ToTable("ProductImages");
+        modelBuilder.Entity<Banner>().ToTable("Banners");
+        modelBuilder.Entity<Cart>().ToTable("Carts");
+        modelBuilder.Entity<CartItem>().ToTable("CartItems");
+        modelBuilder.Entity<Order>().ToTable("Orders");
+        modelBuilder.Entity<OrderDetail>().ToTable("OrderDetails");
+        modelBuilder.Entity<Warranty>().ToTable("Warranties");
+        modelBuilder.Entity<WarrantyRequest>().ToTable("WarrantyRequests");
+        modelBuilder.Entity<BuildPcConfig>().ToTable("BuildPcConfigs");
+        modelBuilder.Entity<BuildPcItem>().ToTable("BuildPcItems");
+        modelBuilder.Entity<Article>().ToTable("Articles");
+        modelBuilder.Entity<Feedback>().ToTable("Feedbacks");
+        modelBuilder.Entity<SiteSetting>().ToTable("SiteSettings");
+        modelBuilder.Entity<ShippingConfig>().ToTable("ShippingConfigs");
+        modelBuilder.Entity<ShopLocation>().ToTable("ShopLocations");
+        modelBuilder.Entity<PasswordResetOtp>().ToTable("PasswordResetOtps");
+        modelBuilder.Entity<ChatConversation>().ToTable("ChatConversations");
+        modelBuilder.Entity<ChatMessage>().ToTable("ChatMessages");
+        modelBuilder.Entity<ProductReview>().ToTable("ProductReviews");
+
         foreach (var entityType in modelBuilder.Model.GetEntityTypes())
         {
             if (typeof(BaseEntity).IsAssignableFrom(entityType.ClrType))

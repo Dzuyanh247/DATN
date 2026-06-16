@@ -3,20 +3,18 @@ using Datn.PcStore.Services;
 using Datn.PcStore.Constants;
 using Datn.PcStore.Hubs;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Data.SqlClient;
 using Microsoft.AspNetCore.Identity;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var defaultConnection = builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? throw new InvalidOperationException("Missing ConnectionStrings:DefaultConnection");
-var csBuilder = new SqlConnectionStringBuilder(defaultConnection);
-Console.WriteLine($"[DB] Environment: {builder.Environment.EnvironmentName}; Server: {csBuilder.DataSource}; Database: {csBuilder.InitialCatalog}");
+using var startupLoggerFactory = LoggerFactory.Create(logging => logging.AddConsole());
+var databaseConnection = DatabaseConfiguration.ResolveConnectionString(builder.Configuration, startupLoggerFactory.CreateLogger("DatabaseConfiguration"));
+Console.WriteLine($"[DB] Environment: {builder.Environment.EnvironmentName}; Connection: {databaseConnection.ConnectionName}; Server: {databaseConnection.Server}; Database: {databaseConnection.Database}; Fallback: {databaseConnection.UsedFallback}");
 
 builder.Services.AddControllersWithViews();
 builder.Services.AddSignalR();
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(defaultConnection));
+    options.UseSqlServer(databaseConnection.ConnectionString));
 
 builder.Services.AddAuthentication(options =>
 {
@@ -166,7 +164,7 @@ app.MapControllerRoute(
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    db.Database.Migrate();
+    await DatabaseConfiguration.MigrateDatabaseAsync(app);
 
     var currentDatabaseName = await db.Database.SqlQueryRaw<string>("SELECT DB_NAME() AS [Value]").SingleAsync();
     Console.WriteLine($"[DB] SQL DB_NAME(): {currentDatabaseName}");

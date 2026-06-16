@@ -12,6 +12,17 @@ public partial class AddProductReviews : Migration
 {
     protected override void Up(MigrationBuilder migrationBuilder)
     {
+        migrationBuilder.Sql(@"
+IF OBJECT_ID('Users', 'U') IS NULL
+    THROW 51000, 'Migration requires table Users. This project uses custom Users/Roles tables, not ASP.NET Identity AspNetUsers. Restore the base schema or run the initial schema script before applying feature migrations.', 1;
+IF OBJECT_ID('Products', 'U') IS NULL
+    THROW 51000, 'Migration requires table Products before creating ProductReviews.', 1;
+IF OBJECT_ID('Orders', 'U') IS NULL
+    THROW 51000, 'Migration requires table Orders before creating ProductReviews.', 1;
+IF OBJECT_ID('OrderDetails', 'U') IS NULL
+    THROW 51000, 'Migration requires table OrderDetails before creating ProductReviews.', 1;
+");
+
         migrationBuilder.CreateTable(name: "ProductReviews", columns: table => new
         {
             Id = table.Column<int>(type: "int", nullable: false).Annotation("SqlServer:Identity", "1, 1"),
