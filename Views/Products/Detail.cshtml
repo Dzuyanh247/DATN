@@ -270,9 +270,9 @@
                     <a asp-controller="Products" asp-action="Index" class="product-view-all">Xem tất cả <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
                 </div>
                 <div class="product-related-grid">
-                    @foreach (var product in suggestions)
+                    @foreach (var suggestedProduct in suggestions)
                     {
-                        <partial name="_ProductCard" model="product" />
+                        <partial name="_ProductCard" model="suggestedProduct" />
                     }
                 </div>
             </section>
