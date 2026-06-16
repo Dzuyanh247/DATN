@@ -78,7 +78,8 @@
                     <a class="@(controllerName == "AdminInvoices" ? "active" : "")" asp-controller="AdminInvoices" asp-action="Index"><i class="bi bi-receipt-cutoff"></i><span>Hóa đơn</span></a>
                     <a class="@(controllerName == "AdminOrders" && Context.Request.Query["paymentStatus"] == PaymentStatuses.PendingConfirmation ? "active" : "")" asp-controller="AdminOrders" asp-action="Index" asp-route-paymentStatus="@PaymentStatuses.PendingConfirmation"><i class="bi bi-credit-card-2-front"></i><span>Thanh toán</span></a>
                     <span class="admin-nav-label">Sản phẩm</span>
-                    <a class="@(controllerName == "AdminProducts" ? "active" : "")" asp-controller="AdminProducts" asp-action="Index"><i class="bi bi-box-seam"></i><span>Sản phẩm</span></a>
+                    <a class="@(controllerName == "AdminProducts" ? "active" : "")" asp-controller="AdminProducts" asp-action="Index"><i class="bi bi-pc-display"></i><span>Sản phẩm PC</span></a>
+                    <a class="@(controllerName == "AdminComponents" ? "active" : "")" asp-controller="AdminComponents" asp-action="Index"><i class="bi bi-cpu"></i><span>Linh kiện</span></a>
                     <a class="@(controllerName == "AdminCategories" ? "active" : "")" asp-controller="AdminCategories" asp-action="Index"><i class="bi bi-tags"></i><span>Danh mục</span></a>
                     <a class="@(controllerName == "AdminReviews" ? "active" : "")" asp-controller="AdminReviews" asp-action="Index"><i class="bi bi-star"></i><span>Đánh giá</span></a>
                     <a class="@(controllerName == "AdminBanners" ? "active" : "")" asp-controller="AdminBanners" asp-action="Index"><i class="bi bi-images"></i><span>Banner</span></a>

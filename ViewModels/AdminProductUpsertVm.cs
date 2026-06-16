@@ -22,6 +22,8 @@ public class AdminProductUpsertVm
     [MaxLength(40)]
     public string ComponentType { get; set; } = "PC";
 
+    public string ProductType { get; set; } = ProductKinds.PC;
+
     public List<string> ComponentTypeOptions { get; set; } = ProductTypeOptions.All;
 
     [Required(ErrorMessage = "Giá gốc là bắt buộc")]
@@ -96,7 +98,35 @@ public static class ProductTypeOptions
 {
     public static readonly List<string> All = new()
     {
-        "PC", "Component", "Monitor", "Keyboard", "Mouse", "Headphone",
-        "CPU", "Mainboard", "RAM", "VGA", "SSD/HDD", "PSU", "Case", "Cooler", "Laptop", "Khác"
+        "PC", "Laptop", "Khác"
     };
+}
+
+
+public class AdminComponentIndexVm
+{
+    public List<Product> Components { get; set; } = new();
+    public List<string> ComponentTypeOptions { get; set; } = ComponentTypes.All;
+    public List<string> BrandOptions { get; set; } = new();
+    public string? Keyword { get; set; }
+    public string? ComponentType { get; set; }
+    public string? Brand { get; set; }
+    public decimal? MinPrice { get; set; }
+    public decimal? MaxPrice { get; set; }
+    public bool? IsActive { get; set; }
+    public bool? InStock { get; set; }
+}
+
+public class AdminComponentUpsertVm : AdminProductUpsertVm
+{
+    public AdminComponentUpsertVm()
+    {
+        ProductType = ProductKinds.Component;
+        ComponentType = ComponentTypes.Other;
+        ComponentTypeOptions = ComponentTypes.All;
+    }
+
+    [Required(ErrorMessage = "Vui lòng chọn loại linh kiện")]
+    [MaxLength(40)]
+    public new string ComponentType { get; set; } = ComponentTypes.Other;
 }

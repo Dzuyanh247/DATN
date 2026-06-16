@@ -23,7 +23,7 @@ public class AdminProductsController : Controller
     [HttpGet]
     public async Task<IActionResult> Index(string? keyword, int? categoryId)
     {
-        var query = _db.Products.Include(p => p.Category).Include(p => p.ProductImages).AsQueryable();
+        var query = _db.Products.Include(p => p.Category).Include(p => p.ProductImages).Where(p => p.ProductType == ProductKinds.PC).AsQueryable();
         if (!string.IsNullOrWhiteSpace(keyword)) query = query.Where(x => x.Name.Contains(keyword));
         if (categoryId.HasValue) query = query.Where(x => x.CategoryId == categoryId);
         ViewBag.Keyword = keyword;
@@ -51,7 +51,8 @@ public class AdminProductsController : Controller
         {
             Name = vm.Name,
             ProductCode = $"SP-{Guid.NewGuid():N}"[..16],
-            Brand = string.IsNullOrWhiteSpace(vm.Brand) ? "N/A" : vm.Brand.Trim(),
+            Brand = string.IsNullOrWhiteSpace(vm.Brand) ? null : vm.Brand.Trim(),
+            ProductType = ProductKinds.PC,
             Price = price,
             DiscountPrice = vm.DiscountPrice,
             SalePrice = vm.DiscountPrice,
@@ -104,11 +105,12 @@ public class AdminProductsController : Controller
             return InvalidProductForm(vm, "cập nhật");
         }
 
-        var product = await _db.Products.Include(p => p.ProductImages).FirstOrDefaultAsync(x => x.Id == vm.Id);
+        var product = await _db.Products.Include(p => p.ProductImages).FirstOrDefaultAsync(x => x.Id == vm.Id && x.ProductType == ProductKinds.PC);
         if (product == null) return NotFound();
 
         product.Name = vm.Name;
-        product.Brand = string.IsNullOrWhiteSpace(vm.Brand) ? "N/A" : vm.Brand.Trim();
+        product.Brand = string.IsNullOrWhiteSpace(vm.Brand) ? null : vm.Brand.Trim();
+        product.ProductType = ProductKinds.PC;
         product.ComponentType = vm.ComponentType;
         product.Price = vm.Price!.Value;
         product.DiscountPrice = vm.DiscountPrice;
@@ -151,7 +153,7 @@ public class AdminProductsController : Controller
     [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> Delete(int id)
     {
-        var product = await _db.Products.Include(p => p.ProductImages).FirstOrDefaultAsync(x => x.Id == id);
+        var product = await _db.Products.Include(p => p.ProductImages).FirstOrDefaultAsync(x => x.Id == id && x.ProductType == ProductKinds.PC);
         if (product == null) return RedirectToAction(nameof(Index));
         _db.Products.Remove(product);
         await _db.SaveChangesAsync();
@@ -161,8 +163,8 @@ public class AdminProductsController : Controller
 
     private async Task<AdminProductUpsertVm?> BuildUpsertVmAsync(int? productId = null) { /* omitted for brevity */
         var vm = new AdminProductUpsertVm(); await PopulateCategoriesAsync(vm); if (!productId.HasValue) return vm;
-        var product = await _db.Products.Include(p => p.ProductImages).FirstOrDefaultAsync(x => x.Id == productId.Value); if (product == null) return null;
-        vm.Id = product.Id; vm.Name = product.Name; vm.Brand = product.Brand; vm.ComponentType = string.IsNullOrWhiteSpace(product.ComponentType) ? "Khác" : product.ComponentType; vm.Price = product.Price; vm.DiscountPrice = product.DiscountPrice ?? product.SalePrice;
+        var product = await _db.Products.Include(p => p.ProductImages).FirstOrDefaultAsync(x => x.Id == productId.Value && x.ProductType == ProductKinds.PC); if (product == null) return null;
+        vm.Id = product.Id; vm.Name = product.Name; vm.Brand = product.Brand; vm.ProductType = product.ProductType; vm.ComponentType = string.IsNullOrWhiteSpace(product.ComponentType) ? "Khác" : product.ComponentType; vm.Price = product.Price; vm.DiscountPrice = product.DiscountPrice ?? product.SalePrice;
         vm.IsHotSale = product.IsHotSale; vm.IsDailyDeal = product.IsDailyDeal; vm.IsPromotion = product.IsPromotion;
         vm.PromotionStartDate = product.PromotionStartDate; vm.PromotionEndDate = product.PromotionEndDate;
         vm.SelectedPromotionTexts = ProductPromotionHelper.GetSelectedPresetTexts(product.PromotionText); vm.CustomPromotionText = ProductPromotionHelper.GetCustomText(product.PromotionText);

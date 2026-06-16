@@ -1,0 +1,39 @@
+@model Datn.PcStore.ViewModels.AdminComponentUpsertVm
+@{
+    var isEdit = Model.Id > 0;
+    var orderedImages = Model.ExistingImages.OrderBy(x => x.SortOrder).ToList();
+}
+
+<form asp-controller="AdminComponents" asp-action="@(isEdit ? "Edit" : "Create")" method="post" class="admin-product-form">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="Id" />
+    <input type="hidden" asp-for="ProductType" value="Component" />
+    <div asp-validation-summary="All" class="alert alert-danger mb-3" role="alert"></div>
+    <div class="row g-4">
+        <div class="col-lg-7">
+            <div class="apf-card mb-4">
+                <h5 class="apf-title">Thông tin cơ bản</h5>
+                <div class="row g-3">
+                    <div class="col-12"><label asp-for="Name" class="form-label">Tên linh kiện</label><input asp-for="Name" class="form-control" /><span asp-validation-for="Name" class="text-danger"></span></div>
+                    <div class="col-md-6"><label asp-for="CategoryId" class="form-label">Danh mục linh kiện</label><select asp-for="CategoryId" class="form-select" asp-items="@(new Microsoft.AspNetCore.Mvc.Rendering.SelectList(Model.Categories, "Id", "Name"))"><option value="">-- Chọn danh mục --</option></select><span asp-validation-for="CategoryId" class="text-danger"></span></div>
+                    <div class="col-md-6"><label asp-for="ComponentType" class="form-label">Loại / nhánh linh kiện</label><select asp-for="ComponentType" class="form-select" asp-items="@(new Microsoft.AspNetCore.Mvc.Rendering.SelectList(Model.ComponentTypeOptions))"><option value="">-- Chọn loại --</option></select><span asp-validation-for="ComponentType" class="text-danger"></span></div>
+                    <div class="col-md-6"><label asp-for="Brand" class="form-label">Thương hiệu <span class="text-muted">(không bắt buộc)</span></label><input asp-for="Brand" class="form-control" placeholder="VD: ASUS, Intel, Logitech hoặc để trống" /><span asp-validation-for="Brand" class="text-danger"></span></div>
+                    <div class="col-md-6"><label asp-for="StockQuantity" class="form-label">Tồn kho</label><input asp-for="StockQuantity" class="form-control" min="0" /><span asp-validation-for="StockQuantity" class="text-danger"></span></div>
+                    <div class="col-md-6"><label asp-for="Price" class="form-label">Giá gốc</label><input asp-for="Price" class="form-control" min="1000" /><span asp-validation-for="Price" class="text-danger"></span></div>
+                    <div class="col-md-6"><label asp-for="DiscountPrice" class="form-label">Giá khuyến mãi</label><input asp-for="DiscountPrice" class="form-control" min="0" /><span asp-validation-for="DiscountPrice" class="text-danger"></span></div>
+                    <div class="col-md-6"><label asp-for="WarrantyMonths" class="form-label">Bảo hành (tháng)</label><input asp-for="WarrantyMonths" class="form-control" min="0" /><span asp-validation-for="WarrantyMonths" class="text-danger"></span></div>
+                    <div class="col-md-6 d-flex align-items-end"><div class="form-check"><input asp-for="IsActive" class="form-check-input" /><label asp-for="IsActive" class="form-check-label">Trạng thái đang kinh doanh</label></div></div>
+                </div>
+            </div>
+            <div class="apf-card mb-4"><h5 class="apf-title">Mô tả / SEO</h5><label asp-for="Description" class="form-label">Mô tả ngắn / chi tiết</label><textarea asp-for="Description" rows="7" class="form-control"></textarea><span asp-validation-for="Description" class="text-danger"></span></div>
+            <div class="apf-card"><h5 class="apf-title">Thông số kỹ thuật</h5><textarea asp-for="Specifications" rows="10" class="form-control" placeholder="Kích thước: 24 inch&#10;Tần số quét: 240Hz&#10;Tấm nền: IPS&#10;Kết nối: HDMI, DisplayPort"></textarea><div class="form-text text-muted">Nhập dạng key-value, mỗi thông số một dòng.</div><span asp-validation-for="Specifications" class="text-danger"></span></div>
+        </div>
+        <div class="col-lg-5"><div class="apf-card"><h5 class="apf-title">Hình ảnh</h5>
+            @if (orderedImages.Any()) { <label class="form-label">Ảnh hiện có</label><div class="apf-image-list mb-3">@foreach (var image in orderedImages) { <div class="apf-image-item"><img src="@image.ImageUrl" alt="Ảnh linh kiện" /><div class="apf-image-meta"><label class="form-check-label text-danger small"><input class="form-check-input" type="checkbox" name="RemoveImageIds" value="@image.Id" /> Xóa</label><input type="hidden" name="ExistingImageOrder" value="@image.Id" /></div></div> }</div> }
+            <label asp-for="ThumbnailImageUrl" class="form-label">Ảnh đại diện</label><input asp-for="ThumbnailImageUrl" class="form-control" placeholder="URL ảnh đại diện" /><span asp-validation-for="ThumbnailImageUrl" class="text-danger"></span>
+            <label asp-for="ProductImageUrlsText" class="form-label mt-3">Thư viện ảnh</label><textarea asp-for="ProductImageUrlsText" rows="5" class="form-control" placeholder="Mỗi URL ảnh trên một dòng"></textarea><span asp-validation-for="ProductImageUrlsText" class="text-danger"></span>
+        </div></div>
+    </div>
+    <div class="mt-4 d-flex gap-2"><button type="submit" class="btn btn-primary">Lưu linh kiện</button><a asp-action="Index" class="btn btn-outline-secondary">Quay lại</a></div>
+</form>
+<partial name="_ValidationScriptsPartial" />
