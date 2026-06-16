@@ -73,6 +73,22 @@ public class AdminReviewsController : Controller
         return RedirectToAction(nameof(Index));
     }
 
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var review = await _db.ProductReviews.FindAsync(id);
+        if (review == null)
+        {
+            TempData["ErrorMessage"] = "Không tìm thấy đánh giá cần xoá.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        _db.ProductReviews.Remove(review);
+        await _db.SaveChangesAsync();
+        TempData["SuccessMessage"] = "Đã xoá đánh giá thành công.";
+        return RedirectToAction(nameof(Index));
+    }
+
     private void SetHandler(ProductReview review)
     {
         review.HandledByStaffId = int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : null;

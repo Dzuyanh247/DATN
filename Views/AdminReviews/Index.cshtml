@@ -3,33 +3,35 @@
     ViewData["Title"] = "Quản lý đánh giá";
 }
 <div class="admin-page-heading">
-    <div><span class="admin-eyebrow">Chăm sóc khách hàng</span><h2>Quản lý đánh giá</h2><p>Duyệt nội dung, phản hồi khách hàng và theo dõi người xử lý.</p></div>
+    <div><span class="admin-eyebrow">Chăm sóc khách hàng</span><h2>Quản lý đánh giá</h2><p>Theo dõi nội dung, phản hồi khách hàng và xoá các đánh giá không phù hợp.</p></div>
     <span class="admin-result-pill"><i class="bi bi-star"></i> @Model.Reviews.Count đánh giá</span>
 </div>
-<section class="admin-card">
-    <form method="get" class="row g-2 mb-4">
+<section class="admin-card admin-review-card">
+    <form method="get" class="row g-2 mb-4 admin-review-filters">
         <div class="col-lg-4"><input class="form-control" name="keyword" value="@Model.Keyword" placeholder="Sản phẩm, khách hàng, nội dung..." /></div>
         <div class="col-md-3"><select class="form-select" name="rating"><option value="">Tất cả số sao</option>@for(var i=5;i>=1;i--){<option value="@i" selected="@(Model.Rating==i)">@i sao</option>}</select></div>
         <div class="col-md-3"><select class="form-select" name="status"><option value="">Tất cả trạng thái</option>@foreach(var s in Enum.GetValues<ReviewStatus>()){<option value="@s" selected="@(Model.Status==s)">@ReviewStatusHelper.Label(s)</option>}</select></div>
         <div class="col-md-2"><button class="btn btn-primary w-100"><i class="bi bi-funnel"></i> Lọc</button></div>
     </form>
-    <div class="table-responsive">
-        <table class="table align-middle">
-            <thead><tr><th>Sản phẩm</th><th>Khách hàng</th><th>Sao</th><th>Nội dung</th><th>Trạng thái</th><th>Ngày đánh giá</th><th>Người xử lý</th><th>Hành động</th></tr></thead>
+    <div class="table-responsive admin-review-table-wrap">
+        <table class="table align-middle admin-review-table">
+            <thead><tr><th>Sản phẩm</th><th>Khách hàng</th><th>Sao</th><th>Nội dung</th><th>Trạng thái</th><th>Ngày đánh giá</th><th>Người xử lý</th><th class="text-end">Hành động</th></tr></thead>
             <tbody>
             @foreach(var r in Model.Reviews){
                 <tr>
-                    <td><div class="d-flex align-items-center gap-2" style="min-width:220px"><img src="@ImageUrlHelper.ResolveImageUrl(r.Product?.ThumbnailImage,"/images/placeholders/product-placeholder.png")" class="rounded border" style="width:52px;height:52px;object-fit:contain"/><strong>@r.Product?.Name</strong></div></td>
-                    <td>@r.User?.FullName<br/><span class="badge text-bg-success">Đã mua hàng</span></td>
-                    <td class="text-warning text-nowrap">@r.Rating <i class="bi bi-star-fill"></i></td>
-                    <td style="max-width:280px"><span class="text-truncate d-block">@r.Comment</span></td>
-                    <td><span class="badge @ReviewStatusHelper.BadgeClass(r.Status)">@ReviewStatusHelper.Label(r.Status)</span></td>
-                    <td>@DateTimeHelper.FormatVietnam(r.CreatedAt,"dd/MM/yyyy HH:mm")</td>
+                    <td><div class="admin-review-product"><img src="@ImageUrlHelper.ResolveImageUrl(r.Product?.ThumbnailImage,"/images/placeholders/product-placeholder.png")" alt="@r.Product?.Name"/><strong>@r.Product?.Name</strong></div></td>
+                    <td><span class="admin-review-customer">@r.User?.FullName</span><span class="badge admin-review-verified">Đã mua hàng</span></td>
+                    <td class="admin-review-rating">@r.Rating <i class="bi bi-star-fill"></i></td>
+                    <td><span class="admin-review-comment">@r.Comment</span></td>
+                    <td><span class="badge admin-review-status @ReviewStatusHelper.BadgeClass(r.Status)">@ReviewStatusHelper.Label(r.Status)</span></td>
+                    <td class="admin-review-date">@DateTimeHelper.FormatVietnam(r.CreatedAt,"dd/MM/yyyy HH:mm")</td>
                     <td><strong>@(r.HandledByStaffName ?? "Chưa phân công")</strong>@if(r.HandledAt.HasValue){<small class="d-block text-muted">@DateTimeHelper.FormatVietnam(r.HandledAt,"dd/MM HH:mm")</small>}</td>
-                    <td class="text-nowrap">
+                    <td class="admin-review-actions text-end">
                         <a class="btn btn-sm btn-outline-primary" asp-action="Detail" asp-route-id="@r.Id"><i class="bi bi-eye"></i> Chi tiết</a>
-                        <form asp-action="SetStatus" method="post" class="d-inline"><input type="hidden" name="id" value="@r.Id"/><input type="hidden" name="status" value="@ReviewStatus.Approved"/><button class="btn btn-sm btn-outline-success">Duyệt</button></form>
-                        <form asp-action="SetStatus" method="post" class="d-inline"><input type="hidden" name="id" value="@r.Id"/><input type="hidden" name="status" value="@ReviewStatus.Hidden"/><button class="btn btn-sm btn-outline-secondary">Ẩn</button></form>
+                        <form asp-action="Delete" method="post" class="d-inline" onsubmit="return confirm('Bạn có chắc muốn xoá đánh giá này không? Hành động này không thể hoàn tác.');">
+                            <input type="hidden" name="id" value="@r.Id"/>
+                            <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i> Xoá</button>
+                        </form>
                     </td>
                 </tr>
             }
@@ -38,3 +40,33 @@
         </table>
     </div>
 </section>
+
+<style>
+    .admin-review-card { border: 1px solid #e2e8f0; border-radius: 20px; box-shadow: 0 14px 34px rgba(15, 23, 42, .06); }
+    .admin-review-filters .form-control, .admin-review-filters .form-select { min-height: 42px; border-color: #dbe3ee; border-radius: 12px; }
+    .admin-review-table-wrap { border: 1px solid #e5edf6; border-radius: 16px; background: #fff; overflow-x: auto; }
+    .admin-review-table { min-width: 1120px; margin-bottom: 0; font-size: .92rem; }
+    .admin-content .admin-review-table thead th { padding: 14px 16px; background: #f1f5f9; color: #475569; font-size: .76rem; font-weight: 800; letter-spacing: .055em; }
+    .admin-content .admin-review-table tbody tr { box-shadow: none; transition: background .18s ease; }
+    .admin-content .admin-review-table tbody tr:hover { background: #f8fbff; }
+    .admin-content .admin-review-table tbody tr td { padding: 16px; border-bottom: 1px solid #edf2f7; }
+    .admin-review-product { display: flex; align-items: center; gap: 12px; min-width: 245px; }
+    .admin-review-product img { width: 58px; height: 58px; flex: 0 0 auto; object-fit: contain; padding: 5px; border: 1px solid #e2e8f0; border-radius: 12px; background: #f8fafc; }
+    .admin-review-product strong { display: -webkit-box; max-width: 260px; overflow: hidden; color: #172033; font-weight: 750; line-height: 1.35; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+    .admin-review-customer { display: block; min-width: 130px; color: #1f2937; font-weight: 650; }
+    .admin-review-verified { margin-top: 6px; border-radius: 999px; background: #dcfce7; color: #15803d; font-weight: 750; }
+    .admin-review-rating { color: #f59e0b; font-weight: 800; white-space: nowrap; }
+    .admin-review-comment { display: -webkit-box; max-width: 310px; overflow: hidden; color: #334155; line-height: 1.45; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+    .admin-review-status { border-radius: 999px; padding: 7px 11px; font-weight: 750; line-height: 1.1; white-space: nowrap; }
+    .admin-review-status.text-bg-success { background: #dcfce7 !important; color: #166534 !important; }
+    .admin-review-status.text-bg-warning { background: #fef3c7 !important; color: #92400e !important; }
+    .admin-review-status.text-bg-secondary { background: #f1f5f9 !important; color: #475569 !important; }
+    .admin-review-status.text-bg-danger { background: #fee2e2 !important; color: #991b1b !important; }
+    .admin-review-date { min-width: 135px; color: #475569; white-space: nowrap; }
+    .admin-review-actions { min-width: 180px; white-space: nowrap; }
+    .admin-review-actions .btn { display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; font-weight: 700; }
+    .admin-review-actions form { margin-left: 6px; }
+    .admin-review-actions .btn-outline-danger { border-color: #fecaca; color: #dc2626; background: #fff7f7; }
+    .admin-review-actions .btn-outline-danger:hover { border-color: #dc2626; background: #dc2626; color: #fff; }
+    @media (max-width: 576px) { .admin-review-card { padding: 14px; } .admin-review-actions { min-width: 170px; } }
+</style>
