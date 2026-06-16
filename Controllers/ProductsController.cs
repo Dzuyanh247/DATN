@@ -79,7 +79,7 @@ public class ProductsController : Controller
         if (vm.PriceRanges.Length > 0)
             filteredProducts = ApplyPriceRangeFilter(filteredProducts, vm.PriceRanges);
         if (vm.Brands.Length > 0)
-            filteredProducts = filteredProducts.Where(product => vm.Brands.Contains(product.Brand, StringComparer.OrdinalIgnoreCase));
+            filteredProducts = filteredProducts.Where(product => !string.IsNullOrWhiteSpace(product.Brand) && vm.Brands.Contains(product.Brand, StringComparer.OrdinalIgnoreCase));
 
         var matchingIds = GetMatchingParsedFacetIds(facetProducts, parsedFacets, vm);
         if (matchingIds is not null)
@@ -136,7 +136,7 @@ public class ProductsController : Controller
             .ToList();
 
         vm.BrandOptions = products
-            .Where(product => !string.IsNullOrWhiteSpace(product.Brand))
+            .Where(product => !string.IsNullOrWhiteSpace(product.Brand) && !string.Equals(product.Brand.Trim(), "N/A", StringComparison.OrdinalIgnoreCase))
             .GroupBy(product => product.Brand.Trim(), StringComparer.OrdinalIgnoreCase)
             .Select(group => new ProductFilterOptionVm { Value = group.Key, Label = group.Key, Count = group.Count() })
             .OrderBy(option => option.Label)
@@ -201,7 +201,7 @@ public class ProductsController : Controller
         {
             Product = product,
             SearchText = SearchTextHelper.NormalizeSearchText(string.Join(' ',
-                product.Name, product.Brand, product.Category?.Name, product.ShortDescription,
+                product.Name, product.Brand ?? string.Empty, product.Category?.Name, product.ShortDescription,
                 product.Description, product.DetailDescription, product.Specifications,
                 product.ComponentType, product.CpuSocket, product.RamType))
         }).ToList();

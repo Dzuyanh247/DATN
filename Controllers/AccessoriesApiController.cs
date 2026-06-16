@@ -1,5 +1,6 @@
 using Datn.PcStore.Data;
 using Datn.PcStore.Helpers;
+using Datn.PcStore.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -22,13 +23,13 @@ public class AccessoriesApiController : ControllerBase
             return BadRequest(new { message = "Loại sản phẩm mua kèm không hợp lệ." });
 
         var baseQuery = _db.Products.Include(p => p.Category).Include(p => p.ProductImages)
-            .Where(p => p.IsActive && p.ComponentType == type);
+            .Where(p => p.IsActive && p.ProductType == ProductKinds.Component && p.ComponentType == type);
         var query = baseQuery;
 
         if (!string.IsNullOrWhiteSpace(keyword))
         {
             var kw = keyword.Trim();
-            query = query.Where(p => p.Name.Contains(kw) || p.Brand.Contains(kw) || p.ShortDescription.Contains(kw));
+            query = query.Where(p => p.Name.Contains(kw) || (p.Brand != null && p.Brand.Contains(kw)) || p.ShortDescription.Contains(kw));
         }
         if (minPrice.HasValue) query = query.Where(p => ((p.DiscountPrice ?? p.SalePrice) ?? p.Price) >= minPrice.Value);
         if (maxPrice.HasValue) query = query.Where(p => ((p.DiscountPrice ?? p.SalePrice) ?? p.Price) <= maxPrice.Value);
@@ -50,7 +51,7 @@ public class AccessoriesApiController : ControllerBase
             {
                 id = p.Id,
                 name = p.Name,
-                brand = p.Brand,
+                brand = p.Brand ?? string.Empty,
                 categoryId = p.CategoryId,
                 categoryName = p.Category?.Name ?? string.Empty,
                 image = ImageUrlHelper.ResolveImageUrl(p.ProductImages.OrderBy(x => x.SortOrder).Select(x => x.ImageUrl).FirstOrDefault() ?? p.ThumbnailImage, "/images/no-image.png"),

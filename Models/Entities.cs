@@ -3,6 +3,22 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Datn.PcStore.Models;
 
+public static class ProductKinds
+{
+    public const string PC = "PC";
+    public const string Component = "Component";
+}
+
+public static class ComponentTypes
+{
+    public const string Other = "Other";
+    public static readonly List<string> All = new()
+    {
+        "CPU", "Mainboard", "RAM", "VGA", "SSD", "HDD", "PSU", "Case", "Cooler",
+        "Monitor", "Keyboard", "Mouse", "Headphone", "MonitorArm", Other
+    };
+}
+
 public class Role : BaseEntity
 {
     [MaxLength(50)] public string Name { get; set; } = string.Empty;
@@ -50,7 +66,8 @@ public class Product : BaseEntity
     [MaxLength(200)] public string Name { get; set; } = string.Empty;
     [MaxLength(220)] public string Slug { get; set; } = string.Empty;
     [MaxLength(50)] public string ProductCode { get; set; } = string.Empty;
-    [MaxLength(80)] public string Brand { get; set; } = string.Empty;
+    [MaxLength(80)] public string? Brand { get; set; }
+    [MaxLength(20)] public string ProductType { get; set; } = ProductKinds.PC;
     public decimal Price { get; set; }
     public decimal? DiscountPrice { get; set; }
     public decimal? SalePrice { get; set; }
