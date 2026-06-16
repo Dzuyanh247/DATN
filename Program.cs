@@ -8,10 +8,15 @@ using Microsoft.AspNetCore.Identity;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var defaultConnection = builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? throw new InvalidOperationException("Missing ConnectionStrings:DefaultConnection");
+var csBuilder = new SqlConnectionStringBuilder(defaultConnection);
+Console.WriteLine($"[DB] Environment: {builder.Environment.EnvironmentName}; Server: {csBuilder.DataSource}; Database: {csBuilder.InitialCatalog}");
+
 builder.Services.AddControllersWithViews();
 builder.Services.AddSignalR();
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(defaultConnection));
 
 builder.Services.AddAuthentication(options =>
 {
@@ -98,11 +103,6 @@ builder.Services.AddHttpClient<IGhnAddressService, GhnAddressService>((sp, clien
         client.DefaultRequestHeaders.Add("Token", options.Token);
     }
 });
-
-
-var defaultConnection = builder.Configuration.GetConnectionString("DefaultConnection") ?? string.Empty;
-var csBuilder = new SqlConnectionStringBuilder(defaultConnection);
-Console.WriteLine($"[DB] Environment: {builder.Environment.EnvironmentName}; Server: {csBuilder.DataSource}; Database: {csBuilder.InitialCatalog}");
 
 var app = builder.Build();
 

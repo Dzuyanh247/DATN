@@ -255,7 +255,7 @@ Người dùng -> /Account/Login
 ### 4.5 SQL Server
 
 - **Vai trò trong dự án**: hệ quản trị cơ sở dữ liệu lưu users, roles, products, orders, carts, shipping configs, articles và các bảng nghiệp vụ khác.
-- **Nơi cấu hình**: `appsettings.json` và `appsettings.Development.json` có connection string `DefaultConnection` dùng SQL Server Express database `DATN_PCStore`.
+- **Nơi cấu hình**: `appsettings.json` và `appsettings.Development.json` có connection string `DefaultConnection` dùng SQL Server LocalDB database `DATN_PCStore`.
 - **Ưu điểm**:
   - Phù hợp với .NET và Entity Framework Core.
   - Hỗ trợ transaction, index, constraint, kiểu dữ liệu decimal/datetime2/nvarchar.
