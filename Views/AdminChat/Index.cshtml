@@ -45,6 +45,12 @@
                     <div id="admin-chat-contact">Chưa có thông tin liên hệ</div>
                     <div class="admin-chat-assignment"><i class="bi bi-person-check"></i> <span id="admin-chat-assignee">Chưa phân công</span></div>
                 </div>
+                <div class="admin-chat-context-actions" aria-label="Thao tác nhanh theo ngữ cảnh">
+                    <button type="button" data-panel="orders"><i class="bi bi-bag-check"></i> Đơn hàng</button>
+                    <button type="button" data-panel="products"><i class="bi bi-box-seam"></i> Sản phẩm</button>
+                    <button type="button" data-panel="warranty"><i class="bi bi-shield-check"></i> Bảo hành</button>
+                    <button type="button" data-panel="history"><i class="bi bi-clock-history"></i> Lịch sử mua</button>
+                </div>
                 <div class="admin-chat-header-actions">
                     <button type="button" class="btn btn-sm btn-primary" id="admin-chat-claim"><i class="bi bi-person-plus"></i> Nhận xử lý</button>
                     @if (User.IsInRole("Admin"))
@@ -53,19 +59,22 @@
                             <option value="">Đổi phụ trách</option>
                         </select>
                     }
-                    <button type="button" class="btn btn-sm btn-outline-danger" id="admin-chat-close-conversation"><i class="bi bi-check2-circle"></i> Đóng hội thoại</button>
+                    <button type="button" class="btn btn-sm btn-outline-success" id="admin-chat-resolve"><i class="bi bi-check2"></i> Đã xử lý</button>
+                    <button type="button" class="btn btn-sm btn-outline-danger" id="admin-chat-close-conversation"><i class="bi bi-x-circle"></i> Đóng hội thoại</button>
                 </div>
             </header>
             <div class="admin-chat-messages" id="admin-chat-messages" aria-live="polite"></div>
             <div class="admin-chat-closed d-none" id="admin-chat-closed"><i class="bi bi-lock"></i> Hội thoại này đã đóng và không thể gửi thêm tin nhắn.</div>
             <div class="admin-chat-compose-area" id="admin-chat-compose-area">
                 <div class="admin-chat-quick-replies" aria-label="Trả lời nhanh">
-                    <span>Trả lời nhanh:</span>
+                    <span>Gợi ý nhanh:</span>
                     <button type="button" data-reply="Xin chào, KKSHOP có thể hỗ trợ gì cho bạn ạ?">Xin chào</button>
                     <button type="button" data-reply="Bạn vui lòng gửi mã đơn hàng hoặc số điện thoại đặt hàng để KKSHOP kiểm tra nhanh hơn nhé.">Kiểm tra đơn hàng</button>
                     <button type="button" data-reply="KKSHOP hỗ trợ thanh toán COD hoặc chuyển khoản theo thông tin trên đơn hàng. Bạn cần mình hướng dẫn bước nào ạ?">Hướng dẫn thanh toán</button>
                     <button type="button" data-reply="Bạn cho KKSHOP biết nhu cầu sử dụng, ngân sách và màn hình đang dùng để tư vấn cấu hình phù hợp nhé.">Tư vấn cấu hình</button>
-                    <button type="button" data-reply="Bạn vui lòng gửi mã đơn hàng, tên sản phẩm và mô tả lỗi để KKSHOP kiểm tra bảo hành ạ.">Hỗ trợ bảo hành</button>
+                    <button type="button" data-reply="Bạn vui lòng gửi mã đơn hàng, tên sản phẩm và mô tả lỗi để KKSHOP kiểm tra bảo hành ạ.">Kiểm tra bảo hành</button>
+                    <button type="button" data-reply="KKSHOP gửi bạn thông tin chuyển khoản: Ngân hàng: [Tên ngân hàng] • Số tài khoản: [Số tài khoản] • Chủ tài khoản: KKSHOP • Nội dung: [Mã đơn hàng].">Gửi thông tin chuyển khoản</button>
+                    <button type="button" data-reply="KKSHOP xin phép kết thúc phiên hỗ trợ tại đây. Nếu cần thêm thông tin, bạn nhắn lại để KKSHOP hỗ trợ tiếp nhé.">Kết thúc hỗ trợ</button>
                 </div>
                 <form class="admin-chat-compose" id="admin-chat-compose">
                     <textarea id="admin-chat-message" maxlength="1000" rows="2" placeholder="Nhập phản hồi cho khách hàng..."></textarea>
@@ -75,6 +84,18 @@
             </div>
         </div>
     </section>
+
+    <div class="admin-chat-drawer-backdrop d-none" id="admin-chat-drawer-backdrop"></div>
+    <aside class="admin-chat-drawer d-none" id="admin-chat-drawer" aria-live="polite">
+        <div class="admin-chat-drawer-head">
+            <div>
+                <span>Thao tác nhanh</span>
+                <h3 id="admin-chat-drawer-title">Ngữ cảnh</h3>
+            </div>
+            <button type="button" id="admin-chat-drawer-close" aria-label="Đóng"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="admin-chat-drawer-body" id="admin-chat-drawer-body">Chọn hội thoại để xem thông tin.</div>
+    </aside>
 
     <aside class="admin-chat-info-panel" id="admin-chat-info-panel">
         <div class="admin-chat-info-empty" id="admin-chat-info-empty">

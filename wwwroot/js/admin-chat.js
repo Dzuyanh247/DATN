@@ -18,6 +18,12 @@
         const compose = $('admin-chat-compose');
         const input = $('admin-chat-message');
         const closeButton = $('admin-chat-close-conversation');
+        const resolveButton = $('admin-chat-resolve');
+        const drawer = $('admin-chat-drawer');
+        const drawerBackdrop = $('admin-chat-drawer-backdrop');
+        const drawerTitle = $('admin-chat-drawer-title');
+        const drawerBody = $('admin-chat-drawer-body');
+        const drawerClose = $('admin-chat-drawer-close');
         const claimButton = $('admin-chat-claim');
         const staffSelect = $('admin-chat-staff');
         const backButton = $('admin-chat-back');
@@ -43,6 +49,8 @@
             toggleClass(infoEmpty, 'd-none', false);
             toggleClass(infoContent, 'd-none', true);
             if (closeButton) closeButton.disabled = true;
+            if (resolveButton) resolveButton.disabled = true;
+            closeDrawer();
             if (claimButton) claimButton.disabled = true;
             if (staffSelect) staffSelect.disabled = true;
             if (input) input.disabled = true;
@@ -118,6 +126,22 @@
             if (messages.querySelector(`[data-day-label="${CSS.escape(label)}"]`)) return;
             const separator = document.createElement('div'); separator.className = 'admin-chat-date-separator'; separator.dataset.dayLabel = label; separator.textContent = label; messages.append(separator);
         }
+        function drawerRow(label, value) { return value ? `<div class="drawer-row"><b>${label}</b><span>${String(value).replace(/[&<>]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[ch]))}</span></div>` : ''; }
+        function drawerCode(label, value) { return value ? `<div class="drawer-row"><b>${label}</b><code>${String(value).replace(/[&<>]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[ch]))}</code></div>` : ''; }
+        function closeDrawer() { toggleClass(drawer, 'd-none', true); toggleClass(drawerBackdrop, 'd-none', true); }
+        function openDrawer(kind) {
+            if (!activeConversation || !drawer || !drawerBody || !drawerTitle) return;
+            const context = parseContext(activeConversation);
+            const titles = { orders: 'Đơn hàng', products: 'Sản phẩm', warranty: 'Bảo hành', history: 'Lịch sử mua' };
+            drawerTitle.textContent = titles[kind] || 'Ngữ cảnh';
+            let html = '';
+            if (kind === 'orders') html = drawerCode('Mã đơn gần nhất', context.orderCode) + drawerRow('Trạng thái', context.orderStatus) + drawerRow('Thanh toán', context.paymentStatus) + drawerRow('Gợi ý', 'Dùng card trong luồng chat để xem đúng góc nhìn của khách.');
+            if (kind === 'products') html = drawerRow('Sản phẩm đang trao đổi', context.productName || context.warrantyProduct) + drawerRow('Nhu cầu cấu hình', context.pcNeed) + drawerRow('Gợi ý', 'Tư vấn ngắn gọn, sau đó gửi card sản phẩm trong luồng chat.');
+            if (kind === 'warranty') html = drawerRow('Sản phẩm bảo hành', context.warrantyProduct || context.productName) + drawerRow('Trạng thái bảo hành', context.warrantyStatus) + drawerRow('Gợi ý', 'Xin mã đơn, sản phẩm và mô tả lỗi trước khi hướng dẫn tiếp.');
+            if (kind === 'history') html = drawerRow('Khách hàng', activeConversation.name || 'Khách hàng') + drawerRow('Liên hệ', [activeConversation.phone, activeConversation.email].filter(Boolean).join(' • ')) + drawerRow('Lần chat gần nhất', activeConversation.closedAt ? formatDay(activeConversation.closedAt) : formatDay(activeConversation.createdAt)) + drawerRow('Số cuộc trò chuyện', '1');
+            drawerBody.innerHTML = html || '<div class="drawer-row">Chưa có dữ liệu ngữ cảnh cho hội thoại này.</div>';
+            toggleClass(drawer, 'd-none', false); toggleClass(drawerBackdrop, 'd-none', false);
+        }
         function addDetail(container, label, value, extraClass) { if (!value) return; const row = document.createElement('span'); if (extraClass) row.className = extraClass; const text = document.createElement('span'); text.textContent = label; const strong = document.createElement('b'); strong.textContent = value; row.append(text, strong); container.append(row); }
         function renderMetadata(metadata, wrapper) {
             const cards = metadataValue(metadata, 'cards') || []; if (!cards.length) return;
@@ -144,8 +168,8 @@
             });
             wrapper.append(container);
         }
-        function addMessage(item) { if (!item || !messages || messages.querySelector(`[data-message-id="${item.id}"]`)) return; appendDateSeparator(item.createdAt); const type = String(item.senderType || '').toLowerCase(), system = item.isSystem || type === 'system', staff = type === 'staff' || type === 'admin'; const wrapper = document.createElement('div'); wrapper.className = `admin-chat-message ${system ? 'system' : staff ? 'staff' : 'customer'}`; wrapper.dataset.messageId = item.id; const bubble = document.createElement('div'); bubble.className = 'admin-chat-bubble'; bubble.textContent = item.message || ''; const time = document.createElement('div'); time.className = 'admin-chat-message-time'; time.textContent = `${system ? 'KKSHOP' : (item.senderName || (staff ? 'Nhân viên KKSHOP' : 'Khách hàng'))} • ${formatDate(item.createdAt, true)}`; wrapper.append(bubble, time); renderMetadata(item.metadata, wrapper); messages.append(wrapper); messages.scrollTop = messages.scrollHeight; }
-        function setStatus(status) { const closed = statusValue(status) === 'closed', badge = $('admin-chat-status'); if (badge) { badge.textContent = closed ? 'Đã đóng' : 'Đang mở'; badge.classList.toggle('closed', closed); } toggleClass($('admin-chat-closed'), 'd-none', !closed); if (input) input.disabled = closed || !activeId; const send = compose?.querySelector('button[type="submit"]'); if (send) send.disabled = closed || !activeId; if (closeButton) { closeButton.classList.toggle('d-none', closed); closeButton.disabled = closed || !activeId; } if (claimButton) { claimButton.classList.toggle('d-none', closed); claimButton.disabled = closed || !activeId; } }
+        function addMessage(item) { if (!item || !messages || messages.querySelector(`[data-message-id="${item.id}"]`)) return; appendDateSeparator(item.createdAt); const type = String(item.senderType || '').toLowerCase(), system = item.isSystem || type === 'system', staff = type === 'staff' || type === 'admin', bot = type === 'bot' || type === 'assistant' || type === 'automation'; const wrapper = document.createElement('div'); wrapper.className = `admin-chat-message ${system ? 'system' : staff ? 'staff' : bot ? 'bot' : 'customer'}`; wrapper.dataset.messageId = item.id; const bubble = document.createElement('div'); bubble.className = 'admin-chat-bubble'; bubble.textContent = item.message || ''; const time = document.createElement('div'); time.className = 'admin-chat-message-time'; time.textContent = `${system ? 'KKSHOP' : (item.senderName || (staff ? 'Nhân viên KKSHOP' : 'Khách hàng'))} • ${formatDate(item.createdAt, true)}`; wrapper.append(bubble, time); renderMetadata(item.metadata, wrapper); messages.append(wrapper); messages.scrollTop = messages.scrollHeight; }
+        function setStatus(status) { const closed = statusValue(status) === 'closed', badge = $('admin-chat-status'); if (badge) { badge.textContent = closed ? 'Đã đóng' : 'Đang mở'; badge.classList.toggle('closed', closed); } toggleClass($('admin-chat-closed'), 'd-none', !closed); if (input) input.disabled = closed || !activeId; const send = compose?.querySelector('button[type="submit"]'); if (send) send.disabled = closed || !activeId; if (closeButton) { closeButton.classList.toggle('d-none', closed); closeButton.disabled = closed || !activeId; } if (resolveButton) { resolveButton.disabled = closed || !activeId; } if (claimButton) { claimButton.classList.toggle('d-none', closed); claimButton.disabled = closed || !activeId; } }
         function setAssignment(c) { setText('admin-chat-assignee', c.assignedStaffName ? `Phụ trách: ${c.assignedStaffName}` : 'Chưa phân công'); if (claimButton) { claimButton.classList.toggle('d-none', !!c.assignedStaffId || statusValue(c.status) === 'closed'); claimButton.disabled = !activeId || statusValue(c.status) === 'closed'; } if (staffSelect) { staffSelect.value = c.assignedStaffId || ''; staffSelect.disabled = !activeId || statusValue(c.status) === 'closed'; } }
         function parseContext(c) { if (!c.automationContext) return {}; const value = String(c.automationContext).trim(); return value.startsWith('{') ? JSON.parse(value) : {}; }
         function showContext(c) { const context = parseContext(c), topic = topicLabels[c.topic] || 'Tư vấn'; setText('admin-chat-header-topic', topic); const priority = $('admin-chat-priority'); if (priority) { priority.classList.toggle('d-none', !c.needsStaff && !c.priority); priority.textContent = c.priority > 0 ? `Ưu tiên ${c.priority}` : 'Cần xử lý'; } toggleClass($('admin-chat-info-empty'), 'd-none', true); toggleClass($('admin-chat-info-content'), 'd-none', false); setText('admin-info-name', c.name || 'Chưa có thông tin'); setText('admin-info-email', c.email || 'Chưa có thông tin'); setText('admin-info-phone', c.phone || 'Chưa có thông tin'); setText('admin-info-type', c.customerType || 'Khách vãng lai'); setText('admin-info-topic', topic); setText('admin-info-order', context.orderCode || 'Chưa có thông tin'); setText('admin-info-product', context.warrantyProduct || context.productName || 'Chưa có thông tin'); setText('admin-info-need', context.pcNeed || 'Chưa có thông tin'); const history = $('admin-chat-history'); if (history) { history.replaceChildren(); const rows = [context.orderCode ? `Đơn hàng gần nhất: ${context.orderCode}` : '', c.closedAt ? `Lần chat gần nhất: ${formatDay(c.closedAt)}` : (c.createdAt ? `Lần chat gần nhất: ${formatDay(c.createdAt)}` : ''), 'Số cuộc trò chuyện: 1']; rows.filter(Boolean).forEach(text => { const span = document.createElement('span'); span.textContent = text; history.append(span); }); if (!history.childElementCount) history.textContent = 'Chưa có thông tin'; } }
@@ -158,9 +182,13 @@
         document.querySelectorAll('[data-reply]').forEach(button => button.addEventListener('click', () => { if (!activeId) return; input.value = button.dataset.reply || ''; input.dispatchEvent(new Event('input')); input.focus(); }));
         claimButton?.addEventListener('click', () => assign(null));
         staffSelect?.addEventListener('change', () => { if (activeId && staffSelect.value) assign(Number(staffSelect.value)); });
+        resolveButton?.addEventListener('click', async () => { if (!activeId) return; input.value = 'Hội thoại đã được KKSHOP đánh dấu đã xử lý. Nếu bạn cần hỗ trợ thêm, cứ nhắn lại cho KKSHOP nhé.'; input.dispatchEvent(new Event('input')); input.focus(); });
         closeButton?.addEventListener('click', async () => { if (!activeId || !activeConversation || !confirm('Bạn có chắc muốn đóng hội thoại này? Tin nhắn vẫn được lưu lại.')) return; try { await request(`/AdminChat/conversations/${activeId}/close`, { method: 'POST', body: '{}' }); setStatus('Closed'); activeConversation.status = 'Closed'; await loadConversations(); } catch (error) { showError(error.message); } });
         backButton?.addEventListener('click', () => root.classList.remove('room-open'));
         refreshButton?.addEventListener('click', loadConversations);
+        drawerClose?.addEventListener('click', closeDrawer);
+        drawerBackdrop?.addEventListener('click', closeDrawer);
+        document.querySelectorAll('[data-panel]').forEach(button => button.addEventListener('click', () => openDrawer(button.dataset.panel)));
         document.querySelectorAll('[data-filter]').forEach(button => button.addEventListener('click', () => { document.querySelectorAll('[data-filter]').forEach(item => item.classList.remove('active')); button.classList.add('active'); filter = button.dataset.filter || 'all'; renderList(); }));
         async function loadStaff() { if (!staffSelect) return; const data = await request('/AdminChat/staff'); (data.staff || []).forEach(item => { const option = document.createElement('option'); option.value = item.id; option.textContent = item.fullName; staffSelect.append(option); }); }
         function fallbackPolling() { if (!polling) polling = setInterval(loadConversations, 7000); }
