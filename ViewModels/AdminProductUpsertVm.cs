@@ -28,6 +28,7 @@ public class AdminProductUpsertVm
     public string ProductType { get; set; } = ProductKinds.PC;
 
     public List<string> ComponentTypeOptions { get; set; } = ProductTypeOptions.All;
+    public List<string> BrandOptions { get; set; } = new();
 
     [Required(ErrorMessage = "Giá gốc là bắt buộc")]
     [Range(1000, 999999999, ErrorMessage = "Giá gốc phải từ 1.000 đến 999.999.999")]

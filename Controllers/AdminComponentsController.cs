@@ -36,8 +36,7 @@ public class AdminComponentsController : Controller
         var vm = new AdminComponentIndexVm
         {
             Components = await query.OrderByDescending(p => p.CreatedAt).ToListAsync(),
-            BrandOptions = await _db.Products.Where(p => p.ProductType == ProductKinds.Component && p.Brand != null && p.Brand != "")
-                .Select(p => p.Brand!).Distinct().OrderBy(x => x).ToListAsync(),
+            BrandOptions = await GetBrandOptionsAsync(componentType),
             Keyword = keyword, ComponentType = componentType, Brand = brand, MinPrice = minPrice, MaxPrice = maxPrice, IsActive = isActive, InStock = inStock
         };
         return View(vm);
@@ -52,6 +51,7 @@ public class AdminComponentsController : Controller
         await PopulateCategoriesAsync(vm);
         TryValidateProductImageUrls(vm, true);
         NormalizeComponentInput(vm);
+        vm.BrandOptions = await GetBrandOptionsAsync(vm.ComponentType, vm.Brand);
         ValidateComponentBusinessRules(vm);
         if (!ModelState.IsValid) return InvalidForm(vm, "tạo");
 
@@ -99,6 +99,7 @@ public class AdminComponentsController : Controller
         await PopulateCategoriesAsync(vm);
         TryValidateProductImageUrls(vm, false);
         NormalizeComponentInput(vm);
+        vm.BrandOptions = await GetBrandOptionsAsync(vm.ComponentType, vm.Brand);
         ValidateComponentBusinessRules(vm);
         if (!ModelState.IsValid) { await PopulateExistingImagesAsync(vm); return InvalidForm(vm, "cập nhật"); }
         var product = await _db.Products.Include(p => p.ProductImages).FirstOrDefaultAsync(p => p.Id == vm.Id && p.ProductType == ProductKinds.Component);
@@ -125,12 +126,24 @@ public class AdminComponentsController : Controller
 
     private async Task<AdminComponentUpsertVm?> BuildVmAsync(int? id = null)
     {
-        var vm = new AdminComponentUpsertVm(); await PopulateCategoriesAsync(vm); if (!id.HasValue) return vm;
+        var vm = new AdminComponentUpsertVm(); await PopulateCategoriesAsync(vm); vm.BrandOptions = await GetBrandOptionsAsync(vm.ComponentType); if (!id.HasValue) return vm;
         var p = await _db.Products.Include(x => x.ProductImages).FirstOrDefaultAsync(x => x.Id == id.Value && x.ProductType == ProductKinds.Component); if (p == null) return null;
-        vm.Id = p.Id; vm.Name = p.Name; vm.ProductCode = p.ProductCode; vm.Brand = p.Brand; vm.ComponentType = string.IsNullOrWhiteSpace(p.ComponentType) ? ComponentTypes.Other : p.ComponentType; vm.Price = p.Price; vm.DiscountPrice = p.DiscountPrice ?? p.SalePrice; vm.StockQuantity = p.StockQuantity; vm.WarrantyMonths = p.WarrantyMonths; vm.CategoryId = p.CategoryId; vm.Description = p.Description; vm.Specifications = p.Specifications; vm.SpecificationItems = ProductSpecificationKeyValueHelper.ParseStored(p.Specifications); vm.IsActive = p.IsActive; vm.ThumbnailImageUrl = p.ThumbnailImage;
+        vm.Id = p.Id; vm.Name = p.Name; vm.ProductCode = p.ProductCode; vm.Brand = p.Brand; vm.ComponentType = string.IsNullOrWhiteSpace(p.ComponentType) ? ComponentTypes.Other : p.ComponentType; vm.BrandOptions = await GetBrandOptionsAsync(vm.ComponentType, vm.Brand); vm.Price = p.Price; vm.DiscountPrice = p.DiscountPrice ?? p.SalePrice; vm.StockQuantity = p.StockQuantity; vm.WarrantyMonths = p.WarrantyMonths; vm.CategoryId = p.CategoryId; vm.Description = p.Description; vm.Specifications = p.Specifications; vm.SpecificationItems = ProductSpecificationKeyValueHelper.ParseStored(p.Specifications); vm.IsActive = p.IsActive; vm.ThumbnailImageUrl = p.ThumbnailImage;
         var imgs = p.ProductImages.OrderBy(x => x.SortOrder).ToList(); vm.ExistingImageOrder = imgs.Select(x => x.Id).ToList(); vm.ExistingImages = imgs.Select(x => new ProductImageItemVm{Id=x.Id, ImageUrl=x.ImageUrl, IsPrimary=x.IsPrimary, SortOrder=x.SortOrder}).ToList(); return vm;
     }
     private async Task PopulateCategoriesAsync(AdminProductUpsertVm vm) => vm.Categories = await _db.Categories.OrderBy(x => x.Name).ToListAsync();
+    private async Task<List<string>> GetBrandOptionsAsync(string? componentType, string? currentBrand = null)
+    {
+        var query = _db.Products.AsNoTracking()
+            .Where(p => p.ProductType == ProductKinds.Component && p.Brand != null && p.Brand != "" && p.Brand != "N/A");
+        if (!string.IsNullOrWhiteSpace(componentType))
+            query = query.Where(p => p.ComponentType == componentType.Trim());
+
+        var brands = await query.Select(p => p.Brand!.Trim()).Distinct().OrderBy(x => x).ToListAsync();
+        if (!string.IsNullOrWhiteSpace(currentBrand) && !brands.Contains(currentBrand.Trim(), StringComparer.OrdinalIgnoreCase))
+            brands.Add(currentBrand.Trim());
+        return brands.OrderBy(x => x).ToList();
+    }
     private async Task PopulateExistingImagesAsync(AdminProductUpsertVm vm) { vm.ExistingImages = await _db.ProductImages.Where(x => x.ProductId == vm.Id).OrderBy(x => x.SortOrder).Select(x => new ProductImageItemVm{Id=x.Id,ImageUrl=x.ImageUrl,IsPrimary=x.IsPrimary,SortOrder=x.SortOrder}).ToListAsync(); if (!vm.ExistingImageOrder.Any()) vm.ExistingImageOrder = vm.ExistingImages.Select(x => x.Id).ToList(); }
     private IActionResult InvalidForm(AdminComponentUpsertVm vm, string op) { _logger.LogWarning("Không thể {Operation} linh kiện: ModelState invalid", op); TempData["ErrorMessage"] = $"Không thể {op} linh kiện. Vui lòng kiểm tra lỗi trong biểu mẫu."; return View(vm); }
     private bool TryValidateProductImageUrls(AdminProductUpsertVm vm, bool requireThumbnail) { if (requireThumbnail && string.IsNullOrWhiteSpace(vm.ThumbnailImageUrl)) ModelState.AddModelError(nameof(vm.ThumbnailImageUrl), "Vui lòng nhập URL ảnh đại diện."); ValidateUrl(vm.ThumbnailImageUrl, nameof(vm.ThumbnailImageUrl)); foreach (var url in SplitImageUrls(vm.ProductImageUrlsText)) ValidateUrl(url, nameof(vm.ProductImageUrlsText)); return ModelState.IsValid; }

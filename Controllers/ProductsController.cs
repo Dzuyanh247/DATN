@@ -24,6 +24,7 @@ public class ProductsController : Controller
         int? categoryId,
         string? categorySlug,
         string? brand,
+        string? type,
         decimal? minPrice,
         decimal? maxPrice,
         string[]? priceRanges,
@@ -43,8 +44,8 @@ public class ProductsController : Controller
             MinPrice = minPrice,
             MaxPrice = maxPrice,
             PriceRanges = CleanSelections(priceRanges),
-            Brands = CleanSelections(brands),
-            ComponentTypes = CleanSelections(componentTypes),
+            Brands = CleanSelections(brands).Concat(CleanSelections(string.IsNullOrWhiteSpace(brand) ? null : new[] { brand })).Distinct(StringComparer.OrdinalIgnoreCase).ToArray(),
+            ComponentTypes = CleanSelections(componentTypes).Concat(CleanSelections(string.IsNullOrWhiteSpace(type) ? null : new[] { type })).Distinct(StringComparer.OrdinalIgnoreCase).ToArray(),
             Specs = CleanSelections(specs),
             Cpu = CleanSelections(cpu),
             Ram = CleanSelections(ram),
@@ -64,10 +65,6 @@ public class ProductsController : Controller
 
         if (vm.CategoryId.HasValue)
             query = query.Where(p => p.CategoryId == vm.CategoryId.Value);
-        if (!string.IsNullOrWhiteSpace(vm.Brand))
-            query = query.Where(p => p.Brand == vm.Brand);
-        if (vm.Brands.Length > 0)
-            query = query.Where(p => p.Brand != null && vm.Brands.Contains(p.Brand));
         if (vm.ComponentTypes.Length > 0)
             query = query.Where(p => p.ComponentType != null && vm.ComponentTypes.Contains(p.ComponentType));
         if (vm.MinPrice.HasValue)
@@ -85,6 +82,9 @@ public class ProductsController : Controller
         PopulateFilterOptions(vm, facetProducts, parsedFacets);
 
         IEnumerable<Product> filteredProducts = facetProducts;
+        if (vm.Brands.Length > 0)
+            filteredProducts = filteredProducts.Where(product => product.Brand != null && vm.Brands.Contains(product.Brand, StringComparer.OrdinalIgnoreCase));
+
         var matchingIds = GetMatchingParsedFacetIds(facetProducts, parsedFacets, vm);
         if (matchingIds is not null)
             filteredProducts = filteredProducts.Where(product => matchingIds.Contains(product.Id));
@@ -95,6 +95,11 @@ public class ProductsController : Controller
         vm.Products = filteredProducts.ToList();
 
         return View(vm);
+    }
+
+    public Task<IActionResult> Category(string? type, string? brand)
+    {
+        return Index(null, null, null, brand, type, null, null, null, null, null, null, null, null, null);
     }
 
     public async Task<IActionResult> Detail(int id, int? rating)
