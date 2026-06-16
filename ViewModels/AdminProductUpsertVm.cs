@@ -15,6 +15,15 @@ public class AdminProductUpsertVm
     [Range(1, int.MaxValue, ErrorMessage = "Vui lòng chọn danh mục hợp lệ")]
     public int? CategoryId { get; set; }
 
+    [MaxLength(80)]
+    public string? Brand { get; set; }
+
+    [Required(ErrorMessage = "Vui lòng chọn loại sản phẩm / linh kiện")]
+    [MaxLength(40)]
+    public string ComponentType { get; set; } = "PC";
+
+    public List<string> ComponentTypeOptions { get; set; } = ProductTypeOptions.All;
+
     [Required(ErrorMessage = "Giá gốc là bắt buộc")]
     [Range(1000, 999999999, ErrorMessage = "Giá gốc phải từ 1.000 đến 999.999.999")]
     public decimal? Price { get; set; }
@@ -81,4 +90,13 @@ public class ProductComponentSpecViewModel
     public int? Quantity { get; set; } = 1;
 
     public string? Warranty { get; set; }
+}
+
+public static class ProductTypeOptions
+{
+    public static readonly List<string> All = new()
+    {
+        "PC", "Component", "Monitor", "Keyboard", "Mouse", "Headphone",
+        "CPU", "Mainboard", "RAM", "VGA", "SSD/HDD", "PSU", "Case", "Cooler", "Laptop", "Khác"
+    };
 }

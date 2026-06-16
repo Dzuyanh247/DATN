@@ -60,6 +60,19 @@
                         <span asp-validation-for="CategoryId" class="text-danger"></span>
                     </div>
                     <div class="col-md-6">
+                        <label asp-for="Brand" class="form-label">Thương hiệu</label>
+                        <input asp-for="Brand" class="form-control" placeholder="VD: ASUS, Logitech, KKSHOP" />
+                        <span asp-validation-for="Brand" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="ComponentType" class="form-label">Loại sản phẩm / linh kiện</label>
+                        <select asp-for="ComponentType" class="form-select" asp-items="@(new Microsoft.AspNetCore.Mvc.Rendering.SelectList(Model.ComponentTypeOptions))">
+                            <option value="">-- Chọn loại --</option>
+                        </select>
+                        <div class="form-text text-muted">Dùng để lọc sản phẩm mua kèm, không phụ thuộc tên sản phẩm.</div>
+                        <span asp-validation-for="ComponentType" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6">
                         <label asp-for="StockQuantity" class="form-label">Tồn kho</label>
                         <input asp-for="StockQuantity" class="form-control" min="0" />
                         <span asp-validation-for="StockQuantity" class="text-danger"></span>

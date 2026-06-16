@@ -34,8 +34,15 @@
     var fullDescription = ProductSpecDisplayHelper.GetFullDescriptionText(Model);
     var promotionLines = ProductPromotionHelper.GetPromotionLines(Model);
 
-    var bundleProducts = suggestions.Take(4).ToList();
-    var bundleLabels = new[] { "Màn hình", "Bàn phím", "Chuột", "Tai nghe" };
+    var accessorySlots = new[]
+    {
+        new { Type = "Monitor", Label = "Màn hình", Image = "https://ttgshop.vn/media/category/cat_big_1003486567.png" },
+        new { Type = "Keyboard", Label = "Bàn phím", Image = "https://ttgshop.vn/media/category/cat_big_1003353341.png" },
+        new { Type = "Mouse", Label = "Chuột", Image = "https://ttgshop.vn/media/category/cat_big_1003353370.png" },
+        new { Type = "Headphone", Label = "Tai nghe", Image = "https://ttgshop.vn/media/category/cat_big_1004013226.jpg" }
+    };
+    var isPcProduct = string.Equals(Model.ComponentType, "PC", StringComparison.OrdinalIgnoreCase)
+        || (Model.Category?.Name?.Contains("PC", StringComparison.OrdinalIgnoreCase) ?? false);
     var reviewSection = ViewBag.ReviewSection as ProductReviewSectionVm ?? new ProductReviewSectionVm { ProductId = Model.Id };
 }
 
@@ -77,36 +84,30 @@
                         </div>
                     </div>
 
-                    @if (bundleProducts.Any())
+                    @if (isPcProduct)
                     {
-                        <section class="bundle-section" aria-labelledby="bundle-title">
-                            <div class="bundle-heading">
-                                <h2 id="bundle-title"><i class="bi bi-plus-circle-fill" aria-hidden="true"></i>Sản phẩm mua kèm</h2>
-                                <span>Hoàn thiện góc máy của bạn</span>
-                            </div>
-                            <div class="bundle-grid">
-                                @for (var i = 0; i < bundleProducts.Count; i++)
-                                {
-                                    var product = bundleProducts[i];
-                                    var bundlePrice = (product.DiscountPrice ?? product.SalePrice) ?? product.Price;
-                                    var bundleType = !string.IsNullOrWhiteSpace(product.ComponentType) && !string.Equals(product.ComponentType, "Khác", StringComparison.OrdinalIgnoreCase)
-                                        ? product.ComponentType
-                                        : product.Category?.Name ?? bundleLabels[Math.Min(i, bundleLabels.Length - 1)];
-                                    var bundleImage = ImageUrlHelper.ResolveImageUrl(product.ProductImages.OrderBy(x => x.SortOrder).FirstOrDefault()?.ImageUrl
-                                        ?? product.ThumbnailImage, "/images/no-image.png");
-                                    <article class="bundle-card">
-                                        <a asp-controller="Products" asp-action="Detail" asp-route-id="@product.Id" class="bundle-image" aria-label="Xem @product.Name">
-                                            <img src="@bundleImage" alt="@product.Name" onerror="this.onerror=null;this.src='/images/no-image.png';" />
-                                        </a>
-                                        <span class="bundle-type">@bundleType</span>
-                                        <a asp-controller="Products" asp-action="Detail" asp-route-id="@product.Id" class="bundle-name">@product.Name</a>
-                                        <strong>@bundlePrice.ToString("N0", culture) đ</strong>
-                                        <a asp-controller="Products" asp-action="Detail" asp-route-id="@product.Id" class="bundle-select-btn">Chọn sản phẩm</a>
-                                    </article>
-                                }
-                            </div>
-                            <div class="bundle-subtotal"><span>Tạm tính từ</span><strong>@finalPrice.ToString("N0", culture) đ</strong></div>
-                        </section>
+                    <section class="bundle-section" aria-labelledby="bundle-title" data-accessory-picker>
+                        <div class="bundle-heading">
+                            <h2 id="bundle-title"><i class="bi bi-plus-circle-fill" aria-hidden="true"></i>Sản phẩm mua kèm</h2>
+                            <span>Chọn màn hình, bàn phím, chuột, tai nghe từ kho linh kiện hiện có</span>
+                        </div>
+                        <div class="bundle-grid">
+                            @foreach (var slot in accessorySlots)
+                            {
+                                <article class="bundle-card accessory-slot" data-slot-type="@slot.Type" data-slot-label="@slot.Label" data-default-image="@slot.Image">
+                                    <div class="bundle-image"><img src="@slot.Image" alt="@slot.Label" onerror="this.onerror=null;this.src='/images/no-image.png';" /></div>
+                                    <span class="bundle-type">@slot.Label</span>
+                                    <strong class="bundle-name">Chưa chọn sản phẩm</strong>
+                                    <span class="bundle-price">Chọn phụ kiện phù hợp</span>
+                                    <div class="bundle-actions">
+                                        <button type="button" class="bundle-select-btn" data-open-accessory>Chọn sản phẩm</button>
+                                        <button type="button" class="bundle-remove-btn d-none" data-remove-accessory>Xóa lựa chọn</button>
+                                    </div>
+                                </article>
+                            }
+                        </div>
+                        <div class="bundle-subtotal"><span>PC hiện tại</span><strong>@finalPrice.ToString("N0", culture) đ</strong></div>
+                    </section>
                     }
                 </div>
 
@@ -166,7 +167,7 @@
                         </ul>
                     </div>
 
-                    <form method="post" asp-controller="Cart" asp-action="Add" class="purchase-form">
+                    <form method="post" asp-controller="Cart" asp-action="AddBundle" class="purchase-form" id="purchase-form">
                         <input type="hidden" name="productId" value="@Model.Id" />
                         <div class="purchase-quantity">
                             <label for="product-quantity">Số lượng</label>
@@ -177,8 +178,9 @@
                             </div>
                             <span class="stock-note">@(inStock ? $"Sẵn có {Model.StockQuantity} sản phẩm" : "Sản phẩm đang tạm hết hàng")</span>
                         </div>
+                        <div id="selected-accessory-inputs"></div>
                         <div class="detail-action-row">
-                            <button class="btn product-buy-now" type="submit" formaction="/Cart/BuyNow" @(inStock ? string.Empty : "disabled")>
+                            <button class="btn product-buy-now" type="submit" formaction="/Cart/BuyBundle" @(inStock ? string.Empty : "disabled")>
                                 <i class="bi bi-lightning-charge-fill" aria-hidden="true"></i><span><strong>ĐẶT HÀNG</strong><small>Giao hàng tận nơi</small></span>
                             </button>
                             <button class="btn product-add-cart" type="submit" @(inStock ? string.Empty : "disabled")>
@@ -250,6 +252,27 @@
     </div>
 </div>
 
+<div class="accessory-modal" id="accessory-modal" hidden>
+    <div class="accessory-modal-backdrop" data-close-accessory></div>
+    <div class="accessory-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="accessory-modal-title">
+        <div class="accessory-modal-header">
+            <div><span>Sản phẩm được đề xuất</span><h3 id="accessory-modal-title">Chọn sản phẩm mua kèm</h3></div>
+            <button type="button" class="accessory-modal-close" data-close-accessory aria-label="Đóng">×</button>
+        </div>
+        <div class="accessory-filters">
+            <input id="accessory-keyword" class="form-control" placeholder="Tìm kiếm sản phẩm" />
+            <input id="accessory-min-price" class="form-control" type="number" min="0" placeholder="Giá từ" />
+            <input id="accessory-max-price" class="form-control" type="number" min="0" placeholder="Giá đến" />
+            <select id="accessory-brand" class="form-select"><option value="">Tất cả thương hiệu</option></select>
+            <select id="accessory-category" class="form-select"><option value="">Tất cả danh mục</option></select>
+            <select id="accessory-sort" class="form-select"><option value="newest">Mới nhất</option><option value="price_asc">Giá tăng dần</option><option value="price_desc">Giá giảm dần</option></select>
+        </div>
+        <div id="accessory-loading" class="accessory-state">Đang tải sản phẩm...</div>
+        <div id="accessory-empty" class="accessory-state" hidden>Không có sản phẩm phù hợp.</div>
+        <div id="accessory-grid" class="accessory-product-grid"></div>
+    </div>
+</div>
+
 @section Scripts {
     <script>
         (function () {
@@ -280,6 +303,97 @@
                     quantity.dispatchEvent(new Event('change', { bubbles: true }));
                 });
             });
+
+
+            const modal = document.getElementById('accessory-modal');
+            const grid = document.getElementById('accessory-grid');
+            const loading = document.getElementById('accessory-loading');
+            const empty = document.getElementById('accessory-empty');
+            const selectedInputs = document.getElementById('selected-accessory-inputs');
+            const currency = new Intl.NumberFormat('vi-VN');
+            const filters = {
+                keyword: document.getElementById('accessory-keyword'),
+                minPrice: document.getElementById('accessory-min-price'),
+                maxPrice: document.getElementById('accessory-max-price'),
+                brand: document.getElementById('accessory-brand'),
+                category: document.getElementById('accessory-category'),
+                sort: document.getElementById('accessory-sort')
+            };
+            let activeSlot = null;
+            let activeType = '';
+            const selected = new Map();
+            const debounce = (fn, wait) => { let t; return () => { clearTimeout(t); t = setTimeout(fn, wait); }; };
+
+            function openAccessory(slot) {
+                activeSlot = slot;
+                activeType = slot.dataset.slotType;
+                document.getElementById('accessory-modal-title').textContent = 'Chọn ' + slot.dataset.slotLabel;
+                modal.hidden = false;
+                document.body.classList.add('accessory-modal-open');
+                loadAccessories(true);
+            }
+            function closeAccessory() { modal.hidden = true; document.body.classList.remove('accessory-modal-open'); }
+            function renderFacets(facets) {
+                const currentBrand = filters.brand.value;
+                const currentCategory = filters.category.value;
+                filters.brand.innerHTML = '<option value="">Tất cả thương hiệu</option>' + (facets.brands || []).map(x => `<option value="${escapeHtml(x)}">${escapeHtml(x)}</option>`).join('');
+                filters.category.innerHTML = '<option value="">Tất cả danh mục</option>' + (facets.categories || []).map(x => `<option value="${x.categoryId}">${escapeHtml(x.name)}</option>`).join('');
+                filters.brand.value = currentBrand;
+                filters.category.value = currentCategory;
+            }
+            async function loadAccessories(refreshFacets) {
+                loading.hidden = false; empty.hidden = true; grid.innerHTML = '';
+                const params = new URLSearchParams({ type: activeType, sort: filters.sort.value });
+                if (filters.keyword.value.trim()) params.set('keyword', filters.keyword.value.trim());
+                if (filters.minPrice.value) params.set('minPrice', filters.minPrice.value);
+                if (filters.maxPrice.value) params.set('maxPrice', filters.maxPrice.value);
+                if (filters.brand.value) params.set('brand', filters.brand.value);
+                if (filters.category.value) params.set('categoryId', filters.category.value);
+                try {
+                    const response = await fetch('/api/accessories?' + params.toString(), { headers: { 'Accept': 'application/json' } });
+                    const data = await response.json();
+                    if (!response.ok) throw new Error(data.message || 'Không thể tải sản phẩm.');
+                    if (refreshFacets) renderFacets(data.facets || {});
+                    renderProducts(data.products || []);
+                } catch (error) {
+                    empty.textContent = error.message || 'Không thể tải sản phẩm.'; empty.hidden = false;
+                } finally { loading.hidden = true; }
+            }
+            function renderProducts(products) {
+                empty.hidden = products.length > 0;
+                grid.innerHTML = products.map(product => `
+                    <article class="accessory-product-card">
+                        <img src="${escapeHtml(product.image)}" alt="${escapeHtml(product.name)}" onerror="this.onerror=null;this.src='/images/no-image.png';" />
+                        <div class="accessory-card-body">
+                            <span>${escapeHtml(product.brand || product.categoryName || '')}</span>
+                            <h4>${escapeHtml(product.name)}</h4>
+                            <div><strong>${currency.format(product.price)} đ</strong>${product.oldPrice > product.price ? `<del>${currency.format(product.oldPrice)} đ</del><em>-${product.discountPercent}%</em>` : ''}</div>
+                            <p>${product.stockQuantity > 0 ? 'Còn hàng: ' + product.stockQuantity : 'Hết hàng'}</p>
+                        </div>
+                        <div class="accessory-card-actions"><a class="btn btn-outline-secondary btn-sm" href="${product.detailUrl}">Chi tiết</a><button class="btn btn-primary btn-sm" type="button" data-choose-accessory='${JSON.stringify(product).replace(/'/g, '&apos;')}'>Chọn</button></div>
+                    </article>`).join('');
+            }
+            function chooseAccessory(product) {
+                selected.set(activeType, product);
+                activeSlot.querySelector('img').src = product.image;
+                activeSlot.querySelector('.bundle-name').textContent = product.name;
+                activeSlot.querySelector('.bundle-price').textContent = currency.format(product.price) + ' đ';
+                activeSlot.querySelector('[data-open-accessory]').textContent = 'Đổi sản phẩm';
+                activeSlot.querySelector('[data-remove-accessory]').classList.remove('d-none');
+                refreshAccessoryInputs(); closeAccessory();
+            }
+            function refreshAccessoryInputs() {
+                selectedInputs.innerHTML = '';
+                selected.forEach(product => {
+                    const input = document.createElement('input'); input.type = 'hidden'; input.name = 'AccessoryProductIds'; input.value = product.id; selectedInputs.appendChild(input);
+                });
+            }
+            function escapeHtml(value) { return String(value || '').replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c])); }
+            page.querySelectorAll('[data-open-accessory]').forEach(btn => btn.addEventListener('click', () => openAccessory(btn.closest('.accessory-slot'))));
+            page.querySelectorAll('[data-remove-accessory]').forEach(btn => btn.addEventListener('click', () => { const slot = btn.closest('.accessory-slot'); selected.delete(slot.dataset.slotType); slot.querySelector('img').src = slot.dataset.defaultImage; slot.querySelector('.bundle-name').textContent = 'Chưa chọn sản phẩm'; slot.querySelector('.bundle-price').textContent = 'Chọn phụ kiện phù hợp'; slot.querySelector('[data-open-accessory]').textContent = 'Chọn sản phẩm'; btn.classList.add('d-none'); refreshAccessoryInputs(); }));
+            modal.querySelectorAll('[data-close-accessory]').forEach(btn => btn.addEventListener('click', closeAccessory));
+            grid.addEventListener('click', event => { const btn = event.target.closest('[data-choose-accessory]'); if (!btn) return; chooseAccessory(JSON.parse(btn.dataset.chooseAccessory.replace(/&apos;/g, "'"))); });
+            Object.values(filters).forEach(control => control.addEventListener(control.tagName === 'INPUT' ? 'input' : 'change', debounce(() => loadAccessories(false), 300)));
         })();
     </script>
 }
