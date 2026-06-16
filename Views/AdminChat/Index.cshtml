@@ -49,7 +49,6 @@
                     <button type="button" data-panel="orders"><i class="bi bi-bag-check"></i> Đơn hàng</button>
                     <button type="button" data-panel="products"><i class="bi bi-box-seam"></i> Sản phẩm</button>
                     <button type="button" data-panel="warranty"><i class="bi bi-shield-check"></i> Bảo hành</button>
-                    <button type="button" data-panel="history"><i class="bi bi-clock-history"></i> Lịch sử mua</button>
                 </div>
                 <div class="admin-chat-header-actions">
                     <button type="button" class="btn btn-sm btn-primary" id="admin-chat-claim"><i class="bi bi-person-plus"></i> Nhận xử lý</button>
@@ -68,13 +67,14 @@
             <div class="admin-chat-compose-area" id="admin-chat-compose-area">
                 <div class="admin-chat-quick-replies" aria-label="Trả lời nhanh">
                     <span>Gợi ý nhanh:</span>
-                    <button type="button" data-reply="Bạn cho KKSHOP biết nhu cầu sử dụng, ngân sách và màn hình đang dùng để tư vấn cấu hình PC phù hợp nhé.">Tư vấn cấu hình PC</button>
-                    <button type="button" data-reply="Bạn vui lòng gửi mã đơn hàng, tên sản phẩm và mô tả lỗi để KKSHOP kiểm tra bảo hành ạ.">Kiểm tra bảo hành</button>
-                    <button type="button" data-reply="Bạn vui lòng gửi mã đơn hàng hoặc số điện thoại đặt hàng để KKSHOP kiểm tra tình trạng đơn hàng nhanh hơn nhé.">Hỏi tình trạng đơn hàng</button>
-                    <button type="button" data-reply="KKSHOP hỗ trợ thanh toán COD hoặc chuyển khoản. Bạn cần mình hướng dẫn bước nào ạ?">Hỗ trợ thanh toán</button>
-                    <button type="button" data-reply="KKSHOP sẽ chuyển hội thoại cho nhân viên phụ trách hỗ trợ trực tiếp cho bạn ạ.">Gặp nhân viên</button>
-                    <button type="button" data-reply="KKSHOP gửi bạn thông tin chuyển khoản: Ngân hàng: [Tên ngân hàng] • Số tài khoản: [Số tài khoản] • Chủ tài khoản: KKSHOP • Nội dung: [Mã đơn hàng].">Gửi thông tin chuyển khoản</button>
-                    <button type="button" data-reply="KKSHOP xin phép kết thúc phiên hỗ trợ tại đây. Nếu cần thêm thông tin, bạn nhắn lại để KKSHOP hỗ trợ tiếp nhé.">Kết thúc hỗ trợ</button>
+                    <button type="button" data-reply="KKSHOP xin chào anh/chị, em có thể hỗ trợ mình thông tin gì ạ?">Xin chào</button>
+                    <button type="button" data-reply="Anh/chị vui lòng cung cấp mã đơn hàng hoặc số điện thoại đặt hàng để KKSHOP kiểm tra nhanh hơn ạ.">Cần mã đơn hàng</button>
+                    <button type="button" data-reply="KKSHOP sẽ kiểm tra tình trạng đơn hàng và phản hồi anh/chị trong ít phút ạ.">Kiểm tra đơn hàng</button>
+                    <button type="button" data-reply="Anh/chị vui lòng gửi mã bảo hành/mã đơn hàng, tên sản phẩm và mô tả lỗi để KKSHOP kiểm tra bảo hành ạ.">Kiểm tra bảo hành</button>
+                    <button type="button" data-reply="KKSHOP hỗ trợ thanh toán COD hoặc chuyển khoản ngân hàng. Anh/chị muốn KKSHOP hướng dẫn theo hình thức nào ạ?">Hướng dẫn thanh toán</button>
+                    <button type="button" data-reply="KKSHOP gửi anh/chị thông tin chuyển khoản: Ngân hàng: [Tên ngân hàng] • Số tài khoản: [Số tài khoản] • Chủ tài khoản: KKSHOP • Nội dung: [Mã đơn hàng].">Gửi thông tin chuyển khoản</button>
+                    <button type="button" data-reply="KKSHOP đã ghi nhận thông tin và sẽ hẹn nhân viên phụ trách liên hệ lại anh/chị sớm nhất ạ.">Hẹn nhân viên liên hệ</button>
+                    <button type="button" data-reply="KKSHOP xin phép kết thúc phiên hỗ trợ tại đây. Nếu cần thêm thông tin, anh/chị nhắn lại để KKSHOP hỗ trợ tiếp nhé.">Kết thúc hỗ trợ</button>
                 </div>
                 <form class="admin-chat-compose" id="admin-chat-compose">
                     <textarea id="admin-chat-message" maxlength="1000" rows="2" placeholder="Nhập phản hồi cho khách hàng..."></textarea>
@@ -104,26 +104,28 @@
         </div>
         <div class="admin-chat-info-content d-none" id="admin-chat-info-content">
             <section class="admin-chat-info-card">
-                <h3><i class="bi bi-person"></i> Thông tin khách hàng</h3>
+                <h3><i class="bi bi-person"></i> Khách hàng</h3>
                 <dl>
                     <div><dt>Tên</dt><dd id="admin-info-name">Chưa có thông tin</dd></div>
                     <div><dt>Email</dt><dd id="admin-info-email">Chưa có thông tin</dd></div>
                     <div><dt>Số điện thoại</dt><dd id="admin-info-phone">Chưa có thông tin</dd></div>
                     <div><dt>Loại khách</dt><dd id="admin-info-type">Khách vãng lai</dd></div>
+                    <div><dt>Mã khách / GuestId</dt><dd id="admin-info-customer-code">Chưa có thông tin</dd></div>
                 </dl>
             </section>
             <section class="admin-chat-info-card">
-                <h3><i class="bi bi-bookmark"></i> Ngữ cảnh hỗ trợ</h3>
+                <h3><i class="bi bi-bookmark"></i> Liên quan cuộc trò chuyện</h3>
                 <dl>
                     <div><dt>Chủ đề</dt><dd id="admin-info-topic">Chưa có thông tin</dd></div>
                     <div><dt>Đơn hàng</dt><dd id="admin-info-order">Chưa có thông tin</dd></div>
-                    <div><dt>Sản phẩm / bảo hành</dt><dd id="admin-info-product">Chưa có thông tin</dd></div>
-                    <div><dt>Nhu cầu</dt><dd id="admin-info-need">Chưa có thông tin</dd></div>
+                    <div><dt>Sản phẩm liên quan</dt><dd id="admin-info-product">Chưa có thông tin</dd></div>
+                    <div><dt>Bảo hành liên quan</dt><dd id="admin-info-warranty">Chưa có thông tin</dd></div>
+                    <div><dt>Nhu cầu khách</dt><dd id="admin-info-need">Chưa có thông tin</dd></div>
                 </dl>
             </section>
             <section class="admin-chat-info-card">
-                <h3><i class="bi bi-clock-history"></i> Lịch sử gần đây</h3>
-                <div class="admin-chat-history" id="admin-chat-history">Chưa có thông tin</div>
+                <h3><i class="bi bi-lightning-charge"></i> Thao tác hỗ trợ</h3>
+                <div class="admin-chat-actions" id="admin-chat-support-actions">Chưa có dữ liệu liên kết</div>
             </section>
         </div>
     </aside>

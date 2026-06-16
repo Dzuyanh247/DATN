@@ -152,3 +152,14 @@
 .admin-chat-drawer{left:10px;right:10px;top:96px;width:auto}
 .admin-chat-drawer-backdrop{position:fixed}
 }
+.admin-chat-page .admin-chat-message.customer .admin-chat-bubble{background:#fff;color:#263244;border-color:#e2e8f0}
+.admin-chat-page .admin-chat-message.bot{align-items:flex-start}
+.admin-chat-page .admin-chat-message.bot .admin-chat-bubble{background:#e9f6ff;border-color:#bfe4ff;color:#0f4f82;box-shadow:0 4px 12px rgba(23,100,170,.08)}
+.admin-chat-page .admin-chat-message.bot .admin-chat-message-time{color:#1764aa;font-weight:800}
+.admin-chat-page .admin-chat-message.staff .admin-chat-message-time{color:#64748b;font-weight:750}
+.admin-chat-page .admin-chat-message.customer .admin-chat-message-time{color:#64748b;font-weight:750}
+.admin-chat-page .admin-chat-actions{display:grid;grid-template-columns:1fr;gap:8px;font-size:.72rem;color:#94a3b8}
+.admin-chat-page .admin-chat-action{display:flex;align-items:center;gap:8px;border:1px solid #cfe0f2;border-radius:12px;padding:9px 10px;background:#f8fbff;color:#174d82;text-decoration:none;font-weight:850;transition:.15s}
+.admin-chat-page .admin-chat-action:hover{background:#eaf4ff;border-color:#93c5fd;color:#0f3d6b}
+.admin-chat-page .admin-chat-action.disabled{background:#f1f5f9;border-color:#e2e8f0;color:#94a3b8;cursor:not-allowed}
+.admin-chat-page .admin-chat-action i{font-size:.9rem}
