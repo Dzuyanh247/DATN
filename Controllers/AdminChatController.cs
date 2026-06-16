@@ -25,16 +25,16 @@ public class AdminChatController : Controller
     [HttpGet("conversations")]
     public async Task<IActionResult> GetConversations()
     {
-        var rows = await _db.ChatConversations.AsNoTracking().Include(x => x.User).Include(x => x.Messages)
+        var rows = await _db.ChatConversations.AsNoTracking().Include(x => x.User).ThenInclude(u => u!.Role).Include(x => x.Messages)
             .OrderBy(x => x.Status == ChatConversationStatus.Closed).ThenByDescending(x => x.NeedsStaff).ThenByDescending(x => x.Priority).ThenByDescending(x => x.LastMessageAt ?? x.UpdatedAt).ToListAsync();
-        var conversations = rows.Select(x => new { x.Id, name = x.CustomerName ?? x.User?.FullName ?? x.GuestName, email = x.CustomerEmail ?? x.User?.Email ?? x.GuestEmail, phone = x.CustomerPhone ?? x.User?.Phone ?? x.GuestPhone, customerType = x.CustomerId.HasValue || x.UserId.HasValue ? "Tài khoản" : "Khách vãng lai", status = x.Status.ToString(), x.CreatedAt, x.UpdatedAt, x.LastMessageAt, x.StaffUnreadCount, unreadCount = x.StaffUnreadCount, x.AssignedStaffId, x.AssignedStaffName, x.Topic, x.NeedsStaff, x.Priority, x.AutomationContext, lastMessage = x.Messages.OrderByDescending(m => m.CreatedAt).ThenByDescending(m => m.Id).Select(m => m.Message).FirstOrDefault() }).ToList();
+        var conversations = rows.Select(x => new { x.Id, customerId = ResolveCustomerId(x), guestId = x.GuestId, name = ResolveCustomerName(x), email = ResolveCustomerEmail(x), phone = ResolveCustomerPhone(x), customerType = ResolveCustomerId(x).HasValue ? "Tài khoản" : "Khách vãng lai", status = x.Status.ToString(), x.CreatedAt, x.UpdatedAt, x.LastMessageAt, x.StaffUnreadCount, unreadCount = x.StaffUnreadCount, x.AssignedStaffId, x.AssignedStaffName, x.Topic, x.NeedsStaff, x.Priority, x.AutomationContext, lastMessage = x.Messages.OrderByDescending(m => m.CreatedAt).ThenByDescending(m => m.Id).Select(m => m.Message).FirstOrDefault() }).ToList();
         return Ok(Api(true, data: new { conversations }));
     }
 
     [HttpGet("conversations/{id:int}/messages")]
     public async Task<IActionResult> GetMessages(int id)
     {
-        var conversation = await _db.ChatConversations.Include(x => x.User).FirstOrDefaultAsync(x => x.Id == id);
+        var conversation = await _db.ChatConversations.Include(x => x.User).ThenInclude(u => u!.Role).FirstOrDefaultAsync(x => x.Id == id);
         if (conversation == null) return NotFound(Api(false, "Không tìm thấy cuộc trò chuyện."));
         var now = DateTime.UtcNow;
         var unread = await _db.ChatMessages.Where(x => x.ConversationId == id && x.SenderType == ChatSenderType.Customer && !x.IsRead).ToListAsync();
@@ -117,7 +117,13 @@ public class AdminChatController : Controller
         var rows = await _db.ChatMessages.AsNoTracking().Where(x => x.ConversationId == id).OrderBy(x => x.CreatedAt).ThenBy(x => x.Id).ToListAsync();
         return rows.Select(x => MessagePayload(x)).ToList();
     }
-    private static object ConversationPayload(ChatConversation x) => new { x.Id, name = x.CustomerName ?? x.User?.FullName ?? x.GuestName, email = x.CustomerEmail ?? x.User?.Email ?? x.GuestEmail, phone = x.CustomerPhone ?? x.User?.Phone ?? x.GuestPhone, customerType = x.CustomerId.HasValue || x.UserId.HasValue ? "Tài khoản" : "Khách vãng lai", status = x.Status.ToString(), x.CreatedAt, x.ClosedAt, x.AssignedStaffId, x.AssignedStaffName, x.Topic, x.NeedsStaff, x.Priority, x.AutomationContext };
+    private static object ConversationPayload(ChatConversation x) => new { x.Id, customerId = ResolveCustomerId(x), x.GuestId, name = ResolveCustomerName(x), email = ResolveCustomerEmail(x), phone = ResolveCustomerPhone(x), customerType = ResolveCustomerId(x).HasValue ? "Tài khoản" : "Khách vãng lai", status = x.Status.ToString(), x.CreatedAt, x.ClosedAt, x.AssignedStaffId, x.AssignedStaffName, x.Topic, x.NeedsStaff, x.Priority, x.AutomationContext };
+    private static int? ResolveCustomerId(ChatConversation x) => x.CustomerId ?? (IsCustomerUser(x.User) ? x.UserId : null);
+    private static string? ResolveCustomerName(ChatConversation x) => FirstNonBlank(x.CustomerName, x.GuestName, IsCustomerUser(x.User) ? x.User?.FullName : null);
+    private static string? ResolveCustomerEmail(ChatConversation x) => FirstNonBlank(x.CustomerEmail, x.GuestEmail, IsCustomerUser(x.User) ? x.User?.Email : null);
+    private static string? ResolveCustomerPhone(ChatConversation x) => FirstNonBlank(x.CustomerPhone, x.GuestPhone, IsCustomerUser(x.User) ? x.User?.Phone : null);
+    private static bool IsCustomerUser(User? user) => user != null && !string.Equals(user.Role?.Name, "Admin", StringComparison.OrdinalIgnoreCase) && !string.Equals(user.Role?.Name, "SupportStaff", StringComparison.OrdinalIgnoreCase) && !string.Equals(user.Role?.Name, "CustomerSupport", StringComparison.OrdinalIgnoreCase);
+    private static string? FirstNonBlank(params string?[] values) => values.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value));
     private static object MessagePayload(ChatMessage x) => new { x.Id, senderType = x.SenderType == ChatSenderType.Staff ? "Staff" : x.SenderType.ToString(), x.SenderName, x.Message, x.IsSystem, x.IsRead, x.ReadAt, x.CreatedAt, metadata = ParseMetadata(x.MetadataJson) };
     private static object? ParseMetadata(string? value)
     {
