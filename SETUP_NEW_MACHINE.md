@@ -33,10 +33,17 @@ Dự án này là **ASP.NET Core MVC (.NET 8)**, dùng:
 
 3. **SQL Server**
    - Dự án cấu hình provider `UseSqlServer(...)`, vì vậy cần SQL Server.
+   - Mặc định repo dùng **SQL Server LocalDB** để không phụ thuộc tên máy/instance riêng.
    - Có thể dùng:
-     - SQL Server Express (nhẹ, dễ cài cho local)
+     - SQL Server LocalDB (`(localdb)\MSSQLLocalDB`, khuyến nghị cho máy dev Windows)
+     - SQL Server Express
      - SQL Server Developer
    - Nên cài thêm **SQL Server Management Studio (SSMS)** để thao tác DB.
+   - Nếu máy chưa có LocalDB hoặc LocalDB chưa chạy, kiểm tra và khởi động bằng:
+     ```powershell
+     sqllocaldb info
+     sqllocaldb start MSSQLLocalDB
+     ```
 
 ## Khuyến nghị
 
@@ -101,7 +108,7 @@ Mẫu:
 ```json
 {
   "ConnectionStrings": {
-    "DefaultConnection": "Server=localhost\\SQLEXPRESS;Database=DATN_PCStore;Trusted_Connection=True;TrustServerCertificate=True;"
+    "DefaultConnection": "Server=(localdb)\\MSSQLLocalDB;Database=DATN_PCStore;Trusted_Connection=True;TrustServerCertificate=True;"
   },
   "Logging": {
     "LogLevel": {
@@ -121,13 +128,13 @@ Biến bắt buộc:
 Ví dụ PowerShell:
 
 ```powershell
-$env:ConnectionStrings__DefaultConnection="Server=localhost\\SQLEXPRESS;Database=DATN_PCStore;Trusted_Connection=True;TrustServerCertificate=True;"
+$env:ConnectionStrings__DefaultConnection="Server=(localdb)\\MSSQLLocalDB;Database=DATN_PCStore;Trusted_Connection=True;TrustServerCertificate=True;"
 ```
 
 Ví dụ CMD:
 
 ```cmd
-set ConnectionStrings__DefaultConnection=Server=localhost\SQLEXPRESS;Database=DATN_PCStore;Trusted_Connection=True;TrustServerCertificate=True;
+set ConnectionStrings__DefaultConnection=Server=(localdb)\MSSQLLocalDB;Database=DATN_PCStore;Trusted_Connection=True;TrustServerCertificate=True;
 ```
 
 > Lưu ý: repo hiện chưa có cơ chế đọc file `.env` riêng. Nếu muốn dùng `.env`, bạn phải tự tích hợp thêm thư viện/loader.
@@ -247,7 +254,12 @@ Project **không dùng JWT**. Cơ chế thực tế:
 
 1. **Không kết nối được SQL Server**
    - Kiểm tra service SQL Server đã chạy.
-   - Kiểm tra đúng server/instance trong `DefaultConnection`.
+   - Kiểm tra đúng server/instance trong `DefaultConnection` (mặc định dùng `(localdb)\MSSQLLocalDB`).
+   - Nếu dùng LocalDB trên Windows, kiểm tra và khởi động:
+     ```powershell
+     sqllocaldb info
+     sqllocaldb start MSSQLLocalDB
+     ```
    - Nếu dùng cert local, giữ `TrustServerCertificate=True`.
 
 2. **Login fail dù đúng mật khẩu seed**
@@ -287,7 +299,7 @@ Project **không dùng JWT**. Cơ chế thực tế:
 - [ ] Cài .NET SDK 8
 - [ ] Cài và bật SQL Server
 - [ ] Clone repo
-- [ ] Cập nhật `ConnectionStrings:DefaultConnection`
+- [ ] Cập nhật `ConnectionStrings:DefaultConnection` nếu không dùng LocalDB mặc định
 - [ ] Chạy `dotnet restore`
 - [ ] Chạy `dotnet run`
 - [ ] Đăng nhập `admin@pcstore.local / 123456`
@@ -321,6 +333,6 @@ dotnet run
 Nếu cần set nhanh connection string bằng biến môi trường trước khi chạy:
 
 ```powershell
-$env:ConnectionStrings__DefaultConnection="Server=localhost\\SQLEXPRESS;Database=DATN_PCStore;Trusted_Connection=True;TrustServerCertificate=True;"
+$env:ConnectionStrings__DefaultConnection="Server=(localdb)\\MSSQLLocalDB;Database=DATN_PCStore;Trusted_Connection=True;TrustServerCertificate=True;"
 dotnet run
 ```
