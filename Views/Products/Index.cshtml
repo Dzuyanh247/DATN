@@ -79,64 +79,43 @@
                 </details>
 
                 <details class="products-filter-group" open>
-                    <summary>Dòng CPU <i class="bi bi-chevron-down"></i></summary>
-                    <div class="products-filter-options">
-                        @if (Model.CpuOptions.Count == 0)
+                    <summary>Loại linh kiện <i class="bi bi-chevron-down"></i></summary>
+                    <div class="products-filter-options component-filter-options">
+                        @foreach (var group in Model.ComponentTypeGroups)
                         {
-                            <div class="products-filter-empty">Chưa nhận diện được CPU</div>
-                        }
-                        @foreach (var option in Model.CpuOptions)
-                        {
-                            var id = $"cpu-{option.Value.Replace(" ", "-").ToLowerInvariant()}";
-                            <label class="products-filter-option" for="@id">
-                                <input id="@id" type="checkbox" name="cpu" value="@option.Value"
-                                       checked="@(Model.Cpu.Contains(option.Value, StringComparer.OrdinalIgnoreCase))" />
-                                <span>@option.Label</span>
-                                <small>(@option.Count)</small>
-                            </label>
-                        }
-                    </div>
-                </details>
-
-                <details class="products-filter-group" open>
-                    <summary>Dung lượng RAM <i class="bi bi-chevron-down"></i></summary>
-                    <div class="products-filter-options">
-                        @if (Model.RamOptions.Count == 0)
-                        {
-                            <div class="products-filter-empty">Chưa nhận diện được RAM</div>
-                        }
-                        @foreach (var option in Model.RamOptions)
-                        {
-                            var id = $"ram-{option.Value.ToLowerInvariant()}";
-                            <label class="products-filter-option" for="@id">
-                                <input id="@id" type="checkbox" name="ram" value="@option.Value"
-                                       checked="@(Model.Ram.Contains(option.Value, StringComparer.OrdinalIgnoreCase))" />
-                                <span>@option.Label</span>
-                                <small>(@option.Count)</small>
-                            </label>
+                            <div class="products-filter-subtitle">@group.Title</div>
+                            @foreach (var option in group.Options)
+                            {
+                                var id = $"component-{option.Value.ToLowerInvariant()}";
+                                <label class="products-filter-option" for="@id">
+                                    <input id="@id" type="checkbox" name="componentTypes" value="@option.Value"
+                                           checked="@(Model.ComponentTypes.Contains(option.Value, StringComparer.OrdinalIgnoreCase))" />
+                                    <span>@option.Label</span>
+                                    <small>(@option.Count)</small>
+                                </label>
+                            }
                         }
                     </div>
                 </details>
 
-                <details class="products-filter-group" open>
-                    <summary>GPU <i class="bi bi-chevron-down"></i></summary>
-                    <div class="products-filter-options">
-                        @if (Model.GpuOptions.Count == 0)
-                        {
-                            <div class="products-filter-empty">Chưa nhận diện được GPU</div>
-                        }
-                        @foreach (var option in Model.GpuOptions)
-                        {
-                            var id = $"gpu-{option.Value.Replace(" ", "-").ToLowerInvariant()}";
-                            <label class="products-filter-option" for="@id">
-                                <input id="@id" type="checkbox" name="gpu" value="@option.Value"
-                                       checked="@(Model.Gpu.Contains(option.Value, StringComparer.OrdinalIgnoreCase))" />
-                                <span>@option.Label</span>
-                                <small>(@option.Count)</small>
-                            </label>
-                        }
-                    </div>
-                </details>
+                @foreach (var specGroup in Model.SpecFilterGroups)
+                {
+                    <details class="products-filter-group">
+                        <summary>@specGroup.Name <i class="bi bi-chevron-down"></i></summary>
+                        <div class="products-filter-options">
+                            @foreach (var option in specGroup.Options)
+                            {
+                                var id = $"spec-{Math.Abs(option.Value.GetHashCode())}";
+                                <label class="products-filter-option" for="@id">
+                                    <input id="@id" type="checkbox" name="specs" value="@option.Value"
+                                           checked="@(Model.Specs.Contains(option.Value, StringComparer.OrdinalIgnoreCase))" />
+                                    <span>@option.Label</span>
+                                    <small>(@option.Count)</small>
+                                </label>
+                            }
+                        </div>
+                    </details>
+                }
 
                 <button class="products-apply-filter" type="submit"><i class="bi bi-check2-circle"></i> Áp dụng bộ lọc</button>
             </form>

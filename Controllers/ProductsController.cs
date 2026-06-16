@@ -28,6 +28,8 @@ public class ProductsController : Controller
         decimal? maxPrice,
         string[]? priceRanges,
         string[]? brands,
+        string[]? componentTypes,
+        string[]? specs,
         string[]? cpu,
         string[]? ram,
         string[]? gpu)
@@ -42,6 +44,8 @@ public class ProductsController : Controller
             MaxPrice = maxPrice,
             PriceRanges = CleanSelections(priceRanges),
             Brands = CleanSelections(brands),
+            ComponentTypes = CleanSelections(componentTypes),
+            Specs = CleanSelections(specs),
             Cpu = CleanSelections(cpu),
             Ram = CleanSelections(ram),
             Gpu = CleanSelections(gpu)
@@ -62,10 +66,15 @@ public class ProductsController : Controller
             query = query.Where(p => p.CategoryId == vm.CategoryId.Value);
         if (!string.IsNullOrWhiteSpace(vm.Brand))
             query = query.Where(p => p.Brand == vm.Brand);
+        if (vm.Brands.Length > 0)
+            query = query.Where(p => p.Brand != null && vm.Brands.Contains(p.Brand));
+        if (vm.ComponentTypes.Length > 0)
+            query = query.Where(p => p.ComponentType != null && vm.ComponentTypes.Contains(p.ComponentType));
         if (vm.MinPrice.HasValue)
             query = query.Where(p => ((p.DiscountPrice ?? p.SalePrice) ?? p.Price) >= vm.MinPrice.Value);
         if (vm.MaxPrice.HasValue)
             query = query.Where(p => ((p.DiscountPrice ?? p.SalePrice) ?? p.Price) <= vm.MaxPrice.Value);
+        query = ApplyPriceRangeQuery(query, vm.PriceRanges);
 
         var candidateProducts = await query
             .Include(product => product.ProductImages)
@@ -76,14 +85,11 @@ public class ProductsController : Controller
         PopulateFilterOptions(vm, facetProducts, parsedFacets);
 
         IEnumerable<Product> filteredProducts = facetProducts;
-        if (vm.PriceRanges.Length > 0)
-            filteredProducts = ApplyPriceRangeFilter(filteredProducts, vm.PriceRanges);
-        if (vm.Brands.Length > 0)
-            filteredProducts = filteredProducts.Where(product => !string.IsNullOrWhiteSpace(product.Brand) && vm.Brands.Contains(product.Brand, StringComparer.OrdinalIgnoreCase));
-
         var matchingIds = GetMatchingParsedFacetIds(facetProducts, parsedFacets, vm);
         if (matchingIds is not null)
             filteredProducts = filteredProducts.Where(product => matchingIds.Contains(product.Id));
+        if (vm.Specs.Length > 0)
+            filteredProducts = ApplySpecFilter(filteredProducts, vm.Specs);
 
         vm.Categories = await _db.Categories.OrderBy(category => category.Name).ToListAsync();
         vm.Products = filteredProducts.ToList();
@@ -157,10 +163,13 @@ public class ProductsController : Controller
 
         vm.BrandOptions = products
             .Where(product => !string.IsNullOrWhiteSpace(product.Brand) && !string.Equals(product.Brand.Trim(), "N/A", StringComparison.OrdinalIgnoreCase))
-            .GroupBy(product => product.Brand.Trim(), StringComparer.OrdinalIgnoreCase)
+            .GroupBy(product => product.Brand!.Trim(), StringComparer.OrdinalIgnoreCase)
             .Select(group => new ProductFilterOptionVm { Value = group.Key, Label = group.Key, Count = group.Count() })
             .OrderBy(option => option.Label)
             .ToList();
+
+        vm.ComponentTypeGroups = BuildComponentTypeGroups(products);
+        vm.SpecFilterGroups = BuildSpecFilterGroups(products);
 
         vm.CpuOptions = BuildParsedOptions(products, parsedFacets, facets => facets.Cpu)
             .OrderBy(option => option.Label)
@@ -172,6 +181,94 @@ public class ProductsController : Controller
             .OrderBy(option => option.Label)
             .ToList();
     }
+
+    private static List<ProductFilterGroupVm> BuildComponentTypeGroups(IReadOnlyCollection<Product> products)
+    {
+        var counts = products
+            .Where(product => !string.IsNullOrWhiteSpace(product.ComponentType))
+            .GroupBy(product => product.ComponentType!.Trim(), StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.Count(), StringComparer.OrdinalIgnoreCase);
+
+        return
+        [
+            new ProductFilterGroupVm
+            {
+                Title = "Linh kiện máy tính",
+                Options = BuildComponentOptions(counts,
+                    ("CPU", "CPU"),
+                    ("Mainboard", "Mainboard"),
+                    ("RAM", "RAM"),
+                    ("VGA", "VGA - Card màn hình"),
+                    ("SSD", "Ổ cứng SSD"),
+                    ("HDD", "Ổ cứng HDD"),
+                    ("Storage", "Ổ cứng (SSD, HDD)"),
+                    ("Cooler", "Tản nhiệt"),
+                    ("Case", "Vỏ case"),
+                    ("PSU", "Nguồn (PSU)"))
+            },
+            new ProductFilterGroupVm
+            {
+                Title = "Ngoại vi",
+                Options = BuildComponentOptions(counts,
+                    ("Monitor", "Màn hình"),
+                    ("Keyboard", "Bàn phím"),
+                    ("Mouse", "Chuột"),
+                    ("Headphone", "Tai nghe"))
+            }
+        ];
+    }
+
+    private static List<ProductFilterOptionVm> BuildComponentOptions(Dictionary<string, int> counts, params (string Value, string Label)[] options) =>
+        options
+            .Select(option => new ProductFilterOptionVm
+            {
+                Value = option.Value,
+                Label = option.Label,
+                Count = counts.GetValueOrDefault(option.Value)
+            })
+            .ToList();
+
+    private static List<ProductSpecFilterGroupVm> BuildSpecFilterGroups(IEnumerable<Product> products) =>
+        products
+            .SelectMany(product => ProductSpecificationKeyValueHelper.ParseStored(product.Specifications)
+                .Where(spec => !string.IsNullOrWhiteSpace(spec.Name) && !string.IsNullOrWhiteSpace(spec.Value))
+                .Select(spec => new { product.Id, Name = spec.Name.Trim(), Value = spec.Value.Trim() }))
+            .GroupBy(spec => spec.Name, StringComparer.OrdinalIgnoreCase)
+            .Where(group => group.Select(spec => spec.Value).Distinct(StringComparer.OrdinalIgnoreCase).Count() > 1)
+            .OrderBy(group => GetSpecGroupSortOrder(group.Key))
+            .ThenBy(group => group.Key)
+            .Take(8)
+            .Select(group => new ProductSpecFilterGroupVm
+            {
+                Name = group.Key,
+                Options = group
+                    .GroupBy(spec => spec.Value, StringComparer.OrdinalIgnoreCase)
+                    .Select(valueGroup => new ProductFilterOptionVm
+                    {
+                        Value = BuildSpecValue(group.Key, valueGroup.Key),
+                        Label = valueGroup.Key,
+                        Count = valueGroup.Select(spec => spec.Id).Distinct().Count()
+                    })
+                    .OrderBy(option => option.Label)
+                    .Take(12)
+                    .ToList()
+            })
+            .Where(group => group.Options.Count > 0)
+            .ToList();
+
+    private static int GetSpecGroupSortOrder(string name)
+    {
+        var normalized = name.ToLowerInvariant();
+        if (normalized.Contains("socket")) return 0;
+        if (normalized.Contains("nhân") || normalized.Contains("nhan")) return 1;
+        if (normalized.Contains("luồng") || normalized.Contains("luong")) return 2;
+        if (normalized.Contains("bus")) return 3;
+        if (normalized.Contains("dung") || normalized.Contains("bộ nhớ") || normalized.Contains("bo nho") || normalized.Contains("vram")) return 4;
+        if (normalized.Contains("kết nối") || normalized.Contains("ket noi")) return 5;
+        return 10;
+    }
+
+    private static string BuildSpecValue(string name, string value) => $"{name.Trim()}::{value.Trim()}";
 
     private static IEnumerable<ProductFilterOptionVm> BuildParsedOptions(
         IEnumerable<Product> products,
@@ -254,15 +351,51 @@ public class ProductsController : Controller
         return fallbackMatches;
     }
 
-    private static IEnumerable<Product> ApplyPriceRangeFilter(IEnumerable<Product> products, string[] selectedValues)
+    private static IQueryable<Product> ApplyPriceRangeQuery(IQueryable<Product> query, string[] selectedValues)
     {
         var selectedRanges = ProductFilterFacetHelper.PriceRanges
             .Where(range => selectedValues.Contains(range.Value, StringComparer.OrdinalIgnoreCase))
             .ToList();
         if (selectedRanges.Count == 0)
+            return query;
+
+        return query.Where(product =>
+            (selectedValues.Contains("under-1") && ((product.DiscountPrice ?? product.SalePrice) ?? product.Price) < 1_000_000m) ||
+            (selectedValues.Contains("1-2") && ((product.DiscountPrice ?? product.SalePrice) ?? product.Price) >= 1_000_000m && ((product.DiscountPrice ?? product.SalePrice) ?? product.Price) < 2_000_000m) ||
+            (selectedValues.Contains("2-5") && ((product.DiscountPrice ?? product.SalePrice) ?? product.Price) >= 2_000_000m && ((product.DiscountPrice ?? product.SalePrice) ?? product.Price) < 5_000_000m) ||
+            (selectedValues.Contains("5-10") && ((product.DiscountPrice ?? product.SalePrice) ?? product.Price) >= 5_000_000m && ((product.DiscountPrice ?? product.SalePrice) ?? product.Price) < 10_000_000m) ||
+            (selectedValues.Contains("10-20") && ((product.DiscountPrice ?? product.SalePrice) ?? product.Price) >= 10_000_000m && ((product.DiscountPrice ?? product.SalePrice) ?? product.Price) < 20_000_000m) ||
+            (selectedValues.Contains("20-30") && ((product.DiscountPrice ?? product.SalePrice) ?? product.Price) >= 20_000_000m && ((product.DiscountPrice ?? product.SalePrice) ?? product.Price) < 30_000_000m) ||
+            (selectedValues.Contains("30-50") && ((product.DiscountPrice ?? product.SalePrice) ?? product.Price) >= 30_000_000m && ((product.DiscountPrice ?? product.SalePrice) ?? product.Price) < 50_000_000m) ||
+            (selectedValues.Contains("over-50") && ((product.DiscountPrice ?? product.SalePrice) ?? product.Price) >= 50_000_000m));
+    }
+
+    private static IEnumerable<Product> ApplySpecFilter(IEnumerable<Product> products, string[] selectedSpecs)
+    {
+        var selectedPairs = selectedSpecs
+            .Select(ParseSpecValue)
+            .Where(pair => pair is not null)
+            .Select(pair => pair!.Value)
+            .ToArray();
+
+        if (selectedPairs.Length == 0)
             return products;
 
-        return products.Where(product => selectedRanges.Any(range =>
-            ProductFilterFacetHelper.IsInPriceRange(ProductFilterFacetHelper.GetEffectivePrice(product), range)));
+        return products.Where(product =>
+        {
+            var productSpecs = ProductSpecificationKeyValueHelper.ParseStored(product.Specifications);
+            return selectedPairs.All(selected => productSpecs.Any(spec =>
+                string.Equals(spec.Name?.Trim(), selected.Name, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(spec.Value?.Trim(), selected.Value, StringComparison.OrdinalIgnoreCase)));
+        });
+    }
+
+    private static (string Name, string Value)? ParseSpecValue(string raw)
+    {
+        var parts = raw.Split("::", 2, StringSplitOptions.TrimEntries);
+        if (parts.Length != 2 || string.IsNullOrWhiteSpace(parts[0]) || string.IsNullOrWhiteSpace(parts[1]))
+            return null;
+
+        return (parts[0], parts[1]);
     }
 }
