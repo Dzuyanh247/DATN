@@ -11,7 +11,7 @@ namespace Datn.PcStore.Controllers;
 public class AccessoriesApiController : ControllerBase
 {
     private static readonly HashSet<string> AllowedTypes = new(StringComparer.OrdinalIgnoreCase)
-    { "Monitor", "Keyboard", "Mouse", "Headphone" };
+    { "Monitor", "Keyboard", "Mouse", "Headphone", "Headset" };
 
     private readonly ApplicationDbContext _db;
     public AccessoriesApiController(ApplicationDbContext db) => _db = db;
@@ -22,8 +22,9 @@ public class AccessoriesApiController : ControllerBase
         if (string.IsNullOrWhiteSpace(type) || !AllowedTypes.Contains(type))
             return BadRequest(new { message = "Loại sản phẩm mua kèm không hợp lệ." });
 
+        var normalizedType = string.Equals(type, "Headset", StringComparison.OrdinalIgnoreCase) ? "Headphone" : type;
         var baseQuery = _db.Products.Include(p => p.Category).Include(p => p.ProductImages)
-            .Where(p => p.IsActive && p.ProductType == ProductKinds.Component && p.ComponentType == type);
+            .Where(p => p.IsActive && p.IsInStock && p.StockQuantity > 0 && p.ProductType == ProductKinds.Component && p.ComponentType == normalizedType);
         var query = baseQuery;
 
         if (!string.IsNullOrWhiteSpace(keyword))

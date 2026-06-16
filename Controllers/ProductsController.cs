@@ -110,7 +110,27 @@ public class ProductsController : Controller
             : (int?)null;
         ViewBag.ReviewSection = await _reviewService.GetSectionAsync(id, userId, rating is >= 1 and <= 5 ? rating : null);
 
-        return View(product);
+        var accessoryProducts = await _db.Products
+            .Include(p => p.Category)
+            .Include(p => p.ProductImages.OrderBy(x => x.SortOrder))
+            .Where(p => p.IsActive
+                && p.IsInStock
+                && p.StockQuantity > 0
+                && p.ProductType == ProductKinds.Component
+                && (p.ComponentType == "Monitor" || p.ComponentType == "Keyboard" || p.ComponentType == "Mouse" || p.ComponentType == "Headphone"))
+            .OrderByDescending(p => p.CreatedAt)
+            .ToListAsync();
+
+        var vm = new ProductDetailViewModel
+        {
+            Product = product,
+            Monitors = accessoryProducts.Where(p => p.ComponentType == "Monitor").ToList(),
+            Keyboards = accessoryProducts.Where(p => p.ComponentType == "Keyboard").ToList(),
+            Mice = accessoryProducts.Where(p => p.ComponentType == "Mouse").ToList(),
+            Headsets = accessoryProducts.Where(p => p.ComponentType == "Headphone").ToList()
+        };
+
+        return View(vm);
     }
 
     private static string[] CleanSelections(string[]? values) =>

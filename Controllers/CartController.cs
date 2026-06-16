@@ -73,7 +73,7 @@ public class CartController : Controller
     public async Task<IActionResult> AddBundle([FromForm] BundleCartRequest request)
     {
         var items = new List<(int ProductId, int Quantity)> { (request.ProductId, Math.Max(1, request.Quantity)) };
-        items.AddRange(request.AccessoryProductIds.Where(id => id > 0).Distinct().Select(id => (id, 1)));
+        items.AddRange(request.AccessoryProductIds.Where(id => id > 0).Distinct().Select(id => (id, Math.Max(1, request.Quantity))));
 
         foreach (var item in items)
         {
@@ -101,7 +101,7 @@ public class CartController : Controller
     public async Task<IActionResult> BuyBundle(BundleCartRequest request)
     {
         var items = new List<(int ProductId, int Quantity)> { (request.ProductId, Math.Max(1, request.Quantity)) };
-        items.AddRange(request.AccessoryProductIds.Where(id => id > 0).Distinct().Select(id => (id, 1)));
+        items.AddRange(request.AccessoryProductIds.Where(id => id > 0).Distinct().Select(id => (id, Math.Max(1, request.Quantity))));
         var result = await _cartService.SetBuyNowCartAsync(GetUserId(), items);
         if (!result.Ok)
         {
