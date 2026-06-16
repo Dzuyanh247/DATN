@@ -31,13 +31,16 @@
         const composeArea = $('admin-chat-compose-area') || root.querySelector('.admin-chat-compose-area');
         const csrf = document.querySelector('#admin-chat-antiforgery input[name="__RequestVerificationToken"]')?.value || '';
         const topicLabels = { PCConsultation: 'Tư vấn cấu hình PC', Order: 'Đơn hàng', Warranty: 'Bảo hành', Payment: 'Thanh toán', StaffSupport: 'Gặp nhân viên' };
-        const systemMessages = ['đã đóng', 'đã được đóng', 'hội thoại đã', 'conversation closed', 'đã kết thúc'];
+        const systemMessages = ['đã đóng', 'đã được đóng', 'hội thoại đã', 'conversation closed', 'đã kết thúc', 'đã nhận xử lý', 'đã giao hội thoại', 'đổi phụ trách'];
+        let userPinnedScroll = false;
         let conversations = [], activeId = null, activeConversation = null, filter = 'all', polling;
 
         const setText = (id, text) => { const el = $(id); if (el) el.textContent = text; };
         const toggleClass = (el, className, force) => { if (el) el.classList.toggle(className, force); };
         const showError = message => window.showGlobalToast?.(message || 'Đã xảy ra lỗi. Vui lòng thử lại.', 'danger');
+        const isNearBottom = () => messages.scrollHeight - messages.scrollTop - messages.clientHeight < 90;
         const scrollToBottom = () => requestAnimationFrame(() => { messages.scrollTop = messages.scrollHeight; });
+        const scrollToBottomIfAllowed = () => { if (!userPinnedScroll || isNearBottom()) scrollToBottom(); };
         const statusValue = value => String(value || '').toLowerCase();
 
         function resetEmptyState() {
@@ -172,36 +175,69 @@
             });
             wrapper.append(container);
         }
-        function addMessage(item) {
-            if (!item || !messages || messages.querySelector(`[data-message-id="${item.id}"]`)) return;
-            appendDateSeparator(item.createdAt);
+        function classifyMessage(item) {
             const type = String(item.senderType || '').toLowerCase();
-            const technicalSystem = isTechnicalSystemMessage(item) || type === 'system';
-            const staff = type === 'staff' || type === 'admin';
-            const bot = !technicalSystem && (item.isSystem || type === 'bot' || type === 'assistant' || type === 'automation');
+            const text = String(item.message || '').toLowerCase();
+            const technicalSystem = (item.isSystem && systemMessages.some(token => text.includes(token))) || type === 'system';
+            const staff = !technicalSystem && (type === 'staff' || type === 'admin' || item.isFromAdmin || item.staffId);
+            const bot = !technicalSystem && !staff && (item.isBot || item.isSystem || type === 'bot' || type === 'assistant' || type === 'automation' || /^kkshop\s/.test(text) || text.includes('kkshop xin chào') || text.includes('kkshop đã kiểm tra') || text.includes('chọn sản phẩm đã mua'));
+            return technicalSystem ? 'system' : staff ? 'staff' : bot ? 'bot' : 'customer';
+        }
+        function addMessage(item, forceScroll = false) {
+            if (!item || !messages || messages.querySelector(`[data-message-id="${item.id}"]`)) return;
+            const wasNearBottom = isNearBottom();
+            appendDateSeparator(item.createdAt);
+            const role = classifyMessage(item);
             const wrapper = document.createElement('div');
-            wrapper.className = `admin-chat-message ${technicalSystem ? 'system' : staff ? 'staff' : bot ? 'bot' : 'customer'}`;
+            wrapper.className = `admin-chat-message ${role}`;
             wrapper.dataset.messageId = item.id;
             const bubble = document.createElement('div');
             bubble.className = 'admin-chat-bubble';
             bubble.textContent = item.message || '';
             const time = document.createElement('div');
             time.className = 'admin-chat-message-time';
-            time.textContent = `${technicalSystem || bot ? 'KKSHOP' : (item.senderName || (staff ? 'Nhân viên KKSHOP' : 'Khách hàng'))} • ${formatDate(item.createdAt, true)}`;
+            const label = role === 'system' ? 'Hệ thống' : role === 'bot' ? 'KKSHOP' : (item.senderName || (role === 'staff' ? 'Nhân viên KKSHOP' : (activeConversation?.name || 'Khách hàng')));
+            time.textContent = `${label} • ${formatDate(item.createdAt, true)}`;
             wrapper.append(bubble, time);
             renderMetadata(item.metadata, wrapper);
             messages.append(wrapper);
-            scrollToBottom();
+            if (forceScroll || wasNearBottom) scrollToBottom();
         }
         function setStatus(status) { const closed = statusValue(status) === 'closed', badge = $('admin-chat-status'); if (badge) { badge.textContent = closed ? 'Đã đóng' : 'Đang mở'; badge.classList.toggle('closed', closed); } toggleClass($('admin-chat-closed'), 'd-none', !closed); if (input) input.disabled = closed || !activeId; const send = compose?.querySelector('button[type="submit"]'); if (send) send.disabled = closed || !activeId; if (closeButton) { closeButton.classList.toggle('d-none', closed); closeButton.disabled = closed || !activeId; } if (resolveButton) { resolveButton.disabled = closed || !activeId; } if (claimButton) { claimButton.classList.toggle('d-none', closed); claimButton.disabled = closed || !activeId; } }
         function setAssignment(c) { setText('admin-chat-assignee', c.assignedStaffName ? `Phụ trách: ${c.assignedStaffName}` : 'Chưa phân công'); if (claimButton) { claimButton.classList.toggle('d-none', !!c.assignedStaffId || statusValue(c.status) === 'closed'); claimButton.disabled = !activeId || statusValue(c.status) === 'closed'; } if (staffSelect) { staffSelect.value = c.assignedStaffId || ''; staffSelect.disabled = !activeId || statusValue(c.status) === 'closed'; } }
-        function parseContext(c) { if (!c.automationContext) return {}; const value = String(c.automationContext).trim(); return value.startsWith('{') ? JSON.parse(value) : {}; }
-        function showContext(c) { const context = parseContext(c), topic = topicLabels[c.topic] || 'Tư vấn'; setText('admin-chat-header-topic', topic); const priority = $('admin-chat-priority'); if (priority) { priority.classList.toggle('d-none', !c.needsStaff && !c.priority); priority.textContent = c.priority > 0 ? `Ưu tiên ${c.priority}` : 'Cần xử lý'; } toggleClass($('admin-chat-info-empty'), 'd-none', true); toggleClass($('admin-chat-info-content'), 'd-none', false); setText('admin-info-name', c.name || 'Chưa có thông tin'); setText('admin-info-email', c.email || 'Chưa có thông tin'); setText('admin-info-phone', c.phone || 'Chưa có thông tin'); setText('admin-info-type', c.customerType || 'Khách vãng lai'); setText('admin-info-topic', topic); setText('admin-info-order', context.orderCode || 'Chưa có thông tin'); setText('admin-info-product', context.warrantyProduct || context.productName || 'Chưa có thông tin'); setText('admin-info-need', context.pcNeed || 'Chưa có thông tin'); const history = $('admin-chat-history'); if (history) { history.replaceChildren(); const rows = [context.orderCode ? `Đơn hàng gần nhất: ${context.orderCode}` : '', c.closedAt ? `Lần chat gần nhất: ${formatDay(c.closedAt)}` : (c.createdAt ? `Lần chat gần nhất: ${formatDay(c.createdAt)}` : ''), 'Số cuộc trò chuyện: 1']; rows.filter(Boolean).forEach(text => { const span = document.createElement('span'); span.textContent = text; history.append(span); }); if (!history.childElementCount) history.textContent = 'Chưa có thông tin'; } }
-        async function openConversation(id) { if (!id) return resetEmptyState(); try { const data = await request(`/AdminChat/conversations/${id}/messages`); activeId = id; activeConversation = data.conversation || {}; placeholder.classList.add('d-none'); room.classList.remove('d-none'); root.classList.add('room-open'); setText('admin-chat-name', activeConversation.name || 'Khách hàng'); setText('admin-chat-avatar', (activeConversation.name || 'K').trim()[0]?.toUpperCase() || 'K'); setText('admin-chat-contact', [activeConversation.phone, activeConversation.email].filter(Boolean).join(' • ') || 'Chưa có thông tin liên hệ'); setStatus(activeConversation.status); setAssignment(activeConversation); showContext(activeConversation); messages.replaceChildren(); (data.messages || []).forEach(addMessage); scrollToBottom(); const found = conversations.find(x => x.id === id); if (found) found.unreadCount = 0; renderList(); } catch (error) { showError(error.message); } }
+        function parseContext(c) { if (!c?.automationContext) return {}; const value = String(c.automationContext).trim(); if (!value.startsWith('{')) return {}; try { return JSON.parse(value); } catch { return {}; } }
+        const firstContextValue = (context, ...names) => names.map(name => context?.[name] ?? context?.[name.charAt(0).toUpperCase() + name.slice(1)]).find(value => value !== undefined && value !== null && String(value).trim() !== '');
+        const idFromCode = value => { const digits = String(value || '').replace(/\D/g, ''); return digits ? Number(digits) : null; };
+        const validEmail = email => { const value = String(email || '').trim(); return value && !/^(admin|staff|support)@pcstore\.local$/i.test(value) ? value : ''; };
+        function linkedData(c, context) { const orderId = firstContextValue(context, 'orderId') || idFromCode(firstContextValue(context, 'orderCode')); const productId = firstContextValue(context, 'productId'); const warrantyId = firstContextValue(context, 'warrantyRequestId', 'warrantyId'); return { orderId, orderCode: firstContextValue(context, 'orderCode'), productId, productName: firstContextValue(context, 'productName', 'warrantyProduct'), warrantyId, warrantyLabel: firstContextValue(context, 'warrantyCode', 'requestCode', 'warrantyStatus'), customerId: c.customerId || c.CustomerId, guestId: c.guestId || c.GuestId }; }
+        function supportAction(label, icon, url) { const a = document.createElement('a'); a.className = 'admin-chat-action'; a.href = url; a.innerHTML = `<i class="bi ${icon}"></i><span>${label}</span>`; return a; }
+        function disabledAction(label, icon) { const span = document.createElement('span'); span.className = 'admin-chat-action disabled'; span.title = 'Chưa có dữ liệu liên kết'; span.innerHTML = `<i class="bi ${icon}"></i><span>${label}</span>`; return span; }
+        function renderSupportActions(data) { const host = $('admin-chat-support-actions'); if (!host) return; host.replaceChildren(); host.append(data.orderId ? supportAction('Xem đơn hàng', 'bi-bag-check', `/AdminOrders/Detail/${data.orderId}`) : disabledAction('Xem đơn hàng', 'bi-bag-check')); host.append(data.productId ? supportAction('Xem sản phẩm', 'bi-box-seam', `/AdminProducts/Edit/${data.productId}`) : disabledAction('Xem sản phẩm', 'bi-box-seam')); host.append(data.warrantyId ? supportAction('Bảo hành', 'bi-shield-check', `/AdminWarranty/Detail/${data.warrantyId}`) : data.productId ? supportAction('Bảo hành', 'bi-shield-check', `/AdminWarranty`) : disabledAction('Bảo hành', 'bi-shield-check')); host.append(data.customerId ? supportAction('Hồ sơ khách', 'bi-person-vcard', `/AdminUsers/Edit/${data.customerId}`) : disabledAction('Hồ sơ khách', 'bi-person-vcard')); }
+        function showContext(c) {
+            const context = parseContext(c), topic = topicLabels[c.topic] || 'Tư vấn';
+            const data = linkedData(c, context);
+            setText('admin-chat-header-topic', topic);
+            const priority = $('admin-chat-priority');
+            if (priority) { priority.classList.toggle('d-none', !c.needsStaff && !c.priority); priority.textContent = c.priority > 0 ? `Ưu tiên ${c.priority}` : 'Cần xử lý'; }
+            toggleClass($('admin-chat-info-empty'), 'd-none', true); toggleClass($('admin-chat-info-content'), 'd-none', false);
+            setText('admin-info-name', c.name || 'Chưa có thông tin');
+            setText('admin-info-email', validEmail(c.email) || 'Chưa có thông tin');
+            setText('admin-info-phone', c.phone || 'Chưa có thông tin');
+            setText('admin-info-type', c.customerType || (data.customerId ? 'Tài khoản' : 'Khách vãng lai'));
+            setText('admin-info-customer-code', data.customerId ? `KH${String(data.customerId).padStart(6, '0')}` : (data.guestId || 'Chưa có thông tin'));
+            setText('admin-info-topic', topic);
+            setText('admin-info-order', data.orderCode || (data.orderId ? `DH${String(data.orderId).padStart(6, '0')}` : 'Chưa có thông tin'));
+            setText('admin-info-product', data.productName || 'Chưa có thông tin');
+            setText('admin-info-warranty', data.warrantyLabel || 'Chưa có thông tin');
+            setText('admin-info-need', firstContextValue(context, 'pcNeed', 'need', 'customerNeed') || 'Chưa có thông tin');
+            renderSupportActions(data);
+        }
+        async function openConversation(id) { if (!id) return resetEmptyState(); try { const data = await request(`/AdminChat/conversations/${id}/messages`); activeId = id; activeConversation = data.conversation || {}; placeholder.classList.add('d-none'); room.classList.remove('d-none'); root.classList.add('room-open'); setText('admin-chat-name', activeConversation.name || 'Khách hàng'); setText('admin-chat-avatar', (activeConversation.name || 'K').trim()[0]?.toUpperCase() || 'K'); setText('admin-chat-contact', [activeConversation.phone, validEmail(activeConversation.email)].filter(Boolean).join(' • ') || 'Chưa có thông tin liên hệ'); setStatus(activeConversation.status); setAssignment(activeConversation); showContext(activeConversation); messages.replaceChildren(); userPinnedScroll = false; (data.messages || []).forEach(message => addMessage(message, true)); scrollToBottom(); const found = conversations.find(x => x.id === id); if (found) found.unreadCount = 0; renderList(); } catch (error) { showError(error.message); } }
         async function assign(staffId) { if (!activeId || !activeConversation) return; try { const data = await request(`/AdminChat/conversations/${activeId}/assign`, { method: 'POST', body: JSON.stringify({ staffId: staffId || null }) }); activeConversation.assignedStaffId = data.assignedStaffId; activeConversation.assignedStaffName = data.assignedStaffName; activeConversation.needsStaff = false; setAssignment(activeConversation); showContext(activeConversation); await loadConversations(); } catch (error) { showError(error.message); } }
 
         compose.addEventListener('submit', async event => { event.preventDefault(); const text = input.value.trim(); if (!text || !activeId) return; const button = compose.querySelector('button'); if (button) button.disabled = true; try { addMessage(await request(`/AdminChat/conversations/${activeId}/messages`, { method: 'POST', body: JSON.stringify({ message: text }) })); input.value = ''; input.style.height = ''; input.focus(); await loadConversations(); } catch (error) { showError(error.message); } finally { if (button) button.disabled = false; } });
         input.addEventListener('input', () => { input.style.height = 'auto'; input.style.height = `${Math.min(input.scrollHeight, 110)}px`; });
+        messages.addEventListener('scroll', () => { userPinnedScroll = !isNearBottom(); });
         input.addEventListener('keydown', event => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); compose.requestSubmit(); } });
         document.querySelectorAll('[data-reply]').forEach(button => button.addEventListener('click', () => { if (!activeId) return; input.value = button.dataset.reply || ''; input.dispatchEvent(new Event('input')); input.focus(); }));
         claimButton?.addEventListener('click', () => assign(null));
