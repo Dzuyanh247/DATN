@@ -31,13 +31,14 @@
         const composeArea = $('admin-chat-compose-area') || root.querySelector('.admin-chat-compose-area');
         const csrf = document.querySelector('#admin-chat-antiforgery input[name="__RequestVerificationToken"]')?.value || '';
         const topicLabels = { PCConsultation: 'Tư vấn cấu hình PC', Order: 'Đơn hàng', Warranty: 'Bảo hành', Payment: 'Thanh toán', StaffSupport: 'Gặp nhân viên' };
-        const systemMessages = ['đã đóng', 'đã được đóng', 'hội thoại đã', 'conversation closed', 'đã kết thúc'];
+        const systemMessages = ['đã đóng', 'đã được đóng', 'hội thoại đã', 'conversation closed', 'đã kết thúc', 'đã nhận xử lý', 'nhận xử lý', 'đổi người phụ trách', 'phân công'];
         let conversations = [], activeId = null, activeConversation = null, filter = 'all', polling;
 
         const setText = (id, text) => { const el = $(id); if (el) el.textContent = text; };
         const toggleClass = (el, className, force) => { if (el) el.classList.toggle(className, force); };
         const showError = message => window.showGlobalToast?.(message || 'Đã xảy ra lỗi. Vui lòng thử lại.', 'danger');
-        const scrollToBottom = () => requestAnimationFrame(() => { messages.scrollTop = messages.scrollHeight; });
+        const isNearBottom = () => !messages || messages.scrollHeight - messages.scrollTop - messages.clientHeight < 96;
+        const scrollToBottom = (force = false) => requestAnimationFrame(() => { if (messages && (force || isNearBottom())) messages.scrollTop = messages.scrollHeight; });
         const statusValue = value => String(value || '').toLowerCase();
 
         function resetEmptyState() {
@@ -146,7 +147,7 @@
         }
         function addDetail(container, label, value, extraClass) { if (!value) return; const row = document.createElement('span'); if (extraClass) row.className = extraClass; const text = document.createElement('span'); text.textContent = label; const strong = document.createElement('b'); strong.textContent = value; row.append(text, strong); container.append(row); }
         function isTechnicalSystemMessage(item) { const text = String(item.message || '').toLowerCase(); return item.isSystem && systemMessages.some(token => text.includes(token)); }
-        function normalizeCardActions(card) { const actions = (card.actions || []).filter(action => action.url); if (actions.length) return actions; return [card.checkUrl ? { label: 'Kiểm tra', url: card.checkUrl } : null, card.detailUrl || card.url ? { label: 'Xem chi tiết', url: card.detailUrl || card.url } : null, card.reviewUrl ? { label: 'Đánh giá', url: card.reviewUrl } : null].filter(Boolean); }
+        function normalizeCardActions(card) { const actions = (card.actions || []).filter(action => action.url); if (actions.length) return actions; return [card.checkUrl ? { label: 'Kiểm tra', url: card.checkUrl } : null, card.detailUrl || card.url ? { label: 'Xem chi tiết', url: card.detailUrl || card.url } : null, card.reviewUrl ? { label: 'Đánh giá', url: card.reviewUrl } : null, card.warrantyUrl ? { label: 'Tạo yêu cầu bảo hành', url: card.warrantyUrl } : null].filter(Boolean); }
         function renderMetadata(metadata, wrapper) {
             const cards = metadataValue(metadata, 'cards') || []; if (!cards.length) return;
             const container = document.createElement('div'); container.className = 'admin-chat-message-metadata';
@@ -166,7 +167,7 @@
                 addDetail(details, 'Tổng tiền', formatMoney(card.totalAmount), 'total');
                 addDetail(details, 'Bảo hành', card.warrantyStatus);
                 const actions = document.createElement('div'); actions.className = 'admin-chat-meta-actions';
-                normalizeCardActions(card).slice(0, 3).forEach((action, index) => { const link = document.createElement('a'); link.href = action.url; link.textContent = action.label || (index === 0 ? 'Kiểm tra' : index === 1 ? 'Xem chi tiết' : 'Đánh giá'); if (index) link.className = 'secondary'; actions.append(link); });
+                normalizeCardActions(card).slice(0, 4).forEach((action, index) => { const link = document.createElement('a'); link.href = action.url; link.textContent = action.label || (index === 0 ? 'Kiểm tra' : index === 1 ? 'Xem chi tiết' : 'Đánh giá'); if (index) link.className = 'secondary'; actions.append(link); });
                 body.append(header, title); if (card.subtitle) { const sub = document.createElement('small'); sub.textContent = card.subtitle; body.append(sub); } body.append(details); if (actions.childElementCount) body.append(actions);
                 item.append(body); container.append(item);
             });
@@ -176,9 +177,9 @@
             if (!item || !messages || messages.querySelector(`[data-message-id="${item.id}"]`)) return;
             appendDateSeparator(item.createdAt);
             const type = String(item.senderType || '').toLowerCase();
-            const technicalSystem = isTechnicalSystemMessage(item) || type === 'system';
+            const technicalSystem = isTechnicalSystemMessage(item);
             const staff = type === 'staff' || type === 'admin';
-            const bot = !technicalSystem && (item.isSystem || type === 'bot' || type === 'assistant' || type === 'automation');
+            const bot = !technicalSystem && (item.isSystem || type === 'system' || type === 'bot' || type === 'assistant' || type === 'automation');
             const wrapper = document.createElement('div');
             wrapper.className = `admin-chat-message ${technicalSystem ? 'system' : staff ? 'staff' : bot ? 'bot' : 'customer'}`;
             wrapper.dataset.messageId = item.id;
@@ -187,23 +188,23 @@
             bubble.textContent = item.message || '';
             const time = document.createElement('div');
             time.className = 'admin-chat-message-time';
-            time.textContent = `${technicalSystem || bot ? 'KKSHOP' : (item.senderName || (staff ? 'Nhân viên KKSHOP' : 'Khách hàng'))} • ${formatDate(item.createdAt, true)}`;
+            time.textContent = `${technicalSystem ? 'Hệ thống' : bot ? 'KKSHOP' : (item.senderName || (staff ? 'Nhân viên KKSHOP' : 'Khách hàng'))} • ${formatDate(item.createdAt, true)}`;
             wrapper.append(bubble, time);
             renderMetadata(item.metadata, wrapper);
             messages.append(wrapper);
-            scrollToBottom();
+            scrollToBottom(false);
         }
         function setStatus(status) { const closed = statusValue(status) === 'closed', badge = $('admin-chat-status'); if (badge) { badge.textContent = closed ? 'Đã đóng' : 'Đang mở'; badge.classList.toggle('closed', closed); } toggleClass($('admin-chat-closed'), 'd-none', !closed); if (input) input.disabled = closed || !activeId; const send = compose?.querySelector('button[type="submit"]'); if (send) send.disabled = closed || !activeId; if (closeButton) { closeButton.classList.toggle('d-none', closed); closeButton.disabled = closed || !activeId; } if (resolveButton) { resolveButton.disabled = closed || !activeId; } if (claimButton) { claimButton.classList.toggle('d-none', closed); claimButton.disabled = closed || !activeId; } }
         function setAssignment(c) { setText('admin-chat-assignee', c.assignedStaffName ? `Phụ trách: ${c.assignedStaffName}` : 'Chưa phân công'); if (claimButton) { claimButton.classList.toggle('d-none', !!c.assignedStaffId || statusValue(c.status) === 'closed'); claimButton.disabled = !activeId || statusValue(c.status) === 'closed'; } if (staffSelect) { staffSelect.value = c.assignedStaffId || ''; staffSelect.disabled = !activeId || statusValue(c.status) === 'closed'; } }
-        function parseContext(c) { if (!c.automationContext) return {}; const value = String(c.automationContext).trim(); return value.startsWith('{') ? JSON.parse(value) : {}; }
+        function parseContext(c) { if (!c?.automationContext) return {}; try { const value = String(c.automationContext).trim(); return value.startsWith('{') ? JSON.parse(value) : {}; } catch { return {}; } }
         function showContext(c) { const context = parseContext(c), topic = topicLabels[c.topic] || 'Tư vấn'; setText('admin-chat-header-topic', topic); const priority = $('admin-chat-priority'); if (priority) { priority.classList.toggle('d-none', !c.needsStaff && !c.priority); priority.textContent = c.priority > 0 ? `Ưu tiên ${c.priority}` : 'Cần xử lý'; } toggleClass($('admin-chat-info-empty'), 'd-none', true); toggleClass($('admin-chat-info-content'), 'd-none', false); setText('admin-info-name', c.name || 'Chưa có thông tin'); setText('admin-info-email', c.email || 'Chưa có thông tin'); setText('admin-info-phone', c.phone || 'Chưa có thông tin'); setText('admin-info-type', c.customerType || 'Khách vãng lai'); setText('admin-info-topic', topic); setText('admin-info-order', context.orderCode || 'Chưa có thông tin'); setText('admin-info-product', context.warrantyProduct || context.productName || 'Chưa có thông tin'); setText('admin-info-need', context.pcNeed || 'Chưa có thông tin'); const history = $('admin-chat-history'); if (history) { history.replaceChildren(); const rows = [context.orderCode ? `Đơn hàng gần nhất: ${context.orderCode}` : '', c.closedAt ? `Lần chat gần nhất: ${formatDay(c.closedAt)}` : (c.createdAt ? `Lần chat gần nhất: ${formatDay(c.createdAt)}` : ''), 'Số cuộc trò chuyện: 1']; rows.filter(Boolean).forEach(text => { const span = document.createElement('span'); span.textContent = text; history.append(span); }); if (!history.childElementCount) history.textContent = 'Chưa có thông tin'; } }
-        async function openConversation(id) { if (!id) return resetEmptyState(); try { const data = await request(`/AdminChat/conversations/${id}/messages`); activeId = id; activeConversation = data.conversation || {}; placeholder.classList.add('d-none'); room.classList.remove('d-none'); root.classList.add('room-open'); setText('admin-chat-name', activeConversation.name || 'Khách hàng'); setText('admin-chat-avatar', (activeConversation.name || 'K').trim()[0]?.toUpperCase() || 'K'); setText('admin-chat-contact', [activeConversation.phone, activeConversation.email].filter(Boolean).join(' • ') || 'Chưa có thông tin liên hệ'); setStatus(activeConversation.status); setAssignment(activeConversation); showContext(activeConversation); messages.replaceChildren(); (data.messages || []).forEach(addMessage); scrollToBottom(); const found = conversations.find(x => x.id === id); if (found) found.unreadCount = 0; renderList(); } catch (error) { showError(error.message); } }
+        async function openConversation(id) { if (!id) return resetEmptyState(); try { const data = await request(`/AdminChat/conversations/${id}/messages`); activeId = id; activeConversation = data.conversation || {}; placeholder.classList.add('d-none'); room.classList.remove('d-none'); root.classList.add('room-open'); setText('admin-chat-name', activeConversation.name || 'Khách hàng'); setText('admin-chat-avatar', (activeConversation.name || 'K').trim()[0]?.toUpperCase() || 'K'); setText('admin-chat-contact', [activeConversation.phone, activeConversation.email].filter(Boolean).join(' • ') || 'Chưa có thông tin liên hệ'); setStatus(activeConversation.status); setAssignment(activeConversation); showContext(activeConversation); messages.replaceChildren(); (data.messages || []).forEach(addMessage); scrollToBottom(true); const found = conversations.find(x => x.id === id); if (found) found.unreadCount = 0; renderList(); } catch (error) { showError(error.message); } }
         async function assign(staffId) { if (!activeId || !activeConversation) return; try { const data = await request(`/AdminChat/conversations/${activeId}/assign`, { method: 'POST', body: JSON.stringify({ staffId: staffId || null }) }); activeConversation.assignedStaffId = data.assignedStaffId; activeConversation.assignedStaffName = data.assignedStaffName; activeConversation.needsStaff = false; setAssignment(activeConversation); showContext(activeConversation); await loadConversations(); } catch (error) { showError(error.message); } }
 
-        compose.addEventListener('submit', async event => { event.preventDefault(); const text = input.value.trim(); if (!text || !activeId) return; const button = compose.querySelector('button'); if (button) button.disabled = true; try { addMessage(await request(`/AdminChat/conversations/${activeId}/messages`, { method: 'POST', body: JSON.stringify({ message: text }) })); input.value = ''; input.style.height = ''; input.focus(); await loadConversations(); } catch (error) { showError(error.message); } finally { if (button) button.disabled = false; } });
+        compose.addEventListener('submit', async event => { event.preventDefault(); const text = input.value.trim(); if (!text || !activeId) return; const button = compose.querySelector('button'); if (button) button.disabled = true; try { addMessage(await request(`/AdminChat/conversations/${activeId}/messages`, { method: 'POST', body: JSON.stringify({ message: text }) })); input.value = ''; input.style.height = ''; input.focus(); scrollToBottom(true); await loadConversations(); } catch (error) { showError(error.message); } finally { if (button) button.disabled = false; } });
         input.addEventListener('input', () => { input.style.height = 'auto'; input.style.height = `${Math.min(input.scrollHeight, 110)}px`; });
         input.addEventListener('keydown', event => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); compose.requestSubmit(); } });
-        document.querySelectorAll('[data-reply]').forEach(button => button.addEventListener('click', () => { if (!activeId) return; input.value = button.dataset.reply || ''; input.dispatchEvent(new Event('input')); input.focus(); }));
+        root.querySelectorAll('[data-reply]').forEach(button => button.addEventListener('click', () => { if (!activeId || input.disabled) return; input.value = button.dataset.reply || ''; input.dispatchEvent(new Event('input')); input.focus(); }));
         claimButton?.addEventListener('click', () => assign(null));
         staffSelect?.addEventListener('change', () => { if (activeId && staffSelect.value) assign(Number(staffSelect.value)); });
         resolveButton?.addEventListener('click', async () => { if (!activeId) return; input.value = 'Hội thoại đã được KKSHOP đánh dấu đã xử lý. Nếu bạn cần hỗ trợ thêm, cứ nhắn lại cho KKSHOP nhé.'; input.dispatchEvent(new Event('input')); input.focus(); });
@@ -212,8 +213,8 @@
         refreshButton?.addEventListener('click', loadConversations);
         drawerClose?.addEventListener('click', closeDrawer);
         drawerBackdrop?.addEventListener('click', closeDrawer);
-        document.querySelectorAll('[data-panel]').forEach(button => button.addEventListener('click', () => openDrawer(button.dataset.panel)));
-        document.querySelectorAll('[data-filter]').forEach(button => button.addEventListener('click', () => { document.querySelectorAll('[data-filter]').forEach(item => item.classList.remove('active')); button.classList.add('active'); filter = button.dataset.filter || 'all'; renderList(); }));
+        root.querySelectorAll('[data-panel]').forEach(button => button.addEventListener('click', () => openDrawer(button.dataset.panel)));
+        root.querySelectorAll('[data-filter]').forEach(button => button.addEventListener('click', () => { root.querySelectorAll('[data-filter]').forEach(item => item.classList.remove('active')); button.classList.add('active'); filter = button.dataset.filter || 'all'; renderList(); }));
         async function loadStaff() { if (!staffSelect) return; const data = await request('/AdminChat/staff'); (data.staff || []).forEach(item => { const option = document.createElement('option'); option.value = item.id; option.textContent = item.fullName; staffSelect.append(option); }); }
         function fallbackPolling() { if (!polling) polling = setInterval(loadConversations, 7000); }
         if (window.signalR) { const connection = new signalR.HubConnectionBuilder().withUrl('/hubs/support-chat').withAutomaticReconnect().build(); connection.on('MessageReceived', async (id, message) => { if (Number(id) === Number(activeId)) addMessage(message); await loadConversations(); }); connection.on('ConversationUpdated', loadConversations); connection.onreconnected(() => connection.invoke('JoinStaff')); connection.start().then(() => connection.invoke('JoinStaff')).catch(fallbackPolling); } else fallbackPolling();

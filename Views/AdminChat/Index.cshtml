@@ -29,7 +29,7 @@
         <div class="admin-chat-placeholder" id="admin-chat-placeholder">
             <div><i class="bi bi-chat-square-text"></i></div>
             <h3>Chọn một cuộc trò chuyện để bắt đầu hỗ trợ khách hàng</h3>
-            <p>Thông tin khách hàng và lịch sử trao đổi sẽ hiển thị tại đây.</p>
+            <p>Tin nhắn, đơn hàng và ngữ cảnh hỗ trợ sẽ hiển thị tại đây.</p>
         </div>
         <div class="admin-chat-room d-none" id="admin-chat-room">
             <header class="admin-chat-customer">
@@ -44,12 +44,6 @@
                     </div>
                     <div id="admin-chat-contact">Chưa có thông tin liên hệ</div>
                     <div class="admin-chat-assignment"><i class="bi bi-person-check"></i> <span id="admin-chat-assignee">Chưa phân công</span></div>
-                </div>
-                <div class="admin-chat-context-actions" aria-label="Thao tác nhanh theo ngữ cảnh">
-                    <button type="button" data-panel="orders"><i class="bi bi-bag-check"></i> Đơn hàng</button>
-                    <button type="button" data-panel="products"><i class="bi bi-box-seam"></i> Sản phẩm</button>
-                    <button type="button" data-panel="warranty"><i class="bi bi-shield-check"></i> Bảo hành</button>
-                    <button type="button" data-panel="history"><i class="bi bi-clock-history"></i> Lịch sử mua</button>
                 </div>
                 <div class="admin-chat-header-actions">
                     <button type="button" class="btn btn-sm btn-primary" id="admin-chat-claim"><i class="bi bi-person-plus"></i> Nhận xử lý</button>
@@ -68,9 +62,10 @@
             <div class="admin-chat-compose-area" id="admin-chat-compose-area">
                 <div class="admin-chat-quick-replies" aria-label="Trả lời nhanh">
                     <span>Gợi ý nhanh:</span>
+                    <button type="button" data-reply="KKSHOP xin chào! Mình có thể hỗ trợ bạn về đơn hàng, sản phẩm, bảo hành hoặc thanh toán ạ.">Xin chào</button>
                     <button type="button" data-reply="Bạn cho KKSHOP biết nhu cầu sử dụng, ngân sách và màn hình đang dùng để tư vấn cấu hình PC phù hợp nhé.">Tư vấn cấu hình PC</button>
                     <button type="button" data-reply="Bạn vui lòng gửi mã đơn hàng, tên sản phẩm và mô tả lỗi để KKSHOP kiểm tra bảo hành ạ.">Kiểm tra bảo hành</button>
-                    <button type="button" data-reply="Bạn vui lòng gửi mã đơn hàng hoặc số điện thoại đặt hàng để KKSHOP kiểm tra tình trạng đơn hàng nhanh hơn nhé.">Hỏi tình trạng đơn hàng</button>
+                    <button type="button" data-reply="Bạn vui lòng gửi mã đơn hàng hoặc số điện thoại đặt hàng để KKSHOP kiểm tra tình trạng đơn hàng nhanh hơn nhé.">Kiểm tra đơn hàng</button>
                     <button type="button" data-reply="KKSHOP hỗ trợ thanh toán COD hoặc chuyển khoản. Bạn cần mình hướng dẫn bước nào ạ?">Hỗ trợ thanh toán</button>
                     <button type="button" data-reply="KKSHOP sẽ chuyển hội thoại cho nhân viên phụ trách hỗ trợ trực tiếp cho bạn ạ.">Gặp nhân viên</button>
                     <button type="button" data-reply="KKSHOP gửi bạn thông tin chuyển khoản: Ngân hàng: [Tên ngân hàng] • Số tài khoản: [Số tài khoản] • Chủ tài khoản: KKSHOP • Nội dung: [Mã đơn hàng].">Gửi thông tin chuyển khoản</button>
@@ -124,6 +119,15 @@
             <section class="admin-chat-info-card">
                 <h3><i class="bi bi-clock-history"></i> Lịch sử gần đây</h3>
                 <div class="admin-chat-history" id="admin-chat-history">Chưa có thông tin</div>
+            </section>
+            <section class="admin-chat-info-card">
+                <h3><i class="bi bi-lightning-charge"></i> Thao tác nhanh</h3>
+                <div class="admin-chat-info-actions">
+                    <a asp-controller="AdminOrder" asp-action="Index">Xem đơn hàng</a>
+                    <a asp-controller="AdminProduct" asp-action="Index">Xem sản phẩm</a>
+                    <a asp-controller="AdminWarranty" asp-action="Index">Tạo bảo hành</a>
+                    <button type="button" id="admin-open-profile">Hồ sơ khách</button>
+                </div>
             </section>
         </div>
     </aside>
