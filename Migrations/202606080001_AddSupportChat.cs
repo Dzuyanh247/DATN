@@ -13,6 +13,11 @@ public partial class AddSupportChat : Migration
     protected override void Up(MigrationBuilder migrationBuilder)
     {
         migrationBuilder.Sql(@"
+IF OBJECT_ID('Users', 'U') IS NULL
+BEGIN
+    THROW 51000, 'Migration requires table Users. This project uses custom Users/Roles tables, not ASP.NET Identity AspNetUsers. Restore the base schema or run the initial schema script before applying feature migrations.', 1;
+END
+
 IF OBJECT_ID('ChatConversations', 'U') IS NULL
 BEGIN
     CREATE TABLE ChatConversations (
