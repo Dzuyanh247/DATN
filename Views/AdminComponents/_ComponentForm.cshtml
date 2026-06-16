@@ -24,7 +24,48 @@
 }
 
 <style>
-.admin-product-form .validation-summary-valid{display:none}.component-page-header{background:linear-gradient(135deg,#0f172a,#2563eb);color:#fff;border-radius:22px;padding:1.4rem 1.5rem;margin-bottom:1.25rem;box-shadow:0 14px 30px rgba(37,99,235,.18)}.component-page-header h2{font-weight:800;margin:0}.component-page-header .btn{border-color:rgba(255,255,255,.5)}.component-stepper{display:grid;grid-template-columns:repeat(5,1fr);gap:.6rem;margin-bottom:1rem}.component-stepper .step{background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:.65rem .75rem;font-size:.82rem;color:#475569}.component-stepper .num{display:inline-flex;width:24px;height:24px;border-radius:999px;align-items:center;justify-content:center;background:#2563eb;color:#fff;font-weight:700;margin-right:.35rem}.ux-card{background:#fff;border:1px solid #e5e7eb;border-radius:18px;padding:1.15rem;box-shadow:0 10px 24px rgba(15,23,42,.05)}.ux-card-title{display:flex;align-items:center;gap:.65rem;font-weight:800;color:#0f172a;margin-bottom:.25rem}.ux-card-title .num{width:30px;height:30px;border-radius:999px;background:#eff6ff;color:#2563eb;display:inline-flex;align-items:center;justify-content:center}.ux-help{color:#64748b;font-size:.9rem}.required-mark{color:#dc2626}.actual-price-box{background:#f8fafc;border:1px dashed #94a3b8;border-radius:12px;padding:.85rem}.image-preview-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:.75rem}.image-preview-grid img,.preview-thumb{width:100%;height:92px;object-fit:cover;border-radius:10px;border:1px solid #e5e7eb}.preview-thumb{height:190px;background:#f1f5f9}.spec-kv-table th{font-size:.8rem;color:#475569}.spec-kv-table td{vertical-align:middle}.sticky-preview{position:sticky;top:90px}.sticky-actions{position:sticky;bottom:0;z-index:10;background:rgba(255,255,255,.96);backdrop-filter:blur(8px);border:1px solid #e5e7eb;border-radius:16px;padding:.85rem;margin-top:1rem;box-shadow:0 -8px 20px rgba(15,23,42,.06)}.quick-chip{border-radius:999px}.comp-use-badge{display:inline-flex;align-items:center;gap:.35rem;border-radius:999px;padding:.35rem .65rem;background:#ecfdf5;color:#047857;font-weight:700}.preview-spec-table td{font-size:.85rem;padding:.35rem .25rem}.example-spec-box{display:none;background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;padding:.75rem}.field-validation-error{display:block;margin-top:.25rem;font-size:.875rem}.input-validation-error{border-color:#dc3545}.apf-image-list{display:grid;gap:.75rem}.apf-image-item{display:flex;gap:.75rem;align-items:center;border:1px solid #e5e7eb;border-radius:12px;padding:.5rem}.apf-image-item img{width:76px;height:76px;object-fit:cover;border-radius:10px}@media(max-width:991.98px){.component-stepper{grid-template-columns:1fr 1fr}.sticky-preview{position:static}.component-page-header .actions{margin-top:1rem}}@media(max-width:575.98px){.component-stepper{grid-template-columns:1fr}.component-page-header{padding:1rem}.sticky-actions .btn{width:100%;}.sticky-actions{position:static}}
+.admin-product-form .validation-summary-valid{display:none}
+.component-page-header{background:linear-gradient(135deg,#0f172a,#2563eb);color:#fff;border-radius:22px;padding:1.4rem 1.5rem;margin-bottom:1.25rem;box-shadow:0 14px 30px rgba(37,99,235,.18)}
+.component-page-header h2{font-weight:800;margin:0}
+.component-page-header .btn{border-color:rgba(255,255,255,.5)}
+.component-stepper{display:grid;grid-template-columns:repeat(5,1fr);gap:.6rem;margin-bottom:1rem}
+.component-stepper .step{background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:.65rem .75rem;font-size:.82rem;color:#475569}
+.component-stepper .num{display:inline-flex;width:24px;height:24px;border-radius:999px;align-items:center;justify-content:center;background:#2563eb;color:#fff;font-weight:700;margin-right:.35rem}
+.ux-card{background:#fff;border:1px solid #e5e7eb;border-radius:18px;padding:1.15rem;box-shadow:0 10px 24px rgba(15,23,42,.05)}
+.ux-card-title{display:flex;align-items:center;gap:.65rem;font-weight:800;color:#0f172a;margin-bottom:.25rem}
+.ux-card-title .num{width:30px;height:30px;border-radius:999px;background:#eff6ff;color:#2563eb;display:inline-flex;align-items:center;justify-content:center}
+.ux-help{color:#64748b;font-size:.9rem}
+.required-mark{color:#dc2626}
+.actual-price-box{background:#f8fafc;border:1px dashed #94a3b8;border-radius:12px;padding:.85rem}
+.image-preview-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:.75rem}
+.image-preview-grid img,.preview-thumb{width:100%;height:92px;object-fit:cover;border-radius:10px;border:1px solid #e5e7eb}
+.preview-thumb{height:190px;background:#f1f5f9}
+.spec-kv-table th{font-size:.8rem;color:#475569}
+.spec-kv-table td{vertical-align:middle}
+.sticky-preview{position:sticky;top:90px}
+.sticky-actions{position:sticky;bottom:0;z-index:10;background:rgba(255,255,255,.96);backdrop-filter:blur(8px);border:1px solid #e5e7eb;border-radius:16px;padding:.85rem;margin-top:1rem;box-shadow:0 -8px 20px rgba(15,23,42,.06)}
+.quick-chip{border-radius:999px}
+.comp-use-badge{display:inline-flex;align-items:center;gap:.35rem;border-radius:999px;padding:.35rem .65rem;background:#ecfdf5;color:#047857;font-weight:700}
+.preview-spec-table td{font-size:.85rem;padding:.35rem .25rem}
+.example-spec-box{display:none;background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;padding:.75rem}
+.field-validation-error{display:block;margin-top:.25rem;font-size:.875rem}
+.input-validation-error{border-color:#dc3545}
+.apf-image-list{display:grid;gap:.75rem}
+.apf-image-item{display:flex;gap:.75rem;align-items:center;border:1px solid #e5e7eb;border-radius:12px;padding:.5rem}
+.apf-image-item img{width:76px;height:76px;object-fit:cover;border-radius:10px}
+
+@@media (max-width: 991.98px){
+    .component-stepper{grid-template-columns:1fr 1fr}
+    .sticky-preview{position:static}
+    .component-page-header .actions{margin-top:1rem}
+}
+
+@@media (max-width: 575.98px){
+    .component-stepper{grid-template-columns:1fr}
+    .component-page-header{padding:1rem}
+    .sticky-actions .btn{width:100%;}
+    .sticky-actions{position:static}
+}
 </style>
 
 <div class="component-page-header">
