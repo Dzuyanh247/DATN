@@ -129,7 +129,7 @@ body { background: var(--ttg-bg) !important; color: var(--ttg-text); font-family
 
 .home-banner-stack {
   display: grid;
-  gap: 10px;
+  gap: 14px;
   width: 100%;
   max-width: 100%;
   min-width: 0;
@@ -138,7 +138,7 @@ body { background: var(--ttg-bg) !important; color: var(--ttg-text); font-family
 .home-secondary-banners {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  gap: 14px;
   width: 100%;
   max-width: 100%;
   min-width: 0;
@@ -149,10 +149,12 @@ body { background: var(--ttg-bg) !important; color: var(--ttg-text); font-family
   display: block;
   width: 100%;
   min-width: 0;
-  height: 165px;
-  border-radius: 10px;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  border-radius: 12px;
   overflow: hidden;
   background: #fff;
+  box-shadow: 0 10px 24px rgba(2, 27, 45, .12);
 }
 .home-secondary-banner img {
   display: block;
@@ -257,11 +259,11 @@ body { background: var(--ttg-bg) !important; color: var(--ttg-text); font-family
 }
 @media (min-width: 900px) and (max-width: 991.98px) {
   .home-secondary-banners { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .home-secondary-banner { height: 140px; }
+  .home-secondary-banner { aspect-ratio: 16 / 9; }
 }
 @media (min-width: 768px) and (max-width: 899.98px) {
   .home-secondary-banners { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .home-secondary-banner { height: 140px; }
+  .home-secondary-banner { aspect-ratio: 16 / 9; }
 }
 @media (max-width: 768px) {
   .ttg-topbar-inner,.ttg-topbar-left{flex-wrap:wrap}
@@ -297,7 +299,7 @@ body { background: var(--ttg-bg) !important; color: var(--ttg-text); font-family
 @media (max-width: 767.98px) {
   .home-banner-stack { gap: 8px; }
   .home-secondary-banners { grid-template-columns: 1fr; gap: 8px; }
-  .home-secondary-banner { height: 130px; }
+  .home-secondary-banner { aspect-ratio: 21 / 9; border-radius: 10px; }
 }
 
 @media (max-width: 576px) {
