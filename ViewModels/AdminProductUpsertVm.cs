@@ -15,6 +15,9 @@ public class AdminProductUpsertVm
     [Range(1, int.MaxValue, ErrorMessage = "Vui lòng chọn danh mục hợp lệ")]
     public int? CategoryId { get; set; }
 
+    [MaxLength(50)]
+    public string? ProductCode { get; set; }
+
     [MaxLength(80)]
     public string? Brand { get; set; }
 
@@ -54,6 +57,7 @@ public class AdminProductUpsertVm
     public string? Description { get; set; }
     public string? Specifications { get; set; }
     public List<ProductComponentSpecViewModel> ComponentSpecs { get; set; } = new();
+    public List<ProductSpecificationItemVm> SpecificationItems { get; set; } = new();
 
     public bool IsActive { get; set; } = true;
 
@@ -78,6 +82,12 @@ public class ProductImageItemVm
     public string ImageUrl { get; set; } = string.Empty;
     public bool IsPrimary { get; set; }
     public int SortOrder { get; set; }
+}
+
+public class ProductSpecificationItemVm
+{
+    public string? Name { get; set; }
+    public string? Value { get; set; }
 }
 
 public class ProductComponentSpecViewModel
