@@ -14,7 +14,7 @@ public static class ComponentTypes
     public const string Other = "Other";
     public static readonly List<string> All = new()
     {
-        "CPU", "Mainboard", "RAM", "VGA", "SSD", "HDD", "PSU", "Case", "Cooler",
+        "CPU", "Mainboard", "RAM", "VGA", "SSD", "HDD", "Storage", "PSU", "Case", "Cooler",
         "Monitor", "Keyboard", "Mouse", "Headphone", "MonitorArm", Other
     };
 }
@@ -67,7 +67,7 @@ public class Product : BaseEntity
     [MaxLength(220)] public string Slug { get; set; } = string.Empty;
     [MaxLength(50)] public string ProductCode { get; set; } = string.Empty;
     [MaxLength(80)] public string? Brand { get; set; }
-    [MaxLength(20)] public string ProductType { get; set; } = ProductKinds.PC;
+    [MaxLength(20)] public string? ProductType { get; set; } = ProductKinds.PC;
     public decimal Price { get; set; }
     public decimal? DiscountPrice { get; set; }
     public decimal? SalePrice { get; set; }
@@ -78,24 +78,24 @@ public class Product : BaseEntity
     public DateTime? PromotionEndDate { get; set; }
     [MaxLength(2000)] public string? PromotionText { get; set; }
     public int StockQuantity { get; set; }
-    [MaxLength(1000)] public string ThumbnailImage { get; set; } = string.Empty;
+    [MaxLength(1000)] public string? ThumbnailImage { get; set; } = string.Empty;
     [MaxLength(1000)] public string SourceUrl { get; set; } = string.Empty;
-    [MaxLength(500)] public string ShortDescription { get; set; } = string.Empty;
-    public string Description { get; set; } = string.Empty;
-    public string DetailDescription { get; set; } = string.Empty;
-    public string Specifications { get; set; } = string.Empty;
+    [MaxLength(500)] public string? ShortDescription { get; set; } = string.Empty;
+    public string? Description { get; set; } = string.Empty;
+    public string? DetailDescription { get; set; } = string.Empty;
+    public string? Specifications { get; set; } = string.Empty;
     [NotMapped]
     public string TechnicalSpecifications
     {
-        get => Specifications;
-        set => Specifications = value;
+        get => Specifications ?? string.Empty;
+        set => Specifications = value ?? string.Empty;
     }
     public int WarrantyMonths { get; set; } = 12;
     [MaxLength(50)] public string WarrantyDuration { get; set; } = "12 tháng";
     public bool IsActive { get; set; } = true;
     public bool IsInStock { get; set; } = true;
     public bool HasSoftwareLicense { get; set; }
-    [MaxLength(40)] public string ComponentType { get; set; } = "Khác";
+    [MaxLength(40)] public string? ComponentType { get; set; } = ComponentTypes.Other;
     [MaxLength(20)] public string? CpuSocket { get; set; }
     [MaxLength(20)] public string? RamType { get; set; }
     public int CategoryId { get; set; }

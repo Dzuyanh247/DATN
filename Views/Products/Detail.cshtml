@@ -22,6 +22,11 @@
     var inStock = Model.StockQuantity > 0;
     var warrantyText = Model.WarrantyMonths > 0 ? $"{Model.WarrantyMonths} tháng" : Model.WarrantyDuration;
 
+    var keyValueSpecs = string.Equals(Model.ProductType, ProductKinds.Component, StringComparison.OrdinalIgnoreCase)
+        ? ProductSpecificationKeyValueHelper.ParseStored(Model.TechnicalSpecifications)
+            .Where(spec => !string.IsNullOrWhiteSpace(spec.Name) || !string.IsNullOrWhiteSpace(spec.Value))
+            .ToList()
+        : new List<Datn.PcStore.ViewModels.ProductSpecificationItemVm>();
     var componentSpecs = ProductSpecDisplayHelper.TryParseComponentSpecs(Model.TechnicalSpecifications)
         .Where(spec => !string.IsNullOrWhiteSpace(spec.Description))
         .GroupBy(spec => spec.Description.Trim(), StringComparer.OrdinalIgnoreCase)
@@ -210,7 +215,27 @@
             </div>
         </section>
 
-        @if (componentSpecs.Any())
+        @if (keyValueSpecs.Any())
+        {
+            <section class="product-detail-section product-spec-section" aria-labelledby="product-spec-title">
+                <div class="product-section-heading">
+                    <div><span class="product-section-kicker">Thông tin kỹ thuật</span><h2 id="product-spec-title">THÔNG SỐ KỸ THUẬT</h2></div>
+                    <i class="bi bi-cpu" aria-hidden="true"></i>
+                </div>
+                <div class="table-responsive">
+                    <table class="table spec-table mb-0">
+                        <thead><tr><th style="width:35%">Tên thông số</th><th>Giá trị</th></tr></thead>
+                        <tbody>
+                            @foreach (var spec in keyValueSpecs)
+                            {
+                                <tr><td class="fw-semibold">@spec.Name</td><td>@spec.Value</td></tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        }
+        else if (componentSpecs.Any())
         {
             <section class="product-detail-section product-spec-section" aria-labelledby="product-spec-title">
                 <div class="product-section-heading">

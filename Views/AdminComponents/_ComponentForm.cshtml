@@ -2,38 +2,94 @@
 @{
     var isEdit = Model.Id > 0;
     var orderedImages = Model.ExistingImages.OrderBy(x => x.SortOrder).ToList();
+    var hasErrors = ViewData.ModelState.Values.Any(v => v.Errors.Any());
+    var componentTypeLabels = new Dictionary<string, string>
+    {
+        ["CPU"] = "CPU / CPU",
+        ["Mainboard"] = "Mainboard / Mainboard",
+        ["RAM"] = "RAM / RAM",
+        ["VGA"] = "VGA - Card màn hình / VGA",
+        ["SSD"] = "SSD / SSD",
+        ["HDD"] = "HDD / HDD",
+        ["Storage"] = "SSD/HDD / Storage",
+        ["PSU"] = "Nguồn PSU / PSU",
+        ["Case"] = "Vỏ Case / Case",
+        ["Cooler"] = "Tản nhiệt / Cooler",
+        ["Monitor"] = "Màn hình / Monitor",
+        ["Keyboard"] = "Bàn phím / Keyboard",
+        ["Mouse"] = "Chuột / Mouse",
+        ["Headphone"] = "Tai nghe / Headphone",
+        ["Other"] = "Khác / Other"
+    };
 }
 
-<form asp-controller="AdminComponents" asp-action="@(isEdit ? "Edit" : "Create")" method="post" class="admin-product-form">
+<style>.admin-product-form .validation-summary-valid{display:none}.component-form-hero{background:linear-gradient(135deg,#0f172a,#2563eb);color:#fff;border-radius:18px;padding:1.25rem;margin-bottom:1rem}.component-form-hero h3{margin:0;font-weight:800}.actual-price-box{background:#f8fafc;border:1px dashed #94a3b8;border-radius:12px;padding:.85rem}.image-preview-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:.75rem}.image-preview-grid img{width:100%;height:92px;object-fit:cover;border-radius:10px;border:1px solid #e5e7eb}.spec-kv-table th{font-size:.8rem;color:#475569}.spec-kv-table td{vertical-align:middle}</style>
+
+<div class="component-form-hero">
+    <span class="text-uppercase small opacity-75">Quản trị linh kiện</span>
+    <h3>@(isEdit ? "Cập nhật linh kiện" : "Thêm linh kiện")</h3>
+    <p class="mb-0 opacity-75">Nhập đúng loại linh kiện và thông số key-value để website hiển thị bảng thông số ngoài trang chi tiết.</p>
+</div>
+
+<form asp-controller="AdminComponents" asp-action="@(isEdit ? "Edit" : "Create")" method="post" class="admin-product-form" id="component-form">
     @Html.AntiForgeryToken()
     <input type="hidden" asp-for="Id" />
     <input type="hidden" asp-for="ProductType" value="Component" />
-    <div asp-validation-summary="All" class="alert alert-danger mb-3" role="alert"></div>
+    <input type="hidden" asp-for="Specifications" id="Specifications" />
+
+    @if (hasErrors)
+    {
+        <div asp-validation-summary="All" class="alert alert-danger mb-3" role="alert"></div>
+    }
+    @if (TempData["ErrorMessage"] is string errorMessage && !string.IsNullOrWhiteSpace(errorMessage))
+    {
+        <div class="alert alert-warning mb-3" role="alert">@errorMessage</div>
+    }
+
     <div class="row g-4">
-        <div class="col-lg-7">
-            <div class="apf-card mb-4">
-                <h5 class="apf-title">Thông tin cơ bản</h5>
-                <div class="row g-3">
-                    <div class="col-12"><label asp-for="Name" class="form-label">Tên linh kiện</label><input asp-for="Name" class="form-control" /><span asp-validation-for="Name" class="text-danger"></span></div>
-                    <div class="col-md-6"><label asp-for="CategoryId" class="form-label">Danh mục linh kiện</label><select asp-for="CategoryId" class="form-select" asp-items="@(new Microsoft.AspNetCore.Mvc.Rendering.SelectList(Model.Categories, "Id", "Name"))"><option value="">-- Chọn danh mục --</option></select><span asp-validation-for="CategoryId" class="text-danger"></span></div>
-                    <div class="col-md-6"><label asp-for="ComponentType" class="form-label">Loại / nhánh linh kiện</label><select asp-for="ComponentType" class="form-select" asp-items="@(new Microsoft.AspNetCore.Mvc.Rendering.SelectList(Model.ComponentTypeOptions))"><option value="">-- Chọn loại --</option></select><span asp-validation-for="ComponentType" class="text-danger"></span></div>
-                    <div class="col-md-6"><label asp-for="Brand" class="form-label">Thương hiệu <span class="text-muted">(không bắt buộc)</span></label><input asp-for="Brand" class="form-control" placeholder="VD: ASUS, Intel, Logitech hoặc để trống" /><span asp-validation-for="Brand" class="text-danger"></span></div>
-                    <div class="col-md-6"><label asp-for="StockQuantity" class="form-label">Tồn kho</label><input asp-for="StockQuantity" class="form-control" min="0" /><span asp-validation-for="StockQuantity" class="text-danger"></span></div>
-                    <div class="col-md-6"><label asp-for="Price" class="form-label">Giá gốc</label><input asp-for="Price" class="form-control" min="1000" /><span asp-validation-for="Price" class="text-danger"></span></div>
-                    <div class="col-md-6"><label asp-for="DiscountPrice" class="form-label">Giá khuyến mãi</label><input asp-for="DiscountPrice" class="form-control" min="0" /><span asp-validation-for="DiscountPrice" class="text-danger"></span></div>
-                    <div class="col-md-6"><label asp-for="WarrantyMonths" class="form-label">Bảo hành (tháng)</label><input asp-for="WarrantyMonths" class="form-control" min="0" /><span asp-validation-for="WarrantyMonths" class="text-danger"></span></div>
-                    <div class="col-md-6 d-flex align-items-end"><div class="form-check"><input asp-for="IsActive" class="form-check-input" /><label asp-for="IsActive" class="form-check-label">Trạng thái đang kinh doanh</label></div></div>
-                </div>
-            </div>
-            <div class="apf-card mb-4"><h5 class="apf-title">Mô tả / SEO</h5><label asp-for="Description" class="form-label">Mô tả ngắn / chi tiết</label><textarea asp-for="Description" rows="7" class="form-control"></textarea><span asp-validation-for="Description" class="text-danger"></span></div>
-            <div class="apf-card"><h5 class="apf-title">Thông số kỹ thuật</h5><textarea asp-for="Specifications" rows="10" class="form-control" placeholder="Kích thước: 24 inch&#10;Tần số quét: 240Hz&#10;Tấm nền: IPS&#10;Kết nối: HDMI, DisplayPort"></textarea><div class="form-text text-muted">Nhập dạng key-value, mỗi thông số một dòng.</div><span asp-validation-for="Specifications" class="text-danger"></span></div>
+        <div class="col-lg-8">
+            <div class="apf-card mb-4"><h5 class="apf-title">1. Thông tin cơ bản</h5><div class="row g-3">
+                <div class="col-12"><label asp-for="Name" class="form-label">Tên linh kiện</label><input asp-for="Name" class="form-control" placeholder="VD: Card màn hình Colorful GeForce RTX 3060" /><span asp-validation-for="Name" class="text-danger"></span></div>
+                <div class="col-md-6"><label asp-for="CategoryId" class="form-label">Danh mục linh kiện</label><select asp-for="CategoryId" class="form-select" asp-items="@(new Microsoft.AspNetCore.Mvc.Rendering.SelectList(Model.Categories, "Id", "Name"))"><option value="">-- Chọn danh mục --</option></select><span asp-validation-for="CategoryId" class="text-danger"></span></div>
+                <div class="col-md-6"><label asp-for="ComponentType" class="form-label">Loại / nhánh linh kiện</label><select asp-for="ComponentType" class="form-select" id="component-type-select"><option value="">-- Chọn loại linh kiện --</option>@foreach (var value in Model.ComponentTypeOptions.Where(x => x != "MonitorArm")){<option value="@value" selected="@(Model.ComponentType == value)">@(componentTypeLabels.GetValueOrDefault(value, value))</option>}</select><div class="form-text">Dùng value tiếng Anh ổn định cho lọc mua kèm: Monitor, Keyboard, Mouse, Headphone...</div><span asp-validation-for="ComponentType" class="text-danger"></span></div>
+                <div class="col-md-6"><label asp-for="Brand" class="form-label">Thương hiệu <span class="text-muted">(không bắt buộc)</span></label><input asp-for="Brand" class="form-control" placeholder="Colorful, ASUS, Intel..." /><span asp-validation-for="Brand" class="text-danger"></span></div>
+                <div class="col-md-3"><label asp-for="ProductCode" class="form-label">Mã sản phẩm</label><input asp-for="ProductCode" class="form-control" placeholder="Tự tạo nếu trống" /><span asp-validation-for="ProductCode" class="text-danger"></span></div>
+                <div class="col-md-3"><label asp-for="StockQuantity" class="form-label">Tồn kho</label><input asp-for="StockQuantity" class="form-control" min="0" placeholder="0" /><span asp-validation-for="StockQuantity" class="text-danger"></span></div>
+                <div class="col-12"><div class="form-check form-switch"><input asp-for="IsActive" class="form-check-input" /><label asp-for="IsActive" class="form-check-label">Trạng thái đang kinh doanh</label></div></div>
+            </div></div>
+
+            <div class="apf-card mb-4"><h5 class="apf-title">2. Giá bán</h5><div class="row g-3">
+                <div class="col-md-4"><label asp-for="Price" class="form-label">Giá gốc</label><input asp-for="Price" class="form-control js-price" min="1000" /><span asp-validation-for="Price" class="text-danger"></span></div>
+                <div class="col-md-4"><label asp-for="DiscountPrice" class="form-label">Giá khuyến mãi</label><input asp-for="DiscountPrice" class="form-control js-sale-price" min="0" /><span asp-validation-for="DiscountPrice" class="text-danger"></span></div>
+                <div class="col-md-4"><label asp-for="WarrantyMonths" class="form-label">Bảo hành (tháng)</label><input asp-for="WarrantyMonths" class="form-control" min="0" /><span asp-validation-for="WarrantyMonths" class="text-danger"></span></div>
+                <div class="col-12"><div class="actual-price-box"><span class="text-muted">Giá bán thực tế:</span> <strong id="actual-price-preview">--</strong></div></div>
+            </div></div>
+
+            <div class="apf-card mb-4"><h5 class="apf-title">4. Mô tả</h5><label class="form-label">Mô tả ngắn / mô tả chi tiết</label><textarea asp-for="Description" rows="7" class="form-control" placeholder="Tóm tắt ưu điểm, tình trạng, nội dung nổi bật của linh kiện"></textarea><div class="form-text">Dòng đầu tiên sẽ được dùng làm mô tả ngắn.</div><span asp-validation-for="Description" class="text-danger"></span></div>
+
+            <div class="apf-card"><h5 class="apf-title">5. Thông số kỹ thuật</h5><p class="text-muted small">Nhập theo từng dòng key-value. Khi chọn loại linh kiện, hệ thống sẽ tự gợi ý bộ tên thông số phù hợp.</p><div class="d-flex flex-wrap gap-2 mb-3"><button type="button" class="btn btn-outline-primary" id="apply-spec-template">Gợi ý theo loại</button><button type="button" class="btn btn-outline-secondary" id="add-spec-row">Thêm thông số</button><button type="button" class="btn btn-outline-danger" id="clear-empty-specs">Xóa dòng trống</button></div><div class="table-responsive"><table class="table table-sm spec-kv-table" id="spec-kv-table"><thead><tr><th style="width:35%">Tên thông số</th><th>Giá trị</th><th class="text-center" style="width:90px">Xóa</th></tr></thead><tbody>@for (var i = 0; i < Model.SpecificationItems.Count; i++){<tr><td><input class="form-control form-control-sm js-spec-name" name="SpecificationItems[@i].Name" value="@Model.SpecificationItems[i].Name" placeholder="VD: Bộ nhớ" /></td><td><input class="form-control form-control-sm js-spec-value" name="SpecificationItems[@i].Value" value="@Model.SpecificationItems[i].Value" placeholder="VD: 12GB GDDR6" /></td><td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger js-remove-spec-row">Xóa</button></td></tr>}</tbody></table></div><span asp-validation-for="Specifications" class="text-danger"></span></div>
         </div>
-        <div class="col-lg-5"><div class="apf-card"><h5 class="apf-title">Hình ảnh</h5>
-            @if (orderedImages.Any()) { <label class="form-label">Ảnh hiện có</label><div class="apf-image-list mb-3">@foreach (var image in orderedImages) { <div class="apf-image-item"><img src="@image.ImageUrl" alt="Ảnh linh kiện" /><div class="apf-image-meta"><label class="form-check-label text-danger small"><input class="form-check-input" type="checkbox" name="RemoveImageIds" value="@image.Id" /> Xóa</label><input type="hidden" name="ExistingImageOrder" value="@image.Id" /></div></div> }</div> }
-            <label asp-for="ThumbnailImageUrl" class="form-label">Ảnh đại diện</label><input asp-for="ThumbnailImageUrl" class="form-control" placeholder="URL ảnh đại diện" /><span asp-validation-for="ThumbnailImageUrl" class="text-danger"></span>
-            <label asp-for="ProductImageUrlsText" class="form-label mt-3">Thư viện ảnh</label><textarea asp-for="ProductImageUrlsText" rows="5" class="form-control" placeholder="Mỗi URL ảnh trên một dòng"></textarea><span asp-validation-for="ProductImageUrlsText" class="text-danger"></span>
+        <div class="col-lg-4"><div class="apf-card"><h5 class="apf-title">3. Hình ảnh</h5>
+            @if (orderedImages.Any()) { <label class="form-label">Ảnh hiện có</label><div class="apf-image-list mb-3" id="existing-image-list">@foreach (var image in orderedImages) { <div class="apf-image-item" data-image-id="@image.Id"><img src="@image.ImageUrl" alt="Ảnh linh kiện" onerror="this.onerror=null;this.src='/images/no-image.png';" /><div class="apf-image-meta"><span class="badge text-bg-warning apf-primary-badge">Ảnh đại diện</span><label class="form-check-label text-danger small d-block mt-2"><input class="form-check-input" type="checkbox" name="RemoveImageIds" value="@image.Id" /> Xóa</label></div></div> }</div> }
+            <label asp-for="ThumbnailImageUrl" class="form-label">Ảnh đại diện</label><input asp-for="ThumbnailImageUrl" class="form-control js-image-url" placeholder="https://..." /><span asp-validation-for="ThumbnailImageUrl" class="text-danger"></span>
+            <label asp-for="ProductImageUrlsText" class="form-label mt-3">Thư viện ảnh</label><textarea asp-for="ProductImageUrlsText" rows="6" class="form-control js-gallery-urls" placeholder="Mỗi URL ảnh trên một dòng"></textarea><span asp-validation-for="ProductImageUrlsText" class="text-danger"></span>
+            <div class="mt-3"><label class="form-label">Preview ảnh</label><div class="image-preview-grid" id="image-preview-grid"></div></div><div id="existing-image-order-container"></div>
         </div></div>
     </div>
-    <div class="mt-4 d-flex gap-2"><button type="submit" class="btn btn-primary">Lưu linh kiện</button><a asp-action="Index" class="btn btn-outline-secondary">Quay lại</a></div>
+    <div class="mt-4 d-flex gap-2"><button type="submit" class="btn btn-primary">Lưu linh kiện</button><a asp-action="Index" class="btn btn-outline-secondary">Hủy</a></div>
 </form>
 <partial name="_ValidationScriptsPartial" />
+<script>
+(function(){
+const templates={VGA:['Sản phẩm','Hãng sản xuất','Engine đồ họa','Chuẩn Bus','Bộ nhớ','Engine Clock','Lõi CUDA','Clock bộ nhớ','Giao diện bộ nhớ','Kết nối','Kích thước','PSU đề nghị','Power Connectors','DirectX'],Monitor:['Sản phẩm','Hãng sản xuất','Kích thước','Độ phân giải','Tấm nền','Tần số quét','Thời gian đáp ứng','Độ sáng','Cổng kết nối','Bảo hành'],CPU:['Sản phẩm','Hãng sản xuất','Socket','Số nhân','Số luồng','Xung nhịp','Cache','TDP'],RAM:['Sản phẩm','Hãng sản xuất','Dung lượng','Bus','Loại RAM','Điện áp','Tản nhiệt'],Mainboard:['Sản phẩm','Hãng sản xuất','Socket','Chipset','Kích thước','RAM hỗ trợ','Khe mở rộng','Cổng kết nối'],Storage:['Sản phẩm','Hãng sản xuất','Dung lượng','Chuẩn kết nối','Tốc độ đọc','Tốc độ ghi','Bảo hành'],SSD:['Sản phẩm','Hãng sản xuất','Dung lượng','Chuẩn kết nối','Tốc độ đọc','Tốc độ ghi','Bảo hành'],HDD:['Sản phẩm','Hãng sản xuất','Dung lượng','Chuẩn kết nối','Tốc độ đọc','Tốc độ ghi','Bảo hành'],PSU:['Sản phẩm','Hãng sản xuất','Công suất','Chuẩn hiệu suất','Modular','Bảo hành'],Case:['Sản phẩm','Hãng sản xuất','Kích thước','Mainboard hỗ trợ','Quạt hỗ trợ','Radiator hỗ trợ','Cổng I/O'],Cooler:['Sản phẩm','Hãng sản xuất','Loại tản nhiệt','Socket hỗ trợ','Kích thước','Tốc độ quạt'],Keyboard:['Sản phẩm','Hãng sản xuất','Layout','Switch','Kết nối','LED','Keycap'],Mouse:['Sản phẩm','Hãng sản xuất','DPI','Kết nối','Cảm biến','Số nút','Trọng lượng'],Headphone:['Sản phẩm','Hãng sản xuất','Kiểu tai nghe','Kết nối','Driver','Micro','Âm thanh']};
+const tbody=document.querySelector('#spec-kv-table tbody'); const type=document.getElementById('component-type-select');
+function row(name='',value=''){const tr=document.createElement('tr');tr.innerHTML=`<td><input class="form-control form-control-sm js-spec-name" placeholder="VD: Bộ nhớ" value="${name.replaceAll('"','&quot;')}"></td><td><input class="form-control form-control-sm js-spec-value" placeholder="VD: 12GB GDDR6" value="${value.replaceAll('"','&quot;')}"></td><td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger js-remove-spec-row">Xóa</button></td>`;tbody.appendChild(tr); reindex();}
+function reindex(){[...tbody.querySelectorAll('tr')].forEach((tr,i)=>{tr.querySelector('.js-spec-name').name=`SpecificationItems[${i}].Name`;tr.querySelector('.js-spec-value').name=`SpecificationItems[${i}].Value`;}); syncHidden();}
+function syncHidden(){const items=[...tbody.querySelectorAll('tr')].map(tr=>({name:tr.querySelector('.js-spec-name').value.trim(),value:tr.querySelector('.js-spec-value').value.trim()})).filter(x=>x.name||x.value);document.getElementById('Specifications').value=JSON.stringify(items);}
+document.getElementById('add-spec-row')?.addEventListener('click',()=>row());document.getElementById('apply-spec-template')?.addEventListener('click',()=>{const keys=templates[type.value]||templates.Other||['Sản phẩm','Hãng sản xuất']; const existing=new Set([...tbody.querySelectorAll('.js-spec-name')].map(x=>x.value.trim().toLowerCase())); keys.forEach(k=>{if(!existing.has(k.toLowerCase())) row(k,'');});});document.getElementById('clear-empty-specs')?.addEventListener('click',()=>{[...tbody.querySelectorAll('tr')].forEach(tr=>{if(!tr.querySelector('.js-spec-name').value.trim()&&!tr.querySelector('.js-spec-value').value.trim())tr.remove();});reindex();});tbody?.addEventListener('click',e=>{if(e.target.closest('.js-remove-spec-row')){e.target.closest('tr').remove();reindex();}});tbody?.addEventListener('input',syncHidden);if(tbody&&tbody.children.length===0) row('Sản phẩm','');
+function money(v){const n=Number((v||'').replace(/[^0-9.]/g,''));return n>0?n.toLocaleString('vi-VN')+' đ':'--';}function price(){const p=document.querySelector('.js-price')?.value; const s=document.querySelector('.js-sale-price')?.value; document.getElementById('actual-price-preview').textContent=money(s||p);}[...document.querySelectorAll('.js-price,.js-sale-price')].forEach(x=>x.addEventListener('input',price));price();
+function previews(){const urls=[];const thumb=document.querySelector('.js-image-url')?.value.trim(); if(thumb) urls.push(thumb); (document.querySelector('.js-gallery-urls')?.value||'').split(/\r?\n|,|;/).map(x=>x.trim()).filter(Boolean).forEach(x=>urls.push(x)); const box=document.getElementById('image-preview-grid'); box.innerHTML=''; [...new Set(urls)].slice(0,8).forEach(u=>{const img=document.createElement('img');img.src=u;img.onerror=function(){this.remove()};box.appendChild(img);});}[...document.querySelectorAll('.js-image-url,.js-gallery-urls')].forEach(x=>x.addEventListener('input',previews));previews();
+const list=document.getElementById('existing-image-list'), order=document.getElementById('existing-image-order-container'); if(list&&order){[...list.querySelectorAll('.apf-image-item')].forEach(item=>{const input=document.createElement('input');input.type='hidden';input.name='ExistingImageOrder';input.value=item.dataset.imageId;order.appendChild(input);});}
+reindex();
+})();
+</script>
