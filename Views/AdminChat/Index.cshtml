@@ -29,7 +29,7 @@
         <div class="admin-chat-placeholder" id="admin-chat-placeholder">
             <div><i class="bi bi-chat-square-text"></i></div>
             <h3>Chọn một cuộc trò chuyện để bắt đầu hỗ trợ khách hàng</h3>
-            <p>Theo dõi yêu cầu, ngữ cảnh hỗ trợ và phản hồi khách hàng ngay tại đây.</p>
+            <p>Thông tin khách hàng và lịch sử trao đổi sẽ hiển thị tại đây.</p>
         </div>
         <div class="admin-chat-room d-none" id="admin-chat-room">
             <header class="admin-chat-customer">
@@ -59,11 +59,13 @@
             <div class="admin-chat-messages" id="admin-chat-messages" aria-live="polite"></div>
             <div class="admin-chat-closed d-none" id="admin-chat-closed"><i class="bi bi-lock"></i> Hội thoại này đã đóng và không thể gửi thêm tin nhắn.</div>
             <div class="admin-chat-compose-area" id="admin-chat-compose-area">
-                <div class="admin-chat-quick-replies">
+                <div class="admin-chat-quick-replies" aria-label="Trả lời nhanh">
                     <span>Trả lời nhanh:</span>
-                    <button type="button" data-reply="KKSHOP đã tiếp nhận yêu cầu của bạn và sẽ hỗ trợ trong thời gian sớm nhất.">Đã tiếp nhận</button>
-                    <button type="button" data-reply="Bạn vui lòng gửi thêm hình ảnh/video lỗi để KKSHOP kiểm tra chính xác hơn.">Yêu cầu ảnh/video</button>
-                    <button type="button" data-reply="Nhân viên đang kiểm tra đơn hàng cho bạn, vui lòng chờ trong ít phút.">Đang kiểm tra đơn</button>
+                    <button type="button" data-reply="Xin chào, KKSHOP có thể hỗ trợ gì cho bạn ạ?">Xin chào</button>
+                    <button type="button" data-reply="Bạn vui lòng gửi mã đơn hàng hoặc số điện thoại đặt hàng để KKSHOP kiểm tra nhanh hơn nhé.">Kiểm tra đơn hàng</button>
+                    <button type="button" data-reply="KKSHOP hỗ trợ thanh toán COD hoặc chuyển khoản theo thông tin trên đơn hàng. Bạn cần mình hướng dẫn bước nào ạ?">Hướng dẫn thanh toán</button>
+                    <button type="button" data-reply="Bạn cho KKSHOP biết nhu cầu sử dụng, ngân sách và màn hình đang dùng để tư vấn cấu hình phù hợp nhé.">Tư vấn cấu hình</button>
+                    <button type="button" data-reply="Bạn vui lòng gửi mã đơn hàng, tên sản phẩm và mô tả lỗi để KKSHOP kiểm tra bảo hành ạ.">Hỗ trợ bảo hành</button>
                 </div>
                 <form class="admin-chat-compose" id="admin-chat-compose">
                     <textarea id="admin-chat-message" maxlength="1000" rows="2" placeholder="Nhập phản hồi cho khách hàng..."></textarea>
