@@ -10,16 +10,14 @@ public static partial class ProductFilterFacetHelper
 
     public static readonly IReadOnlyList<PriceRangeDefinition> PriceRanges =
     [
-        new("under-10", "Dưới 10 triệu", null, 10_000_000m),
-        new("10-15", "10 - 15 triệu", 10_000_000m, 15_000_000m),
-        new("15-20", "15 - 20 triệu", 15_000_000m, 20_000_000m),
-        new("20-25", "20 - 25 triệu", 20_000_000m, 25_000_000m),
-        new("25-35", "25 - 35 triệu", 25_000_000m, 35_000_000m),
-        new("35-45", "35 - 45 triệu", 35_000_000m, 45_000_000m),
-        new("45-60", "45 - 60 triệu", 45_000_000m, 60_000_000m),
-        new("60-80", "60 - 80 triệu", 60_000_000m, 80_000_000m),
-        new("80-100", "80 - 100 triệu", 80_000_000m, 100_000_000m),
-        new("over-100", "Trên 100 triệu", 100_000_000m, null)
+        new("under-1", "Dưới 1 triệu", null, 1_000_000m),
+        new("1-2", "1 - 2 triệu", 1_000_000m, 2_000_000m),
+        new("2-5", "2 - 5 triệu", 2_000_000m, 5_000_000m),
+        new("5-10", "5 - 10 triệu", 5_000_000m, 10_000_000m),
+        new("10-20", "10 - 20 triệu", 10_000_000m, 20_000_000m),
+        new("20-30", "20 - 30 triệu", 20_000_000m, 30_000_000m),
+        new("30-50", "30 - 50 triệu", 30_000_000m, 50_000_000m),
+        new("over-50", "Trên 50 triệu", 50_000_000m, null)
     ];
 
     public static decimal GetEffectivePrice(Product product) =>
