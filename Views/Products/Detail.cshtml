@@ -1,12 +1,13 @@
 @using Datn.PcStore.Helpers
-@model Product
+@model ProductDetailViewModel
 @{
-    ViewData["Title"] = Model.Name;
+    var product = Model.Product;
+    ViewData["Title"] = product.Name;
 
     var suggestions = ViewBag.UpgradeSuggestions as List<Product> ?? new();
-    var galleryImages = Model.ProductImages.OrderBy(x => x.SortOrder).ToList();
+    var galleryImages = product.ProductImages.OrderBy(x => x.SortOrder).ToList();
     var mainImage = ImageUrlHelper.ResolveImageUrl(galleryImages.FirstOrDefault()?.ImageUrl
-        ?? Model.ThumbnailImage, "/images/no-image.png");
+        ?? product.ThumbnailImage, "/images/no-image.png");
     var galleryImageUrls = galleryImages
         .Select(image => ImageUrlHelper.ResolveImageUrl(image.ImageUrl, "/images/no-image.png"))
         .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -17,38 +18,40 @@
     }
 
     var culture = new System.Globalization.CultureInfo("vi-VN");
-    var finalPrice = (Model.DiscountPrice ?? Model.SalePrice) ?? Model.Price;
-    var savings = Model.Price > finalPrice ? Model.Price - finalPrice : 0;
-    var inStock = Model.StockQuantity > 0;
-    var warrantyText = Model.WarrantyMonths > 0 ? $"{Model.WarrantyMonths} tháng" : Model.WarrantyDuration;
+    var finalPrice = (product.DiscountPrice ?? product.SalePrice) ?? product.Price;
+    var savings = product.Price > finalPrice ? product.Price - finalPrice : 0;
+    var inStock = product.StockQuantity > 0;
+    var warrantyText = product.WarrantyMonths > 0 ? $"{product.WarrantyMonths} tháng" : product.WarrantyDuration;
 
-    var keyValueSpecs = string.Equals(Model.ProductType, ProductKinds.Component, StringComparison.OrdinalIgnoreCase)
-        ? ProductSpecificationKeyValueHelper.ParseStored(Model.TechnicalSpecifications)
+    var keyValueSpecs = string.Equals(product.ProductType, ProductKinds.Component, StringComparison.OrdinalIgnoreCase)
+        ? ProductSpecificationKeyValueHelper.ParseStored(product.TechnicalSpecifications)
             .Where(spec => !string.IsNullOrWhiteSpace(spec.Name) || !string.IsNullOrWhiteSpace(spec.Value))
             .ToList()
         : new List<Datn.PcStore.ViewModels.ProductSpecificationItemVm>();
-    var componentSpecs = ProductSpecDisplayHelper.TryParseComponentSpecs(Model.TechnicalSpecifications)
+    var componentSpecs = ProductSpecDisplayHelper.TryParseComponentSpecs(product.TechnicalSpecifications)
         .Where(spec => !string.IsNullOrWhiteSpace(spec.Description))
         .GroupBy(spec => spec.Description.Trim(), StringComparer.OrdinalIgnoreCase)
         .Select(group => group.First())
         .ToList();
-    var descriptionLines = ProductSpecDisplayHelper.GetSafeTextLines(Model, 6, 180)
+    var descriptionLines = ProductSpecDisplayHelper.GetSafeTextLines(product, 6, 180)
         .Where(line => !componentSpecs.Any(spec => string.Equals(spec.Description.Trim(), line.Trim(), StringComparison.OrdinalIgnoreCase)))
         .Distinct(StringComparer.OrdinalIgnoreCase)
         .ToList();
-    var fullDescription = ProductSpecDisplayHelper.GetFullDescriptionText(Model);
-    var promotionLines = ProductPromotionHelper.GetPromotionLines(Model);
+    var fullDescription = ProductSpecDisplayHelper.GetFullDescriptionText(product);
+    var promotionLines = ProductPromotionHelper.GetPromotionLines(product);
 
+    string SlotImage(IReadOnlyList<Product> items) => ImageUrlHelper.ResolveImageUrl(items.FirstOrDefault()?.ProductImages.OrderBy(x => x.SortOrder).Select(x => x.ImageUrl).FirstOrDefault()
+        ?? items.FirstOrDefault()?.ThumbnailImage, "/images/no-image.png");
     var accessorySlots = new[]
     {
-        new { Type = "Monitor", Label = "Màn hình", Image = "https://ttgshop.vn/media/category/cat_big_1003486567.png" },
-        new { Type = "Keyboard", Label = "Bàn phím", Image = "https://ttgshop.vn/media/category/cat_big_1003353341.png" },
-        new { Type = "Mouse", Label = "Chuột", Image = "https://ttgshop.vn/media/category/cat_big_1003353370.png" },
-        new { Type = "Headphone", Label = "Tai nghe", Image = "https://ttgshop.vn/media/category/cat_big_1004013226.jpg" }
+        new { Type = "Monitor", Label = "Màn hình", Products = Model.Monitors, Image = SlotImage(Model.Monitors) },
+        new { Type = "Keyboard", Label = "Bàn phím", Products = Model.Keyboards, Image = SlotImage(Model.Keyboards) },
+        new { Type = "Mouse", Label = "Chuột", Products = Model.Mice, Image = SlotImage(Model.Mice) },
+        new { Type = "Headphone", Label = "Tai nghe", Products = Model.Headsets, Image = SlotImage(Model.Headsets) }
     };
-    var isPcProduct = string.Equals(Model.ComponentType, "PC", StringComparison.OrdinalIgnoreCase)
-        || (Model.Category?.Name?.Contains("PC", StringComparison.OrdinalIgnoreCase) ?? false);
-    var reviewSection = ViewBag.ReviewSection as ProductReviewSectionVm ?? new ProductReviewSectionVm { ProductId = Model.Id };
+    var isPcProduct = string.Equals(product.ComponentType, "PC", StringComparison.OrdinalIgnoreCase)
+        || (product.Category?.Name?.Contains("PC", StringComparison.OrdinalIgnoreCase) ?? false);
+    var reviewSection = ViewBag.ReviewSection as ProductReviewSectionVm ?? new ProductReviewSectionVm { ProductId = product.Id };
 }
 
 <div class="product-detail-page">
@@ -58,7 +61,7 @@
             <i class="bi bi-chevron-right" aria-hidden="true"></i>
             <a asp-controller="Products" asp-action="Index">Sản phẩm</a>
             <i class="bi bi-chevron-right" aria-hidden="true"></i>
-            <span aria-current="page">@Model.Name</span>
+            <span aria-current="page">@product.Name</span>
         </nav>
 
         <section class="product-detail-card" aria-labelledby="product-title">
@@ -68,7 +71,7 @@
                         <div class="product-gallery-main">
                             <img id="main-product-image"
                                  src="@mainImage"
-                                 alt="@Model.Name"
+                                 alt="@product.Name"
                                  onerror="this.onerror=null;this.src='/images/no-image.png';" />
                         </div>
 
@@ -82,7 +85,7 @@
                                         aria-label="Xem ảnh sản phẩm @(i + 1)"
                                         aria-pressed="@(i == 0 ? "true" : "false")">
                                     <img src="@imageUrl"
-                                         alt="Ảnh thu nhỏ @(i + 1) của @Model.Name"
+                                         alt="Ảnh thu nhỏ @(i + 1) của @product.Name"
                                          onerror="this.onerror=null;this.src='/images/no-image.png';" />
                                 </button>
                             }
@@ -91,7 +94,7 @@
 
                     @if (isPcProduct)
                     {
-                    <section class="bundle-section" aria-labelledby="bundle-title" data-accessory-picker>
+                    <section class="bundle-section" aria-labelledby="bundle-title" data-accessory-picker data-pc-price="@finalPrice">
                         <div class="bundle-heading">
                             <h2 id="bundle-title"><i class="bi bi-plus-circle-fill" aria-hidden="true"></i>Sản phẩm mua kèm</h2>
                             <span>Chọn màn hình, bàn phím, chuột, tai nghe từ kho linh kiện hiện có</span>
@@ -99,40 +102,40 @@
                         <div class="bundle-grid">
                             @foreach (var slot in accessorySlots)
                             {
-                                <article class="bundle-card accessory-slot" data-slot-type="@slot.Type" data-slot-label="@slot.Label" data-default-image="@slot.Image">
+                                <article class="bundle-card accessory-slot" data-slot-type="@slot.Type" data-slot-label="@slot.Label" data-default-image="@slot.Image" data-default-price-text="@(slot.Products.Any() ? $"{slot.Products.Count} lựa chọn phù hợp" : "Chưa có linh kiện phù hợp")">
                                     <div class="bundle-image"><img src="@slot.Image" alt="@slot.Label" onerror="this.onerror=null;this.src='/images/no-image.png';" /></div>
                                     <span class="bundle-type">@slot.Label</span>
                                     <strong class="bundle-name">Chưa chọn sản phẩm</strong>
-                                    <span class="bundle-price">Chọn phụ kiện phù hợp</span>
+                                    <span class="bundle-price">@(slot.Products.Any() ? $"{slot.Products.Count} lựa chọn phù hợp" : "Chưa có linh kiện phù hợp")</span>
                                     <div class="bundle-actions">
-                                        <button type="button" class="bundle-select-btn" data-open-accessory>Chọn sản phẩm</button>
+                                        <button type="button" class="bundle-select-btn" data-open-accessory disabled="@(!slot.Products.Any())">@(slot.Products.Any() ? "Chọn sản phẩm" : "Chưa có hàng")</button>
                                         <button type="button" class="bundle-remove-btn d-none" data-remove-accessory>Xóa lựa chọn</button>
                                     </div>
                                 </article>
                             }
                         </div>
-                        <div class="bundle-subtotal"><span>PC hiện tại</span><strong>@finalPrice.ToString("N0", culture) đ</strong></div>
+                        <div class="bundle-subtotal"><span>Tổng PC + phụ kiện</span><strong id="bundle-total">@finalPrice.ToString("N0", culture) đ</strong></div>
                     </section>
                     }
                 </div>
 
                 <aside class="product-info-card">
                     <div class="product-detail-heading">
-                        @if (!string.IsNullOrWhiteSpace(Model.Brand)
-                            && !string.Equals(Model.Brand.Trim(), "N/A", StringComparison.OrdinalIgnoreCase))
+                        @if (!string.IsNullOrWhiteSpace(product.Brand)
+                            && !string.Equals(product.Brand.Trim(), "N/A", StringComparison.OrdinalIgnoreCase))
                         {
                             <div class="product-heading-meta">
-                                <span class="product-brand">@Model.Brand</span>
+                                <span class="product-brand">@product.Brand</span>
                             </div>
                         }
-                        <h1 id="product-title" class="product-name">@Model.Name</h1>
+                        <h1 id="product-title" class="product-name">@product.Name</h1>
                     </div>
 
                     <div class="price-box">
                         <span class="price-current">@finalPrice.ToString("N0", culture) đ</span>
-                        @if (finalPrice < Model.Price)
+                        @if (finalPrice < product.Price)
                         {
-                            <span class="price-old">@Model.Price.ToString("N0", culture) đ</span>
+                            <span class="price-old">@product.Price.ToString("N0", culture) đ</span>
                         }
                         @if (savings > 0)
                         {
@@ -144,7 +147,7 @@
                         <span class="product-meta-pill warranty-pill"><i class="bi bi-shield-check" aria-hidden="true"></i>Bảo hành: @warrantyText</span>
                         <span class="product-meta-pill stock-pill @(inStock ? "in-stock" : "out-of-stock")">
                             <i class="bi @(inStock ? "bi-check-circle-fill" : "bi-x-circle-fill")" aria-hidden="true"></i>
-                            @(inStock ? $"Còn hàng: {Model.StockQuantity}" : "Hết hàng")
+                            @(inStock ? $"Còn hàng: {product.StockQuantity}" : "Hết hàng")
                         </span>
                         <span class="product-meta-pill advice-pill"><i class="bi bi-tools" aria-hidden="true"></i>Tư vấn nâng cấp</span>
                     </div>
@@ -173,15 +176,15 @@
                     </div>
 
                     <form method="post" asp-controller="Cart" asp-action="AddBundle" class="purchase-form" id="purchase-form">
-                        <input type="hidden" name="productId" value="@Model.Id" />
+                        <input type="hidden" name="productId" value="@product.Id" />
                         <div class="purchase-quantity">
                             <label for="product-quantity">Số lượng</label>
                             <div class="quantity-stepper">
                                 <button type="button" class="quantity-btn" data-quantity-action="decrease" aria-label="Giảm số lượng">−</button>
-                                <input id="product-quantity" type="number" name="quantity" value="1" min="1" max="@(Math.Max(1, Model.StockQuantity))" @(inStock ? string.Empty : "disabled") />
+                                <input id="product-quantity" type="number" name="quantity" value="1" min="1" max="@(Math.Max(1, product.StockQuantity))" @(inStock ? string.Empty : "disabled") />
                                 <button type="button" class="quantity-btn" data-quantity-action="increase" aria-label="Tăng số lượng">+</button>
                             </div>
-                            <span class="stock-note">@(inStock ? $"Sẵn có {Model.StockQuantity} sản phẩm" : "Sản phẩm đang tạm hết hàng")</span>
+                            <span class="stock-note">@(inStock ? $"Sẵn có {product.StockQuantity} sản phẩm" : "Sản phẩm đang tạm hết hàng")</span>
                         </div>
                         <div id="selected-accessory-inputs"></div>
                         <div class="detail-action-row">
@@ -193,7 +196,7 @@
                             </button>
                         </div>
                     </form>
-                    <div class="product-compare-action"><partial name="_CompareButton" model="Model" /></div>
+                    <div class="product-compare-action"><partial name="_CompareButton" model="product" /></div>
                 </aside>
             </div>
         </section>
@@ -335,6 +338,9 @@
             const loading = document.getElementById('accessory-loading');
             const empty = document.getElementById('accessory-empty');
             const selectedInputs = document.getElementById('selected-accessory-inputs');
+            const bundleSection = page.querySelector('[data-accessory-picker]');
+            const bundleTotal = document.getElementById('bundle-total');
+            const pcPrice = Number(bundleSection?.dataset.pcPrice || 0);
             const currency = new Intl.NumberFormat('vi-VN');
             const filters = {
                 keyword: document.getElementById('accessory-keyword'),
@@ -405,7 +411,7 @@
                 activeSlot.querySelector('.bundle-price').textContent = currency.format(product.price) + ' đ';
                 activeSlot.querySelector('[data-open-accessory]').textContent = 'Đổi sản phẩm';
                 activeSlot.querySelector('[data-remove-accessory]').classList.remove('d-none');
-                refreshAccessoryInputs(); closeAccessory();
+                refreshAccessoryInputs(); updateBundleTotal(); closeAccessory();
             }
             function refreshAccessoryInputs() {
                 selectedInputs.innerHTML = '';
@@ -413,9 +419,15 @@
                     const input = document.createElement('input'); input.type = 'hidden'; input.name = 'AccessoryProductIds'; input.value = product.id; selectedInputs.appendChild(input);
                 });
             }
+            function updateBundleTotal() {
+                if (!bundleTotal) return;
+                let total = pcPrice;
+                selected.forEach(product => { total += Number(product.price || 0); });
+                bundleTotal.textContent = currency.format(total) + ' đ';
+            }
             function escapeHtml(value) { return String(value || '').replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c])); }
             page.querySelectorAll('[data-open-accessory]').forEach(btn => btn.addEventListener('click', () => openAccessory(btn.closest('.accessory-slot'))));
-            page.querySelectorAll('[data-remove-accessory]').forEach(btn => btn.addEventListener('click', () => { const slot = btn.closest('.accessory-slot'); selected.delete(slot.dataset.slotType); slot.querySelector('img').src = slot.dataset.defaultImage; slot.querySelector('.bundle-name').textContent = 'Chưa chọn sản phẩm'; slot.querySelector('.bundle-price').textContent = 'Chọn phụ kiện phù hợp'; slot.querySelector('[data-open-accessory]').textContent = 'Chọn sản phẩm'; btn.classList.add('d-none'); refreshAccessoryInputs(); }));
+            page.querySelectorAll('[data-remove-accessory]').forEach(btn => btn.addEventListener('click', () => { const slot = btn.closest('.accessory-slot'); selected.delete(slot.dataset.slotType); slot.querySelector('img').src = slot.dataset.defaultImage; slot.querySelector('.bundle-name').textContent = 'Chưa chọn sản phẩm'; slot.querySelector('.bundle-price').textContent = slot.dataset.defaultPriceText || 'Chưa có linh kiện phù hợp'; slot.querySelector('[data-open-accessory]').textContent = 'Chọn sản phẩm'; btn.classList.add('d-none'); refreshAccessoryInputs(); updateBundleTotal(); }));
             modal.querySelectorAll('[data-close-accessory]').forEach(btn => btn.addEventListener('click', closeAccessory));
             grid.addEventListener('click', event => { const btn = event.target.closest('[data-choose-accessory]'); if (!btn) return; chooseAccessory(JSON.parse(btn.dataset.chooseAccessory.replace(/&apos;/g, "'"))); });
             Object.values(filters).forEach(control => control.addEventListener(control.tagName === 'INPUT' ? 'input' : 'change', debounce(() => loadAccessories(false), 300)));
