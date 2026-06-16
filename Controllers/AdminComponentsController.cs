@@ -52,6 +52,7 @@ public class AdminComponentsController : Controller
         await PopulateCategoriesAsync(vm);
         TryValidateProductImageUrls(vm, true);
         NormalizeComponentInput(vm);
+        ValidateComponentBusinessRules(vm);
         if (!ModelState.IsValid) return InvalidForm(vm, "tạo");
 
         var product = new Product
@@ -98,6 +99,7 @@ public class AdminComponentsController : Controller
         await PopulateCategoriesAsync(vm);
         TryValidateProductImageUrls(vm, false);
         NormalizeComponentInput(vm);
+        ValidateComponentBusinessRules(vm);
         if (!ModelState.IsValid) { await PopulateExistingImagesAsync(vm); return InvalidForm(vm, "cập nhật"); }
         var product = await _db.Products.Include(p => p.ProductImages).FirstOrDefaultAsync(p => p.Id == vm.Id && p.ProductType == ProductKinds.Component);
         if (product == null) return NotFound();
@@ -132,6 +134,14 @@ public class AdminComponentsController : Controller
     private async Task PopulateExistingImagesAsync(AdminProductUpsertVm vm) { vm.ExistingImages = await _db.ProductImages.Where(x => x.ProductId == vm.Id).OrderBy(x => x.SortOrder).Select(x => new ProductImageItemVm{Id=x.Id,ImageUrl=x.ImageUrl,IsPrimary=x.IsPrimary,SortOrder=x.SortOrder}).ToListAsync(); if (!vm.ExistingImageOrder.Any()) vm.ExistingImageOrder = vm.ExistingImages.Select(x => x.Id).ToList(); }
     private IActionResult InvalidForm(AdminComponentUpsertVm vm, string op) { _logger.LogWarning("Không thể {Operation} linh kiện: ModelState invalid", op); TempData["ErrorMessage"] = $"Không thể {op} linh kiện. Vui lòng kiểm tra lỗi trong biểu mẫu."; return View(vm); }
     private bool TryValidateProductImageUrls(AdminProductUpsertVm vm, bool requireThumbnail) { if (requireThumbnail && string.IsNullOrWhiteSpace(vm.ThumbnailImageUrl)) ModelState.AddModelError(nameof(vm.ThumbnailImageUrl), "Vui lòng nhập URL ảnh đại diện."); ValidateUrl(vm.ThumbnailImageUrl, nameof(vm.ThumbnailImageUrl)); foreach (var url in SplitImageUrls(vm.ProductImageUrlsText)) ValidateUrl(url, nameof(vm.ProductImageUrlsText)); return ModelState.IsValid; }
+    private void ValidateComponentBusinessRules(AdminComponentUpsertVm vm)
+    {
+        if (string.IsNullOrWhiteSpace(vm.Name)) ModelState.AddModelError(nameof(vm.Name), "Vui lòng nhập tên linh kiện");
+        if (!vm.CategoryId.HasValue || vm.CategoryId.Value <= 0) ModelState.AddModelError(nameof(vm.CategoryId), "Vui lòng chọn danh mục");
+        if (!vm.Price.HasValue || vm.Price.Value <= 0) ModelState.AddModelError(nameof(vm.Price), "Vui lòng nhập giá gốc");
+        if (vm.DiscountPrice.HasValue && vm.Price.HasValue && vm.DiscountPrice.Value > vm.Price.Value) ModelState.AddModelError(nameof(vm.DiscountPrice), "Giá khuyến mãi không được lớn hơn giá gốc");
+        if (vm.StockQuantity.HasValue && vm.StockQuantity.Value < 0) ModelState.AddModelError(nameof(vm.StockQuantity), "Tồn kho không được âm");
+    }
     private void ValidateUrl(string? value, string key) { if (string.IsNullOrWhiteSpace(value)) return; if (!Uri.TryCreate(value.Trim(), UriKind.Absolute, out var uri) || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)) ModelState.AddModelError(key, "Chỉ chấp nhận URL http/https hợp lệ."); }
     private void NormalizeComponentInput(AdminComponentUpsertVm vm)
     {
