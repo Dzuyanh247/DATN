@@ -3,7 +3,7 @@
 }
 <form id="admin-chat-antiforgery" class="d-none">@Html.AntiForgeryToken()</form>
 
-<div class="admin-chat" id="admin-chat">
+<div class="admin-chat admin-chat-page" id="admin-chat">
     <aside class="admin-chat-list-panel">
         <div class="admin-chat-list-head">
             <div>
@@ -68,11 +68,11 @@
             <div class="admin-chat-compose-area" id="admin-chat-compose-area">
                 <div class="admin-chat-quick-replies" aria-label="Trả lời nhanh">
                     <span>Gợi ý nhanh:</span>
-                    <button type="button" data-reply="Xin chào, KKSHOP có thể hỗ trợ gì cho bạn ạ?">Xin chào</button>
-                    <button type="button" data-reply="Bạn vui lòng gửi mã đơn hàng hoặc số điện thoại đặt hàng để KKSHOP kiểm tra nhanh hơn nhé.">Kiểm tra đơn hàng</button>
-                    <button type="button" data-reply="KKSHOP hỗ trợ thanh toán COD hoặc chuyển khoản theo thông tin trên đơn hàng. Bạn cần mình hướng dẫn bước nào ạ?">Hướng dẫn thanh toán</button>
-                    <button type="button" data-reply="Bạn cho KKSHOP biết nhu cầu sử dụng, ngân sách và màn hình đang dùng để tư vấn cấu hình phù hợp nhé.">Tư vấn cấu hình</button>
+                    <button type="button" data-reply="Bạn cho KKSHOP biết nhu cầu sử dụng, ngân sách và màn hình đang dùng để tư vấn cấu hình PC phù hợp nhé.">Tư vấn cấu hình PC</button>
                     <button type="button" data-reply="Bạn vui lòng gửi mã đơn hàng, tên sản phẩm và mô tả lỗi để KKSHOP kiểm tra bảo hành ạ.">Kiểm tra bảo hành</button>
+                    <button type="button" data-reply="Bạn vui lòng gửi mã đơn hàng hoặc số điện thoại đặt hàng để KKSHOP kiểm tra tình trạng đơn hàng nhanh hơn nhé.">Hỏi tình trạng đơn hàng</button>
+                    <button type="button" data-reply="KKSHOP hỗ trợ thanh toán COD hoặc chuyển khoản. Bạn cần mình hướng dẫn bước nào ạ?">Hỗ trợ thanh toán</button>
+                    <button type="button" data-reply="KKSHOP sẽ chuyển hội thoại cho nhân viên phụ trách hỗ trợ trực tiếp cho bạn ạ.">Gặp nhân viên</button>
                     <button type="button" data-reply="KKSHOP gửi bạn thông tin chuyển khoản: Ngân hàng: [Tên ngân hàng] • Số tài khoản: [Số tài khoản] • Chủ tài khoản: KKSHOP • Nội dung: [Mã đơn hàng].">Gửi thông tin chuyển khoản</button>
                     <button type="button" data-reply="KKSHOP xin phép kết thúc phiên hỗ trợ tại đây. Nếu cần thêm thông tin, bạn nhắn lại để KKSHOP hỗ trợ tiếp nhé.">Kết thúc hỗ trợ</button>
                 </div>
