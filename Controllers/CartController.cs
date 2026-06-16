@@ -6,6 +6,12 @@ namespace Datn.PcStore.Controllers;
 
 public class CartController : Controller
 {
+    public class BundleCartRequest
+    {
+        public int ProductId { get; set; }
+        public int Quantity { get; set; } = 1;
+        public List<int> AccessoryProductIds { get; set; } = new();
+    }
     private readonly ICartService _cartService;
     public CartController(ICartService cartService) => _cartService = cartService;
 
@@ -58,6 +64,50 @@ public class CartController : Controller
             return RedirectToAction("Detail", "Products", new { id = productId });
         }
 
+        return Redirect("/Checkout");
+    }
+
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AddBundle([FromForm] BundleCartRequest request)
+    {
+        var items = new List<(int ProductId, int Quantity)> { (request.ProductId, Math.Max(1, request.Quantity)) };
+        items.AddRange(request.AccessoryProductIds.Where(id => id > 0).Distinct().Select(id => (id, 1)));
+
+        foreach (var item in items)
+        {
+            var result = await _cartService.AddToCartAsync(GetUserId(), item.ProductId, item.Quantity);
+            if (!result.Ok)
+            {
+                if (IsAjaxRequest()) return BadRequest(new { success = false, message = result.Error });
+                TempData["ErrorMessage"] = result.Error ?? "Không thể thêm bộ sản phẩm vào giỏ hàng.";
+                return Redirect(Request.Headers.Referer.ToString() ?? "/Products");
+            }
+        }
+
+        if (IsAjaxRequest())
+        {
+            var cart = await _cartService.GetCartAsync(GetUserId());
+            return Json(new { success = true, message = "Đã thêm PC và sản phẩm mua kèm vào giỏ hàng!", cartCount = cart.Items.Sum(x => x.Quantity) });
+        }
+
+        TempData["SuccessMessage"] = "Đã thêm PC và sản phẩm mua kèm vào giỏ hàng!";
+        return Redirect(Request.Headers.Referer.ToString() ?? "/Cart");
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> BuyBundle(BundleCartRequest request)
+    {
+        var items = new List<(int ProductId, int Quantity)> { (request.ProductId, Math.Max(1, request.Quantity)) };
+        items.AddRange(request.AccessoryProductIds.Where(id => id > 0).Distinct().Select(id => (id, 1)));
+        var result = await _cartService.SetBuyNowCartAsync(GetUserId(), items);
+        if (!result.Ok)
+        {
+            TempData["ErrorMessage"] = result.Error ?? "Không thể đặt bộ sản phẩm này lúc này.";
+            return RedirectToAction("Detail", "Products", new { id = request.ProductId });
+        }
         return Redirect("/Checkout");
     }
 

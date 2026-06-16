@@ -85,6 +85,39 @@ public class CartService : ICartService
         return (true, null);
     }
 
+
+    public async Task<(bool Ok, string? Error)> SetBuyNowCartAsync(int? userId, IReadOnlyCollection<(int ProductId, int Quantity)> items)
+    {
+        var normalized = items
+            .Where(x => x.ProductId > 0)
+            .GroupBy(x => x.ProductId)
+            .Select(g => (ProductId: g.Key, Quantity: Math.Max(1, g.Sum(x => x.Quantity))))
+            .ToList();
+        if (normalized.Count == 0) return (false, "Chưa có sản phẩm để đặt hàng.");
+
+        var productIds = normalized.Select(x => x.ProductId).ToList();
+        var products = await _db.Products.Where(x => productIds.Contains(x.Id) && x.IsActive).ToDictionaryAsync(x => x.Id);
+        foreach (var item in normalized)
+        {
+            if (!products.TryGetValue(item.ProductId, out var product)) return (false, "Một sản phẩm không tồn tại hoặc đã ngừng bán.");
+            if (product.StockQuantity < item.Quantity) return (false, $"{product.Name} không đủ tồn kho.");
+        }
+
+        if (userId.HasValue)
+        {
+            var cart = await GetOrCreateCartAsync(userId.Value);
+            var existingItems = await _db.CartItems.Where(x => x.CartId == cart.Id).ToListAsync();
+            _db.CartItems.RemoveRange(existingItems);
+            foreach (var item in normalized)
+                _db.CartItems.Add(new CartItem { CartId = cart.Id, ProductId = item.ProductId, Quantity = item.Quantity });
+            await _db.SaveChangesAsync();
+            return (true, null);
+        }
+
+        SaveSessionItems(normalized.Select(x => new CartLineVm { CartItemId = -x.ProductId, ProductId = x.ProductId, Quantity = x.Quantity }).ToList());
+        return (true, null);
+    }
+
     public async Task<(bool Ok, string? Error)> UpdateQuantityAsync(int? userId, int cartItemId, int quantity)
     {
         quantity = Math.Max(quantity, 1);

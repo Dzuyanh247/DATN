@@ -283,6 +283,21 @@ public static class SeedData
             }
         }
 
+
+        var accessoryTypes = new[] { "Monitor", "Keyboard", "Mouse", "Headphone" };
+        if (!await db.Products.AnyAsync(p => accessoryTypes.Contains(p.ComponentType)))
+        {
+            var categoryMap = await db.Categories.ToDictionaryAsync(c => c.Name, c => c.Id);
+            var accessoryCategoryId = categoryMap.TryGetValue("Linh kiện", out var lkId) ? lkId : categoryMap.Values.First();
+            db.Products.AddRange(
+                new Product { Name = "Màn hình ASUS TUF Gaming VG249Q3A 24 inch 180Hz", Slug = "man-hinh-asus-tuf-vg249q3a", ProductCode = "MON-ASUS-VG249Q3A", Brand = "ASUS", Price = 3990000, DiscountPrice = 3590000, SalePrice = 3590000, StockQuantity = 10, CategoryId = accessoryCategoryId, ThumbnailImage = "https://ttgshop.vn/media/category/cat_big_1003486567.png", ShortDescription = "Màn hình gaming FHD 180Hz", Description = "Màn hình IPS 24 inch, Full HD, 180Hz.", DetailDescription = "Màn hình IPS 24 inch, Full HD, 180Hz.", Specifications = "24 inch | FHD | 180Hz | IPS", WarrantyMonths = 36, WarrantyDuration = "36 tháng", ComponentType = "Monitor", IsInStock = true, IsActive = true },
+                new Product { Name = "Bàn phím cơ AKKO 3087 RGB", Slug = "ban-phim-co-akko-3087-rgb", ProductCode = "KEY-AKKO-3087", Brand = "AKKO", Price = 1490000, DiscountPrice = 1290000, SalePrice = 1290000, StockQuantity = 15, CategoryId = accessoryCategoryId, ThumbnailImage = "https://ttgshop.vn/media/category/cat_big_1003353341.png", ShortDescription = "Bàn phím cơ TKL RGB", Description = "Layout TKL, switch cơ, RGB.", DetailDescription = "Layout TKL, switch cơ, RGB.", Specifications = "TKL | Mechanical | USB-C | RGB", WarrantyMonths = 12, WarrantyDuration = "12 tháng", ComponentType = "Keyboard", IsInStock = true, IsActive = true },
+                new Product { Name = "Chuột Logitech G304 Lightspeed", Slug = "chuot-logitech-g304-lightspeed", ProductCode = "MOU-LOGI-G304", Brand = "Logitech", Price = 990000, DiscountPrice = 790000, SalePrice = 790000, StockQuantity = 20, CategoryId = accessoryCategoryId, ThumbnailImage = "https://ttgshop.vn/media/category/cat_big_1003353370.png", ShortDescription = "Chuột gaming không dây", Description = "Kết nối Lightspeed, cảm biến HERO.", DetailDescription = "Kết nối Lightspeed, cảm biến HERO.", Specifications = "Wireless | HERO | 12000 DPI", WarrantyMonths = 24, WarrantyDuration = "24 tháng", ComponentType = "Mouse", IsInStock = true, IsActive = true },
+                new Product { Name = "Tai nghe HyperX Cloud Stinger 2", Slug = "tai-nghe-hyperx-cloud-stinger-2", ProductCode = "HP-HYPERX-STINGER2", Brand = "HyperX", Price = 1290000, DiscountPrice = 1090000, SalePrice = 1090000, StockQuantity = 12, CategoryId = accessoryCategoryId, ThumbnailImage = "https://ttgshop.vn/media/category/cat_big_1004013226.jpg", ShortDescription = "Tai nghe gaming âm thanh vòm", Description = "Micro chống ồn, đệm tai êm.", DetailDescription = "Micro chống ồn, đệm tai êm.", Specifications = "3.5mm | Stereo | Mic chống ồn", WarrantyMonths = 24, WarrantyDuration = "24 tháng", ComponentType = "Headphone", IsInStock = true, IsActive = true }
+            );
+            await db.SaveChangesAsync();
+        }
+
         if (!await db.SiteSettings.AnyAsync())
         {
             db.SiteSettings.Add(new SiteSetting
