@@ -167,10 +167,6 @@
                         <td class="text-end admin-order-total">@order.TotalAmount.ToString("N0") đ</td>
                         <td class="admin-order-status-cell">
                             <span class="order-status-badge @OrderStatusHelper.BadgeClass(order.Status)">@OrderStatusHelper.Label(order.Status)</span>
-                            @if (OrderStatusHelper.ShouldShowPaymentStatus(order.Status, order.PaymentStatus))
-                            {
-                                <span class="payment-status-badge @OrderStatusHelper.PaymentBadgeClass(order.PaymentStatus, order.Status)">@OrderStatusHelper.PaymentLabel(order.PaymentStatus, order.Status)</span>
-                            }
                             @if (order.Status == OrderStatus.PendingPayment && order.PaymentDeadline.HasValue)
                             {
                                 <small class="admin-order-deadline"><i class="bi bi-clock"></i> Hạn @DateTimeHelper.FormatVietnam(order.PaymentDeadline, "dd/MM HH:mm")</small>
