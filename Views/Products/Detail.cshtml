@@ -152,18 +152,26 @@
                         <span class="product-meta-pill advice-pill"><i class="bi bi-tools" aria-hidden="true"></i>Tư vấn nâng cấp</span>
                     </div>
 
-                    @if (descriptionLines.Any())
-                    {
-                        <div class="spec-summary-box">
-                            <div class="compact-box-title"><i class="bi bi-card-checklist" aria-hidden="true"></i><span>Thông tin nổi bật</span></div>
+                    <div class="short-description">
+                        <h3>Mô tả sản phẩm</h3>
+                        @if (descriptionLines.Any())
+                        {
                             <ul>
                                 @foreach (var line in descriptionLines)
                                 {
                                     <li><i class="bi bi-check" aria-hidden="true"></i><span>@line</span></li>
                                 }
                             </ul>
-                        </div>
-                    }
+                        }
+                        else if (!string.IsNullOrWhiteSpace(fullDescription))
+                        {
+                            <div class="short-description-text">@fullDescription</div>
+                        }
+                        else
+                        {
+                            <p>Sản phẩm đang được cập nhật mô tả.</p>
+                        }
+                    </div>
 
                     <div class="promo-box">
                         <div class="commerce-box-header"><span><i class="bi bi-gift-fill" aria-hidden="true"></i>KHUYẾN MÃI</span><small>Quà tặng kèm</small></div>
@@ -197,22 +205,6 @@
                         </div>
                     </form>
 
-                    <section class="product-detail-section product-description-section" aria-labelledby="product-description-title">
-                        <div class="product-section-heading">
-                            <div><span class="product-section-kicker">Thông tin sản phẩm</span><h2 id="product-description-title">Mô tả sản phẩm</h2></div>
-                            <i class="bi bi-file-text" aria-hidden="true"></i>
-                        </div>
-                        <div class="product-description-content @(string.IsNullOrWhiteSpace(fullDescription) ? "is-empty" : string.Empty)">
-                            @if (string.IsNullOrWhiteSpace(fullDescription))
-                            {
-                                <p>Sản phẩm đang được cập nhật mô tả.</p>
-                            }
-                            else
-                            {
-                                <div class="product-description-text">@fullDescription</div>
-                            }
-                        </div>
-                    </section>
 
                     <div class="product-compare-action"><partial name="_CompareButton" model="product" /></div>
                 </aside>
