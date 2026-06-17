@@ -196,25 +196,26 @@
                             </button>
                         </div>
                     </form>
+
+                    <section class="product-detail-section product-description-section" aria-labelledby="product-description-title">
+                        <div class="product-section-heading">
+                            <div><span class="product-section-kicker">Thông tin sản phẩm</span><h2 id="product-description-title">Mô tả sản phẩm</h2></div>
+                            <i class="bi bi-file-text" aria-hidden="true"></i>
+                        </div>
+                        <div class="product-description-content @(string.IsNullOrWhiteSpace(fullDescription) ? "is-empty" : string.Empty)">
+                            @if (string.IsNullOrWhiteSpace(fullDescription))
+                            {
+                                <p>Sản phẩm đang được cập nhật mô tả.</p>
+                            }
+                            else
+                            {
+                                <div class="product-description-text">@fullDescription</div>
+                            }
+                        </div>
+                    </section>
+
                     <div class="product-compare-action"><partial name="_CompareButton" model="product" /></div>
                 </aside>
-            </div>
-        </section>
-
-        <section class="product-detail-section product-description-section" aria-labelledby="product-description-title">
-            <div class="product-section-heading">
-                <div><span class="product-section-kicker">Thông tin sản phẩm</span><h2 id="product-description-title">Mô tả sản phẩm</h2></div>
-                <i class="bi bi-file-text" aria-hidden="true"></i>
-            </div>
-            <div class="product-description-content @(string.IsNullOrWhiteSpace(fullDescription) ? "is-empty" : string.Empty)">
-                @if (string.IsNullOrWhiteSpace(fullDescription))
-                {
-                    <p>Sản phẩm đang được cập nhật mô tả.</p>
-                }
-                else
-                {
-                    <div class="product-description-text">@fullDescription</div>
-                }
             </div>
         </section>
 

@@ -95,6 +95,10 @@
 .product-section-heading>i{color:#cbd5e1;font-size:1.7rem}
 .product-section-kicker{color:var(--detail-red);font-size:.64rem;font-weight:900;letter-spacing:.07em;text-transform:uppercase}
 .product-description-section{overflow:hidden;border:1px solid var(--detail-border);border-radius:10px;background:#fff;box-shadow:0 5px 18px rgba(15,23,42,.04)}
+.product-info-card .product-description-section{margin-top:0;box-shadow:none}
+.product-info-card .product-description-section .product-section-heading{padding:12px 14px}
+.product-info-card .product-description-section .product-section-heading h2{font-size:.98rem}
+.product-info-card .product-description-section .product-section-heading>i{font-size:1.35rem}
 .product-description-content{padding:20px 22px;color:#374151;font-size:.92rem;line-height:1.75;overflow-wrap:anywhere;word-break:break-word}
 .product-description-text{max-width:100%;white-space:pre-line}
 .product-description-content.is-empty{color:#94a3b8;font-style:italic}
