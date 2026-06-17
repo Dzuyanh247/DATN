@@ -12,19 +12,19 @@ public static class ProductKinds
 public static class ComponentTypes
 {
     public const string CPU = "CPU";
-    public const string Mainboard = "Mainboard";
+    public const string Mainboard = "MAINBOARD";
     public const string RAM = "RAM";
     public const string VGA = "VGA";
-    public const string Storage = "Storage";
+    public const string Storage = "STORAGE";
     public const string PSU = "PSU";
-    public const string Case = "Case";
-    public const string Cooler = "Cooler";
-    public const string Monitor = "Monitor";
-    public const string Keyboard = "Keyboard";
-    public const string Mouse = "Mouse";
-    public const string Headphone = "Headphone";
-    public const string MonitorArm = "MonitorArm";
-    public const string Other = "Other";
+    public const string Case = "CASE";
+    public const string Cooler = "COOLER";
+    public const string Monitor = "MONITOR";
+    public const string Keyboard = "KEYBOARD";
+    public const string Mouse = "MOUSE";
+    public const string Headphone = "HEADPHONE";
+    public const string MonitorArm = "MONITOR_ARM";
+    public const string Other = "OTHER";
 
     public static readonly List<string> All = new()
     {
@@ -34,20 +34,20 @@ public static class ComponentTypes
 
     public static readonly IReadOnlyDictionary<string, string> Labels = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
     {
-        [CPU] = "CPU - Bộ vi xử lý",
-        [Mainboard] = "Mainboard - Bo mạch chủ",
-        [RAM] = "RAM - Bộ nhớ trong",
-        [VGA] = "VGA - Card màn hình",
-        [Storage] = "Storage - SSD/HDD",
-        [PSU] = "PSU - Nguồn máy tính",
-        [Case] = "Case - Vỏ case",
-        [Cooler] = "Cooler - Tản nhiệt",
-        [Monitor] = "Monitor - Màn hình",
-        [Keyboard] = "Keyboard - Bàn phím",
-        [Mouse] = "Mouse - Chuột",
-        [Headphone] = "Headphone - Tai nghe",
-        [MonitorArm] = "MonitorArm - Giá treo màn hình",
-        [Other] = "Other - Khác"
+        [CPU] = "CPU",
+        [Mainboard] = "Mainboard - Bo Mạch Chủ",
+        [RAM] = "RAM",
+        [VGA] = "VGA - Card Màn Hình",
+        [Storage] = "Ổ Cứng (SSD, HDD)",
+        [PSU] = "Nguồn (PSU)",
+        [Case] = "Vỏ Case",
+        [Cooler] = "Tản nhiệt",
+        [Monitor] = "Màn hình",
+        [Keyboard] = "Bàn phím",
+        [Mouse] = "Chuột",
+        [Headphone] = "Tai nghe",
+        [MonitorArm] = "Giá treo màn hình",
+        [Other] = "Khác"
     };
 
     public static readonly IReadOnlyDictionary<string, string> Slugs = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
@@ -56,6 +56,26 @@ public static class ComponentTypes
         [PSU] = "psu", [Case] = "case", [Cooler] = "cooler", [Monitor] = "monitor", [Keyboard] = "keyboard",
         [Mouse] = "mouse", [Headphone] = "headphone", [MonitorArm] = "monitor-arm", [Other] = "other"
     };
+
+    public static readonly IReadOnlyDictionary<string, string[]> Aliases = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
+    {
+        [CPU] = new[] { CPU, "CPU - Bộ vi xử lý", "Bộ vi xử lý", "cpu" },
+        [Mainboard] = new[] { Mainboard, "Mainboard", "Mainboard - Bo mạch chủ", "Mainboard - Bo Mạch Chủ", "Bo mạch chủ", "Bo mach chu", "Motherboard", "mainboard", "main" },
+        [RAM] = new[] { RAM, "Ram", "Bộ nhớ trong" },
+        [VGA] = new[] { VGA, "GPU", "VGA - Card màn hình", "VGA - Card Màn Hình", "Card màn hình" },
+        [Storage] = new[] { Storage, "Storage", "SSD", "HDD", "SSD/HDD", "SSD-HDD", "Ổ cứng SSD/HDD", "Ổ cứng", "Ổ Cứng" },
+        [PSU] = new[] { PSU, "PSU - Nguồn máy tính", "Nguồn máy tính", "Nguồn" },
+        [Case] = new[] { Case, "Case", "Case - Vỏ case", "Vỏ case", "Vỏ Case" },
+        [Cooler] = new[] { Cooler, "Cooler", "Cooler - Tản nhiệt", "Tản nhiệt" },
+        [Monitor] = new[] { Monitor, "Monitor", "Monitor - Màn hình", "Màn hình" },
+        [Keyboard] = new[] { Keyboard, "Keyboard", "Keyboard - Bàn phím", "Bàn phím" },
+        [Mouse] = new[] { Mouse, "Mouse", "Mouse - Chuột", "Chuột" },
+        [Headphone] = new[] { Headphone, "Headphone", "Headphone - Tai nghe", "Headset", "Tai nghe" },
+        [MonitorArm] = new[] { MonitorArm, "MonitorArm", "Monitor Arm", "MonitorArm - Giá treo màn hình", "Giá treo màn hình" },
+        [Other] = new[] { Other, "Other", "Khác" }
+    };
+
+    public static string[] GetAliases(string? value) => Aliases.TryGetValue(Normalize(value), out var aliases) ? aliases : Aliases[Other];
 
     public static string Normalize(string? value)
     {

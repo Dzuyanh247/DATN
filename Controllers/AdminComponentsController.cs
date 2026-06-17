@@ -29,7 +29,8 @@ public class AdminComponentsController : Controller
         if (!string.IsNullOrWhiteSpace(componentType))
         {
             var normalizedComponentType = ComponentTypes.Normalize(componentType);
-            query = query.Where(p => p.ComponentType != null && GetComponentTypeAliases(normalizedComponentType).Contains(p.ComponentType));
+            var componentTypeAliases = ComponentTypes.GetAliases(normalizedComponentType);
+            query = query.Where(p => p.ComponentType != null && componentTypeAliases.Contains(p.ComponentType));
             componentType = normalizedComponentType;
         }
         if (!string.IsNullOrWhiteSpace(brand)) query = query.Where(p => p.Brand == brand);
@@ -161,35 +162,18 @@ public class AdminComponentsController : Controller
         ModelState.Remove(nameof(vm.CategoryId));
     }
 
-    private static string[] GetComponentTypeAliases(string type) => ComponentTypes.Normalize(type) switch
-    {
-        ComponentTypes.CPU => new[] { "CPU", "CPU - Bộ vi xử lý", "Bộ vi xử lý", "cpu" },
-        ComponentTypes.Mainboard => new[] { "Mainboard", "MAINBOARD", "Mainboard - Bo mạch chủ", "Bo mạch chủ", "Bo mach chu", "Motherboard", "mainboard", "main" },
-        ComponentTypes.RAM => new[] { "RAM", "Ram", "Bộ nhớ trong" },
-        ComponentTypes.VGA => new[] { "VGA", "GPU", "VGA - Card màn hình", "Card màn hình" },
-        ComponentTypes.Storage => new[] { "Storage", "SSD", "HDD", "SSD/HDD", "Storage - SSD/HDD", "Ổ cứng SSD/HDD", "Ổ cứng" },
-        ComponentTypes.PSU => new[] { "PSU", "PSU - Nguồn máy tính", "Nguồn máy tính", "Nguồn" },
-        ComponentTypes.Case => new[] { "Case", "Case - Vỏ case", "Vỏ case" },
-        ComponentTypes.Cooler => new[] { "Cooler", "Cooler - Tản nhiệt", "Tản nhiệt" },
-        ComponentTypes.Monitor => new[] { "Monitor", "Monitor - Màn hình", "Màn hình" },
-        ComponentTypes.Keyboard => new[] { "Keyboard", "Keyboard - Bàn phím", "Bàn phím" },
-        ComponentTypes.Mouse => new[] { "Mouse", "Mouse - Chuột", "Chuột" },
-        ComponentTypes.Headphone => new[] { "Headphone", "Headphone - Tai nghe", "Headset", "Tai nghe" },
-        ComponentTypes.MonitorArm => new[] { "MonitorArm", "MonitorArm - Giá treo màn hình", "Giá treo màn hình" },
-        _ => new[] { ComponentTypes.Other, "Other", "Khác" }
-    };
-
     private async Task<List<string>> GetBrandOptionsAsync(string? componentType, string? currentBrand = null)
     {
         var normalizedType = ComponentTypes.Normalize(componentType);
+        var componentTypeAliases = ComponentTypes.GetAliases(normalizedType);
         var productBrandsQuery = _db.Products.AsNoTracking()
             .Where(p => p.ProductType == ProductKinds.Component && p.Brand != null && p.Brand != "" && p.Brand != "N/A");
         if (!string.IsNullOrWhiteSpace(componentType))
-            productBrandsQuery = productBrandsQuery.Where(p => p.ComponentType == normalizedType);
+            productBrandsQuery = productBrandsQuery.Where(p => componentTypeAliases.Contains(p.ComponentType));
 
         var productBrands = await productBrandsQuery.Select(p => p.Brand!.Trim()).ToListAsync();
         var catalogBrands = await _db.ComponentBrands.AsNoTracking()
-            .Where(x => x.ComponentType == normalizedType)
+            .Where(x => componentTypeAliases.Contains(x.ComponentType))
             .Select(x => x.Name.Trim())
             .ToListAsync();
         var brands = productBrands.Concat(catalogBrands).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(x => x).ToList();

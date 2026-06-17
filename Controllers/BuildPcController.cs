@@ -24,7 +24,7 @@ public class BuildPcController : Controller
         ("CPU", "CPU"),
         ("MAINBOARD", "MAINBOARD"),
         ("RAM", "RAM"),
-        ("GPU", "CARD ĐỒ HỌA"),
+        ("VGA", "CARD ĐỒ HỌA"),
         ("STORAGE", "Ổ CỨNG"),
         ("PSU", "NGUỒN (PSU)"),
         ("COOLER", "TẢN NHIỆT"),
@@ -50,8 +50,8 @@ public class BuildPcController : Controller
     [HttpGet("products")]
     public async Task<IActionResult> GetProductsByComponent(string type, string? keyword, string? sort)
     {
-        var displayType = NormalizeType(type);
-        var normalizedType = NormalizeBuildTypeToComponentType(displayType);
+        var normalizedBuildType = NormalizeType(type);
+        var normalizedType = NormalizeBuildTypeToComponentType(normalizedBuildType);
         var products = await QueryProductsByType(normalizedType);
         if (!string.IsNullOrWhiteSpace(keyword)) products = products.Where(x => x.Name.Contains(keyword)).ToList();
         products = sort == "price_desc" ? products.OrderByDescending(x => x.Price).ToList() : products.OrderBy(x => x.Price).ToList();
@@ -78,10 +78,11 @@ public class BuildPcController : Controller
         if (product == null) return NotFound();
 
         var selected = GetSelectedFromSession();
-        selected[type.ToUpperInvariant()] = new SelectedComponentViewModel
+        var normalizedBuildType = NormalizeType(type);
+        selected[normalizedBuildType] = new SelectedComponentViewModel
         {
             ProductId = product.Id,
-            Type = type.ToUpperInvariant(),
+            Type = normalizedBuildType,
             ProductName = product.Name,
             ImageUrl = product.ThumbnailImage,
             Price = product.DiscountPrice ?? product.SalePrice ?? product.Price,
@@ -96,7 +97,7 @@ public class BuildPcController : Controller
     public IActionResult RemoveComponent(string type)
     {
         var selected = GetSelectedFromSession();
-        selected.Remove(type.ToUpperInvariant());
+        selected.Remove(NormalizeType(type));
         SaveSelectedToSession(selected);
         return Json(new { success = true });
     }
@@ -160,12 +161,12 @@ public class BuildPcController : Controller
         var value = (type ?? string.Empty).Trim().ToUpperInvariant();
         return value switch
         {
-            "CARD ĐỒ HỌA" => "GPU",
-            "Ổ CỨNG" => "STORAGE",
-            "NGUỒN" => "PSU",
-            "TẢN NHIỆT" => "COOLER",
-            "VỎ CASE" => "CASE",
-            "MÀN HÌNH" => "MONITOR",
+            "CARD ĐỒ HỌA" => ComponentTypes.VGA,
+            "Ổ CỨNG" => ComponentTypes.Storage,
+            "NGUỒN" => ComponentTypes.PSU,
+            "TẢN NHIỆT" => ComponentTypes.Cooler,
+            "VỎ CASE" => ComponentTypes.Case,
+            "MÀN HÌNH" => ComponentTypes.Monitor,
             _ => value
         };
     }
@@ -173,6 +174,7 @@ public class BuildPcController : Controller
     private static string NormalizeBuildTypeToComponentType(string type) => type switch
     {
         "MAINBOARD" => ComponentTypes.Mainboard,
+        "VGA" => ComponentTypes.VGA,
         "GPU" => ComponentTypes.VGA,
         "STORAGE" => ComponentTypes.Storage,
         "PSU" => ComponentTypes.PSU,

@@ -50,10 +50,10 @@
 
     var accessorySlots = new[]
     {
-        new { Type = "Monitor", Label = "Màn hình", Products = Model.Monitors, Image = "https://ttgshop.vn/media/category/cat_big_1003486567.png" },
-        new { Type = "Keyboard", Label = "Bàn phím", Products = Model.Keyboards, Image = "https://ttgshop.vn/media/category/cat_big_1003353341.png" },
-        new { Type = "Mouse", Label = "Chuột", Products = Model.Mice, Image = "https://ttgshop.vn/media/category/cat_big_1003353370.png" },
-        new { Type = "Headphone", Label = "Tai nghe", Products = Model.Headsets, Image = "https://ttgshop.vn/media/category/cat_big_1004013226.jpg" }
+        new { Type = Datn.PcStore.Models.ComponentTypes.Monitor, Label = "Màn hình", Products = Model.Monitors, Image = "https://ttgshop.vn/media/category/cat_big_1003486567.png" },
+        new { Type = Datn.PcStore.Models.ComponentTypes.Keyboard, Label = "Bàn phím", Products = Model.Keyboards, Image = "https://ttgshop.vn/media/category/cat_big_1003353341.png" },
+        new { Type = Datn.PcStore.Models.ComponentTypes.Mouse, Label = "Chuột", Products = Model.Mice, Image = "https://ttgshop.vn/media/category/cat_big_1003353370.png" },
+        new { Type = Datn.PcStore.Models.ComponentTypes.Headphone, Label = "Tai nghe", Products = Model.Headsets, Image = "https://ttgshop.vn/media/category/cat_big_1004013226.jpg" }
     };
     var isPcProduct = string.Equals(product.ComponentType, "PC", StringComparison.OrdinalIgnoreCase)
         || (product.Category?.Name?.Contains("PC", StringComparison.OrdinalIgnoreCase) ?? false);
