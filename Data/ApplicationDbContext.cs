@@ -172,6 +172,7 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<Product>().HasIndex(x => x.ProductCode).IsUnique();
         modelBuilder.Entity<Product>().HasIndex(x => x.Slug).IsUnique();
         modelBuilder.Entity<Product>().HasIndex(x => x.SourceUrl);
+        modelBuilder.Entity<Product>().Property(x => x.Brand).HasMaxLength(80).IsRequired(false);
         modelBuilder.Entity<ComponentBrand>().HasIndex(x => new { x.ComponentType, x.Name }).IsUnique();
 
         modelBuilder.Entity<Category>()
