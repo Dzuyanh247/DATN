@@ -1,6 +1,5 @@
 $ErrorActionPreference = 'Stop'
 Set-Location -LiteralPath $PSScriptRoot
-$Host.UI.RawUI.WindowTitle = 'KKSHOP - Trinh khoi dong'
 
 $Url = 'http://localhost:5000'
 $Port = 5000
@@ -11,41 +10,39 @@ $StartupLog = Join-Path $LogDir "startup-$Stamp.log"
 $RuntimeLog = Join-Path $LogDir "runtime-$Stamp.log"
 $ConfigFile = Join-Path $PSScriptRoot 'START_KKSHOP.config'
 
-function Write-Step([string]$Message) { Write-Host $Message -ForegroundColor Cyan }
-function Write-Ok([string]$Message) { Write-Host $Message -ForegroundColor Green }
-function Write-Warn([string]$Message) { Write-Host $Message -ForegroundColor Yellow }
-function Write-Fail([string]$Message) { Write-Host $Message -ForegroundColor Red }
+function Write-Ok([string]$Message) { Write-Host "[OK] $Message" -ForegroundColor Green }
+function Write-ErrorLine([string]$Message) { Write-Host "[LOI] $Message" -ForegroundColor Red }
+function Write-Info([string]$Message) { Write-Host $Message -ForegroundColor Cyan }
 function Write-Log([string]$Message) { Add-Content -LiteralPath $StartupLog -Value "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] $Message" -Encoding UTF8 }
-function Add-LogHeader([string]$Text) { Add-Content -LiteralPath $StartupLog -Value "`r`n===== $Text - $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') =====" -Encoding UTF8 }
-function Pause-And-Exit([int]$Code = 1) {
-    Write-Host ''
-    if ($Host.Name -eq 'ConsoleHost') { Read-Host 'Bam Enter de dong cua so' | Out-Null }
-    exit $Code
+function Add-LogHeader([string]$Title) { Add-Content -LiteralPath $StartupLog -Value "`r`n===== $Title - $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') =====" -Encoding UTF8 }
+function Show-LogHelp {
+    Write-Host 'Gui file log cho ky thuat:' -ForegroundColor Yellow
+    Write-Host ("logs/{0}" -f (Split-Path -Leaf $StartupLog)) -ForegroundColor Yellow
+    if (Test-Path -LiteralPath $RuntimeLog) { Write-Host ("logs/{0}" -f (Split-Path -Leaf $RuntimeLog)) -ForegroundColor Yellow }
 }
-function Stop-With-FriendlyError([string]$Message, [string]$LogPath = $StartupLog) {
-    Write-Fail $Message
-    Write-Host "Vui long gui file log cho ky thuat: $LogPath" -ForegroundColor Yellow
-    Pause-And-Exit 1
+function Stop-WithError([string]$Message, [int]$Code = 1) {
+    Write-Log "ERROR: $Message"
+    Write-ErrorLine $Message
+    Show-LogHelp
+    exit $Code
 }
 function Invoke-LoggedCommand([string]$Title, [string]$FileName, [string[]]$Arguments, [string]$FriendlyError) {
     Add-LogHeader $Title
     Write-Log "Run: $FileName $($Arguments -join ' ')"
-    $output = & $FileName @Arguments 2>&1
+    & $FileName @Arguments *>> $StartupLog
     $exitCode = $LASTEXITCODE
-    $output | Out-File -FilePath $StartupLog -Append -Encoding UTF8
-    if ($exitCode -ne 0) { Stop-With-FriendlyError $FriendlyError }
+    Write-Log "ExitCode: $exitCode"
+    if ($exitCode -ne 0) { Stop-WithError $FriendlyError }
 }
 function Get-ConfigValue([string]$Name, [string]$DefaultValue) {
-    $envValue = [Environment]::GetEnvironmentVariable($Name)
-    if (-not [string]::IsNullOrWhiteSpace($envValue)) { return $envValue }
     if (Test-Path -LiteralPath $ConfigFile) {
         $line = Get-Content -LiteralPath $ConfigFile -Encoding UTF8 | Where-Object { $_ -match "^\s*$Name\s*=" } | Select-Object -First 1
         if ($line) { return (($line -split '=', 2)[1]).Trim() }
     }
     return $DefaultValue
 }
-function Test-PortOpen([int]$PortNumber) {
-    $client = New-Object Net.Sockets.TcpClient
+function Test-PortBusy([int]$PortNumber) {
+    $client = New-Object System.Net.Sockets.TcpClient
     try {
         $result = $client.BeginConnect('127.0.0.1', $PortNumber, $null, $null)
         if (-not $result.AsyncWaitHandle.WaitOne(300)) { return $false }
@@ -60,34 +57,39 @@ function Test-PortOpen([int]$PortNumber) {
 function Get-PortProcesses([int]$PortNumber) {
     try {
         $connections = Get-NetTCPConnection -LocalPort $PortNumber -State Listen -ErrorAction Stop
-        if (-not $connections) { return @() }
-        return $connections | Select-Object -ExpandProperty OwningProcess -Unique | ForEach-Object { Get-Process -Id $_ -ErrorAction SilentlyContinue }
+        return @($connections | Select-Object -ExpandProperty OwningProcess -Unique | ForEach-Object { Get-Process -Id $_ -ErrorAction SilentlyContinue })
     } catch {
-        $netstat = netstat -ano 2>$null | Select-String ":$PortNumber\s+.*LISTENING"
+        $lines = netstat -ano 2>$null | Select-String (":{0}\s+.*LISTENING" -f $PortNumber)
         $ids = @()
-        foreach ($line in $netstat) {
+        foreach ($line in $lines) {
             $parts = ($line.ToString() -split '\s+') | Where-Object { $_ }
             if ($parts.Count -ge 5) { $ids += $parts[-1] }
         }
-        return $ids | Select-Object -Unique | ForEach-Object { Get-Process -Id $_ -ErrorAction SilentlyContinue }
+        return @($ids | Select-Object -Unique | ForEach-Object { Get-Process -Id $_ -ErrorAction SilentlyContinue })
     }
 }
-function Confirm-FreePort {
-    if (-not (Test-PortOpen $Port)) { return }
-    Write-Warn 'Cong 5000 dang duoc su dung. Ban co muon tat phien ban cu de chay lai khong? (Y/N)'
-    $answer = Read-Host
-    if ($answer -notmatch '^[Yy]') {
-        Write-Log 'User chose not to stop the process using port 5000.'
-        Pause-And-Exit 1
+function Confirm-PortReady {
+    if (-not (Test-PortBusy $Port)) {
+        Write-Ok 'Cong 5000 san sang'
+        return
     }
+
+    Write-Host 'Cong 5000 dang duoc su dung.' -ForegroundColor Yellow
+    $answer = Read-Host 'Ban co muon tat tien trinh cu khong? (Y/N)'
+    if ($answer -notmatch '^[Yy]') { Stop-WithError 'Cong 5000 dang ban nen khong the khoi dong website.' }
+
     $processes = @(Get-PortProcesses $Port)
-    if ($processes.Count -eq 0) { Stop-With-FriendlyError 'Khong tim thay process dang chiem cong 5000.' }
-    foreach ($process in $processes) {
-        Write-Log "Kill process on port ${Port}: $($process.ProcessName) ($($process.Id))"
-        Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+    if ($processes.Count -eq 0) { Stop-WithError 'Khong tim thay tien trinh dang dung cong 5000.' }
+    foreach ($item in $processes) {
+        Write-Log ("Stop process on port {0}: {1} ({2})" -f $Port, $item.ProcessName, $item.Id)
+        Stop-Process -Id $item.Id -Force -ErrorAction SilentlyContinue
     }
     Start-Sleep -Seconds 2
-    if (Test-PortOpen $Port) { Stop-With-FriendlyError 'Khong tat duoc ung dung dang chiem cong 5000.' }
+    if (Test-PortBusy $Port) { Stop-WithError 'Khong tat duoc tien trinh dang dung cong 5000.' }
+    Write-Ok 'Cong 5000 san sang'
+}
+function Quote-Argument([string]$Value) {
+    return '"' + ($Value -replace '"', '\"') + '"'
 }
 function Wait-WebsiteReady {
     for ($i = 1; $i -le 30; $i++) {
@@ -100,103 +102,65 @@ function Wait-WebsiteReady {
     }
     return $false
 }
-function Join-CommandArguments([string[]]$Arguments) {
-    return (($Arguments | ForEach-Object { '"' + ($_ -replace '"', '\"') + '"' }) -join ' ')
-}
-function Start-WebsiteProcess([string]$ProjectPath) {
-    $env:ASPNETCORE_URLS = $Url
-    $env:ASPNETCORE_ENVIRONMENT = 'Production'
-    Add-LogHeader 'dotnet run'
-
-    $dotnetArguments = @('run', '--project', $ProjectPath, '--no-build', '-c', 'Release', '--urls', $Url)
-    $argumentText = Join-CommandArguments $dotnetArguments
-    Write-Log "WorkingDirectory: $PSScriptRoot"
-    Write-Log "ProjectPath: $ProjectPath"
-    Write-Log "Url: $Url"
-    Write-Log "Arguments: $argumentText"
-    Add-Content -LiteralPath $RuntimeLog -Value "`r`n===== dotnet run - $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') =====" -Encoding UTF8
-    Add-Content -LiteralPath $RuntimeLog -Value "WorkingDirectory: $PSScriptRoot" -Encoding UTF8
-    Add-Content -LiteralPath $RuntimeLog -Value "ProjectPath: $ProjectPath" -Encoding UTF8
-    Add-Content -LiteralPath $RuntimeLog -Value "Url: $Url" -Encoding UTF8
-    Add-Content -LiteralPath $RuntimeLog -Value "Arguments: $argumentText" -Encoding UTF8
-
-    $process = $null
-    try {
-        $psi = New-Object System.Diagnostics.ProcessStartInfo
-        $psi.FileName = 'cmd.exe'
-        $psi.Arguments = "/d /s /c `"dotnet $argumentText >> `"`"$RuntimeLog`"`" 2>>&1`""
-        $psi.WorkingDirectory = $PSScriptRoot
-        $psi.UseShellExecute = $false
-        $psi.CreateNoWindow = $false
-        $process = [System.Diagnostics.Process]::Start($psi)
-    } catch {
-        $message = "Khong khoi dong duoc website. Vui long xem file log runtime. $($_.Exception.Message)"
-        Write-Log $message
-        Add-Content -LiteralPath $RuntimeLog -Value $message -Encoding UTF8
-        Stop-With-FriendlyError 'Khong khoi dong duoc website. Vui long xem file log runtime.' $RuntimeLog
-    }
-
-    if ($null -eq $process) {
-        $message = 'Khong khoi dong duoc website. Process.Start tra ve null.'
-        Write-Log $message
-        Add-Content -LiteralPath $RuntimeLog -Value $message -Encoding UTF8
-        Stop-With-FriendlyError 'Khong khoi dong duoc tien trinh website.' $RuntimeLog
-    }
-
-    return @{ Process = $process }
-}
 
 try {
     Clear-Host
-    Write-Step 'Dang kiem tra moi truong...'
+    Write-Info 'KKSHOP - TRINH KHOI DONG WEBSITE'
+    Write-Host ''
     Write-Log 'Startup started.'
 
-    & dotnet --version *> $null
-    if ($LASTEXITCODE -ne 0) { Stop-With-FriendlyError 'Chua cai .NET. Vui long cai .NET 8 SDK/Runtime truoc khi chay website.' }
+    & dotnet --version *>> $StartupLog
+    if ($LASTEXITCODE -ne 0) { Stop-WithError 'Chua cai .NET. Vui long cai .NET SDK/Runtime truoc khi chay website.' }
     Write-Ok 'Da tim thay .NET'
 
-    $project = Get-ChildItem -LiteralPath $PSScriptRoot -Filter '*.csproj' -File | Select-Object -First 1
-    if (-not $project) { Stop-With-FriendlyError 'Khong tim thay file project .csproj.' }
-    Write-Log "Project: $($project.FullName)"
+    $project = Get-ChildItem -LiteralPath $PSScriptRoot -Filter '*.csproj' -File | Sort-Object Name | Select-Object -First 1
+    if (-not $project) { Stop-WithError 'Khong tim thay file project .csproj.' }
+    $projectPath = $project.FullName
+    Write-Log "Project: $projectPath"
+    Write-Ok 'Da kiem tra project'
 
-    Confirm-FreePort
+    Confirm-PortReady
 
-    Invoke-LoggedCommand 'dotnet restore' 'dotnet' @('restore', $project.FullName) 'Website chua restore duoc package.'
-    Invoke-LoggedCommand 'dotnet build' 'dotnet' @('build', $project.FullName, '--no-restore', '-c', 'Release') 'Website chua build duoc.'
+    Invoke-LoggedCommand 'dotnet restore' 'dotnet' @('restore', $projectPath) 'Restore that bai.'
+    Write-Ok 'Restore thanh cong'
 
-    Write-Step 'Dang kiem tra database...'
+    Invoke-LoggedCommand 'dotnet build' 'dotnet' @('build', $projectPath, '--no-restore', '-c', 'Release') 'Build that bai.'
+    Write-Ok 'Build thanh cong'
+
     $runMigration = (Get-ConfigValue 'RUN_MIGRATION' 'false') -ieq 'true'
-    $env:RUN_MIGRATION = if ($runMigration) { 'true' } else { 'false' }
-    Write-Log "RUN_MIGRATION=$($env:RUN_MIGRATION)"
+    Write-Log "RUN_MIGRATION=$runMigration"
     if ($runMigration) {
-        & dotnet ef --version *> $null
-        if ($LASTEXITCODE -ne 0) { Stop-With-FriendlyError 'Chua cai dotnet-ef nen khong cap nhat duoc database.' }
-        Invoke-LoggedCommand 'dotnet ef database update' 'dotnet' @('ef', 'database', 'update', '--project', $project.FullName) 'Khong ket noi duoc database hoac cap nhat database that bai.'
+        Invoke-LoggedCommand 'dotnet ef database update' 'dotnet' @('ef', 'database', 'update', '--project', $projectPath) 'Database loi hoac migration that bai.'
     } else {
-        Write-Log 'Skip migration. Set RUN_MIGRATION=true in START_KKSHOP.config to update database.'
+        Write-Log 'Skip migration because RUN_MIGRATION=false.'
     }
+    Write-Ok 'Database da san sang'
 
-    Write-Step 'Website dang khoi dong...'
-    $runtime = Start-WebsiteProcess $project.FullName
+    Add-Content -LiteralPath $RuntimeLog -Value "===== dotnet run - $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') =====" -Encoding UTF8
+    $runArgs = @('run', '--project', (Quote-Argument $projectPath), '--no-build', '-c', 'Release', '--urls', $Url)
+    Write-Log "Run website: dotnet $($runArgs -join ' ')"
+    $process = Start-Process -FilePath 'dotnet' -ArgumentList $runArgs -WorkingDirectory $PSScriptRoot -RedirectStandardOutput $RuntimeLog -RedirectStandardError $RuntimeLog -PassThru
+    if ($null -eq $process) { Stop-WithError 'Khong khoi dong duoc tien trinh website.' }
+
     Start-Sleep -Seconds 2
-    if ($runtime.Process.HasExited) { Stop-With-FriendlyError 'Website khoi dong that bai.' $RuntimeLog }
+    if ($process.HasExited) { Stop-WithError 'Website khoi dong that bai.' }
+    if (-not (Wait-WebsiteReady)) { Stop-WithError 'Website khoi dong that bai.' }
 
-    if (-not (Wait-WebsiteReady)) { Stop-With-FriendlyError 'Website khoi dong that bai.' $RuntimeLog }
-
-    Write-Ok "Website da san sang tai: $Url"
-    Write-Host 'Neu muon tat website: dong cua so nay hoac bam Ctrl+C' -ForegroundColor Yellow
-    Write-Log 'Website is ready.'
     try { Start-Process $Url | Out-Null } catch { Write-Log "Cannot open browser: $($_.Exception.Message)" }
+    Write-Ok "Website da mo tai $Url"
+    Write-Host ''
+    Write-Host 'Website da san sang.' -ForegroundColor Green
+    Write-Host 'Khong dong cua so nay neu dang su dung website.' -ForegroundColor Yellow
+    Read-Host 'Bam Enter de tat website' | Out-Null
 
-    [Console]::TreatControlCAsInput = $false
-    [Console]::CancelKeyPress += {
-        $EventArgs.Cancel = $true
-        if ($runtime -and $runtime.Process -and -not $runtime.Process.HasExited) { $runtime.Process.Kill() }
+    if (($null -ne $process) -and (-not $process.HasExited)) {
+        Write-Log "Stop website process: $($process.Id)"
+        Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
     }
-    $runtime.Process.WaitForExit()
+    exit 0
 } catch {
     Add-Content -LiteralPath $StartupLog -Value $_.Exception.ToString() -Encoding UTF8
-    Write-Fail 'Website khoi dong that bai.'
-    Write-Host "Vui long gui file log cho ky thuat: $StartupLog" -ForegroundColor Yellow
-    Pause-And-Exit 1
+    Write-ErrorLine 'Website khoi dong that bai.'
+    Show-LogHelp
+    exit 1
 }
