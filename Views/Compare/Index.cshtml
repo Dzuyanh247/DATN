@@ -5,10 +5,11 @@
 }
 
 <div class="compare-page pb-5">
-    <div class="compare-hero text-center mb-4">
-        <div class="small text-uppercase text-danger fw-bold">PC Store</div>
+    <div class="compare-hero mb-4">
+        <div class="small text-uppercase text-danger fw-bold">KKSHOP Compare</div>
         <h1 class="compare-title mb-2">So sánh sản phẩm</h1>
-        <p class="text-muted mb-0">Chọn tối đa 2 sản phẩm, xem danh sách đang so sánh và đối chiếu thông số kỹ thuật cạnh nhau.</p>
+        <p class="compare-subtitle mb-2">Đối chiếu cấu hình, giá bán và thông số kỹ thuật giữa các sản phẩm.</p>
+        <p class="compare-legal-note mb-0">Thông tin so sánh dựa trên dữ liệu sản phẩm do KKSHOP công bố. Giá và cấu hình có thể thay đổi theo thời điểm.</p>
     </div>
 
     @if (!Model.Products.Any())
@@ -32,8 +33,10 @@
                     <div class="card-body">
                         @if (product != null)
                         {
-                            <div class="d-flex gap-3 align-items-start">
-                                <img src="@product.ImageUrl" alt="@product.Name" onerror="this.onerror=null;this.src='/images/no-image.png';" />
+                            <div class="compare-selected-product">
+                                <div class="compare-selected-image-wrap">
+                                    <img src="@product.ImageUrl" alt="@product.Name" onerror="this.onerror=null;this.src='/images/no-image.png';" />
+                                </div>
                                 <div class="min-w-0 flex-grow-1">
                                     <a asp-controller="Products" asp-action="Detail" asp-route-id="@product.Id" class="compare-selected-name">@product.Name</a>
                                     <div class="compare-price">@product.Price.ToString("N0", culture) đ</div>
@@ -41,11 +44,14 @@
                                     {
                                         <div class="compare-old-price">@product.OriginalPrice.ToString("N0", culture) đ</div>
                                     }
-                                    <form method="post" asp-controller="Compare" asp-action="Remove" class="mt-3">
-                                        <input type="hidden" name="productId" value="@product.Id" />
-                                        <input type="hidden" name="returnUrl" value="/Compare" />
-                                        <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-x-circle"></i> Xóa sản phẩm</button>
-                                    </form>
+                                    <div class="compare-card-actions">
+                                        <a asp-controller="Products" asp-action="Detail" asp-route-id="@product.Id" class="btn btn-sm btn-danger">Xem chi tiết</a>
+                                        <form method="post" asp-controller="Compare" asp-action="Remove">
+                                            <input type="hidden" name="productId" value="@product.Id" />
+                                            <input type="hidden" name="returnUrl" value="/Compare" />
+                                            <button type="submit" class="btn btn-sm btn-outline-secondary"><i class="bi bi-x-circle"></i> Xóa</button>
+                                        </form>
+                                    </div>
                                 </div>
                             </div>
                         }
@@ -106,10 +112,17 @@
                                 {
                                     @foreach (var row in Model.Rows)
                                     {
-                                        <tr>
+                                        var hasDifference = !string.Equals(row.ProductAValue?.Trim(), row.ProductBValue?.Trim(), StringComparison.OrdinalIgnoreCase);
+                                        <tr class="@(hasDifference ? "has-difference" : string.Empty)">
                                             <th class="compare-spec-label">@row.Label</th>
-                                            <td class="compare-spec-value">@row.ProductAValue</td>
-                                            <td class="compare-spec-value">@row.ProductBValue</td>
+                                            <td class="compare-spec-value @(hasDifference ? "is-different" : string.Empty)">
+                                                @if (hasDifference) { <span class="compare-diff-chip">Khác biệt</span> }
+                                                <span>@row.ProductAValue</span>
+                                            </td>
+                                            <td class="compare-spec-value @(hasDifference ? "is-different" : string.Empty)">
+                                                @if (hasDifference) { <span class="compare-diff-chip">Khác biệt</span> }
+                                                <span>@row.ProductBValue</span>
+                                            </td>
                                         </tr>
                                     }
                                 }

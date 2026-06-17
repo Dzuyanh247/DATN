@@ -68,24 +68,32 @@ public class CompareController : Controller
         var exists = await _db.Products.AnyAsync(p => p.Id == productId && p.IsActive);
         if (!exists)
         {
-            TempData["ErrorMessage"] = "Không tìm thấy sản phẩm cần so sánh.";
+            const string message = "Không tìm thấy sản phẩm cần so sánh.";
+            if (IsAjaxRequest()) return CompareJson(false, message, "error", productId);
+            TempData["ErrorMessage"] = message;
             return RedirectToSafeReturnUrl(returnUrl);
         }
 
         if (_compareService.Contains(productId))
         {
-            TempData["InfoMessage"] = "Sản phẩm đã nằm trong danh sách so sánh.";
+            const string message = "Sản phẩm đã nằm trong danh sách so sánh.";
+            if (IsAjaxRequest()) return CompareJson(true, message, "info", productId);
+            TempData["InfoMessage"] = message;
             return RedirectToSafeReturnUrl(returnUrl);
         }
 
         if (_compareService.GetIds().Count >= CompareSessionService.MaxCompareProducts)
         {
-            TempData["ErrorMessage"] = "Bạn chỉ có thể so sánh tối đa 2 sản phẩm. Hãy xóa một sản phẩm trước.";
+            const string message = "Bạn chỉ có thể so sánh tối đa 2 sản phẩm. Hãy xóa một sản phẩm trước.";
+            if (IsAjaxRequest()) return CompareJson(false, message, "error", productId);
+            TempData["ErrorMessage"] = message;
             return RedirectToSafeReturnUrl(returnUrl);
         }
 
         _compareService.Add(productId);
-        TempData["SuccessMessage"] = "Đã thêm sản phẩm vào danh sách so sánh.";
+        const string successMessage = "Đã thêm sản phẩm vào danh sách so sánh.";
+        if (IsAjaxRequest()) return CompareJson(true, successMessage, "success", productId);
+        TempData["SuccessMessage"] = successMessage;
         return RedirectToSafeReturnUrl(returnUrl);
     }
 
@@ -176,6 +184,24 @@ public class CompareController : Controller
 
     private static string NormalizeDisplayDescription(string? value)
         => (value ?? string.Empty).Trim();
+
+    private JsonResult CompareJson(bool success, string message, string type, int productId)
+    {
+        var count = _compareService.GetIds().Count;
+        return Json(new
+        {
+            success,
+            message,
+            type,
+            productId,
+            compareCount = count,
+            maxCompareProducts = CompareSessionService.MaxCompareProducts
+        });
+    }
+
+    private bool IsAjaxRequest()
+        => string.Equals(Request.Headers.XRequestedWith, "XMLHttpRequest", StringComparison.OrdinalIgnoreCase)
+           || Request.Headers.Accept.Any(value => value?.Contains("application/json", StringComparison.OrdinalIgnoreCase) == true);
 
     private IActionResult RedirectToSafeReturnUrl(string? returnUrl)
     {
