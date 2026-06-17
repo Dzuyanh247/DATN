@@ -88,6 +88,7 @@ public class ProductSpecificationItemVm
     public string? Name { get; set; }
     public string? Value { get; set; }
     public string? Key { get; set; }
+    public bool IsFilterable { get; set; } = true;
 }
 
 public class ProductComponentSpecViewModel

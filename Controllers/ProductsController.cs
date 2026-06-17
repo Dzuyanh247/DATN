@@ -355,7 +355,7 @@ public class ProductsController : Controller
     private static List<ProductSpecFilterGroupVm> BuildSpecFilterGroups(IEnumerable<Product> products, string componentType) =>
         products
             .SelectMany(product => ProductSpecificationKeyValueHelper.ParseStored(product.Specifications)
-                .Where(spec => !string.IsNullOrWhiteSpace(spec.Name) && !string.IsNullOrWhiteSpace(spec.Value))
+                .Where(spec => spec.IsFilterable && !string.IsNullOrWhiteSpace(spec.Name) && !string.IsNullOrWhiteSpace(spec.Value))
                 .Select(spec => new { product.Id, Name = spec.Name.Trim(), Value = spec.Value.Trim() }))
             .Where(spec => ProductFilterFacetHelper.IsRenderableFilterOption(spec.Name)
                 && ProductFilterFacetHelper.IsRenderableFilterOption(spec.Value)

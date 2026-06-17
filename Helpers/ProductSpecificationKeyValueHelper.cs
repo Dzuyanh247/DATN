@@ -82,7 +82,7 @@ public static class ProductSpecificationKeyValueHelper
         foreach (var item in items)
         {
             var name = Clean(item.Name);
-            var value = Clean(item.Value);
+            var value = CleanValue(item.Value);
             if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(value)) continue;
             var key = BuildKey(name);
             var existing = emitted.FirstOrDefault(x => string.Equals(x.Key, key, StringComparison.OrdinalIgnoreCase));
@@ -92,7 +92,7 @@ public static class ProductSpecificationKeyValueHelper
                 continue;
             }
 
-            var pair = new ProductSpecificationItemVm { Name = name, Value = value, Key = key };
+            var pair = new ProductSpecificationItemVm { Name = name, Value = value, Key = key, IsFilterable = item.IsFilterable };
             emitted.Add(pair);
             yield return pair;
         }
@@ -135,4 +135,12 @@ public static class ProductSpecificationKeyValueHelper
     }
 
     private static string Clean(string? value) => Regex.Replace(value ?? string.Empty, @"[ \t\r\n]+", " ").Trim();
+
+    private static string CleanValue(string? value)
+    {
+        var lines = Regex.Split(value ?? string.Empty, @"\r?\n")
+            .Select(line => Regex.Replace(line, @"[ \t]+", " ").Trim())
+            .Where(line => !string.IsNullOrWhiteSpace(line));
+        return string.Join("\n", lines);
+    }
 }
