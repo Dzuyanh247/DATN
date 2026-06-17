@@ -9,11 +9,6 @@ public partial class AddPasswordResetOtps : Migration
     protected override void Up(MigrationBuilder migrationBuilder)
     {
         migrationBuilder.Sql(@"
-IF OBJECT_ID('Users', 'U') IS NULL
-BEGIN
-    THROW 51000, 'Migration requires table Users before creating PasswordResetOtps.', 1;
-END
-
 IF OBJECT_ID('PasswordResetOtps', 'U') IS NULL
 BEGIN
     CREATE TABLE PasswordResetOtps (
@@ -27,16 +22,6 @@ BEGIN
         UsedAt DATETIME2 NULL,
         CONSTRAINT FK_PasswordResetOtps_Users_UserId FOREIGN KEY (UserId) REFERENCES Users(Id) ON DELETE CASCADE
     );
-END
-
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_PasswordResetOtps_UserId_IsUsed_ExpiresAt' AND object_id = OBJECT_ID('PasswordResetOtps'))
-BEGIN
-    CREATE INDEX IX_PasswordResetOtps_UserId_IsUsed_ExpiresAt ON PasswordResetOtps(UserId, IsUsed, ExpiresAt);
-END
-
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_PasswordResetOtps_Email_CodeHash' AND object_id = OBJECT_ID('PasswordResetOtps'))
-BEGIN
-    CREATE INDEX IX_PasswordResetOtps_Email_CodeHash ON PasswordResetOtps(Email, CodeHash);
 END
 ");
     }
