@@ -85,14 +85,12 @@ public class ProductsController : Controller
 
         if (!string.IsNullOrWhiteSpace(vm.Type))
         {
-            var scopedComponentType = vm.Type.Trim();
-            query = string.Equals(scopedComponentType, "Storage", StringComparison.OrdinalIgnoreCase)
-                ? query.Where(p => p.ProductType == ProductKinds.Component && (p.ComponentType == "Storage" || p.ComponentType == "SSD" || p.ComponentType == "HDD"))
-                : query.Where(p => p.ProductType == ProductKinds.Component && p.ComponentType != null && p.ComponentType == scopedComponentType);
+            var scopedComponentType = ComponentTypes.Normalize(vm.Type);
+            query = ApplyComponentTypeQuery(await ApplyComponentListingScopeAsync(query), new[] { scopedComponentType });
         }
         else if (vm.IsComponentListing)
         {
-            query = query.Where(p => p.ProductType == ProductKinds.Component);
+            query = await ApplyComponentListingScopeAsync(query);
         }
 
         query = query.Where(p => p.IsActive);
@@ -183,39 +181,16 @@ public class ProductsController : Controller
 
     private static string? ResolveComponentType(string? type, string? typeSlug)
     {
-        if (!string.IsNullOrWhiteSpace(type)) return type.Trim();
+        if (!string.IsNullOrWhiteSpace(type)) return ComponentTypes.Normalize(type);
         if (string.IsNullOrWhiteSpace(typeSlug)) return null;
 
         var normalizedSlug = typeSlug.Trim().ToLowerInvariant();
-        return ComponentTypeCatalog.FirstOrDefault(item => item.Slug == normalizedSlug).Type;
+        return ComponentTypes.Slugs.FirstOrDefault(item => item.Value == normalizedSlug).Key;
     }
 
-    private static string GetComponentTypeSlug(string type) =>
-        ComponentTypeCatalog.FirstOrDefault(item => string.Equals(item.Type, type, StringComparison.OrdinalIgnoreCase)).Slug
-        ?? type.Trim().ToLowerInvariant();
+    private static string GetComponentTypeSlug(string type) => ComponentTypes.GetSlug(type);
 
-    private static string GetComponentTypeLabel(string type) =>
-        ComponentTypeCatalog.FirstOrDefault(item => string.Equals(item.Type, type, StringComparison.OrdinalIgnoreCase)).Label
-        ?? type;
-
-    private static readonly (string Type, string Slug, string Label)[] ComponentTypeCatalog =
-    [
-        ("CPU", "cpu", "CPU"),
-        ("Mainboard", "mainboard", "Mainboard - Bo mạch chủ"),
-        ("RAM", "ram", "RAM"),
-        ("VGA", "vga", "VGA - Card màn hình"),
-        ("Storage", "ssd-hdd", "Ổ cứng SSD/HDD"),
-        ("SSD", "ssd", "Ổ cứng SSD"),
-        ("HDD", "hdd", "Ổ cứng HDD"),
-        ("PSU", "psu", "PSU - Nguồn máy tính"),
-        ("Case", "case", "Case - Vỏ case"),
-        ("Cooler", "cooler", "Cooler - Tản nhiệt"),
-        ("Monitor", "monitor", "Monitor - Màn hình"),
-        ("Keyboard", "keyboard", "Keyboard - Bàn phím"),
-        ("Mouse", "mouse", "Mouse - Chuột"),
-        ("Headphone", "headphone", "Headphone - Tai nghe"),
-        ("MonitorArm", "monitor-arm", "MonitorArm - Giá treo màn hình")
-    ];
+    private static string GetComponentTypeLabel(string type) => ComponentTypes.GetLabel(type);
 
     private static string NormalizeSort(string? sort) =>
         sort?.Trim().ToLowerInvariant() switch
@@ -242,6 +217,19 @@ public class ProductsController : Controller
             .Where(ProductFilterFacetHelper.IsRenderableFilterOption)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray() ?? Array.Empty<string>();
+
+
+    private async Task<IQueryable<Product>> ApplyComponentListingScopeAsync(IQueryable<Product> query)
+    {
+        var componentCategoryIds = await _db.Categories.AsNoTracking()
+            .Where(category => category.Name.Contains("Linh kiện") || category.Name.Contains("Component"))
+            .Select(category => category.Id)
+            .ToListAsync();
+
+        return componentCategoryIds.Count == 0
+            ? query.Where(product => product.ProductType == ProductKinds.Component)
+            : query.Where(product => product.ProductType == ProductKinds.Component || componentCategoryIds.Contains(product.CategoryId));
+    }
 
     private async Task<bool> IsComponentListingAsync(string? type, string? categorySlug, int? categoryId)
     {
@@ -298,7 +286,7 @@ public class ProductsController : Controller
     {
         var counts = products
             .Where(product => !string.IsNullOrWhiteSpace(product.ComponentType))
-            .GroupBy(product => product.ComponentType!.Trim(), StringComparer.OrdinalIgnoreCase)
+            .GroupBy(product => ComponentTypes.Normalize(product.ComponentType), StringComparer.OrdinalIgnoreCase)
             .ToDictionary(group => group.Key, group => group.Count(), StringComparer.OrdinalIgnoreCase);
 
         var groups = new List<ProductFilterGroupVm>
@@ -308,12 +296,10 @@ public class ProductsController : Controller
                 Title = "Linh kiện máy tính",
                 Options = BuildComponentOptions(counts, currentType,
                     ("CPU", "CPU"),
-                    ("Mainboard", "Mainboard"),
+                    ("Mainboard", "Mainboard - Bo mạch chủ"),
                     ("RAM", "RAM"),
                     ("VGA", "VGA - Card màn hình"),
-                    ("SSD", "Ổ cứng SSD"),
-                    ("HDD", "Ổ cứng HDD"),
-                    ("Storage", "Ổ cứng (SSD, HDD)"),
+                    ("Storage", "Storage - SSD/HDD"),
                     ("Cooler", "Tản nhiệt"),
                     ("Case", "Vỏ case"),
                     ("PSU", "Nguồn (PSU)"))
@@ -322,10 +308,12 @@ public class ProductsController : Controller
             {
                 Title = "Ngoại vi",
                 Options = BuildComponentOptions(counts, currentType,
-                    ("Monitor", "Màn hình"),
-                    ("Keyboard", "Bàn phím"),
-                    ("Mouse", "Chuột"),
-                    ("Headphone", "Tai nghe"))
+                    ("Monitor", "Monitor - Màn hình"),
+                    ("Keyboard", "Keyboard - Bàn phím"),
+                    ("Mouse", "Mouse - Chuột"),
+                    ("Headphone", "Headphone - Tai nghe"),
+                    ("MonitorArm", "MonitorArm - Giá treo màn hình"),
+                    ("Other", "Other - Khác"))
             }
         };
 
@@ -346,10 +334,7 @@ public class ProductsController : Controller
 
     private static int GetComponentTypeCount(Dictionary<string, int> counts, string type)
     {
-        if (string.Equals(type, "Storage", StringComparison.OrdinalIgnoreCase))
-            return counts.GetValueOrDefault("Storage") + counts.GetValueOrDefault("SSD") + counts.GetValueOrDefault("HDD");
-
-        return counts.GetValueOrDefault(type);
+        return counts.GetValueOrDefault(ComponentTypes.Normalize(type));
     }
 
     private static List<ProductSpecFilterGroupVm> BuildSpecFilterGroups(IEnumerable<Product> products, string componentType) =>
@@ -478,11 +463,31 @@ public class ProductsController : Controller
     {
         if (componentTypes.Length == 0) return query;
         var expandedTypes = componentTypes
-            .SelectMany(type => string.Equals(type, "Storage", StringComparison.OrdinalIgnoreCase) ? new[] { "Storage", "SSD", "HDD" } : new[] { type })
+            .Select(ComponentTypes.Normalize)
+            .SelectMany(GetComponentTypeAliases)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
         return query.Where(product => product.ComponentType != null && expandedTypes.Contains(product.ComponentType));
     }
+
+
+    private static string[] GetComponentTypeAliases(string type) => ComponentTypes.Normalize(type) switch
+    {
+        ComponentTypes.CPU => new[] { "CPU", "CPU - Bộ vi xử lý", "Bộ vi xử lý", "cpu" },
+        ComponentTypes.Mainboard => new[] { "Mainboard", "MAINBOARD", "Mainboard - Bo mạch chủ", "Bo mạch chủ", "Motherboard", "mainboard" },
+        ComponentTypes.RAM => new[] { "RAM", "Ram", "Bộ nhớ trong" },
+        ComponentTypes.VGA => new[] { "VGA", "GPU", "VGA - Card màn hình", "Card màn hình" },
+        ComponentTypes.Storage => new[] { "Storage", "SSD", "HDD", "SSD/HDD", "Ổ cứng SSD/HDD", "Ổ cứng" },
+        ComponentTypes.PSU => new[] { "PSU", "PSU - Nguồn máy tính", "Nguồn máy tính" },
+        ComponentTypes.Case => new[] { "Case", "Case - Vỏ case", "Vỏ case" },
+        ComponentTypes.Cooler => new[] { "Cooler", "Cooler - Tản nhiệt", "Tản nhiệt" },
+        ComponentTypes.Monitor => new[] { "Monitor", "Monitor - Màn hình", "Màn hình" },
+        ComponentTypes.Keyboard => new[] { "Keyboard", "Keyboard - Bàn phím", "Bàn phím" },
+        ComponentTypes.Mouse => new[] { "Mouse", "Mouse - Chuột", "Chuột" },
+        ComponentTypes.Headphone => new[] { "Headphone", "Headphone - Tai nghe", "Headset", "Tai nghe" },
+        ComponentTypes.MonitorArm => new[] { "MonitorArm", "MonitorArm - Giá treo màn hình", "Giá treo màn hình" },
+        _ => new[] { ComponentTypes.Other, "Other", "Khác" }
+    };
 
     private static List<Product> ApplyKeywordSearch(List<Product> products, ProductFilterVm vm)
     {
