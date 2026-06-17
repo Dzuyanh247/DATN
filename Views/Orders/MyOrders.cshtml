@@ -19,9 +19,7 @@
     <div class="my-orders-container">
         <section class="my-orders-hero" aria-labelledby="my-orders-title">
             <div>
-                <span class="my-orders-eyebrow"><i class="bi bi-bag-check"></i> Tài khoản KKSHOP</span>
                 <h1 id="my-orders-title">Đơn hàng của tôi</h1>
-                <p>Theo dõi trạng thái đơn hàng, thanh toán và lịch sử mua hàng.</p>
             </div>
             <span class="my-orders-total"><strong>@Model.StatusCounts.GetValueOrDefault("all")</strong> đơn hàng</span>
         </section>
@@ -42,7 +40,6 @@
             <form asp-action="MyOrders" method="get" class="my-orders-search">
                 <input type="hidden" name="status" value="@Model.Status" />
                 <label for="order-keyword" class="visually-hidden">Tìm theo mã đơn hàng</label>
-                <i class="bi bi-search" aria-hidden="true"></i>
                 <input id="order-keyword" name="keyword" value="@Model.Keyword" placeholder="Tìm mã đơn hàng..." autocomplete="off" />
                 @if (!string.IsNullOrWhiteSpace(Model.Keyword))
                 {
@@ -72,7 +69,7 @@
                             <div class="my-order-identity">
                                 <span>Mã đơn hàng</span>
                                 <a asp-action="Detail" asp-route-id="@order.Id">@($"DH{order.Id:D6}")</a>
-                                <time datetime="@order.CreatedAt.ToString("O")"><i class="bi bi-calendar3"></i> @DateTimeHelper.FormatVietnam(order.CreatedAt, "dd/MM/yyyy HH:mm")</time>
+                                <time datetime="@order.CreatedAt.ToString("O")">@DateTimeHelper.FormatVietnam(order.CreatedAt, "dd/MM/yyyy HH:mm")</time>
                             </div>
                             <div class="my-order-summary">
                                 <div class="my-order-badges">
