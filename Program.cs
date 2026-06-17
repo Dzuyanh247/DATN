@@ -9,7 +9,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 using var startupLoggerFactory = LoggerFactory.Create(logging => logging.AddConsole());
 var databaseConnection = DatabaseConfiguration.ResolveConnectionString(builder.Configuration, startupLoggerFactory.CreateLogger("DatabaseConfiguration"));
-Console.WriteLine($"[DB] Environment: {builder.Environment.EnvironmentName}; Connection: {databaseConnection.ConnectionName}; Server: {databaseConnection.Server}; Database: {databaseConnection.Database}; Fallback: {databaseConnection.UsedFallback}");
+builder.Logging.AddFilter("Microsoft.EntityFrameworkCore.Database.Command", LogLevel.Warning);
+builder.Logging.AddFilter("Microsoft.EntityFrameworkCore", LogLevel.Warning);
 
 builder.Services.AddControllersWithViews();
 builder.Services.AddSignalR();
@@ -179,10 +180,13 @@ app.MapControllerRoute(
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    await DatabaseConfiguration.MigrateDatabaseAsync(app);
+    if (string.Equals(Environment.GetEnvironmentVariable("RUN_MIGRATION"), "true", StringComparison.OrdinalIgnoreCase))
+    {
+        await DatabaseConfiguration.MigrateDatabaseAsync(app);
+    }
 
     var currentDatabaseName = await db.Database.SqlQueryRaw<string>("SELECT DB_NAME() AS [Value]").SingleAsync();
-    Console.WriteLine($"[DB] SQL DB_NAME(): {currentDatabaseName}");
+    app.Logger.LogInformation("SQL database selected: {DatabaseName}", currentDatabaseName);
 
     await EnsurePasswordResetOtpTableAsync(db);
 
@@ -453,7 +457,7 @@ END");
 
     var hasPasswordResetOtps = await db.Database.SqlQueryRaw<int>(
         "SELECT CASE WHEN OBJECT_ID('PasswordResetOtps', 'U') IS NULL THEN 0 ELSE 1 END AS [Value]").SingleAsync();
-    Console.WriteLine($"[DB] PasswordResetOtps table present: {hasPasswordResetOtps == 1}");
+
 }
 
 static async Task EnsureProductPromotionColumnsAsync(ApplicationDbContext db)
@@ -489,7 +493,7 @@ INNER JOIN sys.tables t ON t.object_id = c.object_id
 WHERE t.name = 'Products'
   AND c.name IN ('IsHotSale', 'IsDailyDeal', 'IsPromotion', 'PromotionStartDate', 'PromotionEndDate')
 ORDER BY c.name;").ToListAsync();
-    Console.WriteLine($"[DB] Products promotion columns present: {string.Join(", ", promotionColumns)}");
+
 }
 
 
