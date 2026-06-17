@@ -396,3 +396,40 @@
     align-items: center;
     gap: 8px;
 }
+
+.account-resend-form {
+    display: inline-flex;
+    margin: 0;
+}
+
+.account-resend-button {
+    border: 0;
+    padding: 0;
+    background: transparent;
+    font-family: inherit;
+    cursor: pointer;
+}
+
+.account-resend-button:disabled {
+    color: var(--account-muted);
+    cursor: not-allowed;
+    text-decoration: none;
+}
+
+.account-resend-message {
+    margin: 18px 0 0;
+    padding: 11px 13px;
+    border: 1px solid rgba(20, 100, 200, 0.14);
+    border-radius: 11px;
+    color: #26527d;
+    background: rgba(237, 245, 255, 0.88);
+    font-size: 0.86rem;
+    line-height: 1.45;
+    text-align: center;
+}
+
+.account-resend-message--error {
+    border-color: rgba(220, 53, 69, 0.18);
+    color: #842029;
+    background: #fff4f5;
+}

@@ -2,6 +2,8 @@
 @{
     ViewData["Title"] = "Xác minh mã đặt lại mật khẩu";
     var hasEmail = !string.IsNullOrWhiteSpace(Model?.Email);
+    var maskedEmail = !string.IsNullOrWhiteSpace(Model?.MaskedEmail) ? Model.MaskedEmail : Model?.Email;
+    var resendCooldownSeconds = Model?.ResendCooldownSeconds ?? 0;
 }
 
 <section class="account-page" aria-labelledby="verify-reset-code-title">
@@ -57,7 +59,7 @@
                     </div>
                     @if (hasEmail)
                     {
-                        <p class="account-helper-text">Email: @Model.Email</p>
+                        <p class="account-helper-text">Email: @maskedEmail</p>
                     }
                     <span asp-validation-for="Email" class="account-field-validation"></span>
                 </div>
@@ -114,8 +116,19 @@
             </div>
         </form>
 
+        <div id="resendResetCodeMessage" class="account-resend-message" role="status" aria-live="polite" hidden></div>
+
         <div class="account-card-footer account-card-footer--links">
-            <a asp-controller="Account" asp-action="ForgotPassword" class="account-link">Gửi lại mã</a>
+            <form id="resendResetCodeForm" asp-controller="Account" asp-action="ResendResetCode" method="post" class="account-resend-form">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="email" value="@Model.Email" />
+                <button type="submit"
+                        id="resendResetCodeButton"
+                        class="account-link account-resend-button"
+                        data-default-text="Gửi lại mã"
+                        data-cooldown-seconds="@resendCooldownSeconds"
+                        @(resendCooldownSeconds > 0 ? "disabled" : null)>Gửi lại mã</button>
+            </form>
             <span aria-hidden="true">•</span>
             <a asp-controller="Account" asp-action="Login" class="account-link">Quay lại đăng nhập</a>
         </div>
@@ -125,6 +138,67 @@
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
     <script>
+        const resendForm = document.getElementById('resendResetCodeForm');
+        const resendButton = document.getElementById('resendResetCodeButton');
+        const resendMessage = document.getElementById('resendResetCodeMessage');
+        let resendTimerId;
+
+        const showResendMessage = (message, isError = false) => {
+            if (!resendMessage) return;
+            resendMessage.hidden = false;
+            resendMessage.textContent = message;
+            resendMessage.classList.toggle('account-resend-message--error', isError);
+        };
+
+        const startResendCooldown = (seconds) => {
+            if (!resendButton) return;
+            let remaining = Number(seconds) || 0;
+            clearInterval(resendTimerId);
+
+            const render = () => {
+                if (remaining <= 0) {
+                    resendButton.disabled = false;
+                    resendButton.textContent = resendButton.dataset.defaultText || 'Gửi lại mã';
+                    clearInterval(resendTimerId);
+                    return;
+                }
+
+                resendButton.disabled = true;
+                resendButton.textContent = `Gửi lại mã sau ${remaining}s`;
+                remaining -= 1;
+            };
+
+            render();
+            resendTimerId = setInterval(render, 1000);
+        };
+
+        if (resendButton?.dataset.cooldownSeconds) {
+            startResendCooldown(resendButton.dataset.cooldownSeconds);
+        }
+
+        resendForm?.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            if (!resendButton || resendButton.disabled) return;
+
+            resendButton.disabled = true;
+            resendButton.textContent = 'Đang gửi...';
+
+            try {
+                const response = await fetch(resendForm.action, {
+                    method: 'POST',
+                    body: new FormData(resendForm),
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                const data = await response.json();
+                showResendMessage(data.message || 'Không thể gửi lại mã lúc này.', !response.ok || data.success === false);
+                startResendCooldown(data.cooldownSeconds || 0);
+            } catch {
+                showResendMessage('Không thể gửi email OTP lúc này. Vui lòng thử lại sau.', true);
+                resendButton.disabled = false;
+                resendButton.textContent = resendButton.dataset.defaultText || 'Gửi lại mã';
+            }
+        });
+
         document.querySelectorAll('[data-password-toggle]').forEach((button) => {
             button.addEventListener('click', () => {
                 const input = document.getElementById(button.dataset.passwordToggle);
