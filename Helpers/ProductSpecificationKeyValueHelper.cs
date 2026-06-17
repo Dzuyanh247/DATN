@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Datn.PcStore.ViewModels;
@@ -76,19 +78,60 @@ public static class ProductSpecificationKeyValueHelper
     private static IEnumerable<ProductSpecificationItemVm> Normalize(IEnumerable<ProductSpecificationItemVm>? items)
     {
         if (items == null) yield break;
+        var emitted = new List<ProductSpecificationItemVm>();
         foreach (var item in items)
         {
             var name = Clean(item.Name);
             var value = Clean(item.Value);
-            if (string.IsNullOrWhiteSpace(name) && string.IsNullOrWhiteSpace(value)) continue;
-            yield return new ProductSpecificationItemVm { Name = name, Value = value };
+            if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(value)) continue;
+            var key = BuildKey(name);
+            var existing = emitted.FirstOrDefault(x => string.Equals(x.Key, key, StringComparison.OrdinalIgnoreCase));
+            if (existing != null)
+            {
+                existing.Value = MergeValues(existing.Value, value);
+                continue;
+            }
+
+            var pair = new ProductSpecificationItemVm { Name = name, Value = value, Key = key };
+            emitted.Add(pair);
+            yield return pair;
         }
     }
 
     private static bool IsHeader(string value)
     {
         var normalized = Clean(value).ToLowerInvariant();
-        return normalized is "thông số kỹ thuật" or "thong so ky thuat" or "tên thông số giá trị" or "ten thong so gia tri";
+        return normalized is "chi tiết" or "chi tiet" or "details" or "general" or "thông số" or "thong so" or "thông số kỹ thuật" or "thong so ky thuat" or "tên thông số giá trị" or "ten thong so gia tri";
+    }
+
+    public static string BuildKey(string? name)
+    {
+        var normalized = (name ?? string.Empty).Trim().ToLowerInvariant().Replace("đ", "d");
+        var decomposed = normalized.Normalize(NormalizationForm.FormD);
+        var builder = new StringBuilder();
+        var previousDash = false;
+        foreach (var c in decomposed)
+        {
+            if (CharUnicodeInfo.GetUnicodeCategory(c) == UnicodeCategory.NonSpacingMark) continue;
+            if (char.IsLetterOrDigit(c))
+            {
+                builder.Append(c);
+                previousDash = false;
+            }
+            else if (!previousDash)
+            {
+                builder.Append('-');
+                previousDash = true;
+            }
+        }
+        return builder.ToString().Trim('-');
+    }
+
+    private static string MergeValues(string? current, string next)
+    {
+        var values = Regex.Split(current ?? string.Empty, @"\s*;\s*").Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
+        if (!values.Contains(next, StringComparer.OrdinalIgnoreCase)) values.Add(next);
+        return string.Join("; ", values);
     }
 
     private static string Clean(string? value) => Regex.Replace(value ?? string.Empty, @"[ \t\r\n]+", " ").Trim();

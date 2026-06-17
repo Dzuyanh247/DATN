@@ -394,7 +394,7 @@ public class ProductsController : Controller
     {
         var keys = componentType.Trim().ToLowerInvariant() switch
         {
-            "cpu" => new[] { "dongcpu", "series", "socket", "thehecpu", "thehe" },
+            "cpu" => new[] { "thuonghieu", "loaicpu", "socket", "thehecpu", "thehe", "tengoi", "tenthehe", "sonhan", "soluong", "tdp", "hotrobonho", "hotroram", "tan-nhiet", "tannhiet", "dongcpu", "series" },
             "ram" => new[] { "dungluong", "busram", "bus", "loairam", "chuanram" },
             "vga" => new[] { "chipset", "dungluongvram", "vram", "seriesgpu", "series" },
             "mainboard" => new[] { "socket", "chipset", "formfactor", "ramhotro", "chuanram" },
