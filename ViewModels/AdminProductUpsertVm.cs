@@ -130,6 +130,10 @@ public class AdminComponentIndexVm
 
 public class AdminComponentUpsertVm : AdminProductUpsertVm
 {
+    [Required(ErrorMessage = "Vui lòng chọn hoặc nhập thương hiệu.")]
+    [MaxLength(80)]
+    public new string? Brand { get; set; }
+
     public AdminComponentUpsertVm()
     {
         ProductType = ProductKinds.Component;
