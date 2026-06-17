@@ -59,7 +59,7 @@ public class AdminComponentsController : Controller
         {
             Name = vm.Name.Trim(),
             ProductCode = string.IsNullOrWhiteSpace(vm.ProductCode) ? $"LK-{Guid.NewGuid():N}"[..16] : vm.ProductCode.Trim(),
-            Brand = string.IsNullOrWhiteSpace(vm.Brand) ? null : vm.Brand.Trim(),
+            Brand = vm.Brand!.Trim(),
             ProductType = ProductKinds.Component,
             ComponentType = vm.ComponentType,
             Price = vm.Price!.Value,
@@ -108,7 +108,7 @@ public class AdminComponentsController : Controller
         var productCode = string.IsNullOrWhiteSpace(vm.ProductCode) ? product.ProductCode : vm.ProductCode.Trim();
         var slug = BuildSlug(vm.Name);
         if (!await ValidateUniqueProductFieldsAsync(vm, slug, productCode, "cập nhật")) { await PopulateExistingImagesAsync(vm); return View(vm); }
-        product.Name = vm.Name.Trim(); product.ProductCode = productCode; product.Brand = string.IsNullOrWhiteSpace(vm.Brand) ? null : vm.Brand.Trim(); product.ProductType = ProductKinds.Component; product.ComponentType = vm.ComponentType;
+        product.Name = vm.Name.Trim(); product.ProductCode = productCode; product.Brand = vm.Brand!.Trim(); product.ProductType = ProductKinds.Component; product.ComponentType = vm.ComponentType;
         product.Price = vm.Price!.Value; product.DiscountPrice = vm.DiscountPrice; product.SalePrice = vm.DiscountPrice; product.StockQuantity = vm.StockQuantity.GetValueOrDefault();
         product.WarrantyMonths = vm.WarrantyMonths!.Value; product.WarrantyDuration = $"{vm.WarrantyMonths.Value} tháng"; product.CategoryId = vm.CategoryId!.Value;
         product.ShortDescription = BuildShortDescription(vm.Description); product.Description = vm.Description ?? string.Empty; product.DetailDescription = vm.Description ?? string.Empty;
@@ -190,6 +190,13 @@ public class AdminComponentsController : Controller
     private async Task<bool> TrySaveProductChangesAsync(AdminComponentUpsertVm vm, string operation)
     {
         try { await _db.SaveChangesAsync(); return true; }
+        catch (DbUpdateException ex) when (IsProductBrandNullViolation(ex))
+        {
+            _logger.LogWarning(ex, "Không thể {Operation} linh kiện vì Brand bị NULL hoặc không hợp lệ với schema database.", operation);
+            ModelState.AddModelError(nameof(vm.Brand), "Vui lòng chọn hoặc nhập thương hiệu.");
+            InvalidForm(vm, operation);
+            return false;
+        }
         catch (DbUpdateException ex) when (IsProductUniqueConstraintViolation(ex))
         {
             _logger.LogWarning(ex, "Không thể {Operation} linh kiện vì trùng dữ liệu unique trong database.", operation);
@@ -197,6 +204,59 @@ public class AdminComponentsController : Controller
             InvalidForm(vm, operation);
             return false;
         }
+        catch (DbUpdateException ex)
+        {
+            if (IsProductRequiredColumnViolation(ex, out var fieldName, out var errorMessage))
+            {
+                _logger.LogWarning(ex, "Không thể {Operation} linh kiện vì thiếu dữ liệu bắt buộc ở cột {Column}.", operation, fieldName);
+                ModelState.AddModelError(fieldName, errorMessage);
+            }
+            else
+            {
+                _logger.LogError(ex, "Không thể {Operation} linh kiện vì lỗi cập nhật database không mong đợi.", operation);
+                ModelState.AddModelError(string.Empty, "Không thể lưu linh kiện do lỗi dữ liệu. Vui lòng kiểm tra lại thông tin và thử lại.");
+            }
+            InvalidForm(vm, operation);
+            return false;
+        }
+    }
+    private static bool IsProductBrandNullViolation(DbUpdateException ex)
+    {
+        var message = ex.GetBaseException().Message;
+        return message.Contains("Brand", StringComparison.OrdinalIgnoreCase)
+            && (message.Contains("NULL", StringComparison.OrdinalIgnoreCase)
+                || message.Contains("cannot insert", StringComparison.OrdinalIgnoreCase)
+                || message.Contains("does not allow nulls", StringComparison.OrdinalIgnoreCase));
+    }
+    private static bool IsProductRequiredColumnViolation(DbUpdateException ex, out string fieldName, out string errorMessage)
+    {
+        var message = ex.GetBaseException().Message;
+        var requiredColumns = new (string Column, string Field, string Error)[]
+        {
+            ("Name", nameof(AdminComponentUpsertVm.Name), "Vui lòng nhập tên linh kiện."),
+            ("Slug", nameof(AdminComponentUpsertVm.Name), "Không tạo được slug sản phẩm. Vui lòng kiểm tra tên linh kiện."),
+            ("Price", nameof(AdminComponentUpsertVm.Price), "Vui lòng nhập giá gốc."),
+            ("ProductCode", nameof(AdminComponentUpsertVm.ProductCode), "Không tạo được mã sản phẩm. Vui lòng nhập mã sản phẩm hoặc thử lưu lại."),
+            ("ProductType", nameof(AdminComponentUpsertVm.ProductType), "Không xác định được loại sản phẩm. Vui lòng thử lưu lại."),
+            ("ComponentType", nameof(AdminComponentUpsertVm.ComponentType), "Vui lòng chọn loại linh kiện."),
+            ("WarrantyMonths", nameof(AdminComponentUpsertVm.WarrantyMonths), "Vui lòng nhập thời gian bảo hành."),
+            ("CategoryId", nameof(AdminComponentUpsertVm.CategoryId), "Không xác định được danh mục Linh kiện mặc định.")
+        };
+        foreach (var (column, field, error) in requiredColumns)
+        {
+            if (message.Contains(column, StringComparison.OrdinalIgnoreCase)
+                && (message.Contains("NULL", StringComparison.OrdinalIgnoreCase)
+                    || message.Contains("cannot insert", StringComparison.OrdinalIgnoreCase)
+                    || message.Contains("does not allow nulls", StringComparison.OrdinalIgnoreCase)))
+            {
+                fieldName = field;
+                errorMessage = error;
+                return true;
+            }
+        }
+        fieldName = string.Empty;
+        errorMessage = string.Empty;
+        return false;
     }
     private static bool IsProductUniqueConstraintViolation(DbUpdateException ex)
     {
@@ -219,6 +279,7 @@ public class AdminComponentsController : Controller
     private void ValidateComponentBusinessRules(AdminComponentUpsertVm vm)
     {
         if (string.IsNullOrWhiteSpace(vm.Name)) ModelState.AddModelError(nameof(vm.Name), "Vui lòng nhập tên linh kiện");
+        if (string.IsNullOrWhiteSpace(vm.Brand) || vm.Brand == "__add_new_brand__") ModelState.AddModelError(nameof(vm.Brand), "Vui lòng chọn hoặc nhập thương hiệu.");
         if (!vm.CategoryId.HasValue || vm.CategoryId.Value <= 0) ModelState.AddModelError(nameof(vm.CategoryId), "Không xác định được danh mục Linh kiện mặc định.");
         if (!vm.Price.HasValue || vm.Price.Value <= 0) ModelState.AddModelError(nameof(vm.Price), "Vui lòng nhập giá gốc");
         if (vm.DiscountPrice.HasValue && vm.Price.HasValue && vm.DiscountPrice.Value > vm.Price.Value) ModelState.AddModelError(nameof(vm.DiscountPrice), "Giá khuyến mãi không được lớn hơn giá gốc");
