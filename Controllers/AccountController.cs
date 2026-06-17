@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Data.SqlClient;
 
 namespace Datn.PcStore.Controllers;
 
@@ -90,9 +91,18 @@ public class AccountController : Controller
 
         var normalizedEmail = vm.Email.Trim();
         var user = await _db.Users.FirstOrDefaultAsync(x => x.Email == normalizedEmail);
-        if (user != null)
+        if (user == null)
         {
-            var now = DateTime.UtcNow;
+            TempData["Ok"] = "Nếu email tồn tại trong hệ thống, mã xác nhận đã được gửi.";
+            TempData["ResetEmail"] = normalizedEmail;
+            return RedirectToAction(nameof(VerifyResetCode));
+        }
+
+        var code = RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6");
+        var now = DateTime.UtcNow;
+
+        try
+        {
             var activeOtps = await _db.PasswordResetOtps
                 .Where(x => x.UserId == user.Id && !x.IsUsed)
                 .ToListAsync();
@@ -103,7 +113,6 @@ public class AccountController : Controller
                 oldOtp.UsedAt = now;
             }
 
-            var code = RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6");
             _db.PasswordResetOtps.Add(new PasswordResetOtp
             {
                 UserId = user.Id,
@@ -114,24 +123,32 @@ public class AccountController : Controller
                 CreatedAt = now
             });
             await _db.SaveChangesAsync();
+        }
+        catch (Exception ex) when (IsPasswordResetOtpStorageException(ex))
+        {
+            _logger.LogError(ex, "Không thể lưu OTP đặt lại mật khẩu cho {Email}. Kiểm tra migration/bảng PasswordResetOtps.", normalizedEmail);
+            TempData["ErrorMessage"] = "Chức năng đặt lại mật khẩu đang được bảo trì. Vui lòng thử lại sau hoặc liên hệ cửa hàng để được hỗ trợ.";
+            return View(vm);
+        }
 
-            var plainTextMessage = $"Mã xác nhận đặt lại mật khẩu KKSHOP của bạn là {code}. Mã có hiệu lực 10 phút.";
-            var htmlMessage = $"<p>Xin chào {System.Net.WebUtility.HtmlEncode(user.FullName)},</p>"
-                + $"<p>Mã xác nhận đặt lại mật khẩu KKSHOP của bạn là <strong>{code}</strong>.</p>"
-                + "<p>Mã có hiệu lực 10 phút. Vui lòng không chia sẻ mã này với bất kỳ ai.</p>";
+        var plainTextMessage = $"Mã xác nhận đặt lại mật khẩu KKSHOP của bạn là {code}. Mã có hiệu lực 10 phút.";
+        var htmlMessage = $"<p>Xin chào {System.Net.WebUtility.HtmlEncode(user.FullName)},</p>"
+            + $"<p>Mã xác nhận đặt lại mật khẩu KKSHOP của bạn là <strong>{code}</strong>.</p>"
+            + "<p>Mã có hiệu lực 10 phút. Vui lòng không chia sẻ mã này với bất kỳ ai.</p>";
 
-            try
-            {
-                await _emailSender.SendEmailAsync(
-                    normalizedEmail,
-                    "Mã xác nhận đặt lại mật khẩu KKSHOP",
-                    htmlMessage,
-                    plainTextMessage);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Không thể gửi OTP đặt lại mật khẩu tới {Email}.", normalizedEmail);
-            }
+        try
+        {
+            await _emailSender.SendEmailAsync(
+                normalizedEmail,
+                "Mã xác nhận đặt lại mật khẩu KKSHOP",
+                htmlMessage,
+                plainTextMessage);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Không thể gửi OTP đặt lại mật khẩu tới {Email}.", normalizedEmail);
+            TempData["ErrorMessage"] = "Không thể gửi email OTP lúc này. Vui lòng kiểm tra cấu hình email hoặc thử lại sau.";
+            return View(vm);
         }
 
         TempData["Ok"] = "Nếu email tồn tại trong hệ thống, mã xác nhận đã được gửi.";
@@ -204,6 +221,17 @@ public class AccountController : Controller
 
         TempData["Ok"] = "Đổi mật khẩu thành công, vui lòng đăng nhập lại.";
         return RedirectToAction(nameof(Login));
+    }
+
+    private static bool IsPasswordResetOtpStorageException(Exception exception)
+    {
+        if (exception is SqlException sqlException &&
+            sqlException.Errors.Cast<SqlError>().Any(error => error.Number == 208))
+        {
+            return true;
+        }
+
+        return exception is DbUpdateException or InvalidOperationException;
     }
 
     [HttpPost]
