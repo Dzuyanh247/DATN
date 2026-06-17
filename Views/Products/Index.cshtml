@@ -135,30 +135,33 @@
                     </details>
                 }
 
+                @if (Model.IsComponentListing)
+                {
                 <details class="products-filter-group" open>
-                    <summary>THƯƠNG HIỆU <i class="bi bi-chevron-down"></i></summary>
-                    <div class="products-filter-options">
-                        @if (Model.BrandOptions.Count == 0)
-                        {
-                            <div class="products-filter-empty">Chưa có dữ liệu</div>
-                        }
-                        @foreach (var option in Model.BrandOptions)
-                        {
-                            var id = $"brand-{option.Value.GetHashCode()}";
-                            var isSelected = Model.Brands.Contains(option.Value, StringComparer.OrdinalIgnoreCase);
-                            if (!ShouldShowSingleChoiceOption(option, Model.Brands))
+                        <summary>THƯƠNG HIỆU <i class="bi bi-chevron-down"></i></summary>
+                        <div class="products-filter-options">
+                            @if (Model.BrandOptions.Count == 0)
                             {
-                                continue;
+                                <div class="products-filter-empty">Chưa có dữ liệu</div>
                             }
-                            <label class="products-filter-option" for="@id">
-                                <input id="@id" type="checkbox" name="brands" value="@option.Value"
-                                       checked="@(isSelected)" />
-                                <span>@option.Label</span>
-                                <small>(@option.Count)</small>
-                            </label>
-                        }
-                    </div>
-                </details>
+                            @foreach (var option in Model.BrandOptions)
+                            {
+                                var id = $"brand-{option.Value.GetHashCode()}";
+                                var isSelected = Model.Brands.Contains(option.Value, StringComparer.OrdinalIgnoreCase);
+                                if (!ShouldShowSingleChoiceOption(option, Model.Brands))
+                                {
+                                    continue;
+                                }
+                                <label class="products-filter-option" for="@id">
+                                    <input id="@id" type="checkbox" name="brands" value="@option.Value"
+                                           checked="@(isSelected)" />
+                                    <span>@option.Label</span>
+                                    <small>(@option.Count)</small>
+                                </label>
+                            }
+                        </div>
+                    </details>
+                }
 
                 @if (Model.CpuOptions.Count > 0)
                 {
