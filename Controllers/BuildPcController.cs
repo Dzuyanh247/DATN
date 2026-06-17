@@ -50,7 +50,8 @@ public class BuildPcController : Controller
     [HttpGet("products")]
     public async Task<IActionResult> GetProductsByComponent(string type, string? keyword, string? sort)
     {
-        var normalizedType = NormalizeType(type);
+        var displayType = NormalizeType(type);
+        var normalizedType = NormalizeBuildTypeToComponentType(displayType);
         var products = await QueryProductsByType(normalizedType);
         if (!string.IsNullOrWhiteSpace(keyword)) products = products.Where(x => x.Name.Contains(keyword)).ToList();
         products = sort == "price_desc" ? products.OrderByDescending(x => x.Price).ToList() : products.OrderBy(x => x.Price).ToList();
@@ -146,42 +147,12 @@ public class BuildPcController : Controller
     {
         var products = await _db.Products
             .Include(x => x.Category)
-            .Where(x => x.IsActive && x.IsInStock)
+            .Where(x => x.IsActive && x.IsInStock && (x.ProductType == ProductKinds.Component || x.ProductType.Contains("Linh")))
             .ToListAsync();
 
         return products
-            .Where(p => MatchType(type, p))
+            .Where(p => string.Equals(ComponentTypes.Normalize(p.ComponentType), type, StringComparison.OrdinalIgnoreCase))
             .ToList();
-    }
-
-    private static bool MatchType(string type, Product p)
-    {
-        var cat = p.Category?.Name ?? string.Empty;
-        var comp = p.ComponentType ?? string.Empty;
-        var name = p.Name ?? string.Empty;
-        var source = $"{cat} {comp} {name}".ToLowerInvariant();
-        return type switch
-        {
-            "CPU" => comp.Equals("CPU", StringComparison.OrdinalIgnoreCase)
-                     || cat.Contains("cpu", StringComparison.OrdinalIgnoreCase)
-                     || name.Contains("cpu", StringComparison.OrdinalIgnoreCase)
-                     || name.Contains("intel", StringComparison.OrdinalIgnoreCase)
-                     || name.Contains("ryzen", StringComparison.OrdinalIgnoreCase)
-                     || name.Contains("core i3", StringComparison.OrdinalIgnoreCase)
-                     || name.Contains("core i5", StringComparison.OrdinalIgnoreCase)
-                     || name.Contains("core i7", StringComparison.OrdinalIgnoreCase)
-                     || name.Contains("core i9", StringComparison.OrdinalIgnoreCase)
-                     || source.Contains("vi xử lý"),
-            "MAINBOARD" => source.Contains("mainboard") || source.Contains("bo mạch chủ"),
-            "RAM" => source.Contains("ram"),
-            "GPU" => source.Contains("vga") || source.Contains("card đồ họa") || source.Contains("gpu"),
-            "STORAGE" => source.Contains("ssd") || source.Contains("hdd") || source.Contains("ổ cứng"),
-            "PSU" => source.Contains("nguồn") || source.Contains("psu"),
-            "COOLER" => source.Contains("tản nhiệt") || source.Contains("cooler"),
-            "CASE" => source.Contains("case") || source.Contains("vỏ case"),
-            "MONITOR" => source.Contains("màn hình") || source.Contains("monitor"),
-            _ => false
-        };
     }
 
     private static string NormalizeType(string? type)
@@ -198,6 +169,18 @@ public class BuildPcController : Controller
             _ => value
         };
     }
+
+    private static string NormalizeBuildTypeToComponentType(string type) => type switch
+    {
+        "MAINBOARD" => ComponentTypes.Mainboard,
+        "GPU" => ComponentTypes.VGA,
+        "STORAGE" => ComponentTypes.Storage,
+        "PSU" => ComponentTypes.PSU,
+        "COOLER" => ComponentTypes.Cooler,
+        "CASE" => ComponentTypes.Case,
+        "MONITOR" => ComponentTypes.Monitor,
+        _ => ComponentTypes.Normalize(type)
+    };
 
     private Dictionary<string, SelectedComponentViewModel> GetSelectedFromSession()
     {

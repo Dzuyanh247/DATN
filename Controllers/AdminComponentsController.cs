@@ -29,7 +29,7 @@ public class AdminComponentsController : Controller
         if (!string.IsNullOrWhiteSpace(componentType))
         {
             var normalizedComponentType = ComponentTypes.Normalize(componentType);
-            query = query.Where(p => p.ComponentType == normalizedComponentType);
+            query = query.Where(p => p.ComponentType != null && GetComponentTypeAliases(normalizedComponentType).Contains(p.ComponentType));
             componentType = normalizedComponentType;
         }
         if (!string.IsNullOrWhiteSpace(brand)) query = query.Where(p => p.Brand == brand);
@@ -38,9 +38,12 @@ public class AdminComponentsController : Controller
         if (isActive.HasValue) query = query.Where(p => p.IsActive == isActive.Value);
         if (inStock.HasValue) query = query.Where(p => (p.StockQuantity > 0) == inStock.Value);
 
+        var components = await query.OrderByDescending(p => p.CreatedAt).ToListAsync();
+        foreach (var component in components) component.ComponentType = ComponentTypes.Normalize(component.ComponentType);
+
         var vm = new AdminComponentIndexVm
         {
-            Components = await query.OrderByDescending(p => p.CreatedAt).ToListAsync(),
+            Components = components,
             BrandOptions = await GetBrandOptionsAsync(componentType),
             Keyword = keyword, ComponentType = componentType, Brand = brand, MinPrice = minPrice, MaxPrice = maxPrice, IsActive = isActive, InStock = inStock
         };
@@ -157,6 +160,25 @@ public class AdminComponentsController : Controller
         vm.CategoryId = category.Id;
         ModelState.Remove(nameof(vm.CategoryId));
     }
+
+    private static string[] GetComponentTypeAliases(string type) => ComponentTypes.Normalize(type) switch
+    {
+        ComponentTypes.CPU => new[] { "CPU", "CPU - Bộ vi xử lý", "Bộ vi xử lý", "cpu" },
+        ComponentTypes.Mainboard => new[] { "Mainboard", "MAINBOARD", "Mainboard - Bo mạch chủ", "Bo mạch chủ", "Bo mach chu", "Motherboard", "mainboard", "main" },
+        ComponentTypes.RAM => new[] { "RAM", "Ram", "Bộ nhớ trong" },
+        ComponentTypes.VGA => new[] { "VGA", "GPU", "VGA - Card màn hình", "Card màn hình" },
+        ComponentTypes.Storage => new[] { "Storage", "SSD", "HDD", "SSD/HDD", "Storage - SSD/HDD", "Ổ cứng SSD/HDD", "Ổ cứng" },
+        ComponentTypes.PSU => new[] { "PSU", "PSU - Nguồn máy tính", "Nguồn máy tính", "Nguồn" },
+        ComponentTypes.Case => new[] { "Case", "Case - Vỏ case", "Vỏ case" },
+        ComponentTypes.Cooler => new[] { "Cooler", "Cooler - Tản nhiệt", "Tản nhiệt" },
+        ComponentTypes.Monitor => new[] { "Monitor", "Monitor - Màn hình", "Màn hình" },
+        ComponentTypes.Keyboard => new[] { "Keyboard", "Keyboard - Bàn phím", "Bàn phím" },
+        ComponentTypes.Mouse => new[] { "Mouse", "Mouse - Chuột", "Chuột" },
+        ComponentTypes.Headphone => new[] { "Headphone", "Headphone - Tai nghe", "Headset", "Tai nghe" },
+        ComponentTypes.MonitorArm => new[] { "MonitorArm", "MonitorArm - Giá treo màn hình", "Giá treo màn hình" },
+        _ => new[] { ComponentTypes.Other, "Other", "Khác" }
+    };
+
     private async Task<List<string>> GetBrandOptionsAsync(string? componentType, string? currentBrand = null)
     {
         var normalizedType = ComponentTypes.Normalize(componentType);

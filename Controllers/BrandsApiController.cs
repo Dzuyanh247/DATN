@@ -76,7 +76,7 @@ public class BrandsApiController : ControllerBase
     }
 
     private static string NormalizeComponentType(string? componentType)
-        => string.IsNullOrWhiteSpace(componentType) ? ComponentTypes.Other : componentType.Trim();
+        => ComponentTypes.Normalize(componentType);
 }
 
 public sealed class CreateComponentBrandRequest

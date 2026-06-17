@@ -12,7 +12,7 @@
 
 <form method="get" class="row g-2 mb-3">
     <div class="col-md-3"><input name="keyword" value="@Model.Keyword" class="form-control" placeholder="Tìm theo tên linh kiện" /></div>
-    <div class="col-md-2"><select name="componentType" class="form-select"><option value="">-- Loại linh kiện --</option>@foreach (var t in Model.ComponentTypeOptions) { <option value="@t" selected="@(Model.ComponentType == t)">@t</option> }</select></div>
+    <div class="col-md-2"><select name="componentType" class="form-select"><option value="">-- Loại linh kiện --</option>@foreach (var t in Model.ComponentTypeOptions) { <option value="@t" selected="@(Model.ComponentType == t)">@Datn.PcStore.Models.ComponentTypes.GetLabel(t)</option> }</select></div>
     <div class="col-md-2"><select name="brand" class="form-select"><option value="">-- Thương hiệu --</option>@foreach (var b in Model.BrandOptions) { <option value="@b" selected="@(Model.Brand == b)">@b</option> }</select></div>
     <div class="col-md-1"><input name="minPrice" value="@Model.MinPrice" class="form-control" placeholder="Giá từ" /></div>
     <div class="col-md-1"><input name="maxPrice" value="@Model.MaxPrice" class="form-control" placeholder="Đến" /></div>
@@ -30,7 +30,7 @@
         <tr>
             <td><img src="@thumb" class="rounded admin-product-thumb" alt="@p.Name" onerror="this.onerror=null;this.src='/images/no-image.png';" /></td>
             <td><span class="admin-product-name">@p.Name</span><div class="small text-muted">@p.Category?.Name</div></td>
-            <td><span class="badge text-bg-info">@p.ComponentType</span></td>
+            <td><span class="badge text-bg-info">@Datn.PcStore.Models.ComponentTypes.GetLabel(p.ComponentType)</span></td>
             <td>@(string.IsNullOrWhiteSpace(p.Brand) ? "—" : p.Brand)</td>
             <td class="text-center">@((p.DiscountPrice ?? p.SalePrice ?? p.Price).ToString("N0")) đ</td>
             <td class="text-center">@p.StockQuantity</td>

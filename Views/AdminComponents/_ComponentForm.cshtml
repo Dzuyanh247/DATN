@@ -3,24 +3,7 @@
     var isEdit = Model.Id > 0;
     var orderedImages = Model.ExistingImages.OrderBy(x => x.SortOrder).ToList();
     var hasErrors = ViewData.ModelState.Values.Any(v => v.Errors.Any());
-    var componentTypeLabels = new Dictionary<string, string>
-    {
-        ["CPU"] = "CPU - Bộ vi xử lý",
-        ["Mainboard"] = "Mainboard - Bo mạch chủ",
-        ["RAM"] = "RAM - Bộ nhớ trong",
-        ["VGA"] = "VGA - Card màn hình",
-        ["Storage"] = "Storage - SSD/HDD",
-        ["PSU"] = "PSU - Nguồn máy tính",
-        ["Case"] = "Case - Vỏ case",
-        ["Cooler"] = "Cooler - Tản nhiệt",
-        ["Monitor"] = "Monitor - Màn hình",
-        ["Keyboard"] = "Keyboard - Bàn phím",
-        ["Mouse"] = "Mouse - Chuột",
-        ["Headphone"] = "Headphone - Tai nghe",
-        ["MonitorArm"] = "MonitorArm - Giá treo màn hình",
-        ["Other"] = "Other - Khác"
-    };
-    var orderedTypes = new[] { "CPU", "Mainboard", "RAM", "VGA", "Storage", "PSU", "Case", "Cooler", "Monitor", "Keyboard", "Mouse", "Headphone", "MonitorArm", "Other" };
+    var orderedTypes = Datn.PcStore.Models.ComponentTypes.All;
 }
 
 <style>
@@ -87,7 +70,7 @@
     <div class="row g-4 align-items-start">
         <div class="col-xl-8">
             <div class="ux-card mb-4"><h5 class="ux-card-title"><span class="num">1</span>Loại linh kiện</h5><p class="ux-help">Sản phẩm tạo tại trang này tự thuộc danh mục “Linh kiện”. Admin chỉ cần chọn nhánh linh kiện để phục vụ hiển thị nhóm và bộ lọc.</p><div class="row g-3">
-                <div class="col-12"><label asp-for="ComponentType" class="form-label">Loại / nhánh linh kiện <span class="required-mark">*</span></label><select asp-for="ComponentType" class="form-select" id="component-type-select"><option value="">-- Chọn loại linh kiện --</option>@foreach (var value in orderedTypes){<option value="@value" selected="@(Model.ComponentType == value)">@componentTypeLabels[value]</option>}</select><span asp-validation-for="ComponentType" class="text-danger"></span><div class="mt-2"><span class="comp-use-badge" id="component-use-hint">Dùng cho: Danh mục linh kiện máy tính</span></div></div>
+                <div class="col-12"><label asp-for="ComponentType" class="form-label">Loại / nhánh linh kiện <span class="required-mark">*</span></label><select asp-for="ComponentType" class="form-select" id="component-type-select"><option value="">-- Chọn loại linh kiện --</option>@foreach (var value in orderedTypes){<option value="@value" selected="@(Model.ComponentType == value)">@Datn.PcStore.Models.ComponentTypes.GetLabel(value)</option>}</select><span asp-validation-for="ComponentType" class="text-danger"></span><div class="mt-2"><span class="comp-use-badge" id="component-use-hint">Dùng cho: Danh mục linh kiện máy tính</span></div></div>
             </div></div>
 
             <div class="ux-card mb-4"><h5 class="ux-card-title"><span class="num">2</span>Thông tin bán hàng</h5><p class="ux-help">Các trường có dấu * là bắt buộc. Thương hiệu có thể bỏ trống; mã sản phẩm có thể bỏ trống để hệ thống tự tạo.</p><div class="row g-3">
