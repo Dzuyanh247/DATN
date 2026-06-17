@@ -67,6 +67,13 @@ public class ProductsController : Controller
 
         if (vm.CategoryId.HasValue)
             query = query.Where(p => p.CategoryId == vm.CategoryId.Value);
+
+        var baseProducts = await query
+            .ToListAsync();
+        var facetProducts = ApplyKeywordSearch(baseProducts, vm);
+        var parsedFacets = facetProducts.ToDictionary(product => product.Id, ProductFilterFacetHelper.Parse);
+        PopulateFilterOptions(vm, facetProducts, parsedFacets);
+
         if (vm.ComponentTypes.Length > 0)
             query = query.Where(p => p.ComponentType != null && vm.ComponentTypes.Contains(p.ComponentType));
         if (vm.MinPrice.HasValue)
@@ -79,15 +86,14 @@ public class ProductsController : Controller
             .Include(product => product.ProductImages)
             .OrderByDescending(product => product.CreatedAt)
             .ToListAsync();
-        var facetProducts = ApplyKeywordSearch(candidateProducts, vm);
-        var parsedFacets = facetProducts.ToDictionary(product => product.Id, ProductFilterFacetHelper.Parse);
-        PopulateFilterOptions(vm, facetProducts, parsedFacets);
+        var filteredFacetProducts = ApplyKeywordSearch(candidateProducts, vm);
+        var filteredParsedFacets = filteredFacetProducts.ToDictionary(product => product.Id, ProductFilterFacetHelper.Parse);
 
-        IEnumerable<Product> filteredProducts = facetProducts;
+        IEnumerable<Product> filteredProducts = filteredFacetProducts;
         if (vm.Brands.Length > 0)
             filteredProducts = filteredProducts.Where(product => product.Brand != null && vm.Brands.Contains(product.Brand, StringComparer.OrdinalIgnoreCase));
 
-        var matchingIds = GetMatchingParsedFacetIds(facetProducts, parsedFacets, vm);
+        var matchingIds = GetMatchingParsedFacetIds(filteredFacetProducts, filteredParsedFacets, vm);
         if (matchingIds is not null)
             filteredProducts = filteredProducts.Where(product => matchingIds.Contains(product.Id));
         if (vm.Specs.Length > 0)

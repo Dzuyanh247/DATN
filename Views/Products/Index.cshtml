@@ -6,6 +6,44 @@
     var resultText = $"{Model.Products.Count:N0} sản phẩm";
 }
 
+<script>
+    (() => {
+        const key = `productsFilterScrollY:${location.pathname}`;
+        const savedY = sessionStorage.getItem(key);
+        if (savedY === null) return;
+
+        if ('scrollRestoration' in history) {
+            history.scrollRestoration = 'manual';
+        }
+
+        const style = document.createElement('style');
+        style.textContent = 'html,body{scroll-behavior:auto!important;}';
+        document.head.appendChild(style);
+
+        const targetY = parseInt(savedY, 10);
+        if (!Number.isFinite(targetY)) {
+            sessionStorage.removeItem(key);
+            style.remove();
+            return;
+        }
+
+        let attempts = 0;
+        const restore = () => {
+            window.scrollTo(0, targetY);
+            attempts += 1;
+            if (attempts < 4 && Math.abs(window.scrollY - targetY) > 2) {
+                requestAnimationFrame(restore);
+                return;
+            }
+
+            sessionStorage.removeItem(key);
+            requestAnimationFrame(() => style.remove());
+        };
+
+        restore();
+    })();
+</script>
+
 <div class="products-page">
     <header class="products-heading">
         <nav aria-label="breadcrumb">
@@ -98,7 +136,62 @@
                     </div>
                 </details>
 
+                @if (Model.CpuOptions.Count > 0)
+                {
+                    <details class="products-filter-group" open>
+                        <summary>DÒNG CPU <i class="bi bi-chevron-down"></i></summary>
+                        <div class="products-filter-options">
+                            @foreach (var option in Model.CpuOptions)
+                            {
+                                var id = $"cpu-{Math.Abs(option.Value.GetHashCode())}";
+                                <label class="products-filter-option" for="@id">
+                                    <input id="@id" type="checkbox" name="cpu" value="@option.Value"
+                                           checked="@(Model.Cpu.Contains(option.Value, StringComparer.OrdinalIgnoreCase))" />
+                                    <span>@option.Label</span>
+                                    <small>(@option.Count)</small>
+                                </label>
+                            }
+                        </div>
+                    </details>
+                }
 
+                @if (Model.RamOptions.Count > 0)
+                {
+                    <details class="products-filter-group" open>
+                        <summary>DUNG LƯỢNG RAM <i class="bi bi-chevron-down"></i></summary>
+                        <div class="products-filter-options">
+                            @foreach (var option in Model.RamOptions)
+                            {
+                                var id = $"ram-{Math.Abs(option.Value.GetHashCode())}";
+                                <label class="products-filter-option" for="@id">
+                                    <input id="@id" type="checkbox" name="ram" value="@option.Value"
+                                           checked="@(Model.Ram.Contains(option.Value, StringComparer.OrdinalIgnoreCase))" />
+                                    <span>@option.Label</span>
+                                    <small>(@option.Count)</small>
+                                </label>
+                            }
+                        </div>
+                    </details>
+                }
+
+                @if (Model.GpuOptions.Count > 0)
+                {
+                    <details class="products-filter-group" open>
+                        <summary>GPU <i class="bi bi-chevron-down"></i></summary>
+                        <div class="products-filter-options">
+                            @foreach (var option in Model.GpuOptions)
+                            {
+                                var id = $"gpu-{Math.Abs(option.Value.GetHashCode())}";
+                                <label class="products-filter-option" for="@id">
+                                    <input id="@id" type="checkbox" name="gpu" value="@option.Value"
+                                           checked="@(Model.Gpu.Contains(option.Value, StringComparer.OrdinalIgnoreCase))" />
+                                    <span>@option.Label</span>
+                                    <small>(@option.Count)</small>
+                                </label>
+                            }
+                        </div>
+                    </details>
+                }
 
                 @foreach (var specGroup in Model.SpecFilterGroups)
                 {
@@ -134,6 +227,9 @@
                     @foreach (var value in Model.Brands) { <input type="hidden" name="brands" value="@value" /> }
                     @foreach (var value in Model.ComponentTypes) { <input type="hidden" name="componentTypes" value="@value" /> }
                     @foreach (var value in Model.Specs) { <input type="hidden" name="specs" value="@value" /> }
+                    @foreach (var value in Model.Cpu) { <input type="hidden" name="cpu" value="@value" /> }
+                    @foreach (var value in Model.Ram) { <input type="hidden" name="ram" value="@value" /> }
+                    @foreach (var value in Model.Gpu) { <input type="hidden" name="gpu" value="@value" /> }
                     <select name="sort" class="form-select form-select-sm" aria-label="Sắp xếp sản phẩm">
                         <option value="newest" selected="@(Model.Sort == "newest")">Sắp xếp theo</option>
                         <option value="price_asc" selected="@(Model.Sort == "price_asc")">Giá tăng dần</option>
@@ -193,25 +289,13 @@
             if (!filterForm) return;
 
             const scrollStorageKey = `productsFilterScrollY:${location.pathname}`;
+            if ('scrollRestoration' in history) {
+                history.scrollRestoration = 'manual';
+            }
+
             const saveScrollPosition = () => {
                 sessionStorage.setItem(scrollStorageKey, window.scrollY);
             };
-            const restoreScrollPosition = () => {
-                const savedY = sessionStorage.getItem(scrollStorageKey);
-                if (savedY === null) return;
-
-                const scrollY = parseInt(savedY, 10);
-                if (Number.isFinite(scrollY)) {
-                    window.scrollTo(0, scrollY);
-                }
-                sessionStorage.removeItem(scrollStorageKey);
-            };
-
-            if (document.readyState === 'complete') {
-                restoreScrollPosition();
-            } else {
-                window.addEventListener('load', restoreScrollPosition, { once: true });
-            }
 
             filterForm.addEventListener('submit', saveScrollPosition);
             filterForm.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
