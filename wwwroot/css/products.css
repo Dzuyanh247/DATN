@@ -38,13 +38,16 @@
 .in-stock{background:#dcfce7;color:#14733b}
 .out-of-stock{background:#fee2e2;color:#b91c1c}
 .advice-pill{background:#f3e8ff;color:#7e22ce}
-.spec-summary-box,.promo-box{overflow:hidden;border:1px solid var(--detail-border);border-radius:9px;background:#fff}
-.spec-summary-box{padding:10px 12px}
-.compact-box-title{display:flex;align-items:center;gap:7px;padding:0;color:#1f2937;font-size:.84rem;font-weight:800}
-.compact-box-title i{color:#0ea5b7;font-size:.84rem}
-.spec-summary-box ul,.product-promotion-list{display:grid;gap:6px;margin:0;padding:6px 0 0;list-style:none}
-.spec-summary-box li,.product-promotion-list li{display:flex;align-items:flex-start;gap:8px;color:#4b5563;font-size:.85rem;line-height:1.4}
-.spec-summary-box li i{display:inline-flex;flex:0 0 16px;width:16px;height:16px;margin-top:2px;align-items:center;justify-content:center;border-radius:50%;background:#0ea5b7;color:#fff;font-size:10px;font-weight:900;line-height:1}
+.promo-box{overflow:hidden;border:1px solid var(--detail-border);border-radius:9px;background:#fff}
+.short-description{padding:2px 0 4px;background:transparent}
+.short-description h3{margin:0 0 7px;color:#1f2937;font-size:.95rem;font-weight:900;line-height:1.25}
+.short-description ul{display:grid;gap:6px;margin:0;padding:0;list-style:none}
+.short-description li{display:flex;align-items:flex-start;gap:8px;color:#4b5563;font-size:.85rem;line-height:1.4}
+.short-description li i{display:inline-flex;flex:0 0 16px;width:16px;height:16px;margin-top:2px;align-items:center;justify-content:center;border-radius:50%;background:#0ea5b7;color:#fff;font-size:10px;font-weight:900;line-height:1}
+.short-description-text{color:#4b5563;font-size:.85rem;line-height:1.55;white-space:pre-line;overflow-wrap:anywhere}
+.short-description p{margin:0;color:#94a3b8;font-size:.85rem;font-style:italic}
+.product-promotion-list{display:grid;gap:6px;margin:0;padding:6px 0 0;list-style:none}
+.product-promotion-list li{display:flex;align-items:flex-start;gap:8px;color:#4b5563;font-size:.85rem;line-height:1.4}
 .commerce-box-header{display:flex;height:38px;align-items:center;justify-content:space-between;gap:10px;padding:0 13px;border-bottom:1px solid var(--detail-border);background:#f7f7f8}
 .commerce-box-header span{display:flex;align-items:center;gap:6px;color:var(--detail-red);font-size:.8rem;font-weight:900}
 .commerce-box-header small{color:#9ca3af;font-size:.66rem}
