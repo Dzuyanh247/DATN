@@ -22,8 +22,8 @@ if not exist "%~dp0START_KKSHOP.ps1" (
 powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0START_KKSHOP.ps1"
 if errorlevel 1 (
     echo.
-    echo PowerShell khong chay duoc script khoi dong.
-    echo Vui long bam chuot phai START_KKSHOP.bat va chon Run as administrator neu Windows dang chan.
+    echo File START_KKSHOP.ps1 dang bi loi cu phap. Vui long gui file logs cho ky thuat.
+    echo Neu man hinh tren co duong dan log, hay gui dung file log do.
     pause
     exit /b 1
 )
