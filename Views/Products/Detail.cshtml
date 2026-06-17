@@ -33,11 +33,19 @@
         .GroupBy(spec => spec.Description.Trim(), StringComparer.OrdinalIgnoreCase)
         .Select(group => group.First())
         .ToList();
-    var descriptionLines = ProductSpecDisplayHelper.GetSafeTextLines(product, 6, 180)
-        .Where(line => !componentSpecs.Any(spec => string.Equals(spec.Description.Trim(), line.Trim(), StringComparison.OrdinalIgnoreCase)))
-        .Distinct(StringComparer.OrdinalIgnoreCase)
-        .ToList();
     var fullDescription = ProductSpecDisplayHelper.GetFullDescriptionText(product);
+    var descriptionLines = componentSpecs
+        .Select(spec => spec.Description.Trim())
+        .Concat((fullDescription ?? string.Empty)
+            .Replace("\r\n", "\n")
+            .Replace('\r', '\n')
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        .Where(line => !string.IsNullOrWhiteSpace(line))
+        .Select(line => line.Trim().TrimStart('•', '-', '*', '+').Trim())
+        .Where(line => !string.IsNullOrWhiteSpace(line))
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .Take(8)
+        .ToList();
     var promotionLines = ProductPromotionHelper.GetPromotionLines(product);
 
     var accessorySlots = new[]
@@ -150,23 +158,19 @@
                         <span class="product-meta-pill advice-pill"><i class="bi bi-tools" aria-hidden="true"></i>Tư vấn nâng cấp</span>
                     </div>
 
-                    <div class="short-description">
-                        <h3>Mô tả sản phẩm</h3>
+                    <div class="short-description" aria-labelledby="short-description-title">
+                        <h3 id="short-description-title">Mô tả sản phẩm</h3>
                         @if (descriptionLines.Any())
                         {
                             <div class="product-spec-lines">
                                 @foreach (var line in descriptionLines)
                                 {
                                     <div class="product-spec-line">
-                                        <span class="spec-dot" aria-hidden="true"></span>
+                                        <i class="bi bi-check-circle-fill spec-check" aria-hidden="true"></i>
                                         <span class="spec-text">@line</span>
                                     </div>
                                 }
                             </div>
-                        }
-                        else if (!string.IsNullOrWhiteSpace(fullDescription))
-                        {
-                            <div class="short-description-text">@fullDescription</div>
                         }
                         else
                         {
