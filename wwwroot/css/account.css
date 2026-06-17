@@ -313,7 +313,86 @@
     .account-input,
     .account-link,
     .account-btn,
-    .account-input-wrap > i {
+    .account-input-wrap > i,
+    .account-password-toggle {
         transition: none;
     }
+}
+
+.account-notice {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    margin-bottom: 20px;
+    padding: 12px 14px;
+    border: 1px solid rgba(20, 100, 200, 0.15);
+    border-radius: 12px;
+    color: #26527d;
+    background: linear-gradient(135deg, rgba(237, 245, 255, 0.92), rgba(255, 247, 240, 0.82));
+    font-size: 0.86rem;
+    line-height: 1.45;
+}
+
+.account-notice i {
+    flex: 0 0 auto;
+    margin-top: 1px;
+    color: var(--account-primary);
+}
+
+.account-helper-text {
+    margin: 7px 0 0;
+    color: var(--account-muted);
+    font-size: 0.8rem;
+    line-height: 1.4;
+    word-break: break-word;
+}
+
+.account-input[readonly] {
+    color: #475467;
+    background: #f3f6fa;
+    cursor: default;
+}
+
+.account-input-wrap--password .account-input {
+    padding-right: 46px;
+}
+
+.account-password-toggle {
+    position: absolute;
+    top: 50%;
+    right: 10px;
+    z-index: 2;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    width: 34px;
+    height: 34px;
+    border: 0;
+    border-radius: 9px;
+    color: #667085;
+    background: transparent;
+    transform: translateY(-50%);
+    transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+.account-password-toggle:hover,
+.account-password-toggle:focus-visible {
+    color: var(--account-primary);
+    background: rgba(20, 100, 200, 0.08);
+    outline: none;
+}
+
+.account-password-toggle i {
+    position: static;
+    color: inherit;
+    transform: none;
+    pointer-events: none;
+}
+
+.account-card-footer--links {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
 }

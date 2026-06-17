@@ -1,42 +1,144 @@
 @model VerifyResetCodeViewModel
+@{
+    ViewData["Title"] = "Xác minh mã đặt lại mật khẩu";
+    var hasEmail = !string.IsNullOrWhiteSpace(Model?.Email);
+}
 
-<h3>Đặt lại mật khẩu</h3>
-@if (TempData["Ok"] is string okMessage)
-{
-    <div class="alert alert-success" role="alert">@okMessage</div>
-}
-@if (TempData["ErrorMessage"] is string errorMessage)
-{
-    <div class="alert alert-danger" role="alert">@errorMessage</div>
-}
-<form method="post" class="card p-3">
-    <div asp-validation-summary="All" class="text-danger"></div>
-    <div class="mb-3">
-        <label asp-for="Email" class="form-label">Email</label>
-        <input asp-for="Email" class="form-control" autocomplete="email" />
-        <span asp-validation-for="Email" class="text-danger"></span>
+<section class="account-page" aria-labelledby="verify-reset-code-title">
+    <div class="account-card">
+        <header class="account-header">
+            <div class="account-icon" aria-hidden="true">
+                <i class="bi bi-shield-lock"></i>
+            </div>
+            <h1 id="verify-reset-code-title" class="account-title">Xác minh mã đặt lại mật khẩu</h1>
+            <p class="account-description">Nhập mã xác nhận đã được gửi đến email của bạn để tạo mật khẩu mới.</p>
+        </header>
+
+        @if (TempData["Ok"] is string okMessage)
+        {
+            <div class="account-notice" role="status">
+                <i class="bi bi-info-circle-fill" aria-hidden="true"></i>
+                <span>@okMessage</span>
+            </div>
+        }
+        @if (TempData["ErrorMessage"] is string errorMessage)
+        {
+            <div class="alert alert-danger account-alert" role="alert">
+                <i class="bi bi-exclamation-circle-fill" aria-hidden="true"></i>
+                <span>@errorMessage</span>
+            </div>
+        }
+
+        <form method="post">
+            <div asp-validation-summary="ModelOnly" class="account-validation" role="alert"></div>
+
+            <div class="account-form-grid">
+                <div class="account-field">
+                    <label asp-for="Email" class="account-label">Email</label>
+                    <div class="account-input-wrap">
+                        <i class="bi bi-envelope" aria-hidden="true"></i>
+                        @if (hasEmail)
+                        {
+                            <input asp-for="Email"
+                                   class="account-input"
+                                   placeholder="Email đã yêu cầu đặt lại mật khẩu"
+                                   autocomplete="email"
+                                   inputmode="email"
+                                   readonly />
+                        }
+                        else
+                        {
+                            <input asp-for="Email"
+                                   class="account-input"
+                                   placeholder="Email đã yêu cầu đặt lại mật khẩu"
+                                   autocomplete="email"
+                                   inputmode="email" />
+                        }
+                    </div>
+                    @if (hasEmail)
+                    {
+                        <p class="account-helper-text">Email: @Model.Email</p>
+                    }
+                    <span asp-validation-for="Email" class="account-field-validation"></span>
+                </div>
+
+                <div class="account-field">
+                    <label asp-for="Code" class="account-label">Mã xác nhận</label>
+                    <div class="account-input-wrap">
+                        <i class="bi bi-123" aria-hidden="true"></i>
+                        <input asp-for="Code"
+                               class="account-input"
+                               placeholder="Nhập mã 6 số"
+                               inputmode="numeric"
+                               maxlength="6"
+                               autocomplete="one-time-code" />
+                    </div>
+                    <span asp-validation-for="Code" class="account-field-validation"></span>
+                </div>
+
+                <div class="account-field">
+                    <label asp-for="NewPassword" class="account-label">Mật khẩu mới</label>
+                    <div class="account-input-wrap account-input-wrap--password">
+                        <i class="bi bi-lock" aria-hidden="true"></i>
+                        <input asp-for="NewPassword"
+                               type="password"
+                               class="account-input"
+                               placeholder="Nhập mật khẩu mới"
+                               autocomplete="new-password" />
+                        <button type="button" class="account-password-toggle" data-password-toggle="NewPassword" aria-label="Hiện mật khẩu mới">
+                            <i class="bi bi-eye" aria-hidden="true"></i>
+                        </button>
+                    </div>
+                    <span asp-validation-for="NewPassword" class="account-field-validation"></span>
+                </div>
+
+                <div class="account-field">
+                    <label asp-for="ConfirmPassword" class="account-label">Nhập lại mật khẩu mới</label>
+                    <div class="account-input-wrap account-input-wrap--password">
+                        <i class="bi bi-lock-fill" aria-hidden="true"></i>
+                        <input asp-for="ConfirmPassword"
+                               type="password"
+                               class="account-input"
+                               placeholder="Nhập lại mật khẩu mới"
+                               autocomplete="new-password" />
+                        <button type="button" class="account-password-toggle" data-password-toggle="ConfirmPassword" aria-label="Hiện mật khẩu nhập lại">
+                            <i class="bi bi-eye" aria-hidden="true"></i>
+                        </button>
+                    </div>
+                    <span asp-validation-for="ConfirmPassword" class="account-field-validation"></span>
+                </div>
+            </div>
+
+            <div class="account-actions">
+                <button type="submit" class="account-btn">Xác nhận &amp; đổi mật khẩu</button>
+            </div>
+        </form>
+
+        <div class="account-card-footer account-card-footer--links">
+            <a asp-controller="Account" asp-action="ForgotPassword" class="account-link">Gửi lại mã</a>
+            <span aria-hidden="true">•</span>
+            <a asp-controller="Account" asp-action="Login" class="account-link">Quay lại đăng nhập</a>
+        </div>
     </div>
-    <div class="mb-3">
-        <label asp-for="Code" class="form-label">Mã xác nhận</label>
-        <input asp-for="Code" class="form-control" inputmode="numeric" maxlength="6" autocomplete="one-time-code" />
-        <span asp-validation-for="Code" class="text-danger"></span>
-    </div>
-    <div class="mb-3">
-        <label asp-for="NewPassword" class="form-label">Mật khẩu mới</label>
-        <input asp-for="NewPassword" type="password" class="form-control" autocomplete="new-password" />
-        <span asp-validation-for="NewPassword" class="text-danger"></span>
-    </div>
-    <div class="mb-3">
-        <label asp-for="ConfirmPassword" class="form-label">Nhập lại mật khẩu mới</label>
-        <input asp-for="ConfirmPassword" type="password" class="form-control" autocomplete="new-password" />
-        <span asp-validation-for="ConfirmPassword" class="text-danger"></span>
-    </div>
-    <div class="d-flex justify-content-between align-items-center gap-3">
-        <button class="btn btn-primary">Đổi mật khẩu</button>
-        <a asp-controller="Account" asp-action="Login" class="small">Quay lại đăng nhập</a>
-    </div>
-</form>
+</section>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.querySelectorAll('[data-password-toggle]').forEach((button) => {
+            button.addEventListener('click', () => {
+                const input = document.getElementById(button.dataset.passwordToggle);
+                if (!input) return;
+
+                const shouldShow = input.type === 'password';
+                input.type = shouldShow ? 'text' : 'password';
+                button.setAttribute('aria-label', shouldShow ? 'Ẩn mật khẩu' : 'Hiện mật khẩu');
+                const icon = button.querySelector('i');
+                if (icon) {
+                    icon.classList.toggle('bi-eye', !shouldShow);
+                    icon.classList.toggle('bi-eye-slash', shouldShow);
+                }
+            });
+        });
+    </script>
 }

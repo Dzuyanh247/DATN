@@ -93,7 +93,7 @@ public class AccountController : Controller
         var user = await _db.Users.FirstOrDefaultAsync(x => x.Email == normalizedEmail);
         if (user == null)
         {
-            TempData["Ok"] = "Nếu email tồn tại trong hệ thống, mã xác nhận đã được gửi.";
+            TempData["Ok"] = "Nếu email hợp lệ, chúng tôi đã gửi mã xác nhận. Vui lòng kiểm tra hộp thư của bạn.";
             TempData["ResetEmail"] = normalizedEmail;
             return RedirectToAction(nameof(VerifyResetCode));
         }
@@ -151,7 +151,7 @@ public class AccountController : Controller
             return View(vm);
         }
 
-        TempData["Ok"] = "Nếu email tồn tại trong hệ thống, mã xác nhận đã được gửi.";
+        TempData["Ok"] = "Nếu email hợp lệ, chúng tôi đã gửi mã xác nhận. Vui lòng kiểm tra hộp thư của bạn.";
         TempData["ResetEmail"] = normalizedEmail;
         return RedirectToAction(nameof(VerifyResetCode));
     }
