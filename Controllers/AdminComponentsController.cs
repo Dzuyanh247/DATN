@@ -48,7 +48,7 @@ public class AdminComponentsController : Controller
     [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(AdminComponentUpsertVm vm)
     {
-        await PopulateCategoriesAsync(vm);
+        await AssignComponentCategoryAsync(vm);
         TryValidateProductImageUrls(vm, true);
         NormalizeComponentInput(vm);
         vm.BrandOptions = await GetBrandOptionsAsync(vm.ComponentType, vm.Brand);
@@ -97,7 +97,7 @@ public class AdminComponentsController : Controller
     [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> Edit(AdminComponentUpsertVm vm)
     {
-        await PopulateCategoriesAsync(vm);
+        await AssignComponentCategoryAsync(vm);
         TryValidateProductImageUrls(vm, false);
         NormalizeComponentInput(vm);
         vm.BrandOptions = await GetBrandOptionsAsync(vm.ComponentType, vm.Brand);
@@ -131,20 +131,41 @@ public class AdminComponentsController : Controller
 
     private async Task<AdminComponentUpsertVm?> BuildVmAsync(int? id = null)
     {
-        var vm = new AdminComponentUpsertVm(); await PopulateCategoriesAsync(vm); vm.BrandOptions = await GetBrandOptionsAsync(vm.ComponentType); if (!id.HasValue) return vm;
+        var vm = new AdminComponentUpsertVm(); await AssignComponentCategoryAsync(vm); vm.BrandOptions = await GetBrandOptionsAsync(vm.ComponentType); if (!id.HasValue) return vm;
         var p = await _db.Products.Include(x => x.ProductImages).FirstOrDefaultAsync(x => x.Id == id.Value && x.ProductType == ProductKinds.Component); if (p == null) return null;
         vm.Id = p.Id; vm.Name = p.Name; vm.ProductCode = p.ProductCode; vm.Brand = p.Brand; vm.ComponentType = string.IsNullOrWhiteSpace(p.ComponentType) ? ComponentTypes.Other : p.ComponentType; vm.BrandOptions = await GetBrandOptionsAsync(vm.ComponentType, vm.Brand); vm.Price = p.Price; vm.DiscountPrice = p.DiscountPrice ?? p.SalePrice; vm.StockQuantity = p.StockQuantity; vm.WarrantyMonths = p.WarrantyMonths; vm.CategoryId = p.CategoryId; vm.Description = p.Description; vm.Specifications = p.Specifications; vm.SpecificationItems = ProductSpecificationKeyValueHelper.ParseStored(p.Specifications); vm.IsActive = p.IsActive; vm.ThumbnailImageUrl = p.ThumbnailImage;
         var imgs = p.ProductImages.OrderBy(x => x.SortOrder).ToList(); vm.ExistingImageOrder = imgs.Select(x => x.Id).ToList(); vm.ExistingImages = imgs.Select(x => new ProductImageItemVm{Id=x.Id, ImageUrl=x.ImageUrl, IsPrimary=x.IsPrimary, SortOrder=x.SortOrder}).ToList(); return vm;
     }
     private async Task PopulateCategoriesAsync(AdminProductUpsertVm vm) => vm.Categories = await _db.Categories.OrderBy(x => x.Name).ToListAsync();
+    private async Task AssignComponentCategoryAsync(AdminComponentUpsertVm vm)
+    {
+        await PopulateCategoriesAsync(vm);
+        var category = await _db.Categories
+            .OrderByDescending(x => x.Name == "Linh kiện")
+            .ThenBy(x => x.Name)
+            .FirstOrDefaultAsync(x => x.Name == "Linh kiện" || x.Name.Contains("Linh kiện"));
+        if (category == null)
+        {
+            ModelState.AddModelError(nameof(vm.CategoryId), "Chưa có danh mục Linh kiện trong hệ thống. Vui lòng tạo danh mục Linh kiện trước khi thêm linh kiện.");
+            return;
+        }
+        vm.CategoryId = category.Id;
+        ModelState.Remove(nameof(vm.CategoryId));
+    }
     private async Task<List<string>> GetBrandOptionsAsync(string? componentType, string? currentBrand = null)
     {
-        var query = _db.Products.AsNoTracking()
+        var normalizedType = string.IsNullOrWhiteSpace(componentType) ? ComponentTypes.Other : componentType.Trim();
+        var productBrandsQuery = _db.Products.AsNoTracking()
             .Where(p => p.ProductType == ProductKinds.Component && p.Brand != null && p.Brand != "" && p.Brand != "N/A");
         if (!string.IsNullOrWhiteSpace(componentType))
-            query = query.Where(p => p.ComponentType == componentType.Trim());
+            productBrandsQuery = productBrandsQuery.Where(p => p.ComponentType == normalizedType);
 
-        var brands = await query.Select(p => p.Brand!.Trim()).Distinct().OrderBy(x => x).ToListAsync();
+        var productBrands = await productBrandsQuery.Select(p => p.Brand!.Trim()).ToListAsync();
+        var catalogBrands = await _db.ComponentBrands.AsNoTracking()
+            .Where(x => x.ComponentType == normalizedType)
+            .Select(x => x.Name.Trim())
+            .ToListAsync();
+        var brands = productBrands.Concat(catalogBrands).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(x => x).ToList();
         if (!string.IsNullOrWhiteSpace(currentBrand) && !brands.Contains(currentBrand.Trim(), StringComparer.OrdinalIgnoreCase))
             brands.Add(currentBrand.Trim());
         return brands.OrderBy(x => x).ToList();
@@ -198,7 +219,7 @@ public class AdminComponentsController : Controller
     private void ValidateComponentBusinessRules(AdminComponentUpsertVm vm)
     {
         if (string.IsNullOrWhiteSpace(vm.Name)) ModelState.AddModelError(nameof(vm.Name), "Vui lòng nhập tên linh kiện");
-        if (!vm.CategoryId.HasValue || vm.CategoryId.Value <= 0) ModelState.AddModelError(nameof(vm.CategoryId), "Vui lòng chọn danh mục");
+        if (!vm.CategoryId.HasValue || vm.CategoryId.Value <= 0) ModelState.AddModelError(nameof(vm.CategoryId), "Không xác định được danh mục Linh kiện mặc định.");
         if (!vm.Price.HasValue || vm.Price.Value <= 0) ModelState.AddModelError(nameof(vm.Price), "Vui lòng nhập giá gốc");
         if (vm.DiscountPrice.HasValue && vm.Price.HasValue && vm.DiscountPrice.Value > vm.Price.Value) ModelState.AddModelError(nameof(vm.DiscountPrice), "Giá khuyến mãi không được lớn hơn giá gốc");
         if (vm.StockQuantity.HasValue && vm.StockQuantity.Value < 0) ModelState.AddModelError(nameof(vm.StockQuantity), "Tồn kho không được âm");

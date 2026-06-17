@@ -1,5 +1,6 @@
 using Datn.PcStore.Data;
 using Datn.PcStore.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -19,24 +20,67 @@ public class BrandsApiController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<List<string>>> Get([FromQuery] string? componentType)
     {
-        var query = _db.Products.AsNoTracking()
+        var normalizedType = NormalizeComponentType(componentType);
+        var productBrands = await _db.Products.AsNoTracking()
             .Where(product => product.ProductType == ProductKinds.Component
+                && product.ComponentType == normalizedType
                 && product.Brand != null
                 && product.Brand != ""
-                && product.Brand != "N/A");
-
-        if (!string.IsNullOrWhiteSpace(componentType))
-        {
-            var normalizedType = componentType.Trim();
-            query = query.Where(product => product.ComponentType == normalizedType);
-        }
-
-        var brands = await query
+                && product.Brand != "N/A")
             .Select(product => product.Brand!.Trim())
-            .Distinct()
-            .OrderBy(brand => brand)
             .ToListAsync();
 
-        return brands;
+        var catalogBrands = await _db.ComponentBrands.AsNoTracking()
+            .Where(brand => brand.ComponentType == normalizedType)
+            .Select(brand => brand.Name.Trim())
+            .ToListAsync();
+
+        return productBrands.Concat(catalogBrands)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(brand => brand)
+            .ToList();
     }
+
+    [Authorize(Roles = "Admin")]
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Create([FromBody] CreateComponentBrandRequest? request)
+    {
+        var name = request?.Name?.Trim();
+        if (string.IsNullOrWhiteSpace(name))
+            return BadRequest(new { message = "Vui lòng nhập tên thương hiệu." });
+
+        var componentType = NormalizeComponentType(request?.ComponentType);
+        var existsInCatalog = await _db.ComponentBrands.AnyAsync(brand => brand.ComponentType == componentType && brand.Name.ToLower() == name.ToLower());
+        var existsInProducts = await _db.Products.AsNoTracking().AnyAsync(product => product.ProductType == ProductKinds.Component
+            && product.ComponentType == componentType
+            && product.Brand != null
+            && product.Brand.ToLower() == name.ToLower());
+
+        if (existsInCatalog || existsInProducts)
+            return Conflict(new { message = "Thương hiệu này đã tồn tại." });
+
+        var brand = new ComponentBrand { Name = name, ComponentType = componentType };
+        _db.ComponentBrands.Add(brand);
+
+        try
+        {
+            await _db.SaveChangesAsync();
+        }
+        catch (DbUpdateException)
+        {
+            return Conflict(new { message = "Thương hiệu này đã tồn tại." });
+        }
+
+        return Ok(new { name = brand.Name, componentType = brand.ComponentType });
+    }
+
+    private static string NormalizeComponentType(string? componentType)
+        => string.IsNullOrWhiteSpace(componentType) ? ComponentTypes.Other : componentType.Trim();
+}
+
+public sealed class CreateComponentBrandRequest
+{
+    public string? Name { get; set; }
+    public string? ComponentType { get; set; }
 }

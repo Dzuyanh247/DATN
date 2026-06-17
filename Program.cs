@@ -173,6 +173,21 @@ using (var scope = app.Services.CreateScope())
 
     await EnsureProductPromotionColumnsAsync(db);
 
+    await db.Database.ExecuteSqlRawAsync(@"IF OBJECT_ID('ComponentBrands', 'U') IS NULL
+BEGIN
+    CREATE TABLE ComponentBrands (
+        Id INT IDENTITY(1,1) PRIMARY KEY,
+        Name NVARCHAR(80) NOT NULL,
+        ComponentType NVARCHAR(40) NOT NULL,
+        CreatedAt DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
+        UpdatedAt DATETIME2 NOT NULL DEFAULT GETUTCDATE()
+    );
+END
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_ComponentBrands_ComponentType_Name' AND object_id = OBJECT_ID('ComponentBrands'))
+BEGIN
+    CREATE UNIQUE INDEX IX_ComponentBrands_ComponentType_Name ON ComponentBrands(ComponentType, Name);
+END");
+
     await db.Database.ExecuteSqlRawAsync(@"IF COL_LENGTH('SiteSettings', 'DealSectionBackgroundUrl') IS NULL
 BEGIN
     ALTER TABLE SiteSettings ADD DealSectionBackgroundUrl NVARCHAR(1000) NULL;
