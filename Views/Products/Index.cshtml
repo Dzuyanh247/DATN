@@ -3,7 +3,6 @@
     ViewData["Title"] = "Danh sách sản phẩm";
     var currentCategory = Model.Categories.FirstOrDefault(category => category.Id == Model.CategoryId);
     var pageTitle = currentCategory?.Name ?? "Tất cả sản phẩm";
-    var resultText = $"{Model.Products.Count:N0} sản phẩm";
 }
 
 <script>
@@ -52,14 +51,6 @@
                 <li class="breadcrumb-item active" aria-current="page">@pageTitle</li>
             </ol>
         </nav>
-        <div class="products-heading-main">
-            <h1>@pageTitle</h1>
-            <span class="products-count-badge">@resultText</span>
-            @if (Model.HasSidebarFilters)
-            {
-                <span class="products-filter-status"><i class="bi bi-funnel-fill"></i> Đang lọc</span>
-            }
-        </div>
     </header>
 
     <div class="products-layout" id="product-filter">
@@ -86,9 +77,14 @@
                         @foreach (var option in Model.PriceRangeOptions)
                         {
                             var id = $"price-{option.Value}";
+                            var isSelected = Model.PriceRanges.Contains(option.Value, StringComparer.OrdinalIgnoreCase);
+                            if (!isSelected && option.Count <= 0)
+                            {
+                                continue;
+                            }
                             <label class="products-filter-option" for="@id">
                                 <input id="@id" type="checkbox" name="priceRanges" value="@option.Value"
-                                       checked="@(Model.PriceRanges.Contains(option.Value, StringComparer.OrdinalIgnoreCase))" />
+                                       checked="@(isSelected)" />
                                 <span>@option.Label</span>
                                 <small>(@option.Count)</small>
                             </label>
@@ -107,9 +103,14 @@
                                 @foreach (var option in group.Options)
                                 {
                                     var id = $"component-{option.Value.ToLowerInvariant()}";
+                                var isSelected = Model.ComponentTypes.Contains(option.Value, StringComparer.OrdinalIgnoreCase);
+                                if (!isSelected && option.Count <= 0)
+                                {
+                                    continue;
+                                }
                                     <label class="products-filter-option" for="@id">
                                         <input id="@id" type="checkbox" name="componentTypes" value="@option.Value"
-                                               checked="@(Model.ComponentTypes.Contains(option.Value, StringComparer.OrdinalIgnoreCase))" />
+                                               checked="@(isSelected)" />
                                         <span>@option.Label</span>
                                         <small>(@option.Count)</small>
                                     </label>
@@ -129,9 +130,14 @@
                         @foreach (var option in Model.BrandOptions)
                         {
                             var id = $"brand-{option.Value.GetHashCode()}";
+                            var isSelected = Model.Brands.Contains(option.Value, StringComparer.OrdinalIgnoreCase);
+                            if (!isSelected && option.Count <= 0)
+                            {
+                                continue;
+                            }
                             <label class="products-filter-option" for="@id">
                                 <input id="@id" type="checkbox" name="brands" value="@option.Value"
-                                       checked="@(Model.Brands.Contains(option.Value, StringComparer.OrdinalIgnoreCase))" />
+                                       checked="@(isSelected)" />
                                 <span>@option.Label</span>
                                 <small>(@option.Count)</small>
                             </label>
@@ -147,9 +153,14 @@
                             @foreach (var option in Model.CpuOptions)
                             {
                                 var id = $"cpu-{Math.Abs(option.Value.GetHashCode())}";
+                                var isSelected = Model.Cpu.Contains(option.Value, StringComparer.OrdinalIgnoreCase);
+                                if (!isSelected && option.Count <= 0)
+                                {
+                                    continue;
+                                }
                                 <label class="products-filter-option" for="@id">
                                     <input id="@id" type="checkbox" name="cpu" value="@option.Value"
-                                           checked="@(Model.Cpu.Contains(option.Value, StringComparer.OrdinalIgnoreCase))" />
+                                           checked="@(isSelected)" />
                                     <span>@option.Label</span>
                                     <small>(@option.Count)</small>
                                 </label>
@@ -166,9 +177,14 @@
                             @foreach (var option in Model.RamOptions)
                             {
                                 var id = $"ram-{Math.Abs(option.Value.GetHashCode())}";
+                                var isSelected = Model.Ram.Contains(option.Value, StringComparer.OrdinalIgnoreCase);
+                                if (!isSelected && option.Count <= 0)
+                                {
+                                    continue;
+                                }
                                 <label class="products-filter-option" for="@id">
                                     <input id="@id" type="checkbox" name="ram" value="@option.Value"
-                                           checked="@(Model.Ram.Contains(option.Value, StringComparer.OrdinalIgnoreCase))" />
+                                           checked="@(isSelected)" />
                                     <span>@option.Label</span>
                                     <small>(@option.Count)</small>
                                 </label>
@@ -185,9 +201,14 @@
                             @foreach (var option in Model.GpuOptions)
                             {
                                 var id = $"gpu-{Math.Abs(option.Value.GetHashCode())}";
+                                var isSelected = Model.Gpu.Contains(option.Value, StringComparer.OrdinalIgnoreCase);
+                                if (!isSelected && option.Count <= 0)
+                                {
+                                    continue;
+                                }
                                 <label class="products-filter-option" for="@id">
                                     <input id="@id" type="checkbox" name="gpu" value="@option.Value"
-                                           checked="@(Model.Gpu.Contains(option.Value, StringComparer.OrdinalIgnoreCase))" />
+                                           checked="@(isSelected)" />
                                     <span>@option.Label</span>
                                     <small>(@option.Count)</small>
                                 </label>
@@ -204,9 +225,14 @@
                             @foreach (var option in specGroup.Options)
                             {
                                 var id = $"spec-{Math.Abs(option.Value.GetHashCode())}";
+                                var isSelected = Model.Specs.Contains(option.Value, StringComparer.OrdinalIgnoreCase);
+                                if (!isSelected && option.Count <= 0)
+                                {
+                                    continue;
+                                }
                                 <label class="products-filter-option" for="@id">
                                     <input id="@id" type="checkbox" name="specs" value="@option.Value"
-                                           checked="@(Model.Specs.Contains(option.Value, StringComparer.OrdinalIgnoreCase))" />
+                                           checked="@(isSelected)" />
                                     <span>@option.Label</span>
                                     <small>(@option.Count)</small>
                                 </label>
@@ -274,6 +300,7 @@
             else
             {
                 <div class="products-grid">
+                    @{ ViewData["CompactProductCard"] = true; }
                     @foreach (var product in Model.Products)
                     {
                         <partial name="_ProductCard" model="product" />
