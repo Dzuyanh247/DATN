@@ -11,40 +11,36 @@ $StartupLog = Join-Path $LogDir "startup-$Stamp.log"
 $RuntimeLog = Join-Path $LogDir "runtime-$Stamp.log"
 $ConfigFile = Join-Path $PSScriptRoot 'START_KKSHOP.config'
 
-function Write-Title {
-    Clear-Host
-    Write-Host '========================================' -ForegroundColor Cyan
-    Write-Host '        KKSHOP - TRÌNH KHỞI ĐỘNG' -ForegroundColor Yellow
-    Write-Host '========================================' -ForegroundColor Cyan
-    Write-Host ''
-}
-function Write-Success([string]$Message) { Write-Host "[✓] $Message" -ForegroundColor Green }
-function Write-WarningMessage([string]$Message) { Write-Host "[!] $Message" -ForegroundColor Yellow }
-function Write-ErrorMessage([string]$Message) { Write-Host "[X] $Message" -ForegroundColor Red }
+function Write-Step([string]$Message) { Write-Host $Message -ForegroundColor Cyan }
+function Write-Ok([string]$Message) { Write-Host $Message -ForegroundColor Green }
+function Write-Warn([string]$Message) { Write-Host $Message -ForegroundColor Yellow }
+function Write-Fail([string]$Message) { Write-Host $Message -ForegroundColor Red }
+function Write-Log([string]$Message) { Add-Content -LiteralPath $StartupLog -Value "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] $Message" -Encoding UTF8 }
+function Add-LogHeader([string]$Text) { Add-Content -LiteralPath $StartupLog -Value "`r`n===== $Text - $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') =====" -Encoding UTF8 }
 function Pause-And-Exit([int]$Code = 1) {
     Write-Host ''
-    Read-Host 'Nhấn Enter để đóng cửa sổ'
+    Write-Host "Log ky thuat: $StartupLog" -ForegroundColor Yellow
+    if ($Host.Name -eq 'ConsoleHost') { Read-Host 'Bam Enter de dong cua so' | Out-Null }
     exit $Code
 }
-function Add-LogHeader([string]$Text) {
-    Add-Content -LiteralPath $StartupLog -Value "`r`n===== $Text - $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') ====="
+function Stop-With-FriendlyError([string]$Message, [string]$LogPath = $StartupLog) {
+    Write-Fail $Message
+    Write-Host "Vui long gui file log cho ky thuat: $LogPath" -ForegroundColor Yellow
+    Pause-And-Exit 1
 }
 function Invoke-LoggedCommand([string]$Title, [string]$FileName, [string[]]$Arguments, [string]$FriendlyError) {
     Add-LogHeader $Title
+    Write-Log "Run: $FileName $($Arguments -join ' ')"
     $output = & $FileName @Arguments 2>&1
     $exitCode = $LASTEXITCODE
     $output | Out-File -FilePath $StartupLog -Append -Encoding UTF8
-    if ($exitCode -ne 0) {
-        Write-ErrorMessage $FriendlyError
-        Write-Host "Vui lòng gửi file log này cho kỹ thuật: $StartupLog" -ForegroundColor Yellow
-        Pause-And-Exit 1
-    }
+    if ($exitCode -ne 0) { Stop-With-FriendlyError $FriendlyError }
 }
 function Get-ConfigValue([string]$Name, [string]$DefaultValue) {
     $envValue = [Environment]::GetEnvironmentVariable($Name)
-    if ($envValue) { return $envValue }
+    if (-not [string]::IsNullOrWhiteSpace($envValue)) { return $envValue }
     if (Test-Path -LiteralPath $ConfigFile) {
-        $line = Get-Content -LiteralPath $ConfigFile | Where-Object { $_ -match "^\s*$Name\s*=" } | Select-Object -First 1
+        $line = Get-Content -LiteralPath $ConfigFile -Encoding UTF8 | Where-Object { $_ -match "^\s*$Name\s*=" } | Select-Object -First 1
         if ($line) { return (($line -split '=', 2)[1]).Trim() }
     }
     return $DefaultValue
@@ -56,32 +52,46 @@ function Test-PortOpen([int]$PortNumber) {
         if (-not $result.AsyncWaitHandle.WaitOne(300)) { return $false }
         $client.EndConnect($result)
         return $true
-    } catch { return $false }
-    finally { $client.Close() }
+    } catch {
+        return $false
+    } finally {
+        $client.Close()
+    }
 }
 function Get-PortProcesses([int]$PortNumber) {
-    $connections = Get-NetTCPConnection -LocalPort $PortNumber -State Listen -ErrorAction SilentlyContinue
-    if (-not $connections) { return @() }
-    return $connections | Select-Object -ExpandProperty OwningProcess -Unique | ForEach-Object { Get-Process -Id $_ -ErrorAction SilentlyContinue }
+    try {
+        $connections = Get-NetTCPConnection -LocalPort $PortNumber -State Listen -ErrorAction Stop
+        if (-not $connections) { return @() }
+        return $connections | Select-Object -ExpandProperty OwningProcess -Unique | ForEach-Object { Get-Process -Id $_ -ErrorAction SilentlyContinue }
+    } catch {
+        $netstat = netstat -ano 2>$null | Select-String ":$PortNumber\s+.*LISTENING"
+        $ids = @()
+        foreach ($line in $netstat) {
+            $parts = ($line.ToString() -split '\s+') | Where-Object { $_ }
+            if ($parts.Count -ge 5) { $ids += $parts[-1] }
+        }
+        return $ids | Select-Object -Unique | ForEach-Object { Get-Process -Id $_ -ErrorAction SilentlyContinue }
+    }
 }
 function Confirm-FreePort {
     if (-not (Test-PortOpen $Port)) { return }
-    Write-WarningMessage 'Website có vẻ đang chạy rồi hoặc cổng 5000 đang bận.'
-    $answer = Read-Host 'Bạn muốn tắt phiên bản cũ và chạy lại không? (Y/N)'
-    if ($answer -notmatch '^[Yy]') { Pause-And-Exit 1 }
-    foreach ($process in Get-PortProcesses $Port) {
-        Add-Content -LiteralPath $StartupLog -Value "Killing process on port $Port: $($process.ProcessName) ($($process.Id))"
+    Write-Warn 'Cong 5000 dang duoc su dung. Ban co muon tat phien ban cu de chay lai khong? (Y/N)'
+    $answer = Read-Host
+    if ($answer -notmatch '^[Yy]') {
+        Write-Log 'User chose not to stop the process using port 5000.'
+        Pause-And-Exit 1
+    }
+    $processes = @(Get-PortProcesses $Port)
+    if ($processes.Count -eq 0) { Stop-With-FriendlyError 'Khong tim thay process dang chiem cong 5000.' }
+    foreach ($process in $processes) {
+        Write-Log "Kill process on port $Port: $($process.ProcessName) ($($process.Id))"
         Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
     }
     Start-Sleep -Seconds 2
-    if (Test-PortOpen $Port) {
-        Write-ErrorMessage 'Không tắt được ứng dụng đang chiếm cổng 5000.'
-        Write-Host "Vui lòng gửi file log này cho kỹ thuật: $StartupLog" -ForegroundColor Yellow
-        Pause-And-Exit 1
-    }
+    if (Test-PortOpen $Port) { Stop-With-FriendlyError 'Khong tat duoc ung dung dang chiem cong 5000.' }
 }
 function Wait-WebsiteReady {
-    for ($i = 1; $i -le 20; $i++) {
+    for ($i = 1; $i -le 30; $i++) {
         try {
             $response = Invoke-WebRequest -Uri $Url -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop
             if ($response.StatusCode -ge 200 -and $response.StatusCode -lt 500) { return $true }
@@ -102,102 +112,69 @@ function Start-WebsiteProcess([string]$ProjectPath) {
     $psi.RedirectStandardOutput = $true
     $psi.RedirectStandardError = $true
     $process = [System.Diagnostics.Process]::Start($psi)
-    $outWriter = [System.IO.StreamWriter]::new($RuntimeLog, $true, [System.Text.UTF8Encoding]::new($false))
-    $errWriter = [System.IO.StreamWriter]::new($RuntimeLog, $true, [System.Text.UTF8Encoding]::new($false))
+    $encoding = [System.Text.UTF8Encoding]::new($false)
+    $outWriter = [System.IO.StreamWriter]::new($RuntimeLog, $true, $encoding)
+    $errWriter = [System.IO.StreamWriter]::new($RuntimeLog, $true, $encoding)
     $process.add_OutputDataReceived({ if ($EventArgs.Data) { $outWriter.WriteLine($EventArgs.Data); $outWriter.Flush() } })
     $process.add_ErrorDataReceived({ if ($EventArgs.Data) { $errWriter.WriteLine($EventArgs.Data); $errWriter.Flush() } })
-    $process.BeginOutputReadLine(); $process.BeginErrorReadLine()
+    $process.BeginOutputReadLine()
+    $process.BeginErrorReadLine()
     return @{ Process = $process; OutWriter = $outWriter; ErrWriter = $errWriter }
 }
 
 try {
-    Write-Title
-    Write-Host "Log kỹ thuật: $StartupLog" -ForegroundColor DarkGray
-    Write-Host ''
-
-    Write-Host '1. Chạy website' -ForegroundColor White
-    Write-Host '2. Cập nhật database rồi chạy website' -ForegroundColor White
-    Write-Host '3. Thoát' -ForegroundColor White
-    $choice = Read-Host 'Chọn chức năng (Enter = 1)'
-    if ([string]::IsNullOrWhiteSpace($choice)) { $choice = '1' }
-    if ($choice -eq '3') { exit 0 }
-    if ($choice -notin @('1','2')) { Write-WarningMessage 'Lựa chọn không hợp lệ, mặc định chạy website.'; $choice = '1' }
-    Write-Host ''
+    Clear-Host
+    Write-Step 'Dang kiem tra moi truong...'
+    Write-Log 'Startup started.'
 
     & dotnet --version *> $null
-    if ($LASTEXITCODE -ne 0) {
-        Write-ErrorMessage 'Chưa cài .NET. Vui lòng cài .NET 8 SDK/Runtime trước khi chạy website.'
-        Write-Host 'Tải tại: https://dotnet.microsoft.com/download' -ForegroundColor Yellow
-        Pause-And-Exit 1
-    }
-    Write-Success 'Đã kiểm tra .NET'
+    if ($LASTEXITCODE -ne 0) { Stop-With-FriendlyError 'Chua cai .NET. Vui long cai .NET 8 SDK/Runtime truoc khi chay website.' }
+    Write-Ok 'Da tim thay .NET'
 
     $project = Get-ChildItem -LiteralPath $PSScriptRoot -Filter '*.csproj' -File | Select-Object -First 1
-    if (-not $project) {
-        Write-ErrorMessage 'Không tìm thấy file project .csproj.'
-        Write-Host 'Hãy đặt START_KKSHOP.bat ở thư mục gốc project và chạy lại.' -ForegroundColor Yellow
-        Pause-And-Exit 1
-    }
-    Write-Success 'Đã kiểm tra project'
+    if (-not $project) { Stop-With-FriendlyError 'Khong tim thay file project .csproj.' }
+    Write-Log "Project: $($project.FullName)"
 
     Confirm-FreePort
 
-    Invoke-LoggedCommand 'dotnet restore' 'dotnet' @('restore', $project.FullName) 'Website chưa restore được package.'
-    Invoke-LoggedCommand 'dotnet build' 'dotnet' @('build', $project.FullName, '--no-restore', '-c', 'Release') 'Website chưa build được.'
+    Invoke-LoggedCommand 'dotnet restore' 'dotnet' @('restore', $project.FullName) 'Website chua restore duoc package.'
+    Invoke-LoggedCommand 'dotnet build' 'dotnet' @('build', $project.FullName, '--no-restore', '-c', 'Release') 'Website chua build duoc.'
 
-    $runMigration = ((Get-ConfigValue 'RUN_MIGRATION' 'false') -ieq 'true') -or ($choice -eq '2')
+    Write-Step 'Dang kiem tra database...'
+    $runMigration = (Get-ConfigValue 'RUN_MIGRATION' 'false') -ieq 'true'
     $env:RUN_MIGRATION = if ($runMigration) { 'true' } else { 'false' }
+    Write-Log "RUN_MIGRATION=$($env:RUN_MIGRATION)"
     if ($runMigration) {
         & dotnet ef --version *> $null
-        if ($LASTEXITCODE -ne 0) {
-            Write-ErrorMessage 'Chưa cài dotnet-ef nên không cập nhật được database.'
-            Write-Host "Vui lòng gửi file log này cho kỹ thuật: $StartupLog" -ForegroundColor Yellow
-            Pause-And-Exit 1
-        }
-        Invoke-LoggedCommand 'dotnet ef database update' 'dotnet' @('ef', 'database', 'update', '--project', $project.FullName) 'Không kết nối được database hoặc cập nhật database thất bại.'
+        if ($LASTEXITCODE -ne 0) { Stop-With-FriendlyError 'Chua cai dotnet-ef nen khong cap nhat duoc database.' }
+        Invoke-LoggedCommand 'dotnet ef database update' 'dotnet' @('ef', 'database', 'update', '--project', $project.FullName) 'Khong ket noi duoc database hoac cap nhat database that bai.'
+    } else {
+        Write-Log 'Skip migration. Set RUN_MIGRATION=true in START_KKSHOP.config to update database.'
     }
-    Write-Success 'Đã kiểm tra database'
 
-    Write-Success 'Website đã sẵn sàng'
-    Write-Host ''
-    Write-Host 'Đang mở website...' -ForegroundColor Cyan
-    Write-Host "Địa chỉ: $Url" -ForegroundColor Cyan
-    Write-Host ''
-
+    Write-Step 'Website dang khoi dong...'
     $runtime = Start-WebsiteProcess $project.FullName
     Start-Sleep -Seconds 2
-    if ($runtime.Process.HasExited) {
-        Write-ErrorMessage 'Website khởi động thất bại.'
-        Write-Host 'Không kết nối được database hoặc website gặp lỗi khi chạy.' -ForegroundColor Yellow
-        Write-Host 'Vui lòng kiểm tra SQL Server đang bật.' -ForegroundColor Yellow
-        Write-Host "Chi tiết lỗi đã lưu trong file: $RuntimeLog" -ForegroundColor Yellow
-        Pause-And-Exit 1
-    }
+    if ($runtime.Process.HasExited) { Stop-With-FriendlyError 'Website khoi dong that bai.' $RuntimeLog }
 
-    if (Wait-WebsiteReady) {
-        Start-Process $Url
-        Write-Success 'Website đã mở thành công.'
-    } else {
-        Write-WarningMessage 'Website chưa phản hồi sau 20 giây.'
-        Write-Host "Chi tiết lỗi đã lưu trong file: $RuntimeLog" -ForegroundColor Yellow
-    }
+    if (-not (Wait-WebsiteReady)) { Stop-With-FriendlyError 'Website khoi dong that bai.' $RuntimeLog }
 
-    Write-Host ''
-    Write-Host 'Website đang chạy...' -ForegroundColor Green
-    Write-Host 'Không đóng cửa sổ này khi đang sử dụng web.' -ForegroundColor Yellow
-    Write-Host 'Nhấn Ctrl + C để tắt.' -ForegroundColor Yellow
-    Write-Host "Log runtime: $RuntimeLog" -ForegroundColor DarkGray
+    Write-Ok "Website da san sang tai: $Url"
+    Write-Host 'Neu muon tat website: dong cua so nay hoac bam Ctrl+C' -ForegroundColor Yellow
+    Write-Log 'Website is ready.'
+    try { Start-Process $Url | Out-Null } catch { Write-Log "Cannot open browser: $($_.Exception.Message)" }
 
     [Console]::TreatControlCAsInput = $false
     [Console]::CancelKeyPress += {
         $EventArgs.Cancel = $true
-        if (-not $runtime.Process.HasExited) { $runtime.Process.Kill() }
+        if ($runtime -and $runtime.Process -and -not $runtime.Process.HasExited) { $runtime.Process.Kill() }
     }
     $runtime.Process.WaitForExit()
-    $runtime.OutWriter.Dispose(); $runtime.ErrWriter.Dispose()
+    $runtime.OutWriter.Dispose()
+    $runtime.ErrWriter.Dispose()
 } catch {
-    Add-Content -LiteralPath $StartupLog -Value $_.Exception.ToString()
-    Write-ErrorMessage 'Website khởi động thất bại.'
-    Write-Host "Vui lòng gửi file log này cho kỹ thuật: $StartupLog" -ForegroundColor Yellow
+    Add-Content -LiteralPath $StartupLog -Value $_.Exception.ToString() -Encoding UTF8
+    Write-Fail 'Website khoi dong that bai.'
+    Write-Host "Vui long gui file log cho ky thuat: $StartupLog" -ForegroundColor Yellow
     Pause-And-Exit 1
 }
