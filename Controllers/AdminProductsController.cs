@@ -49,10 +49,11 @@ public class AdminProductsController : Controller
         var stockQuantity = vm.StockQuantity!.Value;
         var warrantyMonths = vm.WarrantyMonths!.Value;
         var categoryId = vm.CategoryId!.Value;
+        var slug = BuildSlug(vm.Name);
 
         var product = new Product
         {
-            Name = vm.Name,
+            Name = vm.Name.Trim(),
             ProductCode = $"SP-{Guid.NewGuid():N}"[..16],
             Brand = null,
             ProductType = ProductKinds.PC,
@@ -76,15 +77,17 @@ public class AdminProductsController : Controller
             ComponentType = ProductKinds.PC,
             IsActive = vm.IsActive,
             IsInStock = stockQuantity > 0,
-            Slug = BuildSlug(vm.Name),
+            Slug = slug,
             ThumbnailImage = ResolveThumbnailUrl(vm)
         };
+
+        if (!await ValidateUniqueProductFieldsAsync(vm, product.Slug, product.ProductCode, "tạo")) return View(vm);
 
         AddProductImagesFromUrls(product, vm.ProductImageUrlsText);
         EnsurePrimaryImage(product);
 
         _db.Products.Add(product);
-        await _db.SaveChangesAsync();
+        if (!await TrySaveProductChangesAsync(vm, "tạo")) return View(vm);
         TempData["Ok"] = "Đã thêm sản phẩm thành công.";
         return RedirectToAction(nameof(Index));
     }
@@ -113,7 +116,14 @@ public class AdminProductsController : Controller
         var product = await _db.Products.Include(p => p.ProductImages).FirstOrDefaultAsync(x => x.Id == vm.Id && x.ProductType == ProductKinds.PC);
         if (product == null) return NotFound();
 
-        product.Name = vm.Name;
+        var slug = BuildSlug(vm.Name);
+        if (!await ValidateUniqueProductFieldsAsync(vm, slug, product.ProductCode, "cập nhật"))
+        {
+            await PopulateExistingImagesAsync(vm);
+            return View(vm);
+        }
+
+        product.Name = vm.Name.Trim();
         product.Brand = null;
         product.ProductType = ProductKinds.PC;
         product.ComponentType = ProductKinds.PC;
@@ -136,7 +146,7 @@ public class AdminProductsController : Controller
         product.TechnicalSpecifications = ProductComponentSpecHelper.Serialize(vm.ComponentSpecs);
         product.IsActive = vm.IsActive;
         product.IsInStock = vm.StockQuantity.Value > 0;
-        product.Slug = BuildSlug(vm.Name);
+        product.Slug = slug;
         product.UpdatedAt = DateTime.UtcNow;
 
         if (vm.RemoveImageIds.Any())
@@ -150,7 +160,11 @@ public class AdminProductsController : Controller
         if (!string.IsNullOrWhiteSpace(vm.ThumbnailImageUrl)) product.ThumbnailImage = vm.ThumbnailImageUrl.Trim();
         EnsurePrimaryImage(product);
 
-        await _db.SaveChangesAsync();
+        if (!await TrySaveProductChangesAsync(vm, "cập nhật"))
+        {
+            await PopulateExistingImagesAsync(vm);
+            return View(vm);
+        }
         TempData["Ok"] = "Đã cập nhật sản phẩm.";
         return RedirectToAction(nameof(Index));
     }
@@ -217,11 +231,79 @@ public class AdminProductsController : Controller
 
     private async Task PopulateCategoriesAsync(AdminProductUpsertVm vm) => vm.Categories = await _db.Categories.OrderBy(x => x.Name).ToListAsync();
 
+    private async Task<bool> ValidateUniqueProductFieldsAsync(AdminProductUpsertVm vm, string slug, string productCode, string operation)
+    {
+        var name = vm.Name.Trim();
+        var normalizedName = name.ToLower();
+        var normalizedSlug = slug.ToLower();
+        var normalizedProductCode = productCode.Trim().ToLower();
+
+        var duplicate = await _db.Products.AsNoTracking()
+            .Where(p => p.Id != vm.Id)
+            .Where(p =>
+                p.Name.ToLower() == normalizedName ||
+                p.Slug.ToLower() == normalizedSlug ||
+                p.ProductCode.ToLower() == normalizedProductCode)
+            .Select(p => new { p.Name, p.Slug, p.ProductCode })
+            .FirstOrDefaultAsync();
+
+        if (duplicate == null) return true;
+
+        if (string.Equals(duplicate.Name, name, StringComparison.OrdinalIgnoreCase))
+            ModelState.AddModelError(nameof(vm.Name), "Tên sản phẩm đã tồn tại.");
+        if (string.Equals(duplicate.Slug, slug, StringComparison.OrdinalIgnoreCase))
+            ModelState.AddModelError(nameof(vm.Name), "Slug sản phẩm đã tồn tại. Vui lòng đổi tên sản phẩm.");
+        if (string.Equals(duplicate.ProductCode, productCode, StringComparison.OrdinalIgnoreCase))
+            ModelState.AddModelError(nameof(vm.ProductCode), "Mã sản phẩm đã tồn tại.");
+
+        InvalidProductForm(vm, operation);
+        return false;
+    }
+
+    private async Task<bool> TrySaveProductChangesAsync(AdminProductUpsertVm vm, string operation)
+    {
+        try
+        {
+            await _db.SaveChangesAsync();
+            return true;
+        }
+        catch (DbUpdateException ex) when (IsProductUniqueConstraintViolation(ex))
+        {
+            _logger.LogWarning(ex, "Không thể {Operation} sản phẩm vì trùng dữ liệu unique trong database.", operation);
+            AddProductUniqueConstraintModelError(vm, ex);
+            InvalidProductForm(vm, operation);
+            return false;
+        }
+    }
+
+    private static bool IsProductUniqueConstraintViolation(DbUpdateException ex)
+    {
+        var message = ex.GetBaseException().Message;
+        return message.Contains("IX_Products_ProductCode", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("IX_Products_Slug", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("ProductCode", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("Slug", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("UNIQUE", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("duplicate", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private void AddProductUniqueConstraintModelError(AdminProductUpsertVm vm, DbUpdateException ex)
+    {
+        var message = ex.GetBaseException().Message;
+        if (message.Contains("ProductCode", StringComparison.OrdinalIgnoreCase))
+            ModelState.AddModelError(nameof(vm.ProductCode), "Mã sản phẩm đã tồn tại.");
+        else if (message.Contains("Slug", StringComparison.OrdinalIgnoreCase))
+            ModelState.AddModelError(nameof(vm.Name), "Slug sản phẩm đã tồn tại. Vui lòng đổi tên sản phẩm.");
+        else
+            ModelState.AddModelError(string.Empty, "Dữ liệu sản phẩm bị trùng. Vui lòng kiểm tra tên sản phẩm, slug hoặc mã sản phẩm.");
+    }
+
     private void NormalizePcOnlyFields(AdminProductUpsertVm vm)
     {
         vm.ProductType = ProductKinds.PC;
         vm.Brand = null;
         vm.ComponentType = ProductKinds.PC;
+        vm.Name = vm.Name?.Trim() ?? string.Empty;
         ModelState.Remove(nameof(vm.Brand));
         ModelState.Remove(nameof(vm.ComponentType));
         ModelState.Remove(nameof(vm.Price));

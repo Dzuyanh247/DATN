@@ -57,7 +57,7 @@ public class AdminComponentsController : Controller
 
         var product = new Product
         {
-            Name = vm.Name,
+            Name = vm.Name.Trim(),
             ProductCode = string.IsNullOrWhiteSpace(vm.ProductCode) ? $"LK-{Guid.NewGuid():N}"[..16] : vm.ProductCode.Trim(),
             Brand = string.IsNullOrWhiteSpace(vm.Brand) ? null : vm.Brand.Trim(),
             ProductType = ProductKinds.Component,
@@ -78,10 +78,11 @@ public class AdminComponentsController : Controller
             Slug = BuildSlug(vm.Name),
             ThumbnailImage = vm.ThumbnailImageUrl!.Trim()
         };
+        if (!await ValidateUniqueProductFieldsAsync(vm, product.Slug, product.ProductCode, "tạo")) return View(vm);
         AddProductImagesFromUrls(product, vm.ProductImageUrlsText);
         EnsurePrimaryImage(product);
         _db.Products.Add(product);
-        await _db.SaveChangesAsync();
+        if (!await TrySaveProductChangesAsync(vm, "tạo")) return View(vm);
         TempData["Ok"] = "Đã thêm linh kiện thành công.";
         return RedirectToAction(nameof(Index));
     }
@@ -104,16 +105,20 @@ public class AdminComponentsController : Controller
         if (!ModelState.IsValid) { await PopulateExistingImagesAsync(vm); return InvalidForm(vm, "cập nhật"); }
         var product = await _db.Products.Include(p => p.ProductImages).FirstOrDefaultAsync(p => p.Id == vm.Id && p.ProductType == ProductKinds.Component);
         if (product == null) return NotFound();
-        product.Name = vm.Name; product.ProductCode = string.IsNullOrWhiteSpace(vm.ProductCode) ? product.ProductCode : vm.ProductCode.Trim(); product.Brand = string.IsNullOrWhiteSpace(vm.Brand) ? null : vm.Brand.Trim(); product.ProductType = ProductKinds.Component; product.ComponentType = vm.ComponentType;
+        var productCode = string.IsNullOrWhiteSpace(vm.ProductCode) ? product.ProductCode : vm.ProductCode.Trim();
+        var slug = BuildSlug(vm.Name);
+        if (!await ValidateUniqueProductFieldsAsync(vm, slug, productCode, "cập nhật")) { await PopulateExistingImagesAsync(vm); return View(vm); }
+        product.Name = vm.Name.Trim(); product.ProductCode = productCode; product.Brand = string.IsNullOrWhiteSpace(vm.Brand) ? null : vm.Brand.Trim(); product.ProductType = ProductKinds.Component; product.ComponentType = vm.ComponentType;
         product.Price = vm.Price!.Value; product.DiscountPrice = vm.DiscountPrice; product.SalePrice = vm.DiscountPrice; product.StockQuantity = vm.StockQuantity.GetValueOrDefault();
         product.WarrantyMonths = vm.WarrantyMonths!.Value; product.WarrantyDuration = $"{vm.WarrantyMonths.Value} tháng"; product.CategoryId = vm.CategoryId!.Value;
         product.ShortDescription = BuildShortDescription(vm.Description); product.Description = vm.Description ?? string.Empty; product.DetailDescription = vm.Description ?? string.Empty;
-        product.Specifications = ProductSpecificationKeyValueHelper.Serialize(vm.SpecificationItems); product.IsActive = vm.IsActive; product.IsInStock = vm.StockQuantity.GetValueOrDefault() > 0; product.Slug = BuildSlug(vm.Name);
+        product.Specifications = ProductSpecificationKeyValueHelper.Serialize(vm.SpecificationItems); product.IsActive = vm.IsActive; product.IsInStock = vm.StockQuantity.GetValueOrDefault() > 0; product.Slug = slug;
         if (vm.RemoveImageIds.Any()) foreach (var image in product.ProductImages.Where(x => vm.RemoveImageIds.Contains(x.Id)).ToList()) _db.ProductImages.Remove(image);
         ApplyExistingImageOrder(product, vm.ExistingImageOrder);
         if (!string.IsNullOrWhiteSpace(vm.ThumbnailImageUrl)) product.ThumbnailImage = vm.ThumbnailImageUrl.Trim();
         AddProductImagesFromUrls(product, vm.ProductImageUrlsText); EnsurePrimaryImage(product);
-        await _db.SaveChangesAsync(); TempData["Ok"] = "Đã cập nhật linh kiện."; return RedirectToAction(nameof(Index));
+        if (!await TrySaveProductChangesAsync(vm, "cập nhật")) { await PopulateExistingImagesAsync(vm); return View(vm); }
+        TempData["Ok"] = "Đã cập nhật linh kiện."; return RedirectToAction(nameof(Index));
     }
 
     [HttpPost, ValidateAntiForgeryToken]
@@ -146,6 +151,49 @@ public class AdminComponentsController : Controller
     }
     private async Task PopulateExistingImagesAsync(AdminProductUpsertVm vm) { vm.ExistingImages = await _db.ProductImages.Where(x => x.ProductId == vm.Id).OrderBy(x => x.SortOrder).Select(x => new ProductImageItemVm{Id=x.Id,ImageUrl=x.ImageUrl,IsPrimary=x.IsPrimary,SortOrder=x.SortOrder}).ToListAsync(); if (!vm.ExistingImageOrder.Any()) vm.ExistingImageOrder = vm.ExistingImages.Select(x => x.Id).ToList(); }
     private IActionResult InvalidForm(AdminComponentUpsertVm vm, string op) { _logger.LogWarning("Không thể {Operation} linh kiện: ModelState invalid", op); TempData["ErrorMessage"] = $"Không thể {op} linh kiện. Vui lòng kiểm tra lỗi trong biểu mẫu."; return View(vm); }
+    private async Task<bool> ValidateUniqueProductFieldsAsync(AdminComponentUpsertVm vm, string slug, string productCode, string operation)
+    {
+        var name = vm.Name.Trim();
+        var duplicate = await _db.Products.AsNoTracking()
+            .Where(p => p.Id != vm.Id)
+            .Where(p => p.Name.ToLower() == name.ToLower() || p.Slug.ToLower() == slug.ToLower() || p.ProductCode.ToLower() == productCode.Trim().ToLower())
+            .Select(p => new { p.Name, p.Slug, p.ProductCode })
+            .FirstOrDefaultAsync();
+        if (duplicate == null) return true;
+        if (string.Equals(duplicate.Name, name, StringComparison.OrdinalIgnoreCase)) ModelState.AddModelError(nameof(vm.Name), "Tên sản phẩm đã tồn tại.");
+        if (string.Equals(duplicate.Slug, slug, StringComparison.OrdinalIgnoreCase)) ModelState.AddModelError(nameof(vm.Name), "Slug sản phẩm đã tồn tại. Vui lòng đổi tên sản phẩm.");
+        if (string.Equals(duplicate.ProductCode, productCode, StringComparison.OrdinalIgnoreCase)) ModelState.AddModelError(nameof(vm.ProductCode), "Mã sản phẩm đã tồn tại.");
+        InvalidForm(vm, operation);
+        return false;
+    }
+    private async Task<bool> TrySaveProductChangesAsync(AdminComponentUpsertVm vm, string operation)
+    {
+        try { await _db.SaveChangesAsync(); return true; }
+        catch (DbUpdateException ex) when (IsProductUniqueConstraintViolation(ex))
+        {
+            _logger.LogWarning(ex, "Không thể {Operation} linh kiện vì trùng dữ liệu unique trong database.", operation);
+            AddProductUniqueConstraintModelError(vm, ex);
+            InvalidForm(vm, operation);
+            return false;
+        }
+    }
+    private static bool IsProductUniqueConstraintViolation(DbUpdateException ex)
+    {
+        var message = ex.GetBaseException().Message;
+        return message.Contains("IX_Products_ProductCode", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("IX_Products_Slug", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("ProductCode", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("Slug", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("UNIQUE", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("duplicate", StringComparison.OrdinalIgnoreCase);
+    }
+    private void AddProductUniqueConstraintModelError(AdminComponentUpsertVm vm, DbUpdateException ex)
+    {
+        var message = ex.GetBaseException().Message;
+        if (message.Contains("ProductCode", StringComparison.OrdinalIgnoreCase)) ModelState.AddModelError(nameof(vm.ProductCode), "Mã sản phẩm đã tồn tại.");
+        else if (message.Contains("Slug", StringComparison.OrdinalIgnoreCase)) ModelState.AddModelError(nameof(vm.Name), "Slug sản phẩm đã tồn tại. Vui lòng đổi tên sản phẩm.");
+        else ModelState.AddModelError(string.Empty, "Dữ liệu sản phẩm bị trùng. Vui lòng kiểm tra tên sản phẩm, slug hoặc mã sản phẩm.");
+    }
     private bool TryValidateProductImageUrls(AdminProductUpsertVm vm, bool requireThumbnail) { if (requireThumbnail && string.IsNullOrWhiteSpace(vm.ThumbnailImageUrl)) ModelState.AddModelError(nameof(vm.ThumbnailImageUrl), "Vui lòng nhập URL ảnh đại diện."); ValidateUrl(vm.ThumbnailImageUrl, nameof(vm.ThumbnailImageUrl)); foreach (var url in SplitImageUrls(vm.ProductImageUrlsText)) ValidateUrl(url, nameof(vm.ProductImageUrlsText)); return ModelState.IsValid; }
     private void ValidateComponentBusinessRules(AdminComponentUpsertVm vm)
     {
