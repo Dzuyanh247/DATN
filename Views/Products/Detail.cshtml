@@ -137,25 +137,27 @@
                         <h1 id="product-title" class="product-name">@product.Name</h1>
                     </div>
 
-                    <div class="price-box">
-                        <span class="price-current">@finalPrice.ToString("N0", culture) đ</span>
-                        @if (finalPrice < product.Price)
-                        {
-                            <span class="price-old">@product.Price.ToString("N0", culture) đ</span>
-                        }
-                        @if (savings > 0)
-                        {
-                            <span class="product-savings">Tiết kiệm: @savings.ToString("N0", culture)đ</span>
-                        }
-                    </div>
+                    <div class="product-price-panel" aria-label="Thông tin giá và bảo hành">
+                        <div class="price-box">
+                            <span class="price-current">@finalPrice.ToString("N0", culture) đ</span>
+                            @if (finalPrice < product.Price)
+                            {
+                                <span class="price-old">@product.Price.ToString("N0", culture) đ</span>
+                            }
+                            @if (savings > 0)
+                            {
+                                <span class="product-savings">Tiết kiệm: @savings.ToString("N0", culture)đ</span>
+                            }
+                        </div>
 
-                    <div class="product-meta-pills">
-                        <span class="product-meta-pill warranty-pill"><i class="bi bi-shield-check" aria-hidden="true"></i>Bảo hành: @warrantyText</span>
-                        <span class="product-meta-pill stock-pill @(inStock ? "in-stock" : "out-of-stock")">
-                            <i class="bi @(inStock ? "bi-check-circle-fill" : "bi-x-circle-fill")" aria-hidden="true"></i>
-                            @(inStock ? $"Còn hàng: {product.StockQuantity}" : "Hết hàng")
-                        </span>
-                        <span class="product-meta-pill advice-pill"><i class="bi bi-tools" aria-hidden="true"></i>Tư vấn nâng cấp</span>
+                        <div class="product-meta-pills">
+                            <span class="product-meta-pill warranty-pill"><i class="bi bi-shield-check" aria-hidden="true"></i>Bảo hành: @warrantyText</span>
+                            <span class="product-meta-pill stock-pill @(inStock ? "in-stock" : "out-of-stock")">
+                                <i class="bi @(inStock ? "bi-check-circle-fill" : "bi-x-circle-fill")" aria-hidden="true"></i>
+                                @(inStock ? $"Còn hàng: {product.StockQuantity}" : "Hết hàng")
+                            </span>
+                            <span class="product-meta-pill advice-pill"><i class="bi bi-tools" aria-hidden="true"></i>Tư vấn nâng cấp</span>
+                        </div>
                     </div>
 
                     <div class="short-description" aria-labelledby="short-description-title">
