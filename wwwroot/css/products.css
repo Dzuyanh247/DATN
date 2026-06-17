@@ -5,9 +5,9 @@
 @media(max-width:479.98px){.products-heading-main{align-items:flex-start}.products-heading h1{flex-basis:100%;font-size:1.3rem}.products-filter-sidebar form{display:block}.products-grid{grid-template-columns:1fr}}
 
 /* Product detail */
-.product-detail-page{--detail-red:#ef233c;--detail-orange:#ff5a1f;--detail-navy:#172b4d;--detail-border:#e5e7eb;position:relative;isolation:isolate;margin:0 calc(50% - 50vw);padding:4px 18px 42px;color:#111827;background:#f3f4f6}
-.product-detail-shell{width:min(1216px,100%);margin:0 auto}
-.product-detail-page-container{width:100%;max-width:1360px;margin:0 auto;padding:0 14px}
+.product-detail-page{--detail-red:#ef233c;--detail-orange:#ff5a1f;--detail-navy:#172b4d;--detail-border:#e5e7eb;position:relative;isolation:isolate;margin:0 calc(50% - 50vw);padding:4px 16px 42px;color:#111827;background:#f3f4f6}
+.product-detail-shell{width:min(1440px,100%);margin:0 auto}
+.product-detail-page-container{width:100%;max-width:1440px;margin:0 auto;padding:0 14px}
 .product-detail-breadcrumb{display:flex;align-items:center;gap:6px;min-height:30px;margin-bottom:6px;overflow:hidden;color:#6b7280;font-size:.76rem;white-space:nowrap}
 .product-detail-breadcrumb a{color:#4b5563;text-decoration:none}
 .product-detail-breadcrumb a:hover{color:var(--detail-red)}
@@ -15,10 +15,10 @@
 .product-detail-breadcrumb span{overflow:hidden;text-overflow:ellipsis}
 .product-detail-card,.product-detail-section{overflow:hidden;border:1px solid rgba(229,231,235,.95);border-radius:11px;background:#fff;box-shadow:0 4px 14px rgba(15,23,42,.045)}
 .product-detail-card{padding:12px}
-.product-detail-grid{display:grid;grid-template-columns:minmax(0,57fr) minmax(0,43fr);gap:18px;align-items:start}
+.product-detail-grid{display:grid;grid-template-columns:minmax(0,58fr) minmax(0,42fr);gap:16px;align-items:start}
 .product-detail-media,.product-info-card{min-width:0}
 .product-gallery-card{padding:0;background:#fff}
-.product-gallery-main{display:grid;height:520px;place-items:center;overflow:hidden;border:1px solid #edf0f3;border-radius:10px;background:#fff}
+.product-gallery-main{display:grid;height:540px;place-items:center;overflow:hidden;border:1px solid #edf0f3;border-radius:10px;background:#fff}
 .product-gallery-main img{display:block;width:100%;height:100%;object-fit:cover;object-position:center}
 .product-gallery-thumbs{display:flex;justify-content:center;gap:8px;margin-top:10px;padding:1px;overflow-x:auto}
 .thumb-btn{display:grid;flex:0 0 70px;width:70px;height:70px;padding:4px;place-items:center;overflow:hidden;border:1.5px solid #e5e7eb;border-radius:8px;background:#fff;cursor:pointer;transition:.18s ease}
@@ -34,12 +34,19 @@
 .price-current{color:#fff;font-size:1.72rem;font-weight:950;line-height:1.05;letter-spacing:-.03em}
 .price-old{justify-self:center;color:rgba(255,255,255,.78);font-size:.96rem;line-height:1.15;text-decoration:line-through;text-decoration-thickness:1.5px}
 .product-savings{justify-self:end;color:#fff;font-size:.78rem;font-weight:800;line-height:1.15;text-align:right}
-.product-meta-pills{display:flex;flex-wrap:wrap;gap:6px;margin-top:0}
-.product-meta-pill{display:inline-flex;min-height:28px;align-items:center;gap:5px;padding:4px 9px;border-radius:6px;font-size:.7rem;font-weight:800}
-.warranty-pill{background:#fff3cd;color:#8a5700}
+.product-meta-pills{display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin-top:0}
+.product-meta-pill{display:inline-flex;min-height:26px;align-items:center;gap:5px;padding:4px 10px;border-radius:7px;font-size:.7rem;font-weight:850;line-height:1.1;white-space:nowrap}
+.warranty-pill{border:1px solid rgba(245,158,11,.28);background:linear-gradient(180deg,#ffd84d 0%,#ffc928 100%);color:#4f3200;box-shadow:inset 0 1px 0 rgba(255,255,255,.35)}
+.warranty-pill i{color:#8a5a00;font-size:.78rem}
 .in-stock{background:#dcfce7;color:#14733b}
 .out-of-stock{background:#fee2e2;color:#b91c1c}
-.advice-pill{background:#f3e8ff;color:#7e22ce}
+.advice-pill{position:relative;overflow:hidden;border:1px solid rgba(255,255,255,.2);border-radius:999px;background:linear-gradient(110deg,#4f46e5 0%,#7c3aed 45%,#db2777 100%);color:#fff;box-shadow:0 5px 13px rgba(124,58,237,.22);isolation:isolate;transition:filter .18s ease,box-shadow .18s ease}
+.advice-pill i{position:relative;z-index:1;color:#fff;font-size:.78rem}
+.advice-pill::after{content:"";position:absolute;inset:-35% auto -35% -55%;width:42%;transform:skewX(-20deg);background:linear-gradient(90deg,transparent,rgba(255,255,255,.72),transparent);animation:advice-pill-shimmer 2.8s ease-in-out infinite;pointer-events:none}
+.advice-pill:hover{filter:brightness(1.08);box-shadow:0 6px 16px rgba(124,58,237,.3)}
+.advice-pill span,.advice-pill{z-index:0}
+@keyframes advice-pill-shimmer{0%{left:-55%;opacity:0}18%{opacity:.85}48%,100%{left:115%;opacity:0}}
+@media (prefers-reduced-motion:reduce){.advice-pill::after{animation:none;opacity:0}}
 .promo-box{overflow:hidden;border:1px solid var(--detail-border);border-radius:9px;background:#fff}
 .short-description{margin-top:2px;margin-bottom:8px;padding:0;background:transparent;color:#111827;font-size:12px}
 .short-description h3{margin:0 0 5px;color:#111827;font-size:13px;font-weight:700;line-height:1.15}
