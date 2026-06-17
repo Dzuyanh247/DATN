@@ -21,21 +21,19 @@ public class AdminProductUpsertVm
     [MaxLength(80)]
     public string? Brand { get; set; }
 
-    [Required(ErrorMessage = "Vui lòng chọn loại sản phẩm / linh kiện")]
     [MaxLength(40)]
-    public string ComponentType { get; set; } = "PC";
+    public string? ComponentType { get; set; } = "PC";
 
     public string ProductType { get; set; } = ProductKinds.PC;
 
     public List<string> ComponentTypeOptions { get; set; } = ProductTypeOptions.All;
     public List<string> BrandOptions { get; set; } = new();
 
-    [Required(ErrorMessage = "Giá gốc là bắt buộc")]
-    [Range(1000, 999999999, ErrorMessage = "Giá gốc phải từ 1.000 đến 999.999.999")]
     public decimal? Price { get; set; }
+    public string? PriceInput { get; set; }
 
-    [Range(0, 999999999, ErrorMessage = "Giá khuyến mãi không được âm")]
     public decimal? DiscountPrice { get; set; }
+    public string? DiscountPriceInput { get; set; }
     public bool IsHotSale { get; set; }
     public bool IsDailyDeal { get; set; }
     public bool IsPromotion { get; set; }

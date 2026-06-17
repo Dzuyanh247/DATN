@@ -65,6 +65,13 @@ public class ProductsController : Controller
                 .FirstOrDefaultAsync();
         }
 
+        vm.IsComponentListing = await IsComponentListingAsync(type, vm.CategorySlug, vm.CategoryId);
+        if (!vm.IsComponentListing)
+        {
+            vm.Brands = Array.Empty<string>();
+            vm.ComponentTypes = Array.Empty<string>();
+        }
+
         if (vm.CategoryId.HasValue)
             query = query.Where(p => p.CategoryId == vm.CategoryId.Value);
 
@@ -184,6 +191,20 @@ public class ProductsController : Controller
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray() ?? Array.Empty<string>();
 
+    private async Task<bool> IsComponentListingAsync(string? type, string? categorySlug, int? categoryId)
+    {
+        if (!string.IsNullOrWhiteSpace(type)) return true;
+        var slug = categorySlug?.Trim().ToLowerInvariant();
+        if (slug is "linh-kien" or "linh-kien-may-tinh" or "components" or "component") return true;
+        if (!categoryId.HasValue) return false;
+        var categoryName = await _db.Categories
+            .Where(category => category.Id == categoryId.Value)
+            .Select(category => category.Name)
+            .FirstOrDefaultAsync();
+        return categoryName?.Contains("linh kiện", StringComparison.OrdinalIgnoreCase) == true
+            || categoryName?.Contains("component", StringComparison.OrdinalIgnoreCase) == true;
+    }
+
     private static void PopulateFilterOptions(
         ProductFilterVm vm,
         IReadOnlyCollection<Product> products,
@@ -206,7 +227,8 @@ public class ProductsController : Controller
             .OrderBy(option => option.Label)
             .ToList();
 
-        vm.ComponentTypeGroups = BuildComponentTypeGroups(products);
+        vm.ComponentTypeGroups = vm.IsComponentListing ? BuildComponentTypeGroups(products) : new List<ProductFilterGroupVm>();
+        if (!vm.IsComponentListing) vm.BrandOptions.Clear();
         vm.SpecFilterGroups = BuildSpecFilterGroups(products);
 
         vm.CpuOptions = BuildParsedOptions(products, parsedFacets, facets => facets.Cpu)

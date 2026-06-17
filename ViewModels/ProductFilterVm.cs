@@ -28,8 +28,9 @@ public class ProductFilterVm
     public List<ProductFilterOptionVm> RamOptions { get; set; } = new();
     public List<ProductFilterOptionVm> GpuOptions { get; set; } = new();
     public bool IsEquivalentSearch { get; set; }
+    public bool IsComponentListing { get; set; }
 
-    public bool HasSidebarFilters => PriceRanges.Length > 0 || Brands.Length > 0 || ComponentTypes.Length > 0 || Specs.Length > 0 || Cpu.Length > 0 || Ram.Length > 0 || Gpu.Length > 0;
+    public bool HasSidebarFilters => PriceRanges.Length > 0 || (IsComponentListing && Brands.Length > 0) || (IsComponentListing && ComponentTypes.Length > 0) || Specs.Length > 0 || Cpu.Length > 0 || Ram.Length > 0 || Gpu.Length > 0;
     public bool HasKeyword => !string.IsNullOrWhiteSpace(Keyword);
 }
 

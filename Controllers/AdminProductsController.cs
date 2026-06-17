@@ -5,6 +5,7 @@ using Datn.PcStore.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
 
 namespace Datn.PcStore.Controllers;
 
@@ -38,6 +39,8 @@ public class AdminProductsController : Controller
     public async Task<IActionResult> Create(AdminProductUpsertVm vm)
     {
         await PopulateCategoriesAsync(vm);
+        NormalizePcOnlyFields(vm);
+        ParseAndValidatePrices(vm);
         TryValidateProductImageUrls(vm, true);
         var promotionText = BuildAndValidatePromotionText(vm);
         if (!ModelState.IsValid) return InvalidProductForm(vm, "tạo");
@@ -51,7 +54,7 @@ public class AdminProductsController : Controller
         {
             Name = vm.Name,
             ProductCode = $"SP-{Guid.NewGuid():N}"[..16],
-            Brand = string.IsNullOrWhiteSpace(vm.Brand) ? null : vm.Brand.Trim(),
+            Brand = null,
             ProductType = ProductKinds.PC,
             Price = price,
             DiscountPrice = vm.DiscountPrice,
@@ -70,11 +73,11 @@ public class AdminProductsController : Controller
             Description = vm.Description ?? string.Empty,
             DetailDescription = vm.Description ?? string.Empty,
             TechnicalSpecifications = ProductComponentSpecHelper.Serialize(vm.ComponentSpecs),
-            ComponentType = vm.ComponentType,
+            ComponentType = ProductKinds.PC,
             IsActive = vm.IsActive,
             IsInStock = stockQuantity > 0,
             Slug = BuildSlug(vm.Name),
-            ThumbnailImage = vm.ThumbnailImageUrl!.Trim()
+            ThumbnailImage = ResolveThumbnailUrl(vm)
         };
 
         AddProductImagesFromUrls(product, vm.ProductImageUrlsText);
@@ -97,6 +100,8 @@ public class AdminProductsController : Controller
     public async Task<IActionResult> Edit(AdminProductUpsertVm vm)
     {
         await PopulateCategoriesAsync(vm);
+        NormalizePcOnlyFields(vm);
+        ParseAndValidatePrices(vm);
         TryValidateProductImageUrls(vm, false);
         var promotionText = BuildAndValidatePromotionText(vm);
         if (!ModelState.IsValid)
@@ -109,9 +114,9 @@ public class AdminProductsController : Controller
         if (product == null) return NotFound();
 
         product.Name = vm.Name;
-        product.Brand = string.IsNullOrWhiteSpace(vm.Brand) ? null : vm.Brand.Trim();
+        product.Brand = null;
         product.ProductType = ProductKinds.PC;
-        product.ComponentType = vm.ComponentType;
+        product.ComponentType = ProductKinds.PC;
         product.Price = vm.Price!.Value;
         product.DiscountPrice = vm.DiscountPrice;
         product.SalePrice = vm.DiscountPrice;
@@ -141,8 +146,8 @@ public class AdminProductsController : Controller
         }
 
         ApplyExistingImageOrder(product, vm.ExistingImageOrder);
+        SyncProductImagesFromTextarea(product, vm.ProductImageUrlsText);
         if (!string.IsNullOrWhiteSpace(vm.ThumbnailImageUrl)) product.ThumbnailImage = vm.ThumbnailImageUrl.Trim();
-        AddProductImagesFromUrls(product, vm.ProductImageUrlsText);
         EnsurePrimaryImage(product);
 
         await _db.SaveChangesAsync();
@@ -164,14 +169,16 @@ public class AdminProductsController : Controller
     private async Task<AdminProductUpsertVm?> BuildUpsertVmAsync(int? productId = null) { /* omitted for brevity */
         var vm = new AdminProductUpsertVm(); await PopulateCategoriesAsync(vm); if (!productId.HasValue) return vm;
         var product = await _db.Products.Include(p => p.ProductImages).FirstOrDefaultAsync(x => x.Id == productId.Value && x.ProductType == ProductKinds.PC); if (product == null) return null;
-        vm.Id = product.Id; vm.Name = product.Name; vm.Brand = product.Brand; vm.ProductType = product.ProductType; vm.ComponentType = string.IsNullOrWhiteSpace(product.ComponentType) ? "Khác" : product.ComponentType; vm.Price = product.Price; vm.DiscountPrice = product.DiscountPrice ?? product.SalePrice;
+        vm.Id = product.Id; vm.Name = product.Name; vm.Brand = product.Brand; vm.ProductType = product.ProductType; vm.ComponentType = ProductKinds.PC; vm.Price = product.Price; vm.PriceInput = FormatMoneyForInput(product.Price); vm.DiscountPrice = product.DiscountPrice ?? product.SalePrice; vm.DiscountPriceInput = FormatMoneyForInput(vm.DiscountPrice);
         vm.IsHotSale = product.IsHotSale; vm.IsDailyDeal = product.IsDailyDeal; vm.IsPromotion = product.IsPromotion;
         vm.PromotionStartDate = product.PromotionStartDate; vm.PromotionEndDate = product.PromotionEndDate;
         vm.SelectedPromotionTexts = ProductPromotionHelper.GetSelectedPresetTexts(product.PromotionText); vm.CustomPromotionText = ProductPromotionHelper.GetCustomText(product.PromotionText);
         vm.StockQuantity = product.StockQuantity; vm.WarrantyMonths = product.WarrantyMonths > 0 ? product.WarrantyMonths : 12; vm.CategoryId = product.CategoryId;
         vm.Description = ResolveDescriptionForEditing(product); vm.Specifications = product.TechnicalSpecifications; vm.ComponentSpecs = ProductComponentSpecHelper.ParseStored(product.TechnicalSpecifications); vm.IsActive = product.IsActive;
-        vm.ThumbnailImageUrl = product.ThumbnailImage;
-        var orderedImages = product.ProductImages.OrderBy(x => x.SortOrder).ToList(); vm.ExistingImageOrder = orderedImages.Select(x => x.Id).ToList();
+        var orderedImages = product.ProductImages.OrderBy(x => x.SortOrder).ToList();
+        vm.ThumbnailImageUrl = orderedImages.FirstOrDefault(x => x.IsPrimary)?.ImageUrl ?? orderedImages.FirstOrDefault()?.ImageUrl ?? product.ThumbnailImage;
+        vm.ProductImageUrlsText = string.Join(Environment.NewLine, orderedImages.Select(x => x.ImageUrl));
+        vm.ExistingImageOrder = orderedImages.Select(x => x.Id).ToList();
         vm.ExistingImages = orderedImages.Select(x => new ProductImageItemVm { Id = x.Id, ImageUrl = x.ImageUrl, IsPrimary = x.IsPrimary, SortOrder = x.SortOrder }).ToList(); return vm; }
 
     private IActionResult InvalidProductForm(AdminProductUpsertVm vm, string operation)
@@ -209,20 +216,104 @@ public class AdminProductsController : Controller
     }
 
     private async Task PopulateCategoriesAsync(AdminProductUpsertVm vm) => vm.Categories = await _db.Categories.OrderBy(x => x.Name).ToListAsync();
+
+    private void NormalizePcOnlyFields(AdminProductUpsertVm vm)
+    {
+        vm.ProductType = ProductKinds.PC;
+        vm.Brand = null;
+        vm.ComponentType = ProductKinds.PC;
+        ModelState.Remove(nameof(vm.Brand));
+        ModelState.Remove(nameof(vm.ComponentType));
+        ModelState.Remove(nameof(vm.Price));
+        ModelState.Remove(nameof(vm.DiscountPrice));
+    }
+
+    private void ParseAndValidatePrices(AdminProductUpsertVm vm)
+    {
+        vm.PriceInput ??= FormatMoneyForInput(vm.Price);
+        vm.DiscountPriceInput ??= FormatMoneyForInput(vm.DiscountPrice);
+        if (!TryParseMoney(vm.PriceInput, out var price) || price < 1000 || price > 999999999)
+            ModelState.AddModelError(nameof(vm.PriceInput), "Giá gốc phải từ 1.000 đến 999.999.999 và chỉ nhập số/dấu phân tách hợp lệ.");
+        else
+            vm.Price = price;
+
+        if (string.IsNullOrWhiteSpace(vm.DiscountPriceInput))
+        {
+            vm.DiscountPrice = null;
+        }
+        else if (!TryParseMoney(vm.DiscountPriceInput, out var discountPrice) || discountPrice < 0 || discountPrice > 999999999)
+        {
+            ModelState.AddModelError(nameof(vm.DiscountPriceInput), "Giá khuyến mãi không hợp lệ hoặc vượt quá 999.999.999.");
+        }
+        else
+        {
+            vm.DiscountPrice = discountPrice;
+        }
+    }
+
+    private static string FormatMoneyForInput(decimal? value) => value.HasValue ? decimal.Truncate(value.Value).ToString("0", CultureInfo.InvariantCulture) : string.Empty;
+
+    private static bool TryParseMoney(string? value, out decimal result)
+    {
+        result = 0;
+        if (string.IsNullOrWhiteSpace(value)) return false;
+        var text = value.Trim().Replace(" ", string.Empty);
+        var lastComma = text.LastIndexOf(',');
+        var lastDot = text.LastIndexOf('.');
+        if (lastComma >= 0 && lastDot >= 0)
+        {
+            var decimalSeparator = lastComma > lastDot ? ',' : '.';
+            var thousandsSeparator = decimalSeparator == ',' ? '.' : ',';
+            text = text.Replace(thousandsSeparator.ToString(), string.Empty).Replace(decimalSeparator, '.');
+        }
+        else if (lastComma >= 0 || lastDot >= 0)
+        {
+            var separator = lastComma >= 0 ? ',' : '.';
+            var index = Math.Max(lastComma, lastDot);
+            var decimals = text.Length - index - 1;
+            if (decimals == 2) text = text.Replace(separator, '.');
+            else text = text.Replace(separator.ToString(), string.Empty);
+        }
+        return decimal.TryParse(text, NumberStyles.Number, CultureInfo.InvariantCulture, out result);
+    }
     private async Task PopulateExistingImagesAsync(AdminProductUpsertVm vm) { vm.ExistingImages = await _db.ProductImages.Where(x => x.ProductId == vm.Id).OrderBy(x => x.SortOrder).Select(x => new ProductImageItemVm { Id = x.Id, ImageUrl = x.ImageUrl, IsPrimary = x.IsPrimary, SortOrder = x.SortOrder }).ToListAsync(); if (!vm.ExistingImageOrder.Any()) vm.ExistingImageOrder = vm.ExistingImages.Select(x => x.Id).ToList(); }
 
     private bool TryValidateProductImageUrls(AdminProductUpsertVm vm, bool requireThumbnail)
     {
-        if (requireThumbnail && string.IsNullOrWhiteSpace(vm.ThumbnailImageUrl)) ModelState.AddModelError(nameof(vm.ThumbnailImageUrl), "Vui lòng nhập URL thumbnail ảnh.");
+        if (requireThumbnail && string.IsNullOrWhiteSpace(vm.ThumbnailImageUrl) && !SplitImageUrls(vm.ProductImageUrlsText).Any()) ModelState.AddModelError(nameof(vm.ThumbnailImageUrl), "Vui lòng nhập URL thumbnail hoặc ít nhất một URL trong thư viện ảnh.");
         ValidateUrl(vm.ThumbnailImageUrl, nameof(vm.ThumbnailImageUrl));
         foreach (var url in SplitImageUrls(vm.ProductImageUrlsText)) ValidateUrl(url, nameof(vm.ProductImageUrlsText));
         return ModelState.IsValid;
     }
 
+    private static string ResolveThumbnailUrl(AdminProductUpsertVm vm) => !string.IsNullOrWhiteSpace(vm.ThumbnailImageUrl)
+        ? vm.ThumbnailImageUrl.Trim()
+        : SplitImageUrls(vm.ProductImageUrlsText).FirstOrDefault() ?? string.Empty;
+
     private void AddProductImagesFromUrls(Product product, string? urlsText)
     {
         var sort = product.ProductImages.Count == 0 ? 1 : product.ProductImages.Max(x => x.SortOrder) + 1;
         foreach (var url in SplitImageUrls(urlsText)) product.ProductImages.Add(new ProductImage { ImageUrl = url, SortOrder = sort++, IsPrimary = false });
+    }
+
+    private void SyncProductImagesFromTextarea(Product product, string? urlsText)
+    {
+        var submittedUrls = SplitImageUrls(urlsText);
+        if (!submittedUrls.Any()) return;
+
+        var existingUrls = product.ProductImages
+            .OrderBy(x => x.SortOrder)
+            .Select(x => x.ImageUrl)
+            .ToList();
+        if (existingUrls.SequenceEqual(submittedUrls, StringComparer.OrdinalIgnoreCase)) return;
+
+        foreach (var image in product.ProductImages.ToList())
+            _db.ProductImages.Remove(image);
+        product.ProductImages.Clear();
+
+        var sort = 1;
+        foreach (var url in submittedUrls)
+            product.ProductImages.Add(new ProductImage { ProductId = product.Id, ImageUrl = url, SortOrder = sort++, IsPrimary = false });
     }
 
     private static List<string> SplitImageUrls(string? urlsText) => (urlsText ?? string.Empty).Split(new[] { '\r', '\n', ',', ';' }, StringSplitOptions.RemoveEmptyEntries).Select(x => x.Trim()).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
