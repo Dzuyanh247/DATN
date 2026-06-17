@@ -11,14 +11,14 @@ namespace Datn.PcStore.Controllers;
 public class AccessoriesApiController : ControllerBase
 {
     private static readonly HashSet<string> AllowedTypes = new(StringComparer.OrdinalIgnoreCase)
-    { "Monitor", "Keyboard", "Mouse", "Headphone", "Headset" };
+    { ComponentTypes.Monitor, ComponentTypes.Keyboard, ComponentTypes.Mouse, ComponentTypes.Headphone, "Headset" };
 
     private static readonly IReadOnlyDictionary<string, string> DefaultImages = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
     {
-        ["Monitor"] = "https://ttgshop.vn/media/category/cat_big_1003486567.png",
-        ["Keyboard"] = "https://ttgshop.vn/media/category/cat_big_1003353341.png",
-        ["Mouse"] = "https://ttgshop.vn/media/category/cat_big_1003353370.png",
-        ["Headphone"] = "https://ttgshop.vn/media/category/cat_big_1004013226.jpg",
+        [ComponentTypes.Monitor] = "https://ttgshop.vn/media/category/cat_big_1003486567.png",
+        [ComponentTypes.Keyboard] = "https://ttgshop.vn/media/category/cat_big_1003353341.png",
+        [ComponentTypes.Mouse] = "https://ttgshop.vn/media/category/cat_big_1003353370.png",
+        [ComponentTypes.Headphone] = "https://ttgshop.vn/media/category/cat_big_1004013226.jpg",
         ["Headset"] = "https://ttgshop.vn/media/category/cat_big_1004013226.jpg"
     };
 
@@ -31,9 +31,10 @@ public class AccessoriesApiController : ControllerBase
         if (string.IsNullOrWhiteSpace(type) || !AllowedTypes.Contains(type))
             return BadRequest(new { message = "Loại sản phẩm mua kèm không hợp lệ." });
 
-        var normalizedType = string.Equals(type, "Headset", StringComparison.OrdinalIgnoreCase) ? "Headphone" : type;
+        var normalizedType = string.Equals(type, "Headset", StringComparison.OrdinalIgnoreCase) ? ComponentTypes.Headphone : ComponentTypes.Normalize(type);
+        var typeAliases = ComponentTypes.GetAliases(normalizedType);
         var baseQuery = _db.Products.Include(p => p.Category).Include(p => p.ProductImages)
-            .Where(p => p.IsActive && p.IsInStock && p.StockQuantity > 0 && p.ProductType == ProductKinds.Component && p.ComponentType == normalizedType);
+            .Where(p => p.IsActive && p.IsInStock && p.StockQuantity > 0 && p.ProductType == ProductKinds.Component && typeAliases.Contains(p.ComponentType));
         var query = baseQuery;
 
         if (!string.IsNullOrWhiteSpace(keyword))

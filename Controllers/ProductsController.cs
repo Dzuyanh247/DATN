@@ -155,6 +155,13 @@ public class ProductsController : Controller
             : (int?)null;
         ViewBag.ReviewSection = await _reviewService.GetSectionAsync(id, userId, rating is >= 1 and <= 5 ? rating : null);
 
+        var accessoryTypeAliases = ComponentTypes.GetAliases(ComponentTypes.Monitor)
+            .Concat(ComponentTypes.GetAliases(ComponentTypes.Keyboard))
+            .Concat(ComponentTypes.GetAliases(ComponentTypes.Mouse))
+            .Concat(ComponentTypes.GetAliases(ComponentTypes.Headphone))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
         var accessoryProducts = await _db.Products
             .Include(p => p.Category)
             .Include(p => p.ProductImages.OrderBy(x => x.SortOrder))
@@ -162,17 +169,17 @@ public class ProductsController : Controller
                 && p.IsInStock
                 && p.StockQuantity > 0
                 && p.ProductType == ProductKinds.Component
-                && (p.ComponentType == "Monitor" || p.ComponentType == "Keyboard" || p.ComponentType == "Mouse" || p.ComponentType == "Headphone"))
+                && accessoryTypeAliases.Contains(p.ComponentType))
             .OrderByDescending(p => p.CreatedAt)
             .ToListAsync();
 
         var vm = new ProductDetailViewModel
         {
             Product = product,
-            Monitors = accessoryProducts.Where(p => p.ComponentType == "Monitor").ToList(),
-            Keyboards = accessoryProducts.Where(p => p.ComponentType == "Keyboard").ToList(),
-            Mice = accessoryProducts.Where(p => p.ComponentType == "Mouse").ToList(),
-            Headsets = accessoryProducts.Where(p => p.ComponentType == "Headphone").ToList()
+            Monitors = accessoryProducts.Where(p => ComponentTypes.Normalize(p.ComponentType) == ComponentTypes.Monitor).ToList(),
+            Keyboards = accessoryProducts.Where(p => ComponentTypes.Normalize(p.ComponentType) == ComponentTypes.Keyboard).ToList(),
+            Mice = accessoryProducts.Where(p => ComponentTypes.Normalize(p.ComponentType) == ComponentTypes.Mouse).ToList(),
+            Headsets = accessoryProducts.Where(p => ComponentTypes.Normalize(p.ComponentType) == ComponentTypes.Headphone).ToList()
         };
 
         return View(vm);
@@ -463,30 +470,11 @@ public class ProductsController : Controller
         if (componentTypes.Length == 0) return query;
         var expandedTypes = componentTypes
             .Select(ComponentTypes.Normalize)
-            .SelectMany(GetComponentTypeAliases)
+            .SelectMany(ComponentTypes.GetAliases)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
         return query.Where(product => product.ComponentType != null && expandedTypes.Contains(product.ComponentType));
     }
-
-
-    private static string[] GetComponentTypeAliases(string type) => ComponentTypes.Normalize(type) switch
-    {
-        ComponentTypes.CPU => new[] { "CPU", "CPU - Bộ vi xử lý", "Bộ vi xử lý", "cpu" },
-        ComponentTypes.Mainboard => new[] { "Mainboard", "MAINBOARD", "Mainboard - Bo mạch chủ", "Bo mạch chủ", "Bo mach chu", "Motherboard", "mainboard", "main" },
-        ComponentTypes.RAM => new[] { "RAM", "Ram", "Bộ nhớ trong" },
-        ComponentTypes.VGA => new[] { "VGA", "GPU", "VGA - Card màn hình", "Card màn hình" },
-        ComponentTypes.Storage => new[] { "Storage", "SSD", "HDD", "SSD/HDD", "Ổ cứng SSD/HDD", "Ổ cứng" },
-        ComponentTypes.PSU => new[] { "PSU", "PSU - Nguồn máy tính", "Nguồn máy tính", "Nguồn" },
-        ComponentTypes.Case => new[] { "Case", "Case - Vỏ case", "Vỏ case" },
-        ComponentTypes.Cooler => new[] { "Cooler", "Cooler - Tản nhiệt", "Tản nhiệt" },
-        ComponentTypes.Monitor => new[] { "Monitor", "Monitor - Màn hình", "Màn hình" },
-        ComponentTypes.Keyboard => new[] { "Keyboard", "Keyboard - Bàn phím", "Bàn phím" },
-        ComponentTypes.Mouse => new[] { "Mouse", "Mouse - Chuột", "Chuột" },
-        ComponentTypes.Headphone => new[] { "Headphone", "Headphone - Tai nghe", "Headset", "Tai nghe" },
-        ComponentTypes.MonitorArm => new[] { "MonitorArm", "MonitorArm - Giá treo màn hình", "Giá treo màn hình" },
-        _ => new[] { ComponentTypes.Other, "Other", "Khác" }
-    };
 
     private static List<Product> ApplyKeywordSearch(List<Product> products, ProductFilterVm vm)
     {

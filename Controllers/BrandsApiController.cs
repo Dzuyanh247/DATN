@@ -21,9 +21,10 @@ public class BrandsApiController : ControllerBase
     public async Task<ActionResult<List<string>>> Get([FromQuery] string? componentType)
     {
         var normalizedType = NormalizeComponentType(componentType);
+        var typeAliases = ComponentTypes.GetAliases(normalizedType);
         var productBrands = await _db.Products.AsNoTracking()
             .Where(product => product.ProductType == ProductKinds.Component
-                && product.ComponentType == normalizedType
+                && typeAliases.Contains(product.ComponentType)
                 && product.Brand != null
                 && product.Brand != ""
                 && product.Brand != "N/A")
@@ -31,7 +32,7 @@ public class BrandsApiController : ControllerBase
             .ToListAsync();
 
         var catalogBrands = await _db.ComponentBrands.AsNoTracking()
-            .Where(brand => brand.ComponentType == normalizedType)
+            .Where(brand => typeAliases.Contains(brand.ComponentType))
             .Select(brand => brand.Name.Trim())
             .ToListAsync();
 
@@ -51,9 +52,10 @@ public class BrandsApiController : ControllerBase
             return BadRequest(new { message = "Vui lòng nhập tên thương hiệu." });
 
         var componentType = NormalizeComponentType(request?.ComponentType);
-        var existsInCatalog = await _db.ComponentBrands.AnyAsync(brand => brand.ComponentType == componentType && brand.Name.ToLower() == name.ToLower());
+        var typeAliases = ComponentTypes.GetAliases(componentType);
+        var existsInCatalog = await _db.ComponentBrands.AnyAsync(brand => typeAliases.Contains(brand.ComponentType) && brand.Name.ToLower() == name.ToLower());
         var existsInProducts = await _db.Products.AsNoTracking().AnyAsync(product => product.ProductType == ProductKinds.Component
-            && product.ComponentType == componentType
+            && typeAliases.Contains(product.ComponentType)
             && product.Brand != null
             && product.Brand.ToLower() == name.ToLower());
 
