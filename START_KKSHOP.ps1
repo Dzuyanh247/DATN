@@ -84,7 +84,7 @@ function Confirm-FreePort {
     $processes = @(Get-PortProcesses $Port)
     if ($processes.Count -eq 0) { Stop-With-FriendlyError 'Khong tim thay process dang chiem cong 5000.' }
     foreach ($process in $processes) {
-        Write-Log "Kill process on port $Port: $($process.ProcessName) ($($process.Id))"
+        Write-Log "Kill process on port ${Port}: $($process.ProcessName) ($($process.Id))"
         Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
     }
     Start-Sleep -Seconds 2
