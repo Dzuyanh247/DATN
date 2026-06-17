@@ -167,13 +167,9 @@
                         <td class="text-end admin-order-total">@order.TotalAmount.ToString("N0") đ</td>
                         <td class="admin-order-status-cell">
                             <span class="order-status-badge @OrderStatusHelper.BadgeClass(order.Status)">@OrderStatusHelper.Label(order.Status)</span>
-                            @if (order.Status == OrderStatus.PendingPayment && order.PaymentDeadline.HasValue)
+                            @if (canCountDown)
                             {
-                                <small class="admin-order-deadline"><i class="bi bi-clock"></i> Hạn @DateTimeHelper.FormatVietnam(order.PaymentDeadline, "dd/MM HH:mm")</small>
-                                @if (canCountDown)
-                                {
-                                    <span class="admin-order-countdown" data-payment-countdown data-deadline="@deadlineUnix">--:--:--</span>
-                                }
+                                <span class="admin-order-countdown" data-payment-countdown data-deadline="@deadlineUnix">--:--:--</span>
                             }
                         </td>
                         <td class="admin-order-update-cell">
@@ -190,12 +186,14 @@
                                 <button class="btn btn-sm btn-primary" type="submit" title="Lưu trạng thái"><i class="bi bi-check2"></i><span>Lưu</span></button>
                             </form>
                         </td>
-                        <td class="text-end">
-                            <a class="btn btn-sm btn-outline-primary admin-order-detail-button" asp-action="Detail" asp-route-id="@order.Id"><i class="bi bi-eye"></i> Chi tiết</a>
-                            @if (order.Status is not OrderStatus.Cancelled and not OrderStatus.Expired)
-                            {
-                                <a class="btn btn-sm btn-outline-secondary admin-order-detail-button mt-1" asp-controller="Orders" asp-action="Quotation" asp-route-orderId="@order.Id" target="_blank"><i class="bi bi-printer"></i> In hóa đơn</a>
-                            }
+                        <td class="admin-order-actions-cell">
+                            <div class="admin-order-actions">
+                                <a class="btn btn-sm btn-outline-primary admin-order-action-button" asp-action="Detail" asp-route-id="@order.Id"><i class="bi bi-eye"></i> Chi tiết</a>
+                                @if (order.Status is not OrderStatus.Cancelled and not OrderStatus.Expired)
+                                {
+                                    <a class="btn btn-sm btn-outline-secondary admin-order-action-button" asp-controller="Orders" asp-action="Quotation" asp-route-orderId="@order.Id" target="_blank"><i class="bi bi-printer"></i> In hóa đơn</a>
+                                }
+                            </div>
                         </td>
                     </tr>
                 }
