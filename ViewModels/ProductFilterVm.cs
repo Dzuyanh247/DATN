@@ -8,6 +8,10 @@ public class ProductFilterVm
     public int? CategoryId { get; set; }
     public string? CategorySlug { get; set; }
     public string? Brand { get; set; }
+    public string? Type { get; set; }
+    public string? ComponentTypeLabel { get; set; }
+    public string? TypeSlug { get; set; }
+    public bool HasScopedComponentType => !string.IsNullOrWhiteSpace(Type);
     public string? Sort { get; set; }
     public decimal? MinPrice { get; set; }
     public decimal? MaxPrice { get; set; }
@@ -39,6 +43,7 @@ public class ProductFilterOptionVm
     public string Value { get; set; } = string.Empty;
     public string Label { get; set; } = string.Empty;
     public int Count { get; set; }
+    public string? Url { get; set; }
 }
 
 public class ProductFilterGroupVm
