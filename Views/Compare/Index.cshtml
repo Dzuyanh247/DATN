@@ -6,7 +6,6 @@
 
 <div class="compare-page pb-5">
     <div class="compare-hero mb-4">
-        <div class="small text-uppercase text-danger fw-bold">KKSHOP Compare</div>
         <h1 class="compare-title mb-2">So sánh sản phẩm</h1>
         <p class="compare-subtitle mb-2">Đối chiếu cấu hình, giá bán và thông số kỹ thuật giữa các sản phẩm.</p>
         <p class="compare-legal-note mb-0">Thông tin so sánh dựa trên dữ liệu sản phẩm do KKSHOP công bố. Giá và cấu hình có thể thay đổi theo thời điểm.</p>
@@ -90,7 +89,8 @@
                                     <th class="compare-spec-col">Thông số</th>
                                     @foreach (var product in Model.Products.Take(2))
                                     {
-                                        <th class="compare-product-col">
+                                        var productIndex = Model.Products.IndexOf(product);
+                                        <th class="compare-product-col @(productIndex == 1 ? "compare-product-divider" : string.Empty)">
                                             <div class="compare-product-head">
                                                 <img src="@product.ImageUrl" alt="@product.Name" onerror="this.onerror=null;this.src='/images/no-image.png';" />
                                                 <div>
@@ -106,21 +106,18 @@
                                 <tr class="compare-mobile-info-row">
                                     <th>Giá</th>
                                     <td>@(Model.Products.ElementAtOrDefault(0) is { } productA ? $"{productA.Price.ToString("N0", culture)} đ" : "-")</td>
-                                    <td>@(Model.Products.ElementAtOrDefault(1) is { } productB ? $"{productB.Price.ToString("N0", culture)} đ" : "-")</td>
+                                    <td class="compare-product-divider">@(Model.Products.ElementAtOrDefault(1) is { } productB ? $"{productB.Price.ToString("N0", culture)} đ" : "-")</td>
                                 </tr>
                                 @if (Model.Rows.Any())
                                 {
                                     @foreach (var row in Model.Rows)
                                     {
-                                        var hasDifference = !string.Equals(row.ProductAValue?.Trim(), row.ProductBValue?.Trim(), StringComparison.OrdinalIgnoreCase);
-                                        <tr class="@(hasDifference ? "has-difference" : string.Empty)">
+                                        <tr>
                                             <th class="compare-spec-label">@row.Label</th>
-                                            <td class="compare-spec-value @(hasDifference ? "is-different" : string.Empty)">
-                                                @if (hasDifference) { <span class="compare-diff-chip">Khác biệt</span> }
+                                            <td class="compare-spec-value">
                                                 <span>@row.ProductAValue</span>
                                             </td>
-                                            <td class="compare-spec-value @(hasDifference ? "is-different" : string.Empty)">
-                                                @if (hasDifference) { <span class="compare-diff-chip">Khác biệt</span> }
+                                            <td class="compare-spec-value compare-product-divider">
                                                 <span>@row.ProductBValue</span>
                                             </td>
                                         </tr>
