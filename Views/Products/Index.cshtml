@@ -96,25 +96,28 @@
                     </div>
                 </details>
 
-                <details class="products-filter-group" open>
-                    <summary>LOẠI LINH KIỆN <i class="bi bi-chevron-down"></i></summary>
-                    <div class="products-filter-options component-filter-options">
-                        @foreach (var group in Model.ComponentTypeGroups)
-                        {
-                            <div class="products-filter-subtitle">@group.Title</div>
-                            @foreach (var option in group.Options)
+                @if (Model.ComponentTypeGroups.Count > 0)
+                {
+                    <details class="products-filter-group" open>
+                        <summary>LOẠI LINH KIỆN <i class="bi bi-chevron-down"></i></summary>
+                        <div class="products-filter-options component-filter-options">
+                            @foreach (var group in Model.ComponentTypeGroups)
                             {
-                                var id = $"component-{option.Value.ToLowerInvariant()}";
-                                <label class="products-filter-option" for="@id">
-                                    <input id="@id" type="checkbox" name="componentTypes" value="@option.Value"
-                                           checked="@(Model.ComponentTypes.Contains(option.Value, StringComparer.OrdinalIgnoreCase))" />
-                                    <span>@option.Label</span>
-                                    <small>(@option.Count)</small>
-                                </label>
+                                <div class="products-filter-subtitle">@group.Title</div>
+                                @foreach (var option in group.Options)
+                                {
+                                    var id = $"component-{option.Value.ToLowerInvariant()}";
+                                    <label class="products-filter-option" for="@id">
+                                        <input id="@id" type="checkbox" name="componentTypes" value="@option.Value"
+                                               checked="@(Model.ComponentTypes.Contains(option.Value, StringComparer.OrdinalIgnoreCase))" />
+                                        <span>@option.Label</span>
+                                        <small>(@option.Count)</small>
+                                    </label>
+                                }
                             }
-                        }
-                    </div>
-                </details>
+                        </div>
+                    </details>
+                }
 
                 <details class="products-filter-group" open>
                     <summary>THƯƠNG HIỆU <i class="bi bi-chevron-down"></i></summary>
