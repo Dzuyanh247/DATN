@@ -19,7 +19,6 @@ function Write-Log([string]$Message) { Add-Content -LiteralPath $StartupLog -Val
 function Add-LogHeader([string]$Text) { Add-Content -LiteralPath $StartupLog -Value "`r`n===== $Text - $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') =====" -Encoding UTF8 }
 function Pause-And-Exit([int]$Code = 1) {
     Write-Host ''
-    Write-Host "Log ky thuat: $StartupLog" -ForegroundColor Yellow
     if ($Host.Name -eq 'ConsoleHost') { Read-Host 'Bam Enter de dong cua so' | Out-Null }
     exit $Code
 }
@@ -101,25 +100,50 @@ function Wait-WebsiteReady {
     }
     return $false
 }
+function Join-CommandArguments([string[]]$Arguments) {
+    return (($Arguments | ForEach-Object { '"' + ($_ -replace '"', '\"') + '"' }) -join ' ')
+}
 function Start-WebsiteProcess([string]$ProjectPath) {
     $env:ASPNETCORE_URLS = $Url
     $env:ASPNETCORE_ENVIRONMENT = 'Production'
     Add-LogHeader 'dotnet run'
-    $psi = [System.Diagnostics.ProcessStartInfo]::new('dotnet')
-    foreach ($arg in @('run', '--project', $ProjectPath, '--no-build', '-c', 'Release', '--urls', $Url)) { [void]$psi.ArgumentList.Add($arg) }
-    $psi.WorkingDirectory = $PSScriptRoot
-    $psi.UseShellExecute = $false
-    $psi.RedirectStandardOutput = $true
-    $psi.RedirectStandardError = $true
-    $process = [System.Diagnostics.Process]::Start($psi)
-    $encoding = [System.Text.UTF8Encoding]::new($false)
-    $outWriter = [System.IO.StreamWriter]::new($RuntimeLog, $true, $encoding)
-    $errWriter = [System.IO.StreamWriter]::new($RuntimeLog, $true, $encoding)
-    $process.add_OutputDataReceived({ if ($EventArgs.Data) { $outWriter.WriteLine($EventArgs.Data); $outWriter.Flush() } })
-    $process.add_ErrorDataReceived({ if ($EventArgs.Data) { $errWriter.WriteLine($EventArgs.Data); $errWriter.Flush() } })
-    $process.BeginOutputReadLine()
-    $process.BeginErrorReadLine()
-    return @{ Process = $process; OutWriter = $outWriter; ErrWriter = $errWriter }
+
+    $dotnetArguments = @('run', '--project', $ProjectPath, '--no-build', '-c', 'Release', '--urls', $Url)
+    $argumentText = Join-CommandArguments $dotnetArguments
+    Write-Log "WorkingDirectory: $PSScriptRoot"
+    Write-Log "ProjectPath: $ProjectPath"
+    Write-Log "Url: $Url"
+    Write-Log "Arguments: $argumentText"
+    Add-Content -LiteralPath $RuntimeLog -Value "`r`n===== dotnet run - $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') =====" -Encoding UTF8
+    Add-Content -LiteralPath $RuntimeLog -Value "WorkingDirectory: $PSScriptRoot" -Encoding UTF8
+    Add-Content -LiteralPath $RuntimeLog -Value "ProjectPath: $ProjectPath" -Encoding UTF8
+    Add-Content -LiteralPath $RuntimeLog -Value "Url: $Url" -Encoding UTF8
+    Add-Content -LiteralPath $RuntimeLog -Value "Arguments: $argumentText" -Encoding UTF8
+
+    $process = $null
+    try {
+        $psi = New-Object System.Diagnostics.ProcessStartInfo
+        $psi.FileName = 'cmd.exe'
+        $psi.Arguments = "/d /s /c `"dotnet $argumentText >> `"`"$RuntimeLog`"`" 2>>&1`""
+        $psi.WorkingDirectory = $PSScriptRoot
+        $psi.UseShellExecute = $false
+        $psi.CreateNoWindow = $false
+        $process = [System.Diagnostics.Process]::Start($psi)
+    } catch {
+        $message = "Khong khoi dong duoc website. Vui long xem file log runtime. $($_.Exception.Message)"
+        Write-Log $message
+        Add-Content -LiteralPath $RuntimeLog -Value $message -Encoding UTF8
+        Stop-With-FriendlyError 'Khong khoi dong duoc website. Vui long xem file log runtime.' $RuntimeLog
+    }
+
+    if ($null -eq $process) {
+        $message = 'Khong khoi dong duoc website. Process.Start tra ve null.'
+        Write-Log $message
+        Add-Content -LiteralPath $RuntimeLog -Value $message -Encoding UTF8
+        Stop-With-FriendlyError 'Khong khoi dong duoc tien trinh website.' $RuntimeLog
+    }
+
+    return @{ Process = $process }
 }
 
 try {
@@ -170,8 +194,6 @@ try {
         if ($runtime -and $runtime.Process -and -not $runtime.Process.HasExited) { $runtime.Process.Kill() }
     }
     $runtime.Process.WaitForExit()
-    $runtime.OutWriter.Dispose()
-    $runtime.ErrWriter.Dispose()
 } catch {
     Add-Content -LiteralPath $StartupLog -Value $_.Exception.ToString() -Encoding UTF8
     Write-Fail 'Website khoi dong that bai.'
