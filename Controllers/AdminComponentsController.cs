@@ -26,7 +26,12 @@ public class AdminComponentsController : Controller
         var query = _db.Products.Include(p => p.Category).Include(p => p.ProductImages)
             .Where(p => p.ProductType == ProductKinds.Component).AsQueryable();
         if (!string.IsNullOrWhiteSpace(keyword)) query = query.Where(p => p.Name.Contains(keyword.Trim()));
-        if (!string.IsNullOrWhiteSpace(componentType)) query = query.Where(p => p.ComponentType == componentType);
+        if (!string.IsNullOrWhiteSpace(componentType))
+        {
+            var normalizedComponentType = ComponentTypes.Normalize(componentType);
+            query = query.Where(p => p.ComponentType == normalizedComponentType);
+            componentType = normalizedComponentType;
+        }
         if (!string.IsNullOrWhiteSpace(brand)) query = query.Where(p => p.Brand == brand);
         if (minPrice.HasValue) query = query.Where(p => ((p.DiscountPrice ?? p.SalePrice) ?? p.Price) >= minPrice.Value);
         if (maxPrice.HasValue) query = query.Where(p => ((p.DiscountPrice ?? p.SalePrice) ?? p.Price) <= maxPrice.Value);
@@ -133,7 +138,7 @@ public class AdminComponentsController : Controller
     {
         var vm = new AdminComponentUpsertVm(); await AssignComponentCategoryAsync(vm); vm.BrandOptions = await GetBrandOptionsAsync(vm.ComponentType); if (!id.HasValue) return vm;
         var p = await _db.Products.Include(x => x.ProductImages).FirstOrDefaultAsync(x => x.Id == id.Value && x.ProductType == ProductKinds.Component); if (p == null) return null;
-        vm.Id = p.Id; vm.Name = p.Name; vm.ProductCode = p.ProductCode; vm.Brand = p.Brand; vm.ComponentType = string.IsNullOrWhiteSpace(p.ComponentType) ? ComponentTypes.Other : p.ComponentType; vm.BrandOptions = await GetBrandOptionsAsync(vm.ComponentType, vm.Brand); vm.Price = p.Price; vm.DiscountPrice = p.DiscountPrice ?? p.SalePrice; vm.StockQuantity = p.StockQuantity; vm.WarrantyMonths = p.WarrantyMonths; vm.CategoryId = p.CategoryId; vm.Description = p.Description; vm.Specifications = p.Specifications; vm.SpecificationItems = ProductSpecificationKeyValueHelper.ParseStored(p.Specifications); vm.IsActive = p.IsActive; vm.ThumbnailImageUrl = p.ThumbnailImage;
+        vm.Id = p.Id; vm.Name = p.Name; vm.ProductCode = p.ProductCode; vm.Brand = p.Brand; vm.ComponentType = ComponentTypes.Normalize(p.ComponentType); vm.BrandOptions = await GetBrandOptionsAsync(vm.ComponentType, vm.Brand); vm.Price = p.Price; vm.DiscountPrice = p.DiscountPrice ?? p.SalePrice; vm.StockQuantity = p.StockQuantity; vm.WarrantyMonths = p.WarrantyMonths; vm.CategoryId = p.CategoryId; vm.Description = p.Description; vm.Specifications = p.Specifications; vm.SpecificationItems = ProductSpecificationKeyValueHelper.ParseStored(p.Specifications); vm.IsActive = p.IsActive; vm.ThumbnailImageUrl = p.ThumbnailImage;
         var imgs = p.ProductImages.OrderBy(x => x.SortOrder).ToList(); vm.ExistingImageOrder = imgs.Select(x => x.Id).ToList(); vm.ExistingImages = imgs.Select(x => new ProductImageItemVm{Id=x.Id, ImageUrl=x.ImageUrl, IsPrimary=x.IsPrimary, SortOrder=x.SortOrder}).ToList(); return vm;
     }
     private async Task PopulateCategoriesAsync(AdminProductUpsertVm vm) => vm.Categories = await _db.Categories.OrderBy(x => x.Name).ToListAsync();
@@ -154,7 +159,7 @@ public class AdminComponentsController : Controller
     }
     private async Task<List<string>> GetBrandOptionsAsync(string? componentType, string? currentBrand = null)
     {
-        var normalizedType = string.IsNullOrWhiteSpace(componentType) ? ComponentTypes.Other : componentType.Trim();
+        var normalizedType = ComponentTypes.Normalize(componentType);
         var productBrandsQuery = _db.Products.AsNoTracking()
             .Where(p => p.ProductType == ProductKinds.Component && p.Brand != null && p.Brand != "" && p.Brand != "N/A");
         if (!string.IsNullOrWhiteSpace(componentType))
@@ -274,7 +279,7 @@ public class AdminComponentsController : Controller
     private void NormalizeComponentInput(AdminComponentUpsertVm vm)
     {
         vm.ProductType = ProductKinds.Component;
-        vm.ComponentType = string.IsNullOrWhiteSpace(vm.ComponentType) ? ComponentTypes.Other : vm.ComponentType.Trim();
+        vm.ComponentType = ComponentTypes.Normalize(vm.ComponentType);
         vm.Name = vm.Name?.Trim() ?? string.Empty;
         vm.Brand = string.IsNullOrWhiteSpace(vm.Brand) ? null : vm.Brand.Trim();
         vm.Description = vm.Description?.Trim();

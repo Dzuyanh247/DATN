@@ -11,12 +11,87 @@ public static class ProductKinds
 
 public static class ComponentTypes
 {
+    public const string CPU = "CPU";
+    public const string Mainboard = "Mainboard";
+    public const string RAM = "RAM";
+    public const string VGA = "VGA";
+    public const string Storage = "Storage";
+    public const string PSU = "PSU";
+    public const string Case = "Case";
+    public const string Cooler = "Cooler";
+    public const string Monitor = "Monitor";
+    public const string Keyboard = "Keyboard";
+    public const string Mouse = "Mouse";
+    public const string Headphone = "Headphone";
+    public const string MonitorArm = "MonitorArm";
     public const string Other = "Other";
+
     public static readonly List<string> All = new()
     {
-        "CPU", "Mainboard", "RAM", "VGA", "SSD", "HDD", "Storage", "PSU", "Case", "Cooler",
-        "Monitor", "Keyboard", "Mouse", "Headphone", "MonitorArm", Other
+        CPU, Mainboard, RAM, VGA, Storage, PSU, Case, Cooler,
+        Monitor, Keyboard, Mouse, Headphone, MonitorArm, Other
     };
+
+    public static readonly IReadOnlyDictionary<string, string> Labels = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+    {
+        [CPU] = "CPU",
+        [Mainboard] = "Mainboard - Bo mạch chủ",
+        [RAM] = "RAM",
+        [VGA] = "VGA - Card màn hình",
+        [Storage] = "Storage - SSD/HDD",
+        [PSU] = "PSU - Nguồn máy tính",
+        [Case] = "Case - Vỏ case",
+        [Cooler] = "Cooler - Tản nhiệt",
+        [Monitor] = "Monitor - Màn hình",
+        [Keyboard] = "Keyboard - Bàn phím",
+        [Mouse] = "Mouse - Chuột",
+        [Headphone] = "Headphone - Tai nghe",
+        [MonitorArm] = "MonitorArm - Giá treo màn hình",
+        [Other] = "Other - Khác"
+    };
+
+    public static readonly IReadOnlyDictionary<string, string> Slugs = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+    {
+        [CPU] = "cpu", [Mainboard] = "mainboard", [RAM] = "ram", [VGA] = "vga", [Storage] = "storage",
+        [PSU] = "psu", [Case] = "case", [Cooler] = "cooler", [Monitor] = "monitor", [Keyboard] = "keyboard",
+        [Mouse] = "mouse", [Headphone] = "headphone", [MonitorArm] = "monitor-arm", [Other] = "other"
+    };
+
+    public static string Normalize(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return Other;
+        var raw = value.Trim();
+        var compact = RemoveVietnameseDiacritics(raw).ToLowerInvariant()
+            .Replace("_", string.Empty)
+            .Replace("-", string.Empty)
+            .Replace("/", string.Empty)
+            .Replace(" ", string.Empty);
+
+        if (compact.Contains("mainboard") || compact.Contains("bomachchu") || compact.Contains("motherboard")) return Mainboard;
+        if (compact == "cpu" || compact.Contains("bovixuly") || compact.Contains("processor")) return CPU;
+        if (compact.Contains("ram") || compact.Contains("bonhotrong")) return RAM;
+        if (compact.Contains("vga") || compact.Contains("cardmanhinh") || compact.Contains("gpu")) return VGA;
+        if (compact.Contains("storage") || compact.Contains("ssd") || compact.Contains("hdd") || compact.Contains("ocung")) return Storage;
+        if (compact.Contains("psu") || compact.Contains("nguon")) return PSU;
+        if (compact.Contains("case") || compact.Contains("vocase")) return Case;
+        if (compact.Contains("cooler") || compact.Contains("tannhiet")) return Cooler;
+        if (compact.Contains("monitorarm") || compact.Contains("giatreomanhinh")) return MonitorArm;
+        if (compact.Contains("monitor") || compact.Contains("manhinh")) return Monitor;
+        if (compact.Contains("keyboard") || compact.Contains("banphim")) return Keyboard;
+        if (compact.Contains("mouse") || compact.Contains("chuot")) return Mouse;
+        if (compact.Contains("headphone") || compact.Contains("tainghe") || compact.Contains("headset")) return Headphone;
+        return All.FirstOrDefault(type => string.Equals(type, raw, StringComparison.OrdinalIgnoreCase)) ?? Other;
+    }
+
+    public static string GetLabel(string? value) => Labels.TryGetValue(Normalize(value), out var label) ? label : Labels[Other];
+    public static string GetSlug(string? value) => Slugs.TryGetValue(Normalize(value), out var slug) ? slug : Slugs[Other];
+
+    private static string RemoveVietnameseDiacritics(string value)
+    {
+        var normalized = value.Replace('đ', 'd').Replace('Đ', 'D').Normalize(System.Text.NormalizationForm.FormD);
+        var chars = normalized.Where(c => System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c) != System.Globalization.UnicodeCategory.NonSpacingMark).ToArray();
+        return new string(chars).Normalize(System.Text.NormalizationForm.FormC);
+    }
 }
 
 public class Role : BaseEntity
