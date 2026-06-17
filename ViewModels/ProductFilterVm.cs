@@ -8,6 +8,7 @@ public class ProductFilterVm
     public int? CategoryId { get; set; }
     public string? CategorySlug { get; set; }
     public string? Brand { get; set; }
+    public string? Sort { get; set; }
     public decimal? MinPrice { get; set; }
     public decimal? MaxPrice { get; set; }
     public string[] PriceRanges { get; set; } = Array.Empty<string>();

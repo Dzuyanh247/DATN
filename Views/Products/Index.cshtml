@@ -30,11 +30,11 @@
                 <input type="hidden" name="categoryId" value="@Model.CategoryId" />
                 <input type="hidden" name="categorySlug" value="@Model.CategorySlug" />
                 <input type="hidden" name="keyword" value="@Model.Keyword" />
+                <input type="hidden" name="sort" value="@Model.Sort" />
 
                 <div class="products-filter-header">
                     <div>
-                        <i class="bi bi-sliders"></i>
-                        <span>Bộ lọc sản phẩm</span>
+                        <span>LỌC SẢN PHẨM</span>
                     </div>
                     <a asp-controller="Products" asp-action="Index"
                        asp-route-categoryId="@Model.CategoryId"
@@ -43,7 +43,7 @@
                 </div>
 
                 <details class="products-filter-group" open>
-                    <summary>Khoảng giá <i class="bi bi-chevron-down"></i></summary>
+                    <summary>KHOẢNG GIÁ <i class="bi bi-chevron-down"></i></summary>
                     <div class="products-filter-options">
                         @foreach (var option in Model.PriceRangeOptions)
                         {
@@ -59,7 +59,7 @@
                 </details>
 
                 <details class="products-filter-group" open>
-                    <summary>Loại linh kiện <i class="bi bi-chevron-down"></i></summary>
+                    <summary>LOẠI LINH KIỆN <i class="bi bi-chevron-down"></i></summary>
                     <div class="products-filter-options component-filter-options">
                         @foreach (var group in Model.ComponentTypeGroups)
                         {
@@ -79,7 +79,7 @@
                 </details>
 
                 <details class="products-filter-group" open>
-                    <summary>Thương hiệu <i class="bi bi-chevron-down"></i></summary>
+                    <summary>THƯƠNG HIỆU <i class="bi bi-chevron-down"></i></summary>
                     <div class="products-filter-options">
                         @if (Model.BrandOptions.Count == 0)
                         {
@@ -123,7 +123,25 @@
             </form>
         </aside>
 
-        <section class="products-results" aria-live="polite">
+        <section class="products-results" id="product-list" aria-live="polite">
+            <div class="products-results-toolbar">
+                <h2>Tìm thấy <span>@Model.Products.Count.ToString("N0")</span> sản phẩm</h2>
+                <form method="get" asp-controller="Products" asp-action="Index" class="products-sort-form" id="product-sort-form">
+                    <input type="hidden" name="categoryId" value="@Model.CategoryId" />
+                    <input type="hidden" name="categorySlug" value="@Model.CategorySlug" />
+                    <input type="hidden" name="keyword" value="@Model.Keyword" />
+                    @foreach (var value in Model.PriceRanges) { <input type="hidden" name="priceRanges" value="@value" /> }
+                    @foreach (var value in Model.Brands) { <input type="hidden" name="brands" value="@value" /> }
+                    @foreach (var value in Model.ComponentTypes) { <input type="hidden" name="componentTypes" value="@value" /> }
+                    @foreach (var value in Model.Specs) { <input type="hidden" name="specs" value="@value" /> }
+                    <select name="sort" class="form-select form-select-sm" aria-label="Sắp xếp sản phẩm">
+                        <option value="newest" selected="@(Model.Sort == "newest")">Sắp xếp theo</option>
+                        <option value="price_asc" selected="@(Model.Sort == "price_asc")">Giá tăng dần</option>
+                        <option value="price_desc" selected="@(Model.Sort == "price_desc")">Giá giảm dần</option>
+                        <option value="name_asc" selected="@(Model.Sort == "name_asc")">Tên A-Z</option>
+                    </select>
+                </form>
+            </div>
             @if (Model.IsEquivalentSearch)
             {
                 <div class="products-equivalent-notice">
@@ -171,11 +189,12 @@
     <script>
         (() => {
             const filterForm = document.getElementById('product-filter-form');
+            const sortForm = document.getElementById('product-sort-form');
             if (!filterForm) return;
 
-            const scrollStorageKey = 'productsFilterScrollY';
+            const scrollStorageKey = `productsFilterScrollY:${location.pathname}`;
             const saveScrollPosition = () => {
-                sessionStorage.setItem('productsFilterScrollY', window.scrollY);
+                sessionStorage.setItem(scrollStorageKey, window.scrollY);
             };
             const restoreScrollPosition = () => {
                 const savedY = sessionStorage.getItem(scrollStorageKey);
@@ -197,6 +216,10 @@
             filterForm.addEventListener('submit', saveScrollPosition);
             filterForm.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
                 checkbox.addEventListener('change', () => filterForm.requestSubmit());
+            });
+            sortForm?.querySelector('select[name="sort"]')?.addEventListener('change', () => {
+                saveScrollPosition();
+                sortForm.requestSubmit();
             });
             document.querySelectorAll('[data-preserve-filter-scroll]').forEach(link => {
                 link.addEventListener('click', saveScrollPosition);
