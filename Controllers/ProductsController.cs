@@ -33,7 +33,8 @@ public class ProductsController : Controller
         string[]? specs,
         string[]? cpu,
         string[]? ram,
-        string[]? gpu)
+        string[]? gpu,
+        string? sort)
     {
         var vm = new ProductFilterVm
         {
@@ -41,6 +42,7 @@ public class ProductsController : Controller
             CategoryId = categoryId,
             CategorySlug = categorySlug,
             Brand = brand,
+            Sort = NormalizeSort(sort),
             MinPrice = minPrice,
             MaxPrice = maxPrice,
             PriceRanges = CleanSelections(priceRanges),
@@ -92,14 +94,14 @@ public class ProductsController : Controller
             filteredProducts = ApplySpecFilter(filteredProducts, vm.Specs);
 
         vm.Categories = await _db.Categories.OrderBy(category => category.Name).ToListAsync();
-        vm.Products = filteredProducts.ToList();
+        vm.Products = ApplySort(filteredProducts, vm.Sort).ToList();
 
         return View(vm);
     }
 
     public Task<IActionResult> Category(string? type, string? brand)
     {
-        return Index(null, null, null, brand, type, null, null, null, null, null, null, null, null, null);
+        return Index(null, null, null, brand, type, null, null, null, null, null, null, null, null, null, null);
     }
 
     public async Task<IActionResult> Detail(int id, int? rating)
@@ -143,6 +145,25 @@ public class ProductsController : Controller
 
         return View(vm);
     }
+
+
+    private static string NormalizeSort(string? sort) =>
+        sort?.Trim().ToLowerInvariant() switch
+        {
+            "price_asc" => "price_asc",
+            "price_desc" => "price_desc",
+            "name_asc" => "name_asc",
+            _ => "newest"
+        };
+
+    private static IEnumerable<Product> ApplySort(IEnumerable<Product> products, string? sort) =>
+        NormalizeSort(sort) switch
+        {
+            "price_asc" => products.OrderBy(ProductFilterFacetHelper.GetEffectivePrice).ThenByDescending(product => product.CreatedAt),
+            "price_desc" => products.OrderByDescending(ProductFilterFacetHelper.GetEffectivePrice).ThenByDescending(product => product.CreatedAt),
+            "name_asc" => products.OrderBy(product => product.Name),
+            _ => products.OrderByDescending(product => product.CreatedAt)
+        };
 
     private static string[] CleanSelections(string[]? values) =>
         values?
