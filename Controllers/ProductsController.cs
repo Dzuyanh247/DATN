@@ -227,8 +227,8 @@ public class ProductsController : Controller
             .ToListAsync();
 
         return componentCategoryIds.Count == 0
-            ? query.Where(product => product.ProductType == ProductKinds.Component)
-            : query.Where(product => product.ProductType == ProductKinds.Component || componentCategoryIds.Contains(product.CategoryId));
+            ? query.Where(product => product.ProductType == ProductKinds.Component || product.ProductType.Contains("Linh"))
+            : query.Where(product => product.ProductType == ProductKinds.Component || product.ProductType.Contains("Linh") || componentCategoryIds.Contains(product.CategoryId));
     }
 
     private async Task<bool> IsComponentListingAsync(string? type, string? categorySlug, int? categoryId)
@@ -271,15 +271,24 @@ public class ProductsController : Controller
         if (!vm.IsComponentListing) vm.BrandOptions.Clear();
         vm.SpecFilterGroups = string.IsNullOrWhiteSpace(vm.Type) ? new List<ProductSpecFilterGroupVm>() : BuildSpecFilterGroups(products, vm.Type);
 
-        vm.CpuOptions = BuildParsedOptions(products, parsedFacets, facets => facets.Cpu)
-            .OrderBy(option => option.Label)
-            .ToList();
-        vm.RamOptions = BuildParsedOptions(products, parsedFacets, facets => facets.Ram)
-            .OrderBy(option => ParseRamCapacity(option.Value))
-            .ToList();
-        vm.GpuOptions = BuildParsedOptions(products, parsedFacets, facets => facets.Gpu)
-            .OrderBy(option => option.Label)
-            .ToList();
+        if (string.Equals(ComponentTypes.Normalize(vm.Type), ComponentTypes.CPU, StringComparison.OrdinalIgnoreCase))
+        {
+            vm.CpuOptions = BuildParsedOptions(products, parsedFacets, facets => facets.Cpu)
+                .OrderBy(option => option.Label)
+                .ToList();
+        }
+        if (string.Equals(ComponentTypes.Normalize(vm.Type), ComponentTypes.RAM, StringComparison.OrdinalIgnoreCase))
+        {
+            vm.RamOptions = BuildParsedOptions(products, parsedFacets, facets => facets.Ram)
+                .OrderBy(option => ParseRamCapacity(option.Value))
+                .ToList();
+        }
+        if (string.Equals(ComponentTypes.Normalize(vm.Type), ComponentTypes.VGA, StringComparison.OrdinalIgnoreCase))
+        {
+            vm.GpuOptions = BuildParsedOptions(products, parsedFacets, facets => facets.Gpu)
+                .OrderBy(option => option.Label)
+                .ToList();
+        }
     }
 
     private static List<ProductFilterGroupVm> BuildComponentTypeGroups(IReadOnlyCollection<Product> products, string? currentType)
@@ -295,39 +304,29 @@ public class ProductsController : Controller
             {
                 Title = "Linh kiện máy tính",
                 Options = BuildComponentOptions(counts, currentType,
-                    ("CPU", "CPU"),
-                    ("Mainboard", "Mainboard - Bo mạch chủ"),
-                    ("RAM", "RAM"),
-                    ("VGA", "VGA - Card màn hình"),
-                    ("Storage", "Storage - SSD/HDD"),
-                    ("Cooler", "Tản nhiệt"),
-                    ("Case", "Vỏ case"),
-                    ("PSU", "Nguồn (PSU)"))
+                    ComponentTypes.CPU, ComponentTypes.Mainboard, ComponentTypes.RAM, ComponentTypes.VGA,
+                    ComponentTypes.Storage, ComponentTypes.Cooler, ComponentTypes.Case, ComponentTypes.PSU)
             },
             new()
             {
                 Title = "Ngoại vi",
                 Options = BuildComponentOptions(counts, currentType,
-                    ("Monitor", "Monitor - Màn hình"),
-                    ("Keyboard", "Keyboard - Bàn phím"),
-                    ("Mouse", "Mouse - Chuột"),
-                    ("Headphone", "Headphone - Tai nghe"),
-                    ("MonitorArm", "MonitorArm - Giá treo màn hình"),
-                    ("Other", "Other - Khác"))
+                    ComponentTypes.Monitor, ComponentTypes.Keyboard, ComponentTypes.Mouse,
+                    ComponentTypes.Headphone, ComponentTypes.MonitorArm, ComponentTypes.Other)
             }
         };
 
         return groups.Where(group => group.Options.Count > 0).ToList();
     }
 
-    private static List<ProductFilterOptionVm> BuildComponentOptions(Dictionary<string, int> counts, string? currentType, params (string Value, string Label)[] options) =>
+    private static List<ProductFilterOptionVm> BuildComponentOptions(Dictionary<string, int> counts, string? currentType, params string[] options) =>
         options
             .Select(option => new ProductFilterOptionVm
             {
-                Value = option.Value,
-                Label = option.Label,
-                Count = GetComponentTypeCount(counts, option.Value),
-                Url = $"/linh-kien/{GetComponentTypeSlug(option.Value)}"
+                Value = option,
+                Label = ComponentTypes.GetLabel(option),
+                Count = GetComponentTypeCount(counts, option),
+                Url = $"/linh-kien/{GetComponentTypeSlug(option)}"
             })
             .Where(option => option.Count > 0 || string.Equals(option.Value, currentType, StringComparison.OrdinalIgnoreCase))
             .ToList();
@@ -474,11 +473,11 @@ public class ProductsController : Controller
     private static string[] GetComponentTypeAliases(string type) => ComponentTypes.Normalize(type) switch
     {
         ComponentTypes.CPU => new[] { "CPU", "CPU - Bộ vi xử lý", "Bộ vi xử lý", "cpu" },
-        ComponentTypes.Mainboard => new[] { "Mainboard", "MAINBOARD", "Mainboard - Bo mạch chủ", "Bo mạch chủ", "Motherboard", "mainboard" },
+        ComponentTypes.Mainboard => new[] { "Mainboard", "MAINBOARD", "Mainboard - Bo mạch chủ", "Bo mạch chủ", "Bo mach chu", "Motherboard", "mainboard", "main" },
         ComponentTypes.RAM => new[] { "RAM", "Ram", "Bộ nhớ trong" },
         ComponentTypes.VGA => new[] { "VGA", "GPU", "VGA - Card màn hình", "Card màn hình" },
         ComponentTypes.Storage => new[] { "Storage", "SSD", "HDD", "SSD/HDD", "Ổ cứng SSD/HDD", "Ổ cứng" },
-        ComponentTypes.PSU => new[] { "PSU", "PSU - Nguồn máy tính", "Nguồn máy tính" },
+        ComponentTypes.PSU => new[] { "PSU", "PSU - Nguồn máy tính", "Nguồn máy tính", "Nguồn" },
         ComponentTypes.Case => new[] { "Case", "Case - Vỏ case", "Vỏ case" },
         ComponentTypes.Cooler => new[] { "Cooler", "Cooler - Tản nhiệt", "Tản nhiệt" },
         ComponentTypes.Monitor => new[] { "Monitor", "Monitor - Màn hình", "Màn hình" },

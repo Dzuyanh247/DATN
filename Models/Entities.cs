@@ -34,9 +34,9 @@ public static class ComponentTypes
 
     public static readonly IReadOnlyDictionary<string, string> Labels = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
     {
-        [CPU] = "CPU",
+        [CPU] = "CPU - Bộ vi xử lý",
         [Mainboard] = "Mainboard - Bo mạch chủ",
-        [RAM] = "RAM",
+        [RAM] = "RAM - Bộ nhớ trong",
         [VGA] = "VGA - Card màn hình",
         [Storage] = "Storage - SSD/HDD",
         [PSU] = "PSU - Nguồn máy tính",
@@ -67,7 +67,7 @@ public static class ComponentTypes
             .Replace("/", string.Empty)
             .Replace(" ", string.Empty);
 
-        if (compact.Contains("mainboard") || compact.Contains("bomachchu") || compact.Contains("motherboard")) return Mainboard;
+        if (compact == "main" || compact.Contains("mainboard") || compact.Contains("bomachchu") || compact.Contains("motherboard")) return Mainboard;
         if (compact == "cpu" || compact.Contains("bovixuly") || compact.Contains("processor")) return CPU;
         if (compact.Contains("ram") || compact.Contains("bonhotrong")) return RAM;
         if (compact.Contains("vga") || compact.Contains("cardmanhinh") || compact.Contains("gpu")) return VGA;
