@@ -158,6 +158,21 @@ app.MapControllerRoute(
     pattern: "{area:exists}/{controller=Dashboard}/{action=Index}/{id?}");
 
 app.MapControllerRoute(
+    name: "components-root",
+    pattern: "linh-kien",
+    defaults: new { controller = "Products", action = "Index", categorySlug = "linh-kien" });
+
+app.MapControllerRoute(
+    name: "components-root-alt",
+    pattern: "linh-kien-may-tinh",
+    defaults: new { controller = "Products", action = "Index", categorySlug = "linh-kien" });
+
+app.MapControllerRoute(
+    name: "components-by-type",
+    pattern: "linh-kien/{typeSlug}",
+    defaults: new { controller = "Products", action = "Index", categorySlug = "linh-kien" });
+
+app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
 

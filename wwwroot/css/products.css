@@ -199,3 +199,4 @@
 @media(max-width:991.98px){.products-layout{grid-template-columns:240px minmax(0,1fr);gap:12px}.products-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.products-grid .ttg-product-image-wrap{height:145px;flex-basis:145px}}
 @media(max-width:767.98px){.products-layout{grid-template-columns:1fr}.products-filter-sidebar{position:static}.products-filter-sidebar form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.products-filter-header,.products-apply-filter{grid-column:1/-1}.products-results-toolbar{padding-inline:0}.products-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:479.98px){.products-filter-sidebar form{display:block}.products-results-toolbar{align-items:flex-start;flex-direction:column}.products-grid{grid-template-columns:1fr}}
+.products-filter-link{grid-template-columns:minmax(0,1fr) auto;text-decoration:none}.products-filter-link.is-active{color:#e60000;font-weight:800}.products-filter-link span{min-width:0}

@@ -2,7 +2,9 @@
 @{
     ViewData["Title"] = "Danh sách sản phẩm";
     var currentCategory = Model.Categories.FirstOrDefault(category => category.Id == Model.CategoryId);
-    var pageTitle = currentCategory?.Name ?? "Tất cả sản phẩm";
+    var pageTitle = Model.IsComponentListing
+        ? (Model.HasScopedComponentType ? Model.ComponentTypeLabel ?? Model.Type ?? "Linh kiện máy tính" : "Linh kiện máy tính")
+        : currentCategory?.Name ?? "Tất cả sản phẩm";
 
     bool ShouldShowSingleChoiceOption(ProductFilterOptionVm option, string[] selectedValues)
     {
@@ -70,7 +72,7 @@
 
     <div class="products-layout" id="product-filter">
         <aside class="products-filter-sidebar" aria-label="Bộ lọc sản phẩm">
-            <form method="get" asp-controller="Products" asp-action="Index" id="product-filter-form">
+            <form method="get" action="@(Model.IsComponentListing ? (Model.HasScopedComponentType ? $"/linh-kien/{Model.TypeSlug}" : "/linh-kien") : Url.Action("Index", "Products"))" id="product-filter-form">
                 <input type="hidden" name="categoryId" value="@Model.CategoryId" />
                 <input type="hidden" name="categorySlug" value="@Model.CategorySlug" />
                 <input type="hidden" name="keyword" value="@Model.Keyword" />
@@ -80,9 +82,7 @@
                     <div>
                         <span>LỌC SẢN PHẨM</span>
                     </div>
-                    <a asp-controller="Products" asp-action="Index"
-                       asp-route-categoryId="@Model.CategoryId"
-                       asp-route-categorySlug="@Model.CategorySlug"
+                    <a href="@(Model.IsComponentListing ? (Model.HasScopedComponentType ? $"/linh-kien/{Model.TypeSlug}" : "/linh-kien") : Url.Action("Index", "Products", new { categoryId = Model.CategoryId, categorySlug = Model.CategorySlug }))"
                        class="products-clear-filter" data-preserve-filter-scroll>Xóa lọc</a>
                 </div>
 
@@ -123,12 +123,10 @@
                                 {
                                     continue;
                                 }
-                                    <label class="products-filter-option" for="@id">
-                                        <input id="@id" type="checkbox" name="componentTypes" value="@option.Value"
-                                               checked="@(isSelected)" />
-                                        <span>@option.Label</span>
+                                    <a class="products-filter-option products-filter-link @(isSelected ? "is-active" : string.Empty)" href="@option.Url" data-preserve-filter-scroll>
+                                        <span>» @option.Label</span>
                                         <small>(@option.Count)</small>
-                                    </label>
+                                    </a>
                                 }
                             }
                         </div>
@@ -266,13 +264,13 @@
         <section class="products-results" id="product-list" aria-live="polite">
             <div class="products-results-toolbar">
                 <h2>Tìm thấy <span>@Model.Products.Count.ToString("N0")</span> sản phẩm</h2>
-                <form method="get" asp-controller="Products" asp-action="Index" class="products-sort-form" id="product-sort-form">
+                <form method="get" action="@(Model.IsComponentListing ? (Model.HasScopedComponentType ? $"/linh-kien/{Model.TypeSlug}" : "/linh-kien") : Url.Action("Index", "Products"))" class="products-sort-form" id="product-sort-form">
                     <input type="hidden" name="categoryId" value="@Model.CategoryId" />
                     <input type="hidden" name="categorySlug" value="@Model.CategorySlug" />
                     <input type="hidden" name="keyword" value="@Model.Keyword" />
                     @foreach (var value in Model.PriceRanges) { <input type="hidden" name="priceRanges" value="@value" /> }
                     @foreach (var value in Model.Brands) { <input type="hidden" name="brands" value="@value" /> }
-                    @foreach (var value in Model.ComponentTypes) { <input type="hidden" name="componentTypes" value="@value" /> }
+                    
                     @foreach (var value in Model.Specs) { <input type="hidden" name="specs" value="@value" /> }
                     @foreach (var value in Model.Cpu) { <input type="hidden" name="cpu" value="@value" /> }
                     @foreach (var value in Model.Ram) { <input type="hidden" name="ram" value="@value" /> }
@@ -308,10 +306,7 @@
                             <span><i class="bi bi-check2"></i> Xóa bớt bộ lọc đang chọn</span>
                         </div>
                     }
-                    <a asp-controller="Products" asp-action="Index"
-                       asp-route-categoryId="@Model.CategoryId"
-                       asp-route-categorySlug="@Model.CategorySlug"
-                       asp-route-keyword="@Model.Keyword"
+                    <a href="@(Model.IsComponentListing ? (Model.HasScopedComponentType ? $"/linh-kien/{Model.TypeSlug}" : "/linh-kien") : Url.Action("Index", "Products", new { categoryId = Model.CategoryId, categorySlug = Model.CategorySlug, keyword = Model.Keyword }))"
                        class="btn btn-primary" data-preserve-filter-scroll>Xóa bộ lọc</a>
                 </div>
             }

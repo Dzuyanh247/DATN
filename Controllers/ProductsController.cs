@@ -25,6 +25,7 @@ public class ProductsController : Controller
         string? categorySlug,
         string? brand,
         string? type,
+        string? typeSlug,
         decimal? minPrice,
         decimal? maxPrice,
         string[]? priceRanges,
@@ -47,12 +48,19 @@ public class ProductsController : Controller
             MaxPrice = maxPrice,
             PriceRanges = CleanSelections(priceRanges),
             Brands = CleanSelections(brands).Concat(CleanSelections(string.IsNullOrWhiteSpace(brand) ? null : new[] { brand })).Distinct(StringComparer.OrdinalIgnoreCase).ToArray(),
-            ComponentTypes = CleanSelections(componentTypes).Concat(CleanSelections(string.IsNullOrWhiteSpace(type) ? null : new[] { type })).Distinct(StringComparer.OrdinalIgnoreCase).ToArray(),
+            Type = ResolveComponentType(type, typeSlug),
+            ComponentTypes = Array.Empty<string>(),
             Specs = CleanSelections(specs),
             Cpu = CleanSelections(cpu),
             Ram = CleanSelections(ram),
             Gpu = CleanSelections(gpu)
         };
+        vm.ComponentTypes = CleanSelections(componentTypes)
+            .Concat(CleanSelections(string.IsNullOrWhiteSpace(vm.Type) ? null : new[] { vm.Type }))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        vm.ComponentTypeLabel = string.IsNullOrWhiteSpace(vm.Type) ? null : GetComponentTypeLabel(vm.Type);
+        vm.TypeSlug = string.IsNullOrWhiteSpace(vm.Type) ? null : GetComponentTypeSlug(vm.Type);
 
         vm.Keyword = vm.Keyword?.Trim();
         var query = _db.Products.Include(p => p.Category).AsNoTracking().AsQueryable();
@@ -65,7 +73,7 @@ public class ProductsController : Controller
                 .FirstOrDefaultAsync();
         }
 
-        vm.IsComponentListing = await IsComponentListingAsync(type, vm.CategorySlug, vm.CategoryId);
+        vm.IsComponentListing = await IsComponentListingAsync(vm.Type, vm.CategorySlug, vm.CategoryId);
         if (!vm.IsComponentListing)
         {
             vm.Brands = Array.Empty<string>();
@@ -75,11 +83,19 @@ public class ProductsController : Controller
         if (vm.CategoryId.HasValue)
             query = query.Where(p => p.CategoryId == vm.CategoryId.Value);
 
-        if (!string.IsNullOrWhiteSpace(type))
+        if (!string.IsNullOrWhiteSpace(vm.Type))
         {
-            var scopedComponentType = type.Trim();
-            query = query.Where(p => p.ComponentType != null && p.ComponentType == scopedComponentType);
+            var scopedComponentType = vm.Type.Trim();
+            query = string.Equals(scopedComponentType, "Storage", StringComparison.OrdinalIgnoreCase)
+                ? query.Where(p => p.ProductType == ProductKinds.Component && (p.ComponentType == "Storage" || p.ComponentType == "SSD" || p.ComponentType == "HDD"))
+                : query.Where(p => p.ProductType == ProductKinds.Component && p.ComponentType != null && p.ComponentType == scopedComponentType);
         }
+        else if (vm.IsComponentListing)
+        {
+            query = query.Where(p => p.ProductType == ProductKinds.Component);
+        }
+
+        query = query.Where(p => p.IsActive);
 
         var categoryProducts = await query
             .ToListAsync();
@@ -87,7 +103,7 @@ public class ProductsController : Controller
         PopulateFilterOptions(vm, categoryProducts, parsedFacets);
 
         if (vm.ComponentTypes.Length > 0)
-            query = query.Where(p => p.ComponentType != null && vm.ComponentTypes.Contains(p.ComponentType));
+            query = ApplyComponentTypeQuery(query, vm.ComponentTypes);
         if (vm.MinPrice.HasValue)
             query = query.Where(p => ((p.DiscountPrice ?? p.SalePrice) ?? p.Price) >= vm.MinPrice.Value);
         if (vm.MaxPrice.HasValue)
@@ -119,7 +135,7 @@ public class ProductsController : Controller
 
     public Task<IActionResult> Category(string? type, string? brand)
     {
-        return Index(null, null, null, brand, type, null, null, null, null, null, null, null, null, null, null);
+        return Index(keyword: null, categoryId: null, categorySlug: null, brand: brand, type: type, typeSlug: null, minPrice: null, maxPrice: null, priceRanges: null, brands: null, componentTypes: null, specs: null, cpu: null, ram: null, gpu: null, sort: null);
     }
 
     public async Task<IActionResult> Detail(int id, int? rating)
@@ -164,6 +180,42 @@ public class ProductsController : Controller
         return View(vm);
     }
 
+
+    private static string? ResolveComponentType(string? type, string? typeSlug)
+    {
+        if (!string.IsNullOrWhiteSpace(type)) return type.Trim();
+        if (string.IsNullOrWhiteSpace(typeSlug)) return null;
+
+        var normalizedSlug = typeSlug.Trim().ToLowerInvariant();
+        return ComponentTypeCatalog.FirstOrDefault(item => item.Slug == normalizedSlug).Type;
+    }
+
+    private static string GetComponentTypeSlug(string type) =>
+        ComponentTypeCatalog.FirstOrDefault(item => string.Equals(item.Type, type, StringComparison.OrdinalIgnoreCase)).Slug
+        ?? type.Trim().ToLowerInvariant();
+
+    private static string GetComponentTypeLabel(string type) =>
+        ComponentTypeCatalog.FirstOrDefault(item => string.Equals(item.Type, type, StringComparison.OrdinalIgnoreCase)).Label
+        ?? type;
+
+    private static readonly (string Type, string Slug, string Label)[] ComponentTypeCatalog =
+    [
+        ("CPU", "cpu", "CPU"),
+        ("Mainboard", "mainboard", "Mainboard - Bo mạch chủ"),
+        ("RAM", "ram", "RAM"),
+        ("VGA", "vga", "VGA - Card màn hình"),
+        ("Storage", "ssd-hdd", "Ổ cứng SSD/HDD"),
+        ("SSD", "ssd", "Ổ cứng SSD"),
+        ("HDD", "hdd", "Ổ cứng HDD"),
+        ("PSU", "psu", "PSU - Nguồn máy tính"),
+        ("Case", "case", "Case - Vỏ case"),
+        ("Cooler", "cooler", "Cooler - Tản nhiệt"),
+        ("Monitor", "monitor", "Monitor - Màn hình"),
+        ("Keyboard", "keyboard", "Keyboard - Bàn phím"),
+        ("Mouse", "mouse", "Mouse - Chuột"),
+        ("Headphone", "headphone", "Headphone - Tai nghe"),
+        ("MonitorArm", "monitor-arm", "MonitorArm - Giá treo màn hình")
+    ];
 
     private static string NormalizeSort(string? sort) =>
         sort?.Trim().ToLowerInvariant() switch
@@ -227,9 +279,9 @@ public class ProductsController : Controller
             .OrderBy(option => option.Label)
             .ToList();
 
-        vm.ComponentTypeGroups = vm.IsComponentListing ? BuildComponentTypeGroups(products) : new List<ProductFilterGroupVm>();
+        vm.ComponentTypeGroups = vm.IsComponentListing ? BuildComponentTypeGroups(products, vm.Type) : new List<ProductFilterGroupVm>();
         if (!vm.IsComponentListing) vm.BrandOptions.Clear();
-        vm.SpecFilterGroups = BuildSpecFilterGroups(products);
+        vm.SpecFilterGroups = string.IsNullOrWhiteSpace(vm.Type) ? new List<ProductSpecFilterGroupVm>() : BuildSpecFilterGroups(products, vm.Type);
 
         vm.CpuOptions = BuildParsedOptions(products, parsedFacets, facets => facets.Cpu)
             .OrderBy(option => option.Label)
@@ -242,7 +294,7 @@ public class ProductsController : Controller
             .ToList();
     }
 
-    private static List<ProductFilterGroupVm> BuildComponentTypeGroups(IReadOnlyCollection<Product> products)
+    private static List<ProductFilterGroupVm> BuildComponentTypeGroups(IReadOnlyCollection<Product> products, string? currentType)
     {
         var counts = products
             .Where(product => !string.IsNullOrWhiteSpace(product.ComponentType))
@@ -254,7 +306,7 @@ public class ProductsController : Controller
             new()
             {
                 Title = "Linh kiện máy tính",
-                Options = BuildComponentOptions(counts,
+                Options = BuildComponentOptions(counts, currentType,
                     ("CPU", "CPU"),
                     ("Mainboard", "Mainboard"),
                     ("RAM", "RAM"),
@@ -269,7 +321,7 @@ public class ProductsController : Controller
             new()
             {
                 Title = "Ngoại vi",
-                Options = BuildComponentOptions(counts,
+                Options = BuildComponentOptions(counts, currentType,
                     ("Monitor", "Màn hình"),
                     ("Keyboard", "Bàn phím"),
                     ("Mouse", "Chuột"),
@@ -280,24 +332,34 @@ public class ProductsController : Controller
         return groups.Where(group => group.Options.Count > 0).ToList();
     }
 
-    private static List<ProductFilterOptionVm> BuildComponentOptions(Dictionary<string, int> counts, params (string Value, string Label)[] options) =>
+    private static List<ProductFilterOptionVm> BuildComponentOptions(Dictionary<string, int> counts, string? currentType, params (string Value, string Label)[] options) =>
         options
             .Select(option => new ProductFilterOptionVm
             {
                 Value = option.Value,
                 Label = option.Label,
-                Count = counts.GetValueOrDefault(option.Value)
+                Count = GetComponentTypeCount(counts, option.Value),
+                Url = $"/linh-kien/{GetComponentTypeSlug(option.Value)}"
             })
-            .Where(option => option.Count > 0)
+            .Where(option => option.Count > 0 || string.Equals(option.Value, currentType, StringComparison.OrdinalIgnoreCase))
             .ToList();
 
-    private static List<ProductSpecFilterGroupVm> BuildSpecFilterGroups(IEnumerable<Product> products) =>
+    private static int GetComponentTypeCount(Dictionary<string, int> counts, string type)
+    {
+        if (string.Equals(type, "Storage", StringComparison.OrdinalIgnoreCase))
+            return counts.GetValueOrDefault("Storage") + counts.GetValueOrDefault("SSD") + counts.GetValueOrDefault("HDD");
+
+        return counts.GetValueOrDefault(type);
+    }
+
+    private static List<ProductSpecFilterGroupVm> BuildSpecFilterGroups(IEnumerable<Product> products, string componentType) =>
         products
             .SelectMany(product => ProductSpecificationKeyValueHelper.ParseStored(product.Specifications)
                 .Where(spec => !string.IsNullOrWhiteSpace(spec.Name) && !string.IsNullOrWhiteSpace(spec.Value))
                 .Select(spec => new { product.Id, Name = spec.Name.Trim(), Value = spec.Value.Trim() }))
             .Where(spec => ProductFilterFacetHelper.IsRenderableFilterOption(spec.Name)
-                && ProductFilterFacetHelper.IsRenderableFilterOption(spec.Value))
+                && ProductFilterFacetHelper.IsRenderableFilterOption(spec.Value)
+                && IsSpecAllowedForComponent(componentType, spec.Name))
             .GroupBy(spec => spec.Name, StringComparer.OrdinalIgnoreCase)
             .Where(group => group.Select(spec => spec.Value).Distinct(StringComparer.OrdinalIgnoreCase).Count() > 1)
             .OrderBy(group => GetSpecGroupSortOrder(group.Key))
@@ -320,6 +382,45 @@ public class ProductsController : Controller
             })
             .Where(group => group.Options.Count > 0)
             .ToList();
+
+    private static bool IsSpecAllowedForComponent(string componentType, string specName)
+    {
+        var allowedKeys = GetAllowedSpecKeys(componentType);
+        if (allowedKeys.Count == 0) return true;
+        return allowedKeys.Contains(NormalizeSpecKey(specName));
+    }
+
+    private static HashSet<string> GetAllowedSpecKeys(string componentType)
+    {
+        var keys = componentType.Trim().ToLowerInvariant() switch
+        {
+            "cpu" => new[] { "dongcpu", "series", "socket", "thehecpu", "thehe" },
+            "ram" => new[] { "dungluong", "busram", "bus", "loairam", "chuanram" },
+            "vga" => new[] { "chipset", "dungluongvram", "vram", "seriesgpu", "series" },
+            "mainboard" => new[] { "socket", "chipset", "formfactor", "ramhotro", "chuanram" },
+            "ssd" or "hdd" or "storage" => new[] { "dungluong", "chuanocung", "giaotiep", "loaiocung" },
+            "psu" => new[] { "congsuat", "chuannnguon", "chuannguon", "hieusuat80plus", "80plus" },
+            "monitor" => new[] { "kichthuoc", "tansoquet", "dophangiai", "tamnen" },
+            "keyboard" => new[] { "loaiswitch", "switch", "layout", "ketnoi" },
+            "mouse" => new[] { "dpi", "ketnoi", "loaicambien", "cambien" },
+            "headphone" => new[] { "ketnoi", "kieutainghe", "amthanh" },
+            "case" => new[] { "formmainhotro", "formfactor", "kichthuoccase", "kichthuoc" },
+            "cooler" => new[] { "loaitan", "sockethotro", "socket" },
+            _ => Array.Empty<string>()
+        };
+        return keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static string NormalizeSpecKey(string value)
+    {
+        var normalized = value.Trim().ToLowerInvariant()
+            .Replace("đ", "d");
+        var chars = normalized.Normalize(System.Text.NormalizationForm.FormD)
+            .Where(c => System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c) != System.Globalization.UnicodeCategory.NonSpacingMark)
+            .Where(char.IsLetterOrDigit)
+            .ToArray();
+        return new string(chars);
+    }
 
     private static int GetSpecGroupSortOrder(string name)
     {
@@ -372,6 +473,16 @@ public class ProductsController : Controller
 
     private static bool MatchesAny(HashSet<string> productValues, string[] selectedValues) =>
         selectedValues.Length == 0 || selectedValues.Any(productValues.Contains);
+
+    private static IQueryable<Product> ApplyComponentTypeQuery(IQueryable<Product> query, string[] componentTypes)
+    {
+        if (componentTypes.Length == 0) return query;
+        var expandedTypes = componentTypes
+            .SelectMany(type => string.Equals(type, "Storage", StringComparison.OrdinalIgnoreCase) ? new[] { "Storage", "SSD", "HDD" } : new[] { type })
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        return query.Where(product => product.ComponentType != null && expandedTypes.Contains(product.ComponentType));
+    }
 
     private static List<Product> ApplyKeywordSearch(List<Product> products, ProductFilterVm vm)
     {
@@ -446,12 +557,16 @@ public class ProductsController : Controller
         if (selectedPairs.Length == 0)
             return products;
 
+        var selectedByName = selectedPairs
+            .GroupBy(pair => pair.Name, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
         return products.Where(product =>
         {
             var productSpecs = ProductSpecificationKeyValueHelper.ParseStored(product.Specifications);
-            return selectedPairs.All(selected => productSpecs.Any(spec =>
-                string.Equals(spec.Name?.Trim(), selected.Name, StringComparison.OrdinalIgnoreCase) &&
-                string.Equals(spec.Value?.Trim(), selected.Value, StringComparison.OrdinalIgnoreCase)));
+            return selectedByName.All(group => productSpecs.Any(spec =>
+                string.Equals(spec.Name?.Trim(), group.Key, StringComparison.OrdinalIgnoreCase) &&
+                group.Any(selected => string.Equals(spec.Value?.Trim(), selected.Value, StringComparison.OrdinalIgnoreCase))));
         });
     }
 
