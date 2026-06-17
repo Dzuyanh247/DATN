@@ -16,6 +16,10 @@ namespace Datn.PcStore.Controllers;
 
 public class AccountController : Controller
 {
+    private const int ResetCodeCooldownSeconds = 60;
+    private const int ResetCodeRateLimitMinutes = 15;
+    private const int ResetCodeMaxRequestsPerWindow = 3;
+
     private readonly ApplicationDbContext _db;
     private readonly IAuthService _authService;
     private readonly ICartService _cartService;
@@ -98,51 +102,15 @@ public class AccountController : Controller
             return RedirectToAction(nameof(VerifyResetCode));
         }
 
-        var code = RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6");
-        var now = DateTime.UtcNow;
-
         try
         {
-            var activeOtps = await _db.PasswordResetOtps
-                .Where(x => x.UserId == user.Id && !x.IsUsed)
-                .ToListAsync();
-
-            foreach (var oldOtp in activeOtps)
-            {
-                oldOtp.IsUsed = true;
-                oldOtp.UsedAt = now;
-            }
-
-            _db.PasswordResetOtps.Add(new PasswordResetOtp
-            {
-                UserId = user.Id,
-                Email = normalizedEmail,
-                CodeHash = HashOtp(normalizedEmail, code),
-                ExpiresAt = now.AddMinutes(10),
-                IsUsed = false,
-                CreatedAt = now
-            });
-            await _db.SaveChangesAsync();
+            await CreateAndSendResetOtpAsync(user, normalizedEmail);
         }
         catch (Exception ex) when (IsPasswordResetOtpStorageException(ex))
         {
             _logger.LogError(ex, "Không thể lưu OTP đặt lại mật khẩu cho {Email}. Kiểm tra migration/bảng PasswordResetOtps.", normalizedEmail);
             TempData["ErrorMessage"] = "Chức năng đặt lại mật khẩu đang được bảo trì. Vui lòng thử lại sau hoặc liên hệ cửa hàng để được hỗ trợ.";
             return View(vm);
-        }
-
-        var plainTextMessage = $"Mã xác nhận đặt lại mật khẩu KKSHOP của bạn là {code}. Mã có hiệu lực 10 phút.";
-        var htmlMessage = $"<p>Xin chào {System.Net.WebUtility.HtmlEncode(user.FullName)},</p>"
-            + $"<p>Mã xác nhận đặt lại mật khẩu KKSHOP của bạn là <strong>{code}</strong>.</p>"
-            + "<p>Mã có hiệu lực 10 phút. Vui lòng không chia sẻ mã này với bất kỳ ai.</p>";
-
-        try
-        {
-            await _emailSender.SendEmailAsync(
-                normalizedEmail,
-                "Mã xác nhận đặt lại mật khẩu KKSHOP",
-                htmlMessage,
-                plainTextMessage);
         }
         catch (Exception ex)
         {
@@ -157,12 +125,63 @@ public class AccountController : Controller
     }
 
     [HttpGet]
-    public IActionResult VerifyResetCode()
+    public async Task<IActionResult> VerifyResetCode()
     {
-        return View(new VerifyResetCodeViewModel
+        var email = TempData.Peek("ResetEmail") as string ?? string.Empty;
+        return View(await BuildVerifyResetCodeViewModelAsync(email));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ResendResetCode([FromForm] string email)
+    {
+        var normalizedEmail = ResolveResetEmail(email);
+        if (string.IsNullOrWhiteSpace(normalizedEmail))
         {
-            Email = TempData.Peek("ResetEmail") as string ?? string.Empty
-        });
+            return BadRequest(new { success = false, message = "Không tìm thấy email đặt lại mật khẩu. Vui lòng thực hiện lại yêu cầu quên mật khẩu." });
+        }
+
+        var user = await _db.Users.FirstOrDefaultAsync(x => x.Email == normalizedEmail);
+        if (user == null)
+        {
+            return Ok(new { success = true, message = "Nếu email hợp lệ, mã mới đã được gửi. Vui lòng kiểm tra email.", cooldownSeconds = ResetCodeCooldownSeconds });
+        }
+
+        var now = DateTime.UtcNow;
+        var lastOtp = await _db.PasswordResetOtps
+            .Where(x => x.UserId == user.Id)
+            .OrderByDescending(x => x.CreatedAt)
+            .FirstOrDefaultAsync();
+        var cooldownRemaining = GetCooldownRemainingSeconds(lastOtp?.CreatedAt, now);
+        if (cooldownRemaining > 0)
+        {
+            return StatusCode(StatusCodes.Status429TooManyRequests, new { success = false, message = $"Vui lòng chờ {cooldownRemaining}s trước khi gửi lại mã.", cooldownSeconds = cooldownRemaining });
+        }
+
+        var windowStart = now.AddMinutes(-ResetCodeRateLimitMinutes);
+        var requestCount = await _db.PasswordResetOtps.CountAsync(x => x.UserId == user.Id && x.CreatedAt >= windowStart);
+        if (requestCount >= ResetCodeMaxRequestsPerWindow)
+        {
+            return StatusCode(StatusCodes.Status429TooManyRequests, new { success = false, message = "Bạn đã yêu cầu mã quá nhiều lần. Vui lòng thử lại sau 15 phút.", cooldownSeconds = 0 });
+        }
+
+        try
+        {
+            await CreateAndSendResetOtpAsync(user, normalizedEmail);
+        }
+        catch (Exception ex) when (IsPasswordResetOtpStorageException(ex))
+        {
+            _logger.LogError(ex, "Không thể lưu OTP gửi lại đặt lại mật khẩu cho {Email}.", normalizedEmail);
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { success = false, message = "Chức năng đặt lại mật khẩu đang được bảo trì. Vui lòng thử lại sau hoặc liên hệ cửa hàng để được hỗ trợ." });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Không thể gửi lại OTP đặt lại mật khẩu tới {Email}.", normalizedEmail);
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { success = false, message = "Không thể gửi email OTP lúc này. Vui lòng kiểm tra cấu hình email hoặc thử lại sau." });
+        }
+
+        TempData["ResetEmail"] = normalizedEmail;
+        return Ok(new { success = true, message = "Mã mới đã được gửi. Vui lòng kiểm tra email.", cooldownSeconds = ResetCodeCooldownSeconds });
     }
 
     [HttpPost]
@@ -221,6 +240,89 @@ public class AccountController : Controller
 
         TempData["Ok"] = "Đổi mật khẩu thành công, vui lòng đăng nhập lại.";
         return RedirectToAction(nameof(Login));
+    }
+
+    private async Task<VerifyResetCodeViewModel> BuildVerifyResetCodeViewModelAsync(string email)
+    {
+        var normalizedEmail = email.Trim();
+        var cooldownSeconds = 0;
+        if (!string.IsNullOrWhiteSpace(normalizedEmail))
+        {
+            var user = await _db.Users.FirstOrDefaultAsync(x => x.Email == normalizedEmail);
+            if (user != null)
+            {
+                var lastCreatedAt = await _db.PasswordResetOtps
+                    .Where(x => x.UserId == user.Id)
+                    .OrderByDescending(x => x.CreatedAt)
+                    .Select(x => (DateTime?)x.CreatedAt)
+                    .FirstOrDefaultAsync();
+                cooldownSeconds = GetCooldownRemainingSeconds(lastCreatedAt, DateTime.UtcNow);
+            }
+        }
+
+        return new VerifyResetCodeViewModel
+        {
+            Email = normalizedEmail,
+            MaskedEmail = MaskEmail(normalizedEmail),
+            ResendCooldownSeconds = cooldownSeconds
+        };
+    }
+
+    private string ResolveResetEmail(string email)
+    {
+        var tempDataEmail = TempData.Peek("ResetEmail") as string;
+        return !string.IsNullOrWhiteSpace(tempDataEmail) ? tempDataEmail.Trim() : email.Trim();
+    }
+
+    private async Task CreateAndSendResetOtpAsync(User user, string normalizedEmail)
+    {
+        var code = RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6");
+        var now = DateTime.UtcNow;
+
+        var activeOtps = await _db.PasswordResetOtps
+            .Where(x => x.UserId == user.Id && !x.IsUsed)
+            .ToListAsync();
+
+        foreach (var oldOtp in activeOtps)
+        {
+            oldOtp.IsUsed = true;
+            oldOtp.UsedAt = now;
+        }
+
+        _db.PasswordResetOtps.Add(new PasswordResetOtp
+        {
+            UserId = user.Id,
+            Email = normalizedEmail,
+            CodeHash = HashOtp(normalizedEmail, code),
+            ExpiresAt = now.AddMinutes(10),
+            IsUsed = false,
+            CreatedAt = now
+        });
+        await _db.SaveChangesAsync();
+
+        var plainTextMessage = $"Mã xác nhận đặt lại mật khẩu KKSHOP của bạn là {code}. Mã có hiệu lực 10 phút.";
+        var htmlMessage = $"<p>Xin chào {System.Net.WebUtility.HtmlEncode(user.FullName)},</p>"
+            + $"<p>Mã xác nhận đặt lại mật khẩu KKSHOP của bạn là <strong>{code}</strong>.</p>"
+            + "<p>Mã có hiệu lực 10 phút. Vui lòng không chia sẻ mã này với bất kỳ ai.</p>";
+
+        await _emailSender.SendEmailAsync(normalizedEmail, "Mã xác nhận đặt lại mật khẩu KKSHOP", htmlMessage, plainTextMessage);
+    }
+
+    private static int GetCooldownRemainingSeconds(DateTime? lastCreatedAt, DateTime now)
+    {
+        if (lastCreatedAt == null) return 0;
+        var nextAllowedAt = lastCreatedAt.Value.AddSeconds(ResetCodeCooldownSeconds);
+        return nextAllowedAt <= now ? 0 : (int)Math.Ceiling((nextAllowedAt - now).TotalSeconds);
+    }
+
+    private static string MaskEmail(string email)
+    {
+        var atIndex = email.IndexOf('@');
+        if (atIndex <= 0) return email;
+        var local = email[..atIndex];
+        var domain = email[atIndex..];
+        var visible = local.Length <= 2 ? local[..1] : local[..2];
+        return $"{visible}{new string('*', Math.Max(2, local.Length - visible.Length))}{domain}";
     }
 
     private static bool IsPasswordResetOtpStorageException(Exception exception)

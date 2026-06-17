@@ -43,6 +43,9 @@ public class VerifyResetCodeViewModel
     [Compare(nameof(NewPassword), ErrorMessage = "Nhập lại mật khẩu mới không khớp")]
     [DataType(DataType.Password)]
     public string ConfirmPassword { get; set; } = string.Empty;
+
+    public string MaskedEmail { get; set; } = string.Empty;
+    public int ResendCooldownSeconds { get; set; }
 }
 
 public class AccountProfileViewModel
