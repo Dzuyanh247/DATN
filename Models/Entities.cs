@@ -61,6 +61,12 @@ public class Category : BaseEntity
     public ICollection<Category> Children { get; set; } = new List<Category>();
 }
 
+public class ComponentBrand : BaseEntity
+{
+    [MaxLength(80)] public string Name { get; set; } = string.Empty;
+    [MaxLength(40)] public string ComponentType { get; set; } = ComponentTypes.Other;
+}
+
 public class Product : BaseEntity
 {
     [MaxLength(200)] public string Name { get; set; } = string.Empty;

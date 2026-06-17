@@ -11,6 +11,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<User> Users => Set<User>();
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<Product> Products => Set<Product>();
+    public DbSet<ComponentBrand> ComponentBrands => Set<ComponentBrand>();
     public DbSet<ProductImage> ProductImages => Set<ProductImage>();
     public DbSet<Banner> Banners => Set<Banner>();
     public DbSet<Cart> Carts => Set<Cart>();
@@ -86,6 +87,7 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<User>().ToTable("Users");
         modelBuilder.Entity<Category>().ToTable("Categories");
         modelBuilder.Entity<Product>().ToTable("Products");
+        modelBuilder.Entity<ComponentBrand>().ToTable("ComponentBrands");
         modelBuilder.Entity<ProductImage>().ToTable("ProductImages");
         modelBuilder.Entity<Banner>().ToTable("Banners");
         modelBuilder.Entity<Cart>().ToTable("Carts");
@@ -170,6 +172,7 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<Product>().HasIndex(x => x.ProductCode).IsUnique();
         modelBuilder.Entity<Product>().HasIndex(x => x.Slug).IsUnique();
         modelBuilder.Entity<Product>().HasIndex(x => x.SourceUrl);
+        modelBuilder.Entity<ComponentBrand>().HasIndex(x => new { x.ComponentType, x.Name }).IsUnique();
 
         modelBuilder.Entity<Category>()
             .HasOne(c => c.ParentCategory)
