@@ -68,11 +68,16 @@ public class ProductsController : Controller
         if (vm.CategoryId.HasValue)
             query = query.Where(p => p.CategoryId == vm.CategoryId.Value);
 
-        var baseProducts = await query
+        if (!string.IsNullOrWhiteSpace(type))
+        {
+            var scopedComponentType = type.Trim();
+            query = query.Where(p => p.ComponentType != null && p.ComponentType == scopedComponentType);
+        }
+
+        var categoryProducts = await query
             .ToListAsync();
-        var facetProducts = ApplyKeywordSearch(baseProducts, vm);
-        var parsedFacets = facetProducts.ToDictionary(product => product.Id, ProductFilterFacetHelper.Parse);
-        PopulateFilterOptions(vm, facetProducts, parsedFacets);
+        var parsedFacets = categoryProducts.ToDictionary(product => product.Id, ProductFilterFacetHelper.Parse);
+        PopulateFilterOptions(vm, categoryProducts, parsedFacets);
 
         if (vm.ComponentTypes.Length > 0)
             query = query.Where(p => p.ComponentType != null && vm.ComponentTypes.Contains(p.ComponentType));
@@ -221,9 +226,9 @@ public class ProductsController : Controller
             .GroupBy(product => product.ComponentType!.Trim(), StringComparer.OrdinalIgnoreCase)
             .ToDictionary(group => group.Key, group => group.Count(), StringComparer.OrdinalIgnoreCase);
 
-        return
-        [
-            new ProductFilterGroupVm
+        var groups = new List<ProductFilterGroupVm>
+        {
+            new()
             {
                 Title = "Linh kiện máy tính",
                 Options = BuildComponentOptions(counts,
@@ -238,7 +243,7 @@ public class ProductsController : Controller
                     ("Case", "Vỏ case"),
                     ("PSU", "Nguồn (PSU)"))
             },
-            new ProductFilterGroupVm
+            new()
             {
                 Title = "Ngoại vi",
                 Options = BuildComponentOptions(counts,
@@ -247,7 +252,9 @@ public class ProductsController : Controller
                     ("Mouse", "Chuột"),
                     ("Headphone", "Tai nghe"))
             }
-        ];
+        };
+
+        return groups.Where(group => group.Options.Count > 0).ToList();
     }
 
     private static List<ProductFilterOptionVm> BuildComponentOptions(Dictionary<string, int> counts, params (string Value, string Label)[] options) =>
@@ -258,6 +265,7 @@ public class ProductsController : Controller
                 Label = option.Label,
                 Count = counts.GetValueOrDefault(option.Value)
             })
+            .Where(option => option.Count > 0)
             .ToList();
 
     private static List<ProductSpecFilterGroupVm> BuildSpecFilterGroups(IEnumerable<Product> products) =>
