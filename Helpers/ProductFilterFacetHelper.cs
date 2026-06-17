@@ -5,6 +5,8 @@ namespace Datn.PcStore.Helpers;
 
 public static partial class ProductFilterFacetHelper
 {
+    private const int MaxFacetLabelLength = 80;
+
     private static readonly HashSet<string> SupportedRamCapacities =
         new(["8", "16", "32", "64"], StringComparer.OrdinalIgnoreCase);
 
@@ -42,6 +44,23 @@ public static partial class ProductFilterFacetHelper
         }
 
         return new ProductParsedFacets(cpu, ram, gpu);
+    }
+
+    public static bool IsRenderableFilterOption(string? label)
+    {
+        if (string.IsNullOrWhiteSpace(label))
+            return false;
+
+        var trimmed = label.Trim();
+        if (trimmed.Length > MaxFacetLabelLength)
+            return false;
+
+        return !trimmed.StartsWith('[')
+            && !trimmed.StartsWith('{')
+            && !trimmed.Contains("\"stt\"", StringComparison.OrdinalIgnoreCase)
+            && !trimmed.Contains("\"description\"", StringComparison.OrdinalIgnoreCase)
+            && !trimmed.Contains("\"quantity\"", StringComparison.OrdinalIgnoreCase)
+            && !trimmed.Contains("\"warranty\"", StringComparison.OrdinalIgnoreCase);
     }
 
     private static IReadOnlyCollection<string> GetFacetSources(Product product)

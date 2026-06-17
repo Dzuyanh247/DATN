@@ -3,6 +3,21 @@
     ViewData["Title"] = "Danh sách sản phẩm";
     var currentCategory = Model.Categories.FirstOrDefault(category => category.Id == Model.CategoryId);
     var pageTitle = currentCategory?.Name ?? "Tất cả sản phẩm";
+
+    bool ShouldShowSingleChoiceOption(ProductFilterOptionVm option, string[] selectedValues)
+    {
+        var isSelected = selectedValues.Contains(option.Value, StringComparer.OrdinalIgnoreCase);
+        return (selectedValues.Length == 0 || isSelected) && (isSelected || option.Count > 0);
+    }
+
+    bool ShouldShowSpecOption(ProductFilterOptionVm option, string groupName)
+    {
+        var groupPrefix = $"{groupName}::";
+        var selectedInGroup = Model.Specs
+            .Where(value => value.StartsWith(groupPrefix, StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+        return ShouldShowSingleChoiceOption(option, selectedInGroup);
+    }
 }
 
 <script>
@@ -78,7 +93,7 @@
                         {
                             var id = $"price-{option.Value}";
                             var isSelected = Model.PriceRanges.Contains(option.Value, StringComparer.OrdinalIgnoreCase);
-                            if (!isSelected && option.Count <= 0)
+                            if (!ShouldShowSingleChoiceOption(option, Model.PriceRanges))
                             {
                                 continue;
                             }
@@ -131,7 +146,7 @@
                         {
                             var id = $"brand-{option.Value.GetHashCode()}";
                             var isSelected = Model.Brands.Contains(option.Value, StringComparer.OrdinalIgnoreCase);
-                            if (!isSelected && option.Count <= 0)
+                            if (!ShouldShowSingleChoiceOption(option, Model.Brands))
                             {
                                 continue;
                             }
@@ -154,7 +169,7 @@
                             {
                                 var id = $"cpu-{Math.Abs(option.Value.GetHashCode())}";
                                 var isSelected = Model.Cpu.Contains(option.Value, StringComparer.OrdinalIgnoreCase);
-                                if (!isSelected && option.Count <= 0)
+                                if (!ShouldShowSingleChoiceOption(option, Model.Cpu))
                                 {
                                     continue;
                                 }
@@ -178,7 +193,7 @@
                             {
                                 var id = $"ram-{Math.Abs(option.Value.GetHashCode())}";
                                 var isSelected = Model.Ram.Contains(option.Value, StringComparer.OrdinalIgnoreCase);
-                                if (!isSelected && option.Count <= 0)
+                                if (!ShouldShowSingleChoiceOption(option, Model.Ram))
                                 {
                                     continue;
                                 }
@@ -202,7 +217,7 @@
                             {
                                 var id = $"gpu-{Math.Abs(option.Value.GetHashCode())}";
                                 var isSelected = Model.Gpu.Contains(option.Value, StringComparer.OrdinalIgnoreCase);
-                                if (!isSelected && option.Count <= 0)
+                                if (!ShouldShowSingleChoiceOption(option, Model.Gpu))
                                 {
                                     continue;
                                 }
@@ -226,7 +241,7 @@
                             {
                                 var id = $"spec-{Math.Abs(option.Value.GetHashCode())}";
                                 var isSelected = Model.Specs.Contains(option.Value, StringComparer.OrdinalIgnoreCase);
-                                if (!isSelected && option.Count <= 0)
+                                if (!ShouldShowSpecOption(option, specGroup.Name))
                                 {
                                     continue;
                                 }

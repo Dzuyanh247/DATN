@@ -180,6 +180,7 @@ public class ProductsController : Controller
         values?
             .Where(value => !string.IsNullOrWhiteSpace(value))
             .Select(value => value.Trim())
+            .Where(ProductFilterFacetHelper.IsRenderableFilterOption)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray() ?? Array.Empty<string>();
 
@@ -273,6 +274,8 @@ public class ProductsController : Controller
             .SelectMany(product => ProductSpecificationKeyValueHelper.ParseStored(product.Specifications)
                 .Where(spec => !string.IsNullOrWhiteSpace(spec.Name) && !string.IsNullOrWhiteSpace(spec.Value))
                 .Select(spec => new { product.Id, Name = spec.Name.Trim(), Value = spec.Value.Trim() }))
+            .Where(spec => ProductFilterFacetHelper.IsRenderableFilterOption(spec.Name)
+                && ProductFilterFacetHelper.IsRenderableFilterOption(spec.Value))
             .GroupBy(spec => spec.Name, StringComparer.OrdinalIgnoreCase)
             .Where(group => group.Select(spec => spec.Value).Distinct(StringComparer.OrdinalIgnoreCase).Count() > 1)
             .OrderBy(group => GetSpecGroupSortOrder(group.Key))
