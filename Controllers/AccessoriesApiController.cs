@@ -13,6 +13,15 @@ public class AccessoriesApiController : ControllerBase
     private static readonly HashSet<string> AllowedTypes = new(StringComparer.OrdinalIgnoreCase)
     { "Monitor", "Keyboard", "Mouse", "Headphone", "Headset" };
 
+    private static readonly IReadOnlyDictionary<string, string> DefaultImages = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+    {
+        ["Monitor"] = "https://ttgshop.vn/media/category/cat_big_1003486567.png",
+        ["Keyboard"] = "https://ttgshop.vn/media/category/cat_big_1003353341.png",
+        ["Mouse"] = "https://ttgshop.vn/media/category/cat_big_1003353370.png",
+        ["Headphone"] = "https://ttgshop.vn/media/category/cat_big_1004013226.jpg",
+        ["Headset"] = "https://ttgshop.vn/media/category/cat_big_1004013226.jpg"
+    };
+
     private readonly ApplicationDbContext _db;
     public AccessoriesApiController(ApplicationDbContext db) => _db = db;
 
@@ -55,7 +64,7 @@ public class AccessoriesApiController : ControllerBase
                 brand = p.Brand ?? string.Empty,
                 categoryId = p.CategoryId,
                 categoryName = p.Category?.Name ?? string.Empty,
-                image = ImageUrlHelper.ResolveImageUrl(p.ProductImages.OrderBy(x => x.SortOrder).Select(x => x.ImageUrl).FirstOrDefault() ?? p.ThumbnailImage, "/images/no-image.png"),
+                image = ImageUrlHelper.ResolveImageUrl(p.ProductImages.OrderBy(x => x.SortOrder).Select(x => x.ImageUrl).FirstOrDefault() ?? p.ThumbnailImage, DefaultImages[normalizedType]),
                 oldPrice = p.Price,
                 price,
                 discountPercent = p.Price > price ? Math.Round((p.Price - price) * 100 / p.Price) : 0,
