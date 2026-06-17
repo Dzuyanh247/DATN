@@ -13,9 +13,9 @@
 }
 else
 {
-    <form method="get" asp-controller="Compare" asp-action="Add" asp-route-productId="@Model.Id" class="ttg-compare-form">
+    <form method="get" asp-controller="Compare" asp-action="Add" asp-route-productId="@Model.Id" class="ttg-compare-form" data-compare-form data-product-id="@Model.Id">
         <input type="hidden" name="returnUrl" value="@currentReturnUrl" />
-        <button class="btn btn-sm btn-outline-secondary ttg-compare-btn" type="submit">
+        <button class="btn btn-sm btn-outline-secondary ttg-compare-btn" type="submit" data-compare-button>
             <i class="bi bi-columns-gap"></i> So sánh
         </button>
     </form>
