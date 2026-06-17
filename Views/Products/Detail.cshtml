@@ -40,14 +40,12 @@
     var fullDescription = ProductSpecDisplayHelper.GetFullDescriptionText(product);
     var promotionLines = ProductPromotionHelper.GetPromotionLines(product);
 
-    string SlotImage(IReadOnlyList<Product> items) => ImageUrlHelper.ResolveImageUrl(items.FirstOrDefault()?.ProductImages.OrderBy(x => x.SortOrder).Select(x => x.ImageUrl).FirstOrDefault()
-        ?? items.FirstOrDefault()?.ThumbnailImage, "/images/no-image.png");
     var accessorySlots = new[]
     {
-        new { Type = "Monitor", Label = "Màn hình", Products = Model.Monitors, Image = SlotImage(Model.Monitors) },
-        new { Type = "Keyboard", Label = "Bàn phím", Products = Model.Keyboards, Image = SlotImage(Model.Keyboards) },
-        new { Type = "Mouse", Label = "Chuột", Products = Model.Mice, Image = SlotImage(Model.Mice) },
-        new { Type = "Headphone", Label = "Tai nghe", Products = Model.Headsets, Image = SlotImage(Model.Headsets) }
+        new { Type = "Monitor", Label = "Màn hình", Products = Model.Monitors, Image = "https://ttgshop.vn/media/category/cat_big_1003486567.png" },
+        new { Type = "Keyboard", Label = "Bàn phím", Products = Model.Keyboards, Image = "https://ttgshop.vn/media/category/cat_big_1003353341.png" },
+        new { Type = "Mouse", Label = "Chuột", Products = Model.Mice, Image = "https://ttgshop.vn/media/category/cat_big_1003353370.png" },
+        new { Type = "Headphone", Label = "Tai nghe", Products = Model.Headsets, Image = "https://ttgshop.vn/media/category/cat_big_1004013226.jpg" }
     };
     var isPcProduct = string.Equals(product.ComponentType, "PC", StringComparison.OrdinalIgnoreCase)
         || (product.Category?.Name?.Contains("PC", StringComparison.OrdinalIgnoreCase) ?? false);
@@ -102,13 +100,13 @@
                         <div class="bundle-grid">
                             @foreach (var slot in accessorySlots)
                             {
-                                <article class="bundle-card accessory-slot" data-slot-type="@slot.Type" data-slot-label="@slot.Label" data-default-image="@slot.Image" data-default-price-text="@(slot.Products.Any() ? $"{slot.Products.Count} lựa chọn phù hợp" : "Chưa có linh kiện phù hợp")">
-                                    <div class="bundle-image"><img src="@slot.Image" alt="@slot.Label" onerror="this.onerror=null;this.src='/images/no-image.png';" /></div>
+                                <article class="bundle-card accessory-slot" data-slot-type="@slot.Type" data-slot-label="@slot.Label" data-default-image="@slot.Image" data-default-price-text="Chọn phụ kiện phù hợp">
+                                    <div class="bundle-image"><img src="@slot.Image" alt="@slot.Label" onerror="this.onerror=null;this.src='@slot.Image';" /></div>
                                     <span class="bundle-type">@slot.Label</span>
                                     <strong class="bundle-name">Chưa chọn sản phẩm</strong>
-                                    <span class="bundle-price">@(slot.Products.Any() ? $"{slot.Products.Count} lựa chọn phù hợp" : "Chưa có linh kiện phù hợp")</span>
+                                    <span class="bundle-price">Chọn phụ kiện phù hợp</span>
                                     <div class="bundle-actions">
-                                        <button type="button" class="bundle-select-btn" data-open-accessory disabled="@(!slot.Products.Any())">@(slot.Products.Any() ? "Chọn sản phẩm" : "Chưa có hàng")</button>
+                                        <button type="button" class="bundle-select-btn" data-open-accessory>Chọn sản phẩm</button>
                                         <button type="button" class="bundle-remove-btn d-none" data-remove-accessory>Xóa lựa chọn</button>
                                     </div>
                                 </article>
