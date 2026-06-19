@@ -233,6 +233,106 @@
                     </details>
                 }
 
+
+                @if (Model.StorageOptions.Count > 0)
+                {
+                    <details class="products-filter-group" open>
+                        <summary>DUNG LƯỢNG SSD / Ổ CỨNG <i class="bi bi-chevron-down"></i></summary>
+                        <div class="products-filter-options">
+                            @foreach (var option in Model.StorageOptions)
+                            {
+                                var id = $"storage-{Math.Abs(option.Value.GetHashCode())}";
+                                var isSelected = Model.Storage.Contains(option.Value, StringComparer.OrdinalIgnoreCase);
+                                if (!ShouldShowSingleChoiceOption(option, Model.Storage))
+                                {
+                                    continue;
+                                }
+                                <label class="products-filter-option" for="@id">
+                                    <input id="@id" type="checkbox" name="storage" value="@option.Value" checked="@(isSelected)" />
+                                    <span>@option.Label</span>
+                                    <small>(@option.Count)</small>
+                                </label>
+                            }
+                        </div>
+                    </details>
+                }
+
+                @if (Model.MainboardOptions.Count > 0)
+                {
+                    <details class="products-filter-group" open>
+                        <summary>MAINBOARD <i class="bi bi-chevron-down"></i></summary>
+                        <div class="products-filter-options">
+                            @foreach (var option in Model.MainboardOptions)
+                            {
+                                var id = $"mainboard-{Math.Abs(option.Value.GetHashCode())}";
+                                var isSelected = Model.Mainboard.Contains(option.Value, StringComparer.OrdinalIgnoreCase);
+                                if (!ShouldShowSingleChoiceOption(option, Model.Mainboard)) { continue; }
+                                <label class="products-filter-option" for="@id">
+                                    <input id="@id" type="checkbox" name="mainboard" value="@option.Value" checked="@(isSelected)" />
+                                    <span>@option.Label</span><small>(@option.Count)</small>
+                                </label>
+                            }
+                        </div>
+                    </details>
+                }
+
+                @if (Model.PsuOptions.Count > 0)
+                {
+                    <details class="products-filter-group" open>
+                        <summary>NGUỒN <i class="bi bi-chevron-down"></i></summary>
+                        <div class="products-filter-options">
+                            @foreach (var option in Model.PsuOptions)
+                            {
+                                var id = $"psu-{Math.Abs(option.Value.GetHashCode())}";
+                                var isSelected = Model.Psu.Contains(option.Value, StringComparer.OrdinalIgnoreCase);
+                                if (!ShouldShowSingleChoiceOption(option, Model.Psu)) { continue; }
+                                <label class="products-filter-option" for="@id">
+                                    <input id="@id" type="checkbox" name="psu" value="@option.Value" checked="@(isSelected)" />
+                                    <span>@option.Label</span><small>(@option.Count)</small>
+                                </label>
+                            }
+                        </div>
+                    </details>
+                }
+
+                @if (Model.CaseOptions.Count > 0)
+                {
+                    <details class="products-filter-group" open>
+                        <summary>VỎ CASE <i class="bi bi-chevron-down"></i></summary>
+                        <div class="products-filter-options">
+                            @foreach (var option in Model.CaseOptions)
+                            {
+                                var id = $"case-{Math.Abs(option.Value.GetHashCode())}";
+                                var isSelected = Model.Case.Contains(option.Value, StringComparer.OrdinalIgnoreCase);
+                                if (!ShouldShowSingleChoiceOption(option, Model.Case)) { continue; }
+                                <label class="products-filter-option" for="@id">
+                                    <input id="@id" type="checkbox" name="case" value="@option.Value" checked="@(isSelected)" />
+                                    <span>@option.Label</span><small>(@option.Count)</small>
+                                </label>
+                            }
+                        </div>
+                    </details>
+                }
+
+                @if (Model.CoolingOptions.Count > 0)
+                {
+                    <details class="products-filter-group" open>
+                        <summary>TẢN NHIỆT <i class="bi bi-chevron-down"></i></summary>
+                        <div class="products-filter-options">
+                            @foreach (var option in Model.CoolingOptions)
+                            {
+                                var id = $"cooling-{Math.Abs(option.Value.GetHashCode())}";
+                                var isSelected = Model.Cooling.Contains(option.Value, StringComparer.OrdinalIgnoreCase);
+                                if (!ShouldShowSingleChoiceOption(option, Model.Cooling)) { continue; }
+                                <label class="products-filter-option" for="@id">
+                                    <input id="@id" type="checkbox" name="cooling" value="@option.Value" checked="@(isSelected)" />
+                                    <span>@option.Label</span><small>(@option.Count)</small>
+                                </label>
+                            }
+                        </div>
+                    </details>
+                }
+
                 @foreach (var specGroup in Model.SpecFilterGroups)
                 {
                     <details class="products-filter-group">
