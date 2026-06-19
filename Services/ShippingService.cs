@@ -59,7 +59,7 @@ public class ShippingService : IShippingService
                     IsFreeShipping = ghn.ShippingFee == 0,
                     Provider = "GHN",
                     FormulaSnapshot = $"GHN total={ghn.Total ?? ghn.ShippingFee:N0}; service_fee={ghn.ServiceFee?.ToString() ?? "n/a"}; insurance_fee={ghn.InsuranceFee?.ToString() ?? "n/a"}",
-                    Message = "Tính phí giao hàng thành công",
+                    Message = string.Empty,
                     GhnTotal = ghn.Total,
                     GhnServiceFee = ghn.ServiceFee,
                     GhnInsuranceFee = ghn.InsuranceFee,

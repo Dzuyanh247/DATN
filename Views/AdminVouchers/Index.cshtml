@@ -1,7 +1,10 @@
 @model List<Voucher>
 @{
     ViewData["Title"] = "Quản lý voucher";
-    string Status(Voucher v){ var now=DateTime.UtcNow; if(!v.IsActive) return "Tạm tắt"; if(v.EndDate<now) return "Hết hạn"; if(v.UsedCount>=v.Quantity) return "Hết lượt"; return "Đang hoạt động"; }
+    string Status(Voucher v){ var now=DateTime.Now; if(!v.IsActive) return "Tạm tắt"; if(v.EndDate<now) return "Hết hạn"; if(v.Quantity != int.MaxValue && v.UsedCount>=v.Quantity) return "Hết lượt"; return "Đang hoạt động"; }
+    string DiscountTypeText(Voucher v) => v.DiscountType == VoucherDiscountType.Percent ? "Giảm theo phần trăm" : "Giảm số tiền cố định";
+    string DiscountValueText(Voucher v) => v.DiscountType == VoucherDiscountType.Percent ? $"{v.DiscountValue:N0}%" : $"{v.DiscountValue:N0} VNĐ";
+    string RemainingText(Voucher v) => v.Quantity == int.MaxValue ? "Không giới hạn" : (v.Quantity - v.UsedCount).ToString("N0");
 }
 <div class="d-flex justify-content-between align-items-center mb-3"><h3 class="mb-0">Quản lý mã voucher</h3><a class="btn btn-primary" asp-action="Create"><i class="bi bi-plus-circle me-1"></i>Thêm voucher</a></div>
 <div class="card table-responsive">
@@ -12,8 +15,8 @@
 @foreach(var v in Model){
 <tr>
 <td><strong>@v.Code</strong></td><td>@v.Name</td>
-<td>@(v.DiscountType==VoucherDiscountType.Percent?$"{v.DiscountValue:N0}%":$"{v.DiscountValue:N0} đ") @if(v.MaxDiscountAmount.HasValue){<small class="d-block text-muted">Tối đa @v.MaxDiscountAmount.Value.ToString("N0") đ</small>}</td>
-<td>Đơn tối thiểu @v.MinimumOrderAmount.ToString("N0") đ</td><td>@v.UsedCount / @v.Quantity</td>
+<td><span class="d-block">@DiscountTypeText(v)</span><strong>@DiscountValueText(v)</strong> @if(v.DiscountType==VoucherDiscountType.Percent && v.MaxDiscountAmount.HasValue){<small class="d-block text-muted">Tối đa @v.MaxDiscountAmount.Value.ToString("N0") VNĐ</small>}</td>
+<td>Đơn tối thiểu @v.MinimumOrderAmount.ToString("N0") VNĐ</td><td>Đã dùng @v.UsedCount.ToString("N0")<small class="d-block text-muted">Còn lại: @RemainingText(v)</small></td>
 <td><small>@v.StartDate.ToString("dd/MM/yyyy HH:mm")<br/>@v.EndDate.ToString("dd/MM/yyyy HH:mm")</small></td>
 <td><span class="badge @(Status(v)=="Đang hoạt động"?"text-bg-success":Status(v)=="Tạm tắt"?"text-bg-secondary":"text-bg-warning")">@Status(v)</span></td>
 <td class="text-end text-nowrap"><a class="btn btn-sm btn-outline-primary" asp-action="Edit" asp-route-id="@v.Id">Sửa</a> <form method="post" asp-action="ToggleStatus" class="d-inline">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@v.Id"/><button class="btn btn-sm btn-outline-warning">@(v.IsActive?"Tắt":"Bật")</button></form> <form method="post" asp-action="Delete" class="d-inline" onsubmit="return confirm('Xóa hoặc ngừng kích hoạt voucher này?');">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@v.Id"/><button class="btn btn-sm btn-outline-danger">Xóa</button></form></td>

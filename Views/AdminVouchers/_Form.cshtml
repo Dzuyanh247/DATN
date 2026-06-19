@@ -1,16 +1,90 @@
 @model Voucher
-<div asp-validation-summary="ModelOnly" class="text-danger"></div>
-<div class="row g-3">
-    <div class="col-md-4"><label class="form-label">Mã voucher</label><input asp-for="Code" class="form-control text-uppercase" placeholder="SALE100K" /><span asp-validation-for="Code" class="text-danger"></span></div>
-    <div class="col-md-8"><label class="form-label">Tên/Ghi chú voucher</label><input asp-for="Name" class="form-control" placeholder="Giảm 100.000đ cho đơn hàng đủ điều kiện" /></div>
-    <div class="col-md-4"><label class="form-label">Loại giảm giá</label><select asp-for="DiscountType" class="form-select"><option value="FixedAmount">Giảm số tiền cố định</option><option value="Percent">Giảm theo phần trăm (%)</option></select></div>
-    <div class="col-md-4"><label class="form-label">Giá trị giảm</label><input asp-for="DiscountValue" class="form-control" type="number" min="0" step="1000" /><span asp-validation-for="DiscountValue" class="text-danger"></span></div>
-    <div class="col-md-4"><label class="form-label">Giảm tối đa (cho voucher %)</label><input asp-for="MaxDiscountAmount" class="form-control" type="number" min="0" step="1000" /></div>
-    <div class="col-md-4"><label class="form-label">Giá trị đơn tối thiểu</label><input asp-for="MinimumOrderAmount" class="form-control" type="number" min="0" step="1000" /></div>
-    <div class="col-md-4"><label class="form-label">Số lượng voucher</label><input asp-for="Quantity" class="form-control" type="number" min="0" /><span asp-validation-for="Quantity" class="text-danger"></span></div>
-    <div class="col-md-4"><label class="form-label">Mỗi người dùng tối đa</label><input asp-for="MaxUsagePerUser" class="form-control" type="number" min="1" placeholder="Để trống nếu không giới hạn" /></div>
-    <div class="col-md-6"><label class="form-label">Ngày bắt đầu</label><input asp-for="StartDate" class="form-control" type="datetime-local" /></div>
-    <div class="col-md-6"><label class="form-label">Ngày kết thúc</label><input asp-for="EndDate" class="form-control" type="datetime-local" /><span asp-validation-for="EndDate" class="text-danger"></span></div>
-    <div class="col-12"><div class="form-check"><input asp-for="IsActive" class="form-check-input" /><label asp-for="IsActive" class="form-check-label">Đang hoạt động</label></div></div>
+@using System.Globalization
+@{
+    var unlimitedQuantity = Model.Quantity == int.MaxValue;
+    var invariant = CultureInfo.InvariantCulture;
+}
+<div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+<div class="row g-4" id="voucherForm">
+    <div class="col-12">
+        <h5 class="border-bottom pb-2 mb-3">Thông tin mã voucher</h5>
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label">Mã voucher</label>
+                <input asp-for="Code" class="form-control text-uppercase" placeholder="SALE100K, GIAM10, FREESHIP" autocomplete="off" />
+                <div class="form-text">Mã tự chuyển in hoa và không chứa khoảng trắng.</div>
+                <span asp-validation-for="Code" class="text-danger"></span>
+            </div>
+            <div class="col-md-8">
+                <label class="form-label">Tên chương trình / Ghi chú</label>
+                <input asp-for="Name" class="form-control" placeholder="Ví dụ: Giảm 100.000 VNĐ cho đơn hàng đủ điều kiện" />
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12">
+        <h5 class="border-bottom pb-2 mb-3">Cách giảm giá</h5>
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label">Loại giảm giá</label>
+                <select asp-for="DiscountType" class="form-select">
+                    <option value="FixedAmount">Giảm số tiền cố định</option>
+                    <option value="Percent">Giảm theo phần trăm</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Giá trị giảm</label>
+                <input id="DiscountValue" name="DiscountValue" class="form-control money-field" type="text" inputmode="numeric" placeholder="Ví dụ: 100000" value='@(Model.DiscountValue > 0 ? Model.DiscountValue.ToString("0.##", invariant) : string.Empty)' />
+                <div class="form-text" id="discountValueHelp">Ví dụ: 100000 cho voucher giảm 100.000 VNĐ.</div>
+                <span asp-validation-for="DiscountValue" class="text-danger"></span>
+            </div>
+            <div class="col-md-4" id="maxDiscountGroup">
+                <label class="form-label">Giảm tối đa</label>
+                <input id="MaxDiscountAmount" name="MaxDiscountAmount" class="form-control money-field" type="text" inputmode="numeric" placeholder="Để trống nếu không giới hạn" value='@(Model.MaxDiscountAmount?.ToString("0.##", invariant) ?? string.Empty)' />
+                <div class="form-text">Chỉ áp dụng cho voucher giảm theo phần trăm.</div>
+                <span asp-validation-for="MaxDiscountAmount" class="text-danger"></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12">
+        <h5 class="border-bottom pb-2 mb-3">Điều kiện áp dụng</h5>
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label">Giá trị đơn hàng tối thiểu</label>
+                <input id="MinimumOrderAmount" name="MinimumOrderAmount" class="form-control money-field" type="text" inputmode="numeric" placeholder="Ví dụ: 500000" value='@Model.MinimumOrderAmount.ToString("0.##", invariant)' />
+                <div class="form-text">Nhập 0 nếu không yêu cầu tối thiểu.</div>
+                <span asp-validation-for="MinimumOrderAmount" class="text-danger"></span>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Số lượng voucher</label>
+                <input asp-for="Quantity" class="form-control" type="number" min="1" placeholder="Ví dụ: 100" disabled="@(unlimitedQuantity)" />
+                <div class="form-check mt-2">
+                    <input class="form-check-input" type="checkbox" id="UnlimitedQuantity" name="UnlimitedQuantity" value="true" checked="@(unlimitedQuantity)" />
+                    <label class="form-check-label" for="UnlimitedQuantity">Không giới hạn số lượng</label>
+                </div>
+                <span asp-validation-for="Quantity" class="text-danger"></span>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Số lần dùng tối đa mỗi tài khoản</label>
+                <input asp-for="MaxUsagePerUser" class="form-control" type="number" min="1" placeholder="Để trống nếu không giới hạn" />
+                <span asp-validation-for="MaxUsagePerUser" class="text-danger"></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12">
+        <h5 class="border-bottom pb-2 mb-3">Thời gian và trạng thái</h5>
+        <div class="row g-3">
+            <div class="col-md-6"><label class="form-label">Ngày bắt đầu</label><input asp-for="StartDate" class="form-control" type="datetime-local" /><span asp-validation-for="StartDate" class="text-danger"></span></div>
+            <div class="col-md-6"><label class="form-label">Ngày kết thúc</label><input asp-for="EndDate" class="form-control" type="datetime-local" /><span asp-validation-for="EndDate" class="text-danger"></span></div>
+            <div class="col-12"><div class="form-check"><input asp-for="IsActive" class="form-check-input" /><label asp-for="IsActive" class="form-check-label">Đang hoạt động</label><div class="form-text">Voucher có thể được sử dụng khi còn hạn và còn lượt.</div></div></div>
+        </div>
+    </div>
+
+    <div class="col-12">
+        <div class="alert alert-light border mb-0"><strong>Xem trước:</strong> <span id="voucherPreview">Nhập thông tin để xem trước voucher.</span></div>
+    </div>
 </div>
 <div class="mt-4 d-flex gap-2"><button class="btn btn-primary">Lưu voucher</button><a asp-action="Index" class="btn btn-outline-secondary">Quay lại</a></div>
+<script src="~/js/admin-voucher.js" asp-append-version="true"></script>
