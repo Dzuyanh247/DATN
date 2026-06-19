@@ -83,6 +83,7 @@ builder.Services.AddScoped<IRouteService, RouteService>();
 builder.Services.AddScoped<IShippingFeeCalculator, ShippingFeeCalculator>();
 builder.Services.AddScoped<IShippingService, ShippingService>();
 builder.Services.AddScoped<IOrderExpirationService, OrderExpirationService>();
+builder.Services.AddScoped<IVoucherService, VoucherService>();
 builder.Services.AddScoped<IProductReviewService, ProductReviewService>();
 builder.Services.AddScoped<ISupportChatAutomationService, SupportChatAutomationService>();
 builder.Services.AddHttpClient<IGhnShippingService, GhnShippingService>((sp, client) =>
@@ -344,6 +345,47 @@ BEGIN
         UpdatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
     );
 END");
+
+
+    await db.Database.ExecuteSqlRawAsync(@"IF OBJECT_ID('Vouchers', 'U') IS NULL
+BEGIN
+    CREATE TABLE Vouchers (
+        Id INT IDENTITY(1,1) PRIMARY KEY,
+        Code NVARCHAR(50) NOT NULL,
+        Name NVARCHAR(200) NOT NULL DEFAULT '',
+        DiscountType INT NOT NULL DEFAULT 2,
+        DiscountValue DECIMAL(18,2) NOT NULL DEFAULT 0,
+        MaxDiscountAmount DECIMAL(18,2) NULL,
+        MinimumOrderAmount DECIMAL(18,2) NOT NULL DEFAULT 0,
+        Quantity INT NOT NULL DEFAULT 0,
+        UsedCount INT NOT NULL DEFAULT 0,
+        MaxUsagePerUser INT NULL,
+        StartDate DATETIME2 NOT NULL,
+        EndDate DATETIME2 NOT NULL,
+        IsActive BIT NOT NULL DEFAULT 1,
+        CreatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+        UpdatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
+    );
+    CREATE UNIQUE INDEX IX_Vouchers_Code ON Vouchers(Code);
+END");
+    await db.Database.ExecuteSqlRawAsync(@"IF OBJECT_ID('VoucherUsages', 'U') IS NULL
+BEGIN
+    CREATE TABLE VoucherUsages (
+        Id INT IDENTITY(1,1) PRIMARY KEY,
+        VoucherId INT NOT NULL,
+        UserId INT NULL,
+        OrderId INT NOT NULL,
+        VoucherCode NVARCHAR(50) NOT NULL,
+        DiscountAmount DECIMAL(18,2) NOT NULL DEFAULT 0,
+        CreatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+        UpdatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+        CONSTRAINT FK_VoucherUsages_Vouchers FOREIGN KEY (VoucherId) REFERENCES Vouchers(Id),
+        CONSTRAINT FK_VoucherUsages_Users FOREIGN KEY (UserId) REFERENCES Users(Id) ON DELETE SET NULL,
+        CONSTRAINT FK_VoucherUsages_Orders FOREIGN KEY (OrderId) REFERENCES Orders(Id) ON DELETE CASCADE
+    );
+END");
+    await db.Database.ExecuteSqlRawAsync(@"IF COL_LENGTH('Orders', 'VoucherDiscountAmount') IS NULL ALTER TABLE Orders ADD VoucherDiscountAmount DECIMAL(18,2) NOT NULL DEFAULT 0;");
+    await db.Database.ExecuteSqlRawAsync(@"IF COL_LENGTH('Orders', 'FinalTotal') IS NULL ALTER TABLE Orders ADD FinalTotal DECIMAL(18,2) NOT NULL DEFAULT 0;");
 
     await db.Database.ExecuteSqlRawAsync(@"IF COL_LENGTH('Orders', 'ShippingDistanceKm') IS NULL
 BEGIN

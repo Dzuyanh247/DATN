@@ -92,10 +92,13 @@
                     <section class="panel">
                         <div class="panel-header">TỔNG TIỀN</div>
                         <div class="panel-body">
-                            <div class="voucher-row"><input class="ui-input" name="VoucherCode" placeholder="Mã voucher" value="@Model.VoucherCode" /><button type="button" class="voucher-btn">Chọn mã voucher</button></div>
-                            <div class="sum-row"><span>Tổng cộng</span><strong>@subtotal.ToString("N0") VNĐ</strong></div>
-                            <div class="sum-row"><span>Giảm giá Voucher</span><strong>0 VNĐ</strong></div>
-                            <div class="sum-row final"><span>Thành tiền</span><strong>@subtotal.ToString("N0") VNĐ</strong></div>
+                            <div class="voucher-row"><input class="ui-input" id="voucherCodeInput" name="VoucherCode" placeholder="Mã voucher" value="@Model.VoucherCode" /><button type="button" class="voucher-btn" id="chooseVoucherBtn">Chọn mã voucher</button></div>
+                            <div class="voucher-message small mt-2" id="voucherMessage"></div>
+                            <div class="voucher-list border rounded p-2 mt-2 d-none" id="voucherList"></div>
+                            <div class="sum-row"><span>Tổng cộng</span><strong id="subtotalText" data-subtotal="@subtotal">@subtotal.ToString("N0") VNĐ</strong></div>
+                            <div class="sum-row"><span>Phí vận chuyển</span><strong id="shippingFeeText">Chưa tính</strong></div>
+                            <div class="sum-row"><span>Giảm giá Voucher</span><strong id="voucherDiscountText">0 VNĐ</strong></div>
+                            <div class="sum-row final"><span>Thành tiền</span><strong id="finalTotalText">@subtotal.ToString("N0") VNĐ</strong></div>
                             <small>(Giá đã bao gồm VAT)</small>
                             <div class="mt-3"><input type="checkbox" id="termsCheck" required /> <label for="termsCheck">Tôi đã đọc và đồng ý với các Điều kiện giao dịch chung của website</label></div>
                             <div class="mt-3"><label>Phương thức thanh toán*</label><select class="ui-input" name="PaymentMethod" required><option value="COD" selected="@(Model.PaymentMethod == "COD")">Thanh toán khi nhận hàng (COD)</option><option value="BANK_TRANSFER" selected="@(Model.PaymentMethod == "BANK_TRANSFER")">Chuyển khoản ngân hàng</option></select></div>

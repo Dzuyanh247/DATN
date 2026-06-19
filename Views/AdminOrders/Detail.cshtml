@@ -123,7 +123,7 @@
             <div class="admin-order-section-title"><div><i class="bi bi-receipt"></i><span>Tổng thanh toán</span></div></div>
             <div class="admin-order-totals">
                 <div><span>Tạm tính</span><strong>@Model.SubtotalAmount.ToString("N0") đ</strong></div>
-                <div><span>Giảm giá</span><strong>-@Model.DiscountAmount.ToString("N0") đ</strong></div>
+                <div><span>Giảm giá Voucher@(string.IsNullOrWhiteSpace(Model.VoucherCode) ? "" : $" ({Model.VoucherCode})")</span><strong>-@Model.DiscountAmount.ToString("N0") đ</strong></div>
                 <div><span>Phí vận chuyển</span><strong>@Model.ShippingFee.ToString("N0") đ</strong></div>
                 <div class="admin-order-grand-total"><span>Tổng cộng</span><strong>@Model.TotalAmount.ToString("N0") đ</strong></div>
             </div>

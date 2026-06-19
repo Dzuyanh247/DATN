@@ -20,6 +20,7 @@ public class QuotationViewModel
     public bool IsCancelledOrExpired { get; set; }
     public decimal SubtotalAmount { get; set; }
     public decimal DiscountAmount { get; set; }
+    public string? VoucherCode { get; set; }
     public decimal ShippingFee { get; set; }
     public decimal TotalAmount { get; set; }
     public string? Note { get; set; }

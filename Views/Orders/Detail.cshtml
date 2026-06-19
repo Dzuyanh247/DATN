@@ -237,6 +237,12 @@
                 </div>
                 <strong>@Model.TotalAmount.ToString("N0") đ</strong>
             </div>
+            <div class="order-total-breakdown mb-3 small text-end">
+                <div>Tạm tính: <strong>@((Model.SubtotalAmount > 0 ? Model.SubtotalAmount : Model.Details.Sum(x => x.TotalPrice)).ToString("N0")) đ</strong></div>
+                <div>Phí vận chuyển: <strong>@Model.ShippingFee.ToString("N0") đ</strong></div>
+                @if (Model.DiscountAmount > 0) { <div>Giảm giá Voucher@(string.IsNullOrWhiteSpace(Model.VoucherCode) ? "" : $" ({Model.VoucherCode})"): <strong>-@Model.DiscountAmount.ToString("N0") đ</strong></div> }
+                <div class="text-danger fw-bold">Thành tiền: @Model.TotalAmount.ToString("N0") đ</div>
+            </div>
             <div class="order-products-table-wrap">
                 <table class="order-products-table">
                     <thead>

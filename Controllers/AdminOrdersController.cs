@@ -257,6 +257,7 @@ public class AdminOrdersController : Controller
         CreatedAt = order.CreatedAt,
         SubtotalAmount = order.SubtotalAmount,
         DiscountAmount = order.DiscountAmount,
+        VoucherCode = order.VoucherCode,
         ShippingFee = order.ShippingFee,
         TotalAmount = order.TotalAmount,
         Products = order.Details.OrderBy(d => d.Id).Select(MapProduct).ToList()

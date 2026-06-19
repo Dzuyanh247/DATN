@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Datn.PcStore.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -33,7 +34,8 @@ public class ShippingController : ControllerBase
 
         try
         {
-            var cart = await _cartService.GetCartAsync(null);
+            var userId = User.Identity?.IsAuthenticated == true ? int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!) : (int?)null;
+            var cart = await _cartService.GetCartAsync(userId);
             var quantity = Math.Max(1, cart.Items.Sum(x => x.Quantity));
             var weight = Math.Max(1000, quantity * 500);
             var length = 20; var width = 20; var height = Math.Max(10, quantity * 2);

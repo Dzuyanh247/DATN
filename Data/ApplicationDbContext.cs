@@ -31,6 +31,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<ChatConversation> ChatConversations => Set<ChatConversation>();
     public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
     public DbSet<ProductReview> ProductReviews => Set<ProductReview>();
+    public DbSet<Voucher> Vouchers => Set<Voucher>();
+    public DbSet<VoucherUsage> VoucherUsages => Set<VoucherUsage>();
 
 
     public override int SaveChanges()
@@ -107,6 +109,8 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<ChatConversation>().ToTable("ChatConversations");
         modelBuilder.Entity<ChatMessage>().ToTable("ChatMessages");
         modelBuilder.Entity<ProductReview>().ToTable("ProductReviews");
+        modelBuilder.Entity<Voucher>().ToTable("Vouchers");
+        modelBuilder.Entity<VoucherUsage>().ToTable("VoucherUsages");
 
         foreach (var entityType in modelBuilder.Model.GetEntityTypes())
         {
@@ -169,6 +173,22 @@ public class ApplicationDbContext : DbContext
 
         modelBuilder.Entity<User>().HasIndex(x => x.Email).IsUnique();
         modelBuilder.Entity<User>().HasIndex(x => x.Username).IsUnique();
+        modelBuilder.Entity<Voucher>(entity =>
+        {
+            entity.HasIndex(x => x.Code).IsUnique();
+            entity.Property(x => x.Code).HasMaxLength(50).IsRequired();
+            entity.Property(x => x.DiscountValue).HasPrecision(18, 2);
+            entity.Property(x => x.MaxDiscountAmount).HasPrecision(18, 2);
+            entity.Property(x => x.MinimumOrderAmount).HasPrecision(18, 2);
+        });
+        modelBuilder.Entity<VoucherUsage>(entity =>
+        {
+            entity.Property(x => x.DiscountAmount).HasPrecision(18, 2);
+            entity.HasIndex(x => new { x.VoucherId, x.UserId });
+            entity.HasOne(x => x.Voucher).WithMany(x => x.Usages).HasForeignKey(x => x.VoucherId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(x => x.Order).WithMany().HasForeignKey(x => x.OrderId).OnDelete(DeleteBehavior.Cascade);
+        });
         modelBuilder.Entity<Product>().HasIndex(x => x.ProductCode).IsUnique();
         modelBuilder.Entity<Product>().HasIndex(x => x.Slug).IsUnique();
         modelBuilder.Entity<Product>().HasIndex(x => x.SourceUrl);
@@ -241,6 +261,12 @@ public class ApplicationDbContext : DbContext
             .HasPrecision(18, 2);
         modelBuilder.Entity<Order>()
             .Property(x => x.ShippingFee)
+            .HasPrecision(18, 2);
+        modelBuilder.Entity<Order>()
+            .Property(x => x.VoucherDiscountAmount)
+            .HasPrecision(18, 2);
+        modelBuilder.Entity<Order>()
+            .Property(x => x.FinalTotal)
             .HasPrecision(18, 2);
         modelBuilder.Entity<ShippingConfig>()
             .Property(x => x.BaseDistanceKm)

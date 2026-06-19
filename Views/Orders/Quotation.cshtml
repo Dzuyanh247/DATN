@@ -86,7 +86,7 @@
             <div><span>Tạm tính</span><strong>@Money(Model.SubtotalAmount)</strong></div>
             @if (Model.DiscountAmount > 0)
             {
-                <div><span>Giảm giá</span><strong>-@Money(Model.DiscountAmount)</strong></div>
+                <div><span>Giảm giá Voucher@(string.IsNullOrWhiteSpace(Model.VoucherCode) ? "" : $" ({Model.VoucherCode})")</span><strong>-@Money(Model.DiscountAmount)</strong></div>
             }
             <div><span>Phí vận chuyển</span><strong>@(Model.ShippingFee > 0 ? Money(Model.ShippingFee) : "—")</strong></div>
             <div class="invoice-grand-total"><span>TỔNG THANH TOÁN</span><strong>@Money(Model.TotalAmount)</strong></div>
