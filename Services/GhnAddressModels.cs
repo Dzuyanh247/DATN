@@ -5,6 +5,11 @@ public class GhnOptions
     public string BaseUrl { get; set; } = "https://online-gateway.ghn.vn/shiip/public-api";
     public string Token { get; set; } = string.Empty;
     public string ShopId { get; set; } = string.Empty;
+    public int? FromDistrictId { get; set; }
+    public string? FromWardCode { get; set; }
+    public int ServiceTypeId { get; set; } = 2;
+    public int? ServiceId { get; set; }
+    public int InsuranceValue { get; set; } = 0;
 }
 
 public record ProvinceDto(int Id, string Name);
