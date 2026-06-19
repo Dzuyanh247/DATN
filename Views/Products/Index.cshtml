@@ -72,7 +72,7 @@
 
     <div class="products-layout" id="product-filter">
         <aside class="products-filter-sidebar" aria-label="Bộ lọc sản phẩm">
-            <form method="get" action="@(Model.IsComponentListing ? (Model.HasScopedComponentType ? $"/linh-kien/{Model.TypeSlug}" : "/linh-kien") : Url.Action("Index", "Products"))" id="product-filter-form">
+            <form method="get" action="@Model.FilterActionUrl" id="product-filter-form">
                 <input type="hidden" name="categoryId" value="@Model.CategoryId" />
                 <input type="hidden" name="categorySlug" value="@Model.CategorySlug" />
                 <input type="hidden" name="keyword" value="@Model.Keyword" />
@@ -82,7 +82,7 @@
                     <div>
                         <span>LỌC SẢN PHẨM</span>
                     </div>
-                    <a href="@(Model.IsComponentListing ? (Model.HasScopedComponentType ? $"/linh-kien/{Model.TypeSlug}" : "/linh-kien") : Url.Action("Index", "Products", new { categoryId = Model.CategoryId, categorySlug = Model.CategorySlug }))"
+                    <a href="@Model.ClearFilterUrl"
                        class="products-clear-filter" data-preserve-filter-scroll>Xóa lọc</a>
                 </div>
 
@@ -361,7 +361,7 @@
         <section class="products-results" id="product-list" aria-live="polite">
             <div class="products-results-toolbar">
                 <h2>Tìm thấy <span>@Model.Products.Count.ToString("N0")</span> sản phẩm</h2>
-                <form method="get" action="@(Model.IsComponentListing ? (Model.HasScopedComponentType ? $"/linh-kien/{Model.TypeSlug}" : "/linh-kien") : Url.Action("Index", "Products"))" class="products-sort-form" id="product-sort-form">
+                <form method="get" action="@Model.FilterActionUrl" class="products-sort-form" id="product-sort-form">
                     <input type="hidden" name="categoryId" value="@Model.CategoryId" />
                     <input type="hidden" name="categorySlug" value="@Model.CategorySlug" />
                     <input type="hidden" name="keyword" value="@Model.Keyword" />
@@ -408,7 +408,7 @@
                             <span><i class="bi bi-check2"></i> Xóa bớt bộ lọc đang chọn</span>
                         </div>
                     }
-                    <a href="@(Model.IsComponentListing ? (Model.HasScopedComponentType ? $"/linh-kien/{Model.TypeSlug}" : "/linh-kien") : Url.Action("Index", "Products", new { categoryId = Model.CategoryId, categorySlug = Model.CategorySlug, keyword = Model.Keyword }))"
+                    <a href="@Model.ClearFilterUrl"
                        class="btn btn-primary" data-preserve-filter-scroll>Xóa bộ lọc</a>
                 </div>
             }
