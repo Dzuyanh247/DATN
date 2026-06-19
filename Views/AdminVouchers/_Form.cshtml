@@ -1,0 +1,16 @@
+@model Voucher
+<div asp-validation-summary="ModelOnly" class="text-danger"></div>
+<div class="row g-3">
+    <div class="col-md-4"><label class="form-label">Mã voucher</label><input asp-for="Code" class="form-control text-uppercase" placeholder="SALE100K" /><span asp-validation-for="Code" class="text-danger"></span></div>
+    <div class="col-md-8"><label class="form-label">Tên/Ghi chú voucher</label><input asp-for="Name" class="form-control" placeholder="Giảm 100.000đ cho đơn hàng đủ điều kiện" /></div>
+    <div class="col-md-4"><label class="form-label">Loại giảm giá</label><select asp-for="DiscountType" class="form-select"><option value="FixedAmount">Giảm số tiền cố định</option><option value="Percent">Giảm theo phần trăm (%)</option></select></div>
+    <div class="col-md-4"><label class="form-label">Giá trị giảm</label><input asp-for="DiscountValue" class="form-control" type="number" min="0" step="1000" /><span asp-validation-for="DiscountValue" class="text-danger"></span></div>
+    <div class="col-md-4"><label class="form-label">Giảm tối đa (cho voucher %)</label><input asp-for="MaxDiscountAmount" class="form-control" type="number" min="0" step="1000" /></div>
+    <div class="col-md-4"><label class="form-label">Giá trị đơn tối thiểu</label><input asp-for="MinimumOrderAmount" class="form-control" type="number" min="0" step="1000" /></div>
+    <div class="col-md-4"><label class="form-label">Số lượng voucher</label><input asp-for="Quantity" class="form-control" type="number" min="0" /><span asp-validation-for="Quantity" class="text-danger"></span></div>
+    <div class="col-md-4"><label class="form-label">Mỗi người dùng tối đa</label><input asp-for="MaxUsagePerUser" class="form-control" type="number" min="1" placeholder="Để trống nếu không giới hạn" /></div>
+    <div class="col-md-6"><label class="form-label">Ngày bắt đầu</label><input asp-for="StartDate" class="form-control" type="datetime-local" /></div>
+    <div class="col-md-6"><label class="form-label">Ngày kết thúc</label><input asp-for="EndDate" class="form-control" type="datetime-local" /><span asp-validation-for="EndDate" class="text-danger"></span></div>
+    <div class="col-12"><div class="form-check"><input asp-for="IsActive" class="form-check-input" /><label asp-for="IsActive" class="form-check-label">Đang hoạt động</label></div></div>
+</div>
+<div class="mt-4 d-flex gap-2"><button class="btn btn-primary">Lưu voucher</button><a asp-action="Index" class="btn btn-outline-secondary">Quay lại</a></div>

@@ -19,19 +19,22 @@ public class OrdersController : Controller
     private readonly IOrderExpirationService _orderExpirationService;
     private readonly ILogger<OrdersController> _logger;
     private readonly IConfiguration _configuration;
+    private readonly IVoucherService _voucherService;
 
     public OrdersController(
         ApplicationDbContext db,
         ICartService cartService,
         IOrderExpirationService orderExpirationService,
         ILogger<OrdersController> logger,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IVoucherService voucherService)
     {
         _db = db;
         _cartService = cartService;
         _orderExpirationService = orderExpirationService;
         _logger = logger;
         _configuration = configuration;
+        _voucherService = voucherService;
     }
 
     private static string ToOrderCode(int orderId) => $"DH{orderId:D6}";
@@ -184,6 +187,21 @@ public class OrdersController : Controller
             }
 
             var discount = 0m;
+            Voucher? appliedVoucher = null;
+            if (!string.IsNullOrWhiteSpace(vm.VoucherCode))
+            {
+                var voucherResult = await _voucherService.ValidateAsync(vm.VoucherCode, subtotal, vm.ShippingFee, userId);
+                if (!voucherResult.Success)
+                {
+                    ModelState.AddModelError(nameof(vm.VoucherCode), voucherResult.Message);
+                    ViewBag.Cart = cart;
+                    return View(vm);
+                }
+                appliedVoucher = voucherResult.Voucher;
+                discount = voucherResult.DiscountAmount;
+                vm.VoucherCode = appliedVoucher?.Code;
+            }
+            var finalTotal = Math.Max(subtotal + vm.ShippingFee - discount, 0m);
             var paymentExpireAt = vm.PaymentMethod == PaymentMethods.BankTransfer
                 ? DateTimeHelper.UtcNow().Add(OrderStatusHelper.PendingPaymentTimeToLive)
                 : (DateTime?)null;
@@ -206,12 +224,14 @@ public class OrdersController : Controller
                 VoucherCode = vm.VoucherCode,
                 SubtotalAmount = subtotal,
                 DiscountAmount = discount,
+                VoucherDiscountAmount = discount,
+                FinalTotal = finalTotal,
                 ShippingDistanceKm = vm.ShippingDistanceKm,
                 ShippingDurationMinutes = vm.ShippingDurationMinutes,
                 ShippingFee = vm.ShippingFee,
                 ShippingProvider = vm.ShippingProvider,
                 ShippingFormulaSnapshot = vm.ShippingFormulaSnapshot,
-                TotalAmount = subtotal - discount + vm.ShippingFee,
+                TotalAmount = finalTotal,
                 PaymentMethod = vm.PaymentMethod,
                 PaymentStatus = vm.PaymentMethod == PaymentMethods.BankTransfer ? PaymentStatuses.Pending : PaymentStatuses.Unpaid,
                 Status = vm.PaymentMethod == PaymentMethods.BankTransfer ? OrderStatus.PendingPayment : OrderStatus.PendingConfirmation,
@@ -228,7 +248,23 @@ public class OrdersController : Controller
             }
 
             _db.Orders.Add(order);
+            if (appliedVoucher != null)
+            {
+                appliedVoucher.UsedCount += 1;
+            }
             await _db.SaveChangesAsync();
+            if (appliedVoucher != null)
+            {
+                _db.VoucherUsages.Add(new VoucherUsage
+                {
+                    VoucherId = appliedVoucher.Id,
+                    UserId = userId,
+                    OrderId = order.Id,
+                    VoucherCode = appliedVoucher.Code,
+                    DiscountAmount = discount
+                });
+                await _db.SaveChangesAsync();
+            }
             if (order.PaymentMethod == PaymentMethods.BankTransfer)
             {
                 order.TransferContent = $"DH{order.Id}";
@@ -403,6 +439,7 @@ public class OrdersController : Controller
             IsCancelledOrExpired = order.Status is OrderStatus.Cancelled or OrderStatus.Expired,
             SubtotalAmount = order.SubtotalAmount > 0 ? order.SubtotalAmount : order.Details.Sum(x => x.TotalPrice),
             DiscountAmount = order.DiscountAmount,
+            VoucherCode = order.VoucherCode,
             ShippingFee = order.ShippingFee,
             TotalAmount = order.TotalAmount,
             Note = order.Note,

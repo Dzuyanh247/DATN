@@ -61,6 +61,7 @@ public class AdminOrderDetailVm
     public DateTime CreatedAt { get; init; }
     public decimal SubtotalAmount { get; init; }
     public decimal DiscountAmount { get; init; }
+    public string? VoucherCode { get; init; }
     public decimal ShippingFee { get; init; }
     public decimal TotalAmount { get; init; }
     public IReadOnlyList<AdminOrderProductVm> Products { get; init; } = Array.Empty<AdminOrderProductVm>();

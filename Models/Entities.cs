@@ -236,6 +236,8 @@ public class CartItem : BaseEntity
 
 public enum OrderStatus { Pending = 1, Processing, Delivering, Completed, Cancelled, PendingConfirmation, PendingPayment, Expired }
 
+public enum VoucherDiscountType { Percent = 1, FixedAmount = 2 }
+
 public class Order : BaseEntity
 {
     public int? UserId { get; set; }
@@ -267,10 +269,41 @@ public class Order : BaseEntity
     [MaxLength(100)] public string? ShippingProvider { get; set; }
     [MaxLength(300)] public string? ShippingFormulaSnapshot { get; set; }
     [MaxLength(50)] public string? VoucherCode { get; set; }
+    public decimal VoucherDiscountAmount { get; set; }
+    public decimal FinalTotal { get; set; }
     public DateTime? PaymentExpireAt { get; set; }
     [MaxLength(500)] public string? PaymentUrl { get; set; }
     [MaxLength(100)] public string? PaymentTransactionId { get; set; }
     public ICollection<OrderDetail> Details { get; set; } = new List<OrderDetail>();
+}
+
+public class Voucher : BaseEntity
+{
+    [Required, MaxLength(50)] public string Code { get; set; } = string.Empty;
+    [MaxLength(200)] public string Name { get; set; } = string.Empty;
+    public VoucherDiscountType DiscountType { get; set; } = VoucherDiscountType.FixedAmount;
+    public decimal DiscountValue { get; set; }
+    public decimal? MaxDiscountAmount { get; set; }
+    public decimal MinimumOrderAmount { get; set; }
+    public int Quantity { get; set; }
+    public int UsedCount { get; set; }
+    public int? MaxUsagePerUser { get; set; }
+    public DateTime StartDate { get; set; } = DateTime.UtcNow;
+    public DateTime EndDate { get; set; } = DateTime.UtcNow.AddMonths(1);
+    public bool IsActive { get; set; } = true;
+    public ICollection<VoucherUsage> Usages { get; set; } = new List<VoucherUsage>();
+}
+
+public class VoucherUsage : BaseEntity
+{
+    public int VoucherId { get; set; }
+    public Voucher? Voucher { get; set; }
+    public int? UserId { get; set; }
+    public User? User { get; set; }
+    public int OrderId { get; set; }
+    public Order? Order { get; set; }
+    [MaxLength(50)] public string VoucherCode { get; set; } = string.Empty;
+    public decimal DiscountAmount { get; set; }
 }
 
 public class OrderDetail : BaseEntity
