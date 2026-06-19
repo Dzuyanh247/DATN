@@ -13,7 +13,7 @@ public class AdminVouchersController : Controller
     public AdminVouchersController(ApplicationDbContext db) => _db = db;
 
     public async Task<IActionResult> Index() => View(await _db.Vouchers.OrderByDescending(x => x.CreatedAt).ToListAsync());
-    [HttpGet] public IActionResult Create() => View(new Voucher { StartDate = DateTime.Today, EndDate = DateTime.Today.AddMonths(1), Quantity = 100, IsActive = true });
+    [HttpGet] public IActionResult Create() => View(new Voucher { StartDate = DateTime.Now, EndDate = DateTime.Now.AddMonths(1), Quantity = 100, IsActive = true });
 
     [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(Voucher model)
@@ -72,11 +72,20 @@ public class AdminVouchersController : Controller
     {
         model.Code = (model.Code ?? string.Empty).Trim().ToUpperInvariant();
         model.Name = (model.Name ?? string.Empty).Trim();
+        if (Request.Form.ContainsKey("UnlimitedQuantity")) model.Quantity = int.MaxValue;
+        if (model.DiscountType == VoucherDiscountType.FixedAmount) model.MaxDiscountAmount = null;
+
         if (string.IsNullOrWhiteSpace(model.Code)) ModelState.AddModelError(nameof(model.Code), "Vui lòng nhập mã voucher.");
+        if (model.Code.Any(char.IsWhiteSpace)) ModelState.AddModelError(nameof(model.Code), "Mã voucher không được chứa khoảng trắng.");
         if (model.DiscountValue <= 0) ModelState.AddModelError(nameof(model.DiscountValue), "Giá trị giảm phải lớn hơn 0.");
-        if (model.DiscountType == VoucherDiscountType.Percent && model.DiscountValue > 100) ModelState.AddModelError(nameof(model.DiscountValue), "Phần trăm giảm không được vượt quá 100%.");
+        if (model.DiscountType == VoucherDiscountType.Percent && (model.DiscountValue < 1 || model.DiscountValue > 100)) ModelState.AddModelError(nameof(model.DiscountValue), "Phần trăm giảm phải từ 1 đến 100.");
+        if (model.DiscountType == VoucherDiscountType.FixedAmount && model.DiscountValue < 1000) ModelState.AddModelError(nameof(model.DiscountValue), "Giá trị giảm tiền cố định phải từ 1.000 VNĐ.");
+        if (model.DiscountType == VoucherDiscountType.Percent && model.MaxDiscountAmount.HasValue && model.MaxDiscountAmount <= 0) ModelState.AddModelError(nameof(model.MaxDiscountAmount), "Giảm tối đa phải lớn hơn 0 hoặc để trống.");
+        if (model.MinimumOrderAmount < 0) ModelState.AddModelError(nameof(model.MinimumOrderAmount), "Giá trị đơn hàng tối thiểu không được âm.");
+        if (model.Quantity < 1) ModelState.AddModelError(nameof(model.Quantity), "Số lượng voucher phải từ 1 hoặc chọn không giới hạn.");
         if (model.Quantity < model.UsedCount) ModelState.AddModelError(nameof(model.Quantity), "Số lượng không được nhỏ hơn số lượt đã dùng.");
-        if (model.EndDate < model.StartDate) ModelState.AddModelError(nameof(model.EndDate), "Ngày kết thúc phải sau ngày bắt đầu.");
+        if (model.MaxUsagePerUser.HasValue && model.MaxUsagePerUser < 1) ModelState.AddModelError(nameof(model.MaxUsagePerUser), "Số lần dùng tối đa mỗi tài khoản phải từ 1.");
+        if (model.EndDate <= model.StartDate) ModelState.AddModelError(nameof(model.EndDate), "Ngày kết thúc phải sau ngày bắt đầu.");
         var exists = _db.Vouchers.Any(x => x.Code == model.Code && (!editingId.HasValue || x.Id != editingId.Value));
         if (exists) ModelState.AddModelError(nameof(model.Code), "Mã voucher đã tồn tại.");
     }
