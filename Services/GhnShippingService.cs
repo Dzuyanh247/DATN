@@ -32,7 +32,6 @@ public class GhnShippingService : IGhnShippingService
 
         var body = new Dictionary<string, object>
         {
-            ["service_type_id"] = 2,
             ["to_district_id"] = toDistrictId,
             ["to_ward_code"] = toWardCode,
             ["weight"] = weight,
@@ -40,8 +39,28 @@ public class GhnShippingService : IGhnShippingService
             ["width"] = width,
             ["height"] = height
         };
+        if (_options.ServiceId.HasValue && _options.ServiceId.Value > 0)
+        {
+            body["service_id"] = _options.ServiceId.Value;
+        }
+        else
+        {
+            body["service_type_id"] = _options.ServiceTypeId > 0 ? _options.ServiceTypeId : 2;
+        }
+        if (_options.FromDistrictId.HasValue && _options.FromDistrictId.Value > 0)
+        {
+            body["from_district_id"] = _options.FromDistrictId.Value;
+        }
+        if (!string.IsNullOrWhiteSpace(_options.FromWardCode))
+        {
+            body["from_ward_code"] = _options.FromWardCode;
+        }
+        if (_options.InsuranceValue > 0)
+        {
+            body["insurance_value"] = _options.InsuranceValue;
+        }
 
-        _logger.LogInformation("GHN fee request districtId={DistrictId} wardCode={WardCode} weight={Weight} size={Length}x{Width}x{Height}", toDistrictId, toWardCode, weight, length, width, height);
+        _logger.LogInformation("GHN fee request fromDistrictId={FromDistrictId} fromWardCode={FromWardCode} serviceId={ServiceId} serviceTypeId={ServiceTypeId} districtId={DistrictId} wardCode={WardCode} weight={Weight} size={Length}x{Width}x{Height} insuranceValue={InsuranceValue}", _options.FromDistrictId, _options.FromWardCode, _options.ServiceId, _options.ServiceTypeId, toDistrictId, toWardCode, weight, length, width, height, _options.InsuranceValue);
         using var request = new HttpRequestMessage(HttpMethod.Post, "v2/shipping-order/fee");
         request.Headers.Remove("Token");
         request.Headers.Remove("ShopId");
@@ -53,7 +72,7 @@ public class GhnShippingService : IGhnShippingService
         var raw = await response.Content.ReadAsStringAsync(cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
-            _logger.LogWarning("GHN fee API HTTP failed status={StatusCode}", (int)response.StatusCode);
+            _logger.LogWarning("GHN fee API HTTP failed status={StatusCode} body={Body}", (int)response.StatusCode, raw);
             return GhnShippingFeeResult.Fail("GHN không phản hồi hợp lệ.");
         }
 
@@ -68,7 +87,11 @@ public class GhnShippingService : IGhnShippingService
         }
 
         var data = root.GetProperty("data");
-        var total = data.TryGetProperty("total", out var totalEl) ? totalEl.GetDecimal() : 0m;
+        var total = data.TryGetProperty("total", out var totalEl)
+            ? totalEl.GetDecimal()
+            : data.TryGetProperty("service_fee", out var serviceFeeEl)
+                ? serviceFeeEl.GetDecimal()
+                : 0m;
         var result = new GhnShippingFeeResult
         {
             Success = true,

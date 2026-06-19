@@ -20,6 +20,7 @@ public class OrdersController : Controller
     private readonly ILogger<OrdersController> _logger;
     private readonly IConfiguration _configuration;
     private readonly IVoucherService _voucherService;
+    private readonly IShippingService _shippingService;
 
     public OrdersController(
         ApplicationDbContext db,
@@ -27,7 +28,8 @@ public class OrdersController : Controller
         IOrderExpirationService orderExpirationService,
         ILogger<OrdersController> logger,
         IConfiguration configuration,
-        IVoucherService voucherService)
+        IVoucherService voucherService,
+        IShippingService shippingService)
     {
         _db = db;
         _cartService = cartService;
@@ -35,6 +37,7 @@ public class OrdersController : Controller
         _logger = logger;
         _configuration = configuration;
         _voucherService = voucherService;
+        _shippingService = shippingService;
     }
 
     private static string ToOrderCode(int orderId) => $"DH{orderId:D6}";
@@ -111,6 +114,12 @@ public class OrdersController : Controller
             ModelState.AddModelError(nameof(vm.DistrictName), "Quận/Huyện là bắt buộc.");
         if (string.IsNullOrWhiteSpace(vm.WardName))
             ModelState.AddModelError(nameof(vm.WardName), "Phường/Xã là bắt buộc.");
+        if (string.IsNullOrWhiteSpace(vm.ProvinceCode) || !int.TryParse(vm.ProvinceCode, out var provinceId) || provinceId <= 0)
+            ModelState.AddModelError(nameof(vm.ProvinceCode), "Mã Tỉnh/Thành phố GHN không hợp lệ.");
+        if (string.IsNullOrWhiteSpace(vm.DistrictCode) || !int.TryParse(vm.DistrictCode, out var districtId) || districtId <= 0)
+            ModelState.AddModelError(nameof(vm.DistrictCode), "Mã Quận/Huyện GHN không hợp lệ.");
+        if (string.IsNullOrWhiteSpace(vm.WardCode))
+            ModelState.AddModelError(nameof(vm.WardCode), "Mã Phường/Xã GHN không hợp lệ.");
 
         vm.FullAddress = string.IsNullOrWhiteSpace(vm.FullAddress)
             ? $"{vm.AddressDetail}, {vm.WardName}, {vm.DistrictName}, {vm.ProvinceName}, Vietnam"
@@ -121,14 +130,48 @@ public class OrdersController : Controller
         var userId = User.Identity?.IsAuthenticated == true ? int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!) : (int?)null;
         var cart = await _cartService.GetCartAsync(userId);
         if (!cart.Items.Any()) ModelState.AddModelError(string.Empty, "Không thể đặt hàng khi giỏ hàng trống.");
-        if (vm.ShippingFee < 0 || string.IsNullOrWhiteSpace(vm.ShippingProvider))
-            ModelState.AddModelError(string.Empty, "Vui lòng tính phí giao hàng hợp lệ trước khi đặt hàng.");
         if (vm.PaymentMethod != PaymentMethods.Cod && vm.PaymentMethod != PaymentMethods.BankTransfer)
             ModelState.AddModelError(nameof(vm.PaymentMethod), "Phương thức thanh toán không hợp lệ.");
 
 
         if (!ModelState.IsValid)
         {
+            ViewBag.Cart = cart;
+            return View(vm);
+        }
+
+        try
+        {
+            var quantityForShipping = Math.Max(1, cart.Items.Sum(x => x.Quantity));
+            var quote = await _shippingService.CalculateAsync(
+                int.Parse(vm.DistrictCode),
+                vm.WardCode,
+                vm.ProvinceName,
+                vm.DistrictName,
+                vm.WardName,
+                vm.AddressDetail,
+                Math.Max(1000, quantityForShipping * 500),
+                20,
+                20,
+                Math.Max(10, quantityForShipping * 2));
+
+            vm.ShippingFee = quote.ShippingFee;
+            vm.ShippingProvider = quote.Provider;
+            vm.ShippingFormulaSnapshot = quote.FormulaSnapshot;
+            vm.ShippingDistanceKm = (double)quote.DistanceKm;
+            vm.ShippingDurationMinutes = quote.DurationMinutes;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Checkout shipping recalculation failed");
+            ModelState.AddModelError(string.Empty, "Chưa tính được phí vận chuyển. Vui lòng kiểm tra lại địa chỉ và thử đặt hàng sau.");
+            ViewBag.Cart = cart;
+            return View(vm);
+        }
+
+        if (vm.ShippingFee < 0 || string.IsNullOrWhiteSpace(vm.ShippingProvider))
+        {
+            ModelState.AddModelError(string.Empty, "Vui lòng tính phí giao hàng hợp lệ trước khi đặt hàng.");
             ViewBag.Cart = cart;
             return View(vm);
         }
