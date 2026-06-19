@@ -86,7 +86,6 @@ public class ProductsController : Controller
         vm.IsComponentListing = await IsComponentListingAsync(vm.Type, vm.CategorySlug, vm.CategoryId);
         if (!vm.IsComponentListing)
         {
-            vm.Brands = Array.Empty<string>();
             vm.ComponentTypes = Array.Empty<string>();
         }
 
@@ -285,7 +284,6 @@ public class ProductsController : Controller
             .ToList();
 
         vm.ComponentTypeGroups = vm.IsComponentListing ? BuildComponentTypeGroups(products, vm.Type) : new List<ProductFilterGroupVm>();
-        if (!vm.IsComponentListing) vm.BrandOptions.Clear();
         vm.SpecFilterGroups = string.IsNullOrWhiteSpace(vm.Type) ? new List<ProductSpecFilterGroupVm>() : BuildSpecFilterGroups(products, vm.Type);
 
         var showPcFacets = !vm.IsComponentListing;
@@ -305,18 +303,23 @@ public class ProductsController : Controller
         if (showPcFacets || string.Equals(ComponentTypes.Normalize(vm.Type), ComponentTypes.VGA, StringComparison.OrdinalIgnoreCase))
         {
             vm.GpuOptions = BuildParsedOptions(products, parsedFacets, facets => facets.Gpu)
-                .OrderBy(option => option.Label)
+                .OrderBy(option => GetGpuSortOrder(option.Value))
+                .ThenBy(option => option.Label)
                 .ToList();
         }
         if (showPcFacets)
         {
+            // PC listings intentionally whitelist only the friendly top-level facets:
+            // price, brand, CPU series, RAM capacity, GPU series, and storage capacity.
+            // Detailed component facets such as mainboard, PSU, case, and cooling are
+            // omitted to avoid exposing long component names as noisy filter options.
             vm.StorageOptions = BuildParsedOptions(products, parsedFacets, facets => facets.Storage)
                 .OrderBy(option => ParseStorageCapacity(option.Value))
                 .ToList();
-            vm.MainboardOptions = BuildParsedOptions(products, parsedFacets, facets => facets.Mainboard).OrderBy(option => option.Label).ToList();
-            vm.PsuOptions = BuildParsedOptions(products, parsedFacets, facets => facets.Psu).OrderBy(option => option.Label).ToList();
-            vm.CaseOptions = BuildParsedOptions(products, parsedFacets, facets => facets.Case).OrderBy(option => option.Label).ToList();
-            vm.CoolingOptions = BuildParsedOptions(products, parsedFacets, facets => facets.Cooling).OrderBy(option => option.Label).ToList();
+            vm.MainboardOptions.Clear();
+            vm.PsuOptions.Clear();
+            vm.CaseOptions.Clear();
+            vm.CoolingOptions.Clear();
         }
     }
 
@@ -471,7 +474,21 @@ public class ProductsController : Controller
 
     private static int GetCpuSortOrder(string value)
     {
-        var order = new[] { "AMD Ryzen 5", "AMD Ryzen 7", "AMD Ryzen 9", "Intel Core i3", "Intel Core i5", "Intel Core i7", "Intel Core i9", "Intel Core Ultra 5", "Intel Core Ultra 7", "Intel Core Ultra 9" };
+        var order = new[] { "AMD Ryzen 3", "AMD Ryzen 5", "AMD Ryzen 7", "AMD Ryzen 9", "Intel Core i3", "Intel Core i5", "Intel Core i7", "Intel Core i9", "Intel Core Ultra 5", "Intel Core Ultra 7", "Intel Core Ultra 9" };
+        var index = Array.FindIndex(order, item => string.Equals(item, value, StringComparison.OrdinalIgnoreCase));
+        return index >= 0 ? index : int.MaxValue;
+    }
+
+    private static int GetGpuSortOrder(string value)
+    {
+        var order = new[]
+        {
+            "NVIDIA RTX 3050", "NVIDIA RTX 3060", "NVIDIA RTX 4060", "NVIDIA RTX 4060 Ti",
+            "NVIDIA RTX 4070", "NVIDIA RTX 4070 Ti", "NVIDIA RTX 4080", "NVIDIA RTX 4090",
+            "NVIDIA RTX 5060", "NVIDIA RTX 5060 Ti", "NVIDIA RTX 5070", "NVIDIA RTX 5070 Ti",
+            "NVIDIA RTX 5080", "NVIDIA RTX 5090", "AMD RX 7600", "AMD RX 7700 XT",
+            "AMD RX 7800 XT", "AMD RX 7900 XT", "AMD RX 7900 XTX", "AMD RX 9060 XT"
+        };
         var index = Array.FindIndex(order, item => string.Equals(item, value, StringComparison.OrdinalIgnoreCase));
         return index >= 0 ? index : int.MaxValue;
     }
