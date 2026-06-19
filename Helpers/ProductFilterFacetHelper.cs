@@ -8,7 +8,7 @@ public static partial class ProductFilterFacetHelper
     private const int MaxFacetLabelLength = 80;
 
     private static readonly HashSet<string> SupportedRamCapacities =
-        new(["8", "16", "32", "64"], StringComparer.OrdinalIgnoreCase);
+        new(["8", "16", "32", "64", "128"], StringComparer.OrdinalIgnoreCase);
 
     public static readonly IReadOnlyList<PriceRangeDefinition> PriceRanges =
     [
@@ -161,16 +161,25 @@ public static partial class ProductFilterFacetHelper
         var normalized = WhitespaceRegex().Replace(value.Replace('-', ' ').Trim(), " ").ToUpperInvariant();
         normalized = GpuVendorPrefixRegex().Replace(normalized, string.Empty);
         if (Regex.IsMatch(normalized, @"\bRTX\s*3050\b", RegexOptions.IgnoreCase)) return "NVIDIA RTX 3050";
+        if (Regex.IsMatch(normalized, @"\bRTX\s*3060\b", RegexOptions.IgnoreCase)) return "NVIDIA RTX 3060";
         if (Regex.IsMatch(normalized, @"\bRTX\s*4060\s*TI\b", RegexOptions.IgnoreCase)) return "NVIDIA RTX 4060 Ti";
         if (Regex.IsMatch(normalized, @"\bRTX\s*4060\b", RegexOptions.IgnoreCase)) return "NVIDIA RTX 4060";
         if (Regex.IsMatch(normalized, @"\bRTX\s*4070\s*TI\b", RegexOptions.IgnoreCase)) return "NVIDIA RTX 4070 Ti";
         if (Regex.IsMatch(normalized, @"\bRTX\s*4070\b", RegexOptions.IgnoreCase)) return "NVIDIA RTX 4070";
         if (Regex.IsMatch(normalized, @"\bRTX\s*4080\b", RegexOptions.IgnoreCase)) return "NVIDIA RTX 4080";
         if (Regex.IsMatch(normalized, @"\bRTX\s*4090\b", RegexOptions.IgnoreCase)) return "NVIDIA RTX 4090";
+        if (Regex.IsMatch(normalized, @"\bRTX\s*5060\s*TI\b", RegexOptions.IgnoreCase)) return "NVIDIA RTX 5060 Ti";
+        if (Regex.IsMatch(normalized, @"\bRTX\s*5060\b", RegexOptions.IgnoreCase)) return "NVIDIA RTX 5060";
+        if (Regex.IsMatch(normalized, @"\bRTX\s*5070\s*TI\b", RegexOptions.IgnoreCase)) return "NVIDIA RTX 5070 Ti";
+        if (Regex.IsMatch(normalized, @"\bRTX\s*5070\b", RegexOptions.IgnoreCase)) return "NVIDIA RTX 5070";
+        if (Regex.IsMatch(normalized, @"\bRTX\s*5080\b", RegexOptions.IgnoreCase)) return "NVIDIA RTX 5080";
+        if (Regex.IsMatch(normalized, @"\bRTX\s*5090\b", RegexOptions.IgnoreCase)) return "NVIDIA RTX 5090";
         if (Regex.IsMatch(normalized, @"\bRX\s*7600\b", RegexOptions.IgnoreCase)) return "AMD RX 7600";
         if (Regex.IsMatch(normalized, @"\bRX\s*7700\s*XT\b", RegexOptions.IgnoreCase)) return "AMD RX 7700 XT";
         if (Regex.IsMatch(normalized, @"\bRX\s*7800\s*XT\b", RegexOptions.IgnoreCase)) return "AMD RX 7800 XT";
-        if (Regex.IsMatch(normalized, @"\bRX\s*7900\s*(XT|XTX)\b", RegexOptions.IgnoreCase)) return "AMD RX 7900 XT/XTX";
+        if (Regex.IsMatch(normalized, @"\bRX\s*7900\s*XTX\b", RegexOptions.IgnoreCase)) return "AMD RX 7900 XTX";
+        if (Regex.IsMatch(normalized, @"\bRX\s*7900\s*XT\b", RegexOptions.IgnoreCase)) return "AMD RX 7900 XT";
+        if (Regex.IsMatch(normalized, @"\bRX\s*9060\s*XT\b", RegexOptions.IgnoreCase)) return "AMD RX 9060 XT";
         return string.Empty;
     }
 
@@ -180,10 +189,10 @@ public static partial class ProductFilterFacetHelper
     [GeneratedRegex(@"\b(?:AMD\s+)?Ryzen\s+([3579])\b", RegexOptions.IgnoreCase)]
     private static partial Regex RyzenCpuRegex();
 
-    [GeneratedRegex(@"\b(8|16|32|64)\s*GB\b", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"\b(8|16|32|64|128)\s*GB\b", RegexOptions.IgnoreCase)]
     private static partial Regex RamRegex();
 
-    [GeneratedRegex(@"\b(?:(?:AMD\s+)?RADEON\s+|NVIDIA\s+|AMD\s+)?(?:RTX|GTX|RX)\s*-?\s*(?:3050|4060|4070|4080|4090|7600|7700|7800|7900)(?:\s*(?:Ti|XT|XTX))?\b", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"\b(?:(?:AMD\s+)?RADEON\s+|NVIDIA\s+|AMD\s+)?(?:RTX|GTX|RX)\s*-?\s*(?:3050|3060|4060|4070|4080|4090|5060|5070|5080|5090|7600|7700|7800|7900|9060)(?:\s*(?:Ti|XT|XTX))?\b", RegexOptions.IgnoreCase)]
     private static partial Regex GpuRegex();
 
     [GeneratedRegex(@"(\b(?:(?:AMD\s+)?RADEON\s+|NVIDIA\s+|AMD\s+)?(?:RTX|GTX|RX)\s*-?\s*\d{3,4}(?:\s*(?:Ti|SUPER|XT|XTX))?\b)\s*(?:[-/]\s*)?(?:8|16|32|64)\s*GB(?:\s+GDDR\w*)?", RegexOptions.IgnoreCase)]
