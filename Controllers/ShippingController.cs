@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Datn.PcStore.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 
 namespace Datn.PcStore.Controllers;
 
@@ -12,12 +13,14 @@ public class ShippingController : ControllerBase
     private readonly IGhnAddressService _ghnAddressService;
     private readonly ICartService _cartService;
     private readonly ILogger<ShippingController> _logger;
+    private readonly GhnOptions _ghnOptions;
 
-    public ShippingController(IShippingService shippingService, IGhnAddressService ghnAddressService, ICartService cartService, ILogger<ShippingController> logger)
+    public ShippingController(IShippingService shippingService, IGhnAddressService ghnAddressService, ICartService cartService, IOptions<GhnOptions> ghnOptions, ILogger<ShippingController> logger)
     {
         _shippingService = shippingService;
         _ghnAddressService = ghnAddressService;
         _cartService = cartService;
+        _ghnOptions = ghnOptions.Value;
         _logger = logger;
     }
 
@@ -29,6 +32,10 @@ public class ShippingController : ControllerBase
     public async Task<IActionResult> Calculate([FromBody] ShippingCalculateRequest? request, CancellationToken cancellationToken)
     {
         if (request == null) return Ok(new { success = false, message = "Payload không hợp lệ." });
+
+        _logger.LogWarning("Shipping calculate request provinceId={ProvinceId} provinceName={ProvinceName} districtId={DistrictId} districtName={DistrictName} wardCode={WardCode} wardName={WardName} addressPresent={AddressPresent} serviceId={ServiceId} serviceTypeId={ServiceTypeId} shopId={ShopId} tokenConfigured={TokenConfigured} tokenPrefix={TokenPrefix}",
+            request.ProvinceId, request.ProvinceName, request.DistrictId, request.DistrictName, request.WardCode, request.WardName, !string.IsNullOrWhiteSpace(request.AddressDetail), _ghnOptions.ServiceId, _ghnOptions.ServiceTypeId, _ghnOptions.ShopId, !string.IsNullOrWhiteSpace(_ghnOptions.Token), MaskTokenPrefix(_ghnOptions.Token));
+
         if (request.ProvinceId <= 0 || request.DistrictId <= 0 || string.IsNullOrWhiteSpace(request.WardCode) || string.IsNullOrWhiteSpace(request.AddressDetail))
             return Ok(new { success = false, message = "Thiếu thông tin địa chỉ giao hàng." });
 
@@ -39,6 +46,7 @@ public class ShippingController : ControllerBase
             var quantity = Math.Max(1, cart.Items.Sum(x => x.Quantity));
             var weight = Math.Max(1000, quantity * 500);
             var length = 20; var width = 20; var height = Math.Max(10, quantity * 2);
+            _logger.LogWarning("Shipping calculate cart userId={UserId} quantity={Quantity} weight={Weight} size={Length}x{Width}x{Height}", userId, quantity, weight, length, width, height);
 
             var quote = await _shippingService.CalculateAsync(request.DistrictId, request.WardCode!, request.ProvinceName ?? string.Empty, request.DistrictName ?? string.Empty, request.WardName ?? string.Empty, request.AddressDetail ?? string.Empty, weight, length, width, height, cancellationToken);
             return Ok(new { success = true, shippingFee = quote.ShippingFee, isFreeShipping = quote.IsFreeShipping, feeSource = quote.Provider, currency = "VND", message = quote.Message, total = quote.GhnTotal, service_fee = quote.GhnServiceFee, insurance_fee = quote.GhnInsuranceFee, leadtime = quote.GhnLeadTime, shippingProvider = quote.Provider, formula = quote.FormulaSnapshot });
@@ -48,6 +56,12 @@ public class ShippingController : ControllerBase
             _logger.LogError(ex, "Shipping calculate failed");
             return Ok(new { success = false, message = ex.Message });
         }
+    }
+
+    private static string MaskTokenPrefix(string? token)
+    {
+        if (string.IsNullOrWhiteSpace(token)) return string.Empty;
+        return token.Length <= 8 ? "***" : token[..8] + "***";
     }
 }
 
