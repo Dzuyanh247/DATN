@@ -22,6 +22,11 @@ public class ProductFilterVm
     public string[] Cpu { get; set; } = Array.Empty<string>();
     public string[] Ram { get; set; } = Array.Empty<string>();
     public string[] Gpu { get; set; } = Array.Empty<string>();
+    public string[] Storage { get; set; } = Array.Empty<string>();
+    public string[] Mainboard { get; set; } = Array.Empty<string>();
+    public string[] Psu { get; set; } = Array.Empty<string>();
+    public string[] Case { get; set; } = Array.Empty<string>();
+    public string[] Cooling { get; set; } = Array.Empty<string>();
     public List<Category> Categories { get; set; } = new();
     public List<Product> Products { get; set; } = new();
     public List<ProductFilterOptionVm> PriceRangeOptions { get; set; } = new();
@@ -31,10 +36,15 @@ public class ProductFilterVm
     public List<ProductFilterOptionVm> CpuOptions { get; set; } = new();
     public List<ProductFilterOptionVm> RamOptions { get; set; } = new();
     public List<ProductFilterOptionVm> GpuOptions { get; set; } = new();
+    public List<ProductFilterOptionVm> StorageOptions { get; set; } = new();
+    public List<ProductFilterOptionVm> MainboardOptions { get; set; } = new();
+    public List<ProductFilterOptionVm> PsuOptions { get; set; } = new();
+    public List<ProductFilterOptionVm> CaseOptions { get; set; } = new();
+    public List<ProductFilterOptionVm> CoolingOptions { get; set; } = new();
     public bool IsEquivalentSearch { get; set; }
     public bool IsComponentListing { get; set; }
 
-    public bool HasSidebarFilters => PriceRanges.Length > 0 || (IsComponentListing && Brands.Length > 0) || (IsComponentListing && ComponentTypes.Length > 0) || Specs.Length > 0 || Cpu.Length > 0 || Ram.Length > 0 || Gpu.Length > 0;
+    public bool HasSidebarFilters => PriceRanges.Length > 0 || (IsComponentListing && Brands.Length > 0) || (IsComponentListing && ComponentTypes.Length > 0) || Specs.Length > 0 || Cpu.Length > 0 || Ram.Length > 0 || Gpu.Length > 0 || Storage.Length > 0 || Mainboard.Length > 0 || Psu.Length > 0 || Case.Length > 0 || Cooling.Length > 0;
     public bool HasKeyword => !string.IsNullOrWhiteSpace(Keyword);
 }
 

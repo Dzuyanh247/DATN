@@ -35,6 +35,11 @@ public class ProductsController : Controller
         string[]? cpu,
         string[]? ram,
         string[]? gpu,
+        string[]? storage,
+        string[]? mainboard,
+        string[]? psu,
+        string[]? @case,
+        string[]? cooling,
         string? sort)
     {
         var vm = new ProductFilterVm
@@ -53,7 +58,12 @@ public class ProductsController : Controller
             Specs = CleanSelections(specs),
             Cpu = CleanSelections(cpu),
             Ram = CleanSelections(ram),
-            Gpu = CleanSelections(gpu)
+            Gpu = CleanSelections(gpu),
+            Storage = CleanSelections(storage),
+            Mainboard = CleanSelections(mainboard),
+            Psu = CleanSelections(psu),
+            Case = CleanSelections(@case),
+            Cooling = CleanSelections(cooling)
         };
         vm.ComponentTypes = CleanSelections(componentTypes)
             .Concat(CleanSelections(string.IsNullOrWhiteSpace(vm.Type) ? null : new[] { vm.Type }))
@@ -133,7 +143,7 @@ public class ProductsController : Controller
 
     public Task<IActionResult> Category(string? type, string? brand)
     {
-        return Index(keyword: null, categoryId: null, categorySlug: null, brand: brand, type: type, typeSlug: null, minPrice: null, maxPrice: null, priceRanges: null, brands: null, componentTypes: null, specs: null, cpu: null, ram: null, gpu: null, sort: null);
+        return Index(keyword: null, categoryId: null, categorySlug: null, brand: brand, type: type, typeSlug: null, minPrice: null, maxPrice: null, priceRanges: null, brands: null, componentTypes: null, specs: null, cpu: null, ram: null, gpu: null, storage: null, mainboard: null, psu: null, @case: null, cooling: null, sort: null);
     }
 
     public async Task<IActionResult> Detail(int id, int? rating)
@@ -278,23 +288,35 @@ public class ProductsController : Controller
         if (!vm.IsComponentListing) vm.BrandOptions.Clear();
         vm.SpecFilterGroups = string.IsNullOrWhiteSpace(vm.Type) ? new List<ProductSpecFilterGroupVm>() : BuildSpecFilterGroups(products, vm.Type);
 
-        if (string.Equals(ComponentTypes.Normalize(vm.Type), ComponentTypes.CPU, StringComparison.OrdinalIgnoreCase))
+        var showPcFacets = !vm.IsComponentListing;
+        if (showPcFacets || string.Equals(ComponentTypes.Normalize(vm.Type), ComponentTypes.CPU, StringComparison.OrdinalIgnoreCase))
         {
             vm.CpuOptions = BuildParsedOptions(products, parsedFacets, facets => facets.Cpu)
-                .OrderBy(option => option.Label)
+                .OrderBy(option => GetCpuSortOrder(option.Value))
+                .ThenBy(option => option.Label)
                 .ToList();
         }
-        if (string.Equals(ComponentTypes.Normalize(vm.Type), ComponentTypes.RAM, StringComparison.OrdinalIgnoreCase))
+        if (showPcFacets || string.Equals(ComponentTypes.Normalize(vm.Type), ComponentTypes.RAM, StringComparison.OrdinalIgnoreCase))
         {
             vm.RamOptions = BuildParsedOptions(products, parsedFacets, facets => facets.Ram)
                 .OrderBy(option => ParseRamCapacity(option.Value))
                 .ToList();
         }
-        if (string.Equals(ComponentTypes.Normalize(vm.Type), ComponentTypes.VGA, StringComparison.OrdinalIgnoreCase))
+        if (showPcFacets || string.Equals(ComponentTypes.Normalize(vm.Type), ComponentTypes.VGA, StringComparison.OrdinalIgnoreCase))
         {
             vm.GpuOptions = BuildParsedOptions(products, parsedFacets, facets => facets.Gpu)
                 .OrderBy(option => option.Label)
                 .ToList();
+        }
+        if (showPcFacets)
+        {
+            vm.StorageOptions = BuildParsedOptions(products, parsedFacets, facets => facets.Storage)
+                .OrderBy(option => ParseStorageCapacity(option.Value))
+                .ToList();
+            vm.MainboardOptions = BuildParsedOptions(products, parsedFacets, facets => facets.Mainboard).OrderBy(option => option.Label).ToList();
+            vm.PsuOptions = BuildParsedOptions(products, parsedFacets, facets => facets.Psu).OrderBy(option => option.Label).ToList();
+            vm.CaseOptions = BuildParsedOptions(products, parsedFacets, facets => facets.Case).OrderBy(option => option.Label).ToList();
+            vm.CoolingOptions = BuildParsedOptions(products, parsedFacets, facets => facets.Cooling).OrderBy(option => option.Label).ToList();
         }
     }
 
@@ -446,18 +468,42 @@ public class ProductsController : Controller
             ? capacity
             : int.MaxValue;
 
+
+    private static int GetCpuSortOrder(string value)
+    {
+        var order = new[] { "AMD Ryzen 5", "AMD Ryzen 7", "AMD Ryzen 9", "Intel Core i3", "Intel Core i5", "Intel Core i7", "Intel Core i9", "Intel Core Ultra 5", "Intel Core Ultra 7", "Intel Core Ultra 9" };
+        var index = Array.FindIndex(order, item => string.Equals(item, value, StringComparison.OrdinalIgnoreCase));
+        return index >= 0 ? index : int.MaxValue;
+    }
+
+    private static int ParseStorageCapacity(string value) =>
+        value.Trim().ToUpperInvariant() switch
+        {
+            "256GB" => 256,
+            "512GB" => 512,
+            "1TB" => 1024,
+            "2TB" => 2048,
+            "4TB" => 4096,
+            _ => int.MaxValue
+        };
+
     private static HashSet<int>? GetMatchingParsedFacetIds(
         IEnumerable<Product> products,
         IReadOnlyDictionary<int, ProductParsedFacets> parsedFacets,
         ProductFilterVm vm)
     {
-        if (vm.Cpu.Length == 0 && vm.Ram.Length == 0 && vm.Gpu.Length == 0)
+        if (vm.Cpu.Length == 0 && vm.Ram.Length == 0 && vm.Gpu.Length == 0 && vm.Storage.Length == 0 && vm.Mainboard.Length == 0 && vm.Psu.Length == 0 && vm.Case.Length == 0 && vm.Cooling.Length == 0)
             return null;
 
         return products
             .Where(product => MatchesAny(parsedFacets[product.Id].Cpu, vm.Cpu))
             .Where(product => MatchesAny(parsedFacets[product.Id].Ram, vm.Ram))
             .Where(product => MatchesAny(parsedFacets[product.Id].Gpu, vm.Gpu))
+            .Where(product => MatchesAny(parsedFacets[product.Id].Storage, vm.Storage))
+            .Where(product => MatchesAny(parsedFacets[product.Id].Mainboard, vm.Mainboard))
+            .Where(product => MatchesAny(parsedFacets[product.Id].Psu, vm.Psu))
+            .Where(product => MatchesAny(parsedFacets[product.Id].Case, vm.Case))
+            .Where(product => MatchesAny(parsedFacets[product.Id].Cooling, vm.Cooling))
             .Select(product => product.Id)
             .ToHashSet();
     }
