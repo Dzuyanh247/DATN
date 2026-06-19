@@ -44,15 +44,7 @@ public class ShippingService : IShippingService
 
         if (localPolicyMatched)
         {
-            _logger.LogInformation("Shipping fee source={FeeSource}; GHN skipped={Skipped}; finalShippingFee={Fee}", "LocalFreeRadius", true, 0);
-            return new ShippingQuote
-            {
-                ShippingFee = 0m,
-                IsFreeShipping = true,
-                Provider = "LocalFreeRadius",
-                FormulaSnapshot = $"Miễn phí giao hàng trong phạm vi {_shippingPolicy.FreeShippingRadiusKm}km",
-                Message = $"Miễn phí giao hàng trong phạm vi {_shippingPolicy.FreeShippingRadiusKm}km"
-            };
+            _logger.LogInformation("Shipping local policy matched but GHN fee calculation remains enabled for checkout verification; GHN skipped={Skipped}", !_shippingPolicy.UseGHNOutsideRadius);
         }
 
         if (_shippingPolicy.UseGHNOutsideRadius)
@@ -84,6 +76,19 @@ public class ShippingService : IShippingService
             MaxDistanceKm = _shippingPolicy.MaxDistanceKm,
             FreeShippingDistanceKm = _shippingPolicy.FreeShippingRadiusKm
         };
+        if (localPolicyMatched)
+        {
+            _logger.LogInformation("Shipping fee source={FeeSource}; GHN skipped={Skipped}; finalShippingFee={Fee}", "LocalFreeRadius", true, 0);
+            return new ShippingQuote
+            {
+                ShippingFee = 0m,
+                IsFreeShipping = true,
+                Provider = "LocalFreeRadius",
+                FormulaSnapshot = $"Miễn phí giao hàng trong phạm vi {_shippingPolicy.FreeShippingRadiusKm}km",
+                Message = $"Miễn phí giao hàng trong phạm vi {_shippingPolicy.FreeShippingRadiusKm}km"
+            };
+        }
+
         var fallbackDistance = sameProvince && sameDistrict ? _shippingPolicy.FreeShippingRadiusKm : 5m;
         var fallback = _shippingFeeCalculator.Calculate(fallbackDistance, policyConfig);
         _logger.LogWarning("Shipping fallback feeSource={FeeSource}; finalShippingFee={Fee}", "LocalFormulaFallback", fallback.Fee);

@@ -30,14 +30,15 @@ public class GhnShippingService : IGhnShippingService
             return GhnShippingFeeResult.Fail("Thiếu cấu hình GHN (Token/ShopId).");
         }
 
-        var body = new Dictionary<string, object>
+        var body = new Dictionary<string, object?>
         {
             ["to_district_id"] = toDistrictId,
             ["to_ward_code"] = toWardCode,
             ["weight"] = weight,
             ["length"] = length,
             ["width"] = width,
-            ["height"] = height
+            ["height"] = height,
+            ["insurance_value"] = Math.Max(0, _options.InsuranceValue)
         };
         if (_options.ServiceId.HasValue && _options.ServiceId.Value > 0)
         {
@@ -55,17 +56,17 @@ public class GhnShippingService : IGhnShippingService
         {
             body["from_ward_code"] = _options.FromWardCode;
         }
-        if (_options.InsuranceValue > 0)
-        {
-            body["insurance_value"] = _options.InsuranceValue;
-        }
+        var endpoint = "v2/shipping-order/fee";
+        var requestUri = new Uri(_httpClient.BaseAddress!, endpoint);
+        var jsonBody = JsonSerializer.Serialize(body);
 
-        _logger.LogWarning("GHN fee request shopId={ShopId} tokenConfigured={TokenConfigured} tokenPrefix={TokenPrefix} fromDistrictId={FromDistrictId} fromWardCode={FromWardCode} serviceId={ServiceId} serviceTypeId={ServiceTypeId} districtId={DistrictId} wardCode={WardCode} weight={Weight} size={Length}x{Width}x{Height} insuranceValue={InsuranceValue} body={Body}", _options.ShopId, !string.IsNullOrWhiteSpace(_options.Token), MaskTokenPrefix(_options.Token), _options.FromDistrictId, _options.FromWardCode, _options.ServiceId, _options.ServiceTypeId, toDistrictId, toWardCode, weight, length, width, height, _options.InsuranceValue, JsonSerializer.Serialize(body));
-        using var request = new HttpRequestMessage(HttpMethod.Post, "v2/shipping-order/fee");
+        _logger.LogWarning("GHN fee request url={Url} endpoint={Endpoint} shopIdConfigured={ShopIdConfigured} tokenConfigured={TokenConfigured} tokenPrefix={TokenPrefix} fromDistrictId={FromDistrictId} fromWardCode={FromWardCode} serviceId={ServiceId} serviceTypeId={ServiceTypeId} districtId={DistrictId} wardCode={WardCode} weight={Weight} size={Length}x{Width}x{Height} insuranceValue={InsuranceValue} body={Body}", requestUri, requestUri.AbsolutePath, !string.IsNullOrWhiteSpace(_options.ShopId), !string.IsNullOrWhiteSpace(_options.Token), MaskTokenPrefix(_options.Token), _options.FromDistrictId, _options.FromWardCode, _options.ServiceId, _options.ServiceTypeId, toDistrictId, toWardCode, weight, length, width, height, _options.InsuranceValue, jsonBody);
+        using var request = new HttpRequestMessage(HttpMethod.Post, endpoint);
         request.Headers.Remove("Token");
         request.Headers.Remove("ShopId");
         request.Headers.Add("Token", _options.Token);
         request.Headers.Add("ShopId", _options.ShopId);
+        _logger.LogWarning("GHN fee request headers tokenPresent={TokenPresent} shopIdPresent={ShopIdPresent} shopIdHeaderName={ShopIdHeaderName}", request.Headers.Contains("Token"), request.Headers.Contains("ShopId"), "ShopId");
         request.Content = JsonContent.Create(body);
 
         using var response = await _httpClient.SendAsync(request, cancellationToken);
@@ -73,8 +74,8 @@ public class GhnShippingService : IGhnShippingService
         _logger.LogWarning("GHN fee raw response status={StatusCode} body={Body}", (int)response.StatusCode, raw);
         if (!response.IsSuccessStatusCode)
         {
-            _logger.LogWarning("GHN fee API HTTP failed status={StatusCode} body={Body}", (int)response.StatusCode, raw);
-            return GhnShippingFeeResult.Fail("GHN không phản hồi hợp lệ.");
+            _logger.LogWarning("GHN fee API HTTP failed status={StatusCode} reason={ReasonPhrase} body={Body}", (int)response.StatusCode, response.ReasonPhrase, raw);
+            return GhnShippingFeeResult.Fail($"GHN HTTP {(int)response.StatusCode}: {ExtractMessage(raw) ?? response.ReasonPhrase ?? "Không phản hồi hợp lệ"}");
         }
 
         using var doc = JsonDocument.Parse(raw);
@@ -102,8 +103,21 @@ public class GhnShippingService : IGhnShippingService
             InsuranceFee = data.TryGetProperty("insurance_fee", out var i) ? i.GetDecimal() : null,
             LeadTime = data.TryGetProperty("leadtime", out var l) ? l.GetInt64() : null
         };
-        _logger.LogInformation("GHN fee response total={Total} serviceFee={ServiceFee} insuranceFee={InsuranceFee}", result.Total, result.ServiceFee, result.InsuranceFee);
+        _logger.LogInformation("GHN fee response total={Total} serviceFee={ServiceFee} insuranceFee={InsuranceFee} shippingFee={ShippingFee}", result.Total, result.ServiceFee, result.InsuranceFee, result.ShippingFee);
         return result;
+    }
+
+    private static string? ExtractMessage(string raw)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(raw);
+            return doc.RootElement.TryGetProperty("message", out var message) ? message.GetString() : null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 
     private static string MaskTokenPrefix(string? token)
