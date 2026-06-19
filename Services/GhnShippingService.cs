@@ -60,7 +60,7 @@ public class GhnShippingService : IGhnShippingService
             body["insurance_value"] = _options.InsuranceValue;
         }
 
-        _logger.LogInformation("GHN fee request fromDistrictId={FromDistrictId} fromWardCode={FromWardCode} serviceId={ServiceId} serviceTypeId={ServiceTypeId} districtId={DistrictId} wardCode={WardCode} weight={Weight} size={Length}x{Width}x{Height} insuranceValue={InsuranceValue}", _options.FromDistrictId, _options.FromWardCode, _options.ServiceId, _options.ServiceTypeId, toDistrictId, toWardCode, weight, length, width, height, _options.InsuranceValue);
+        _logger.LogWarning("GHN fee request shopId={ShopId} tokenConfigured={TokenConfigured} tokenPrefix={TokenPrefix} fromDistrictId={FromDistrictId} fromWardCode={FromWardCode} serviceId={ServiceId} serviceTypeId={ServiceTypeId} districtId={DistrictId} wardCode={WardCode} weight={Weight} size={Length}x{Width}x{Height} insuranceValue={InsuranceValue} body={Body}", _options.ShopId, !string.IsNullOrWhiteSpace(_options.Token), MaskTokenPrefix(_options.Token), _options.FromDistrictId, _options.FromWardCode, _options.ServiceId, _options.ServiceTypeId, toDistrictId, toWardCode, weight, length, width, height, _options.InsuranceValue, JsonSerializer.Serialize(body));
         using var request = new HttpRequestMessage(HttpMethod.Post, "v2/shipping-order/fee");
         request.Headers.Remove("Token");
         request.Headers.Remove("ShopId");
@@ -70,6 +70,7 @@ public class GhnShippingService : IGhnShippingService
 
         using var response = await _httpClient.SendAsync(request, cancellationToken);
         var raw = await response.Content.ReadAsStringAsync(cancellationToken);
+        _logger.LogWarning("GHN fee raw response status={StatusCode} body={Body}", (int)response.StatusCode, raw);
         if (!response.IsSuccessStatusCode)
         {
             _logger.LogWarning("GHN fee API HTTP failed status={StatusCode} body={Body}", (int)response.StatusCode, raw);
@@ -82,7 +83,7 @@ public class GhnShippingService : IGhnShippingService
         if (code != 200)
         {
             var message = root.TryGetProperty("message", out var m) ? m.GetString() : "GHN fee failed";
-            _logger.LogWarning("GHN fee business failed code={Code} message={Message}", code, message);
+            _logger.LogWarning("GHN fee business failed code={Code} message={Message} body={Body}", code, message, raw);
             return GhnShippingFeeResult.Fail(message ?? "GHN fee failed");
         }
 
@@ -103,6 +104,12 @@ public class GhnShippingService : IGhnShippingService
         };
         _logger.LogInformation("GHN fee response total={Total} serviceFee={ServiceFee} insuranceFee={InsuranceFee}", result.Total, result.ServiceFee, result.InsuranceFee);
         return result;
+    }
+
+    private static string MaskTokenPrefix(string? token)
+    {
+        if (string.IsNullOrWhiteSpace(token)) return string.Empty;
+        return token.Length <= 8 ? "***" : token[..8] + "***";
     }
 }
 
