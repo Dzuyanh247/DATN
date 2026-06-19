@@ -140,6 +140,8 @@ public class ProductsController : Controller
         vm.Categories = await _db.Categories.OrderBy(category => category.Name).ToListAsync();
         vm.Products = ApplySort(filteredProducts, vm.Sort).ToList();
 
+        SetFilterRouteUrls(vm);
+
         LogFilterDebug(vm, categoryProducts.Count, vm.Products.Count);
 
         return View(vm);
@@ -200,6 +202,20 @@ public class ProductsController : Controller
     }
 
 
+    private void SetFilterRouteUrls(ProductFilterVm vm)
+    {
+        var currentPath = Request.Path.Value;
+        var isCurrentComponentRoute = currentPath?.StartsWith("/linh-kien", StringComparison.OrdinalIgnoreCase) == true;
+
+        vm.FilterActionUrl = isCurrentComponentRoute
+            ? (vm.HasScopedComponentType ? $"/linh-kien/{vm.TypeSlug}" : "/linh-kien")
+            : Url.Action(nameof(Index), "Products") ?? "/Products";
+
+        vm.ClearFilterUrl = isCurrentComponentRoute
+            ? (vm.HasScopedComponentType ? $"/linh-kien/{vm.TypeSlug}" : "/linh-kien")
+            : Url.Action(nameof(Index), "Products", new { categoryId = vm.CategoryId, categorySlug = vm.CategorySlug, keyword = vm.Keyword }) ?? "/Products";
+    }
+
     private static string? ResolveComponentType(string? type, string? typeSlug)
     {
         if (!string.IsNullOrWhiteSpace(type)) return ComponentTypes.Normalize(type);
@@ -257,6 +273,7 @@ public class ProductsController : Controller
         if (!string.IsNullOrWhiteSpace(type)) return true;
         var slug = categorySlug?.Trim().ToLowerInvariant();
         if (slug is "linh-kien" or "linh-kien-may-tinh" or "components" or "component") return true;
+        if (!string.IsNullOrWhiteSpace(slug)) return false;
         if (!categoryId.HasValue) return false;
         var categoryName = await _db.Categories
             .Where(category => category.Id == categoryId.Value)
