@@ -13,10 +13,13 @@ public class ProductsController : Controller
 {
     private readonly ApplicationDbContext _db;
     private readonly IProductReviewService _reviewService;
-    public ProductsController(ApplicationDbContext db, IProductReviewService reviewService)
+    private readonly ILogger<ProductsController> _logger;
+
+    public ProductsController(ApplicationDbContext db, IProductReviewService reviewService, ILogger<ProductsController> logger)
     {
         _db = db;
         _reviewService = reviewService;
+        _logger = logger;
     }
 
     public async Task<IActionResult> Index(
@@ -136,6 +139,8 @@ public class ProductsController : Controller
 
         vm.Categories = await _db.Categories.OrderBy(category => category.Name).ToListAsync();
         vm.Products = ApplySort(filteredProducts, vm.Sort).ToList();
+
+        LogFilterDebug(vm, categoryProducts.Count, vm.Products.Count);
 
         return View(vm);
     }
@@ -259,6 +264,42 @@ public class ProductsController : Controller
             .FirstOrDefaultAsync();
         return categoryName?.Contains("linh kiện", StringComparison.OrdinalIgnoreCase) == true
             || categoryName?.Contains("component", StringComparison.OrdinalIgnoreCase) == true;
+    }
+
+    private void LogFilterDebug(ProductFilterVm vm, int baseProductCount, int filteredProductCount)
+    {
+        _logger.LogDebug(
+            "Products filter: categoryId={CategoryId}, categorySlug={CategorySlug}, isComponentListing={IsComponentListing}, type={Type}, baseProducts={BaseProducts}, selectedFilters={SelectedFilters}, filteredProducts={FilteredProducts}, facets price={PriceFacetCount}, brand={BrandFacetCount}, cpu={CpuFacetCount}, ram={RamFacetCount}, gpu={GpuFacetCount}, storage={StorageFacetCount}, specGroups={SpecGroupCount}",
+            vm.CategoryId,
+            vm.CategorySlug,
+            vm.IsComponentListing,
+            vm.Type,
+            baseProductCount,
+            string.Join("; ", BuildSelectedFilterDebugValues(vm)),
+            filteredProductCount,
+            vm.PriceRangeOptions.Count,
+            vm.BrandOptions.Count,
+            vm.CpuOptions.Count,
+            vm.RamOptions.Count,
+            vm.GpuOptions.Count,
+            vm.StorageOptions.Count,
+            vm.SpecFilterGroups.Count);
+    }
+
+    private static IEnumerable<string> BuildSelectedFilterDebugValues(ProductFilterVm vm)
+    {
+        if (vm.PriceRanges.Length > 0) yield return $"price=[{string.Join(',', vm.PriceRanges)}]";
+        if (vm.Brands.Length > 0) yield return $"brands=[{string.Join(',', vm.Brands)}]";
+        if (vm.ComponentTypes.Length > 0) yield return $"componentTypes=[{string.Join(',', vm.ComponentTypes)}]";
+        if (vm.Cpu.Length > 0) yield return $"cpu=[{string.Join(',', vm.Cpu)}]";
+        if (vm.Ram.Length > 0) yield return $"ram=[{string.Join(',', vm.Ram)}]";
+        if (vm.Gpu.Length > 0) yield return $"gpu=[{string.Join(',', vm.Gpu)}]";
+        if (vm.Storage.Length > 0) yield return $"storage=[{string.Join(',', vm.Storage)}]";
+        if (vm.Mainboard.Length > 0) yield return $"mainboard=[{string.Join(',', vm.Mainboard)}]";
+        if (vm.Psu.Length > 0) yield return $"psu=[{string.Join(',', vm.Psu)}]";
+        if (vm.Case.Length > 0) yield return $"case=[{string.Join(',', vm.Case)}]";
+        if (vm.Cooling.Length > 0) yield return $"cooling=[{string.Join(',', vm.Cooling)}]";
+        if (vm.Specs.Length > 0) yield return $"specs=[{string.Join(',', vm.Specs)}]";
     }
 
     private static void PopulateFilterOptions(

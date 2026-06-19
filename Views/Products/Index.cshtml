@@ -9,7 +9,7 @@
     bool ShouldShowSingleChoiceOption(ProductFilterOptionVm option, string[] selectedValues)
     {
         var isSelected = selectedValues.Contains(option.Value, StringComparer.OrdinalIgnoreCase);
-        return (selectedValues.Length == 0 || isSelected) && (isSelected || option.Count > 0);
+        return isSelected || option.Count > 0;
     }
 
     bool ShouldShowSpecOption(ProductFilterOptionVm option, string groupName)
@@ -372,6 +372,11 @@
                     @foreach (var value in Model.Cpu) { <input type="hidden" name="cpu" value="@value" /> }
                     @foreach (var value in Model.Ram) { <input type="hidden" name="ram" value="@value" /> }
                     @foreach (var value in Model.Gpu) { <input type="hidden" name="gpu" value="@value" /> }
+                    @foreach (var value in Model.Storage) { <input type="hidden" name="storage" value="@value" /> }
+                    @foreach (var value in Model.Mainboard) { <input type="hidden" name="mainboard" value="@value" /> }
+                    @foreach (var value in Model.Psu) { <input type="hidden" name="psu" value="@value" /> }
+                    @foreach (var value in Model.Case) { <input type="hidden" name="case" value="@value" /> }
+                    @foreach (var value in Model.Cooling) { <input type="hidden" name="cooling" value="@value" /> }
                     <select name="sort" class="form-select form-select-sm" aria-label="Sắp xếp sản phẩm">
                         <option value="newest" selected="@(Model.Sort == "newest")">Sắp xếp theo</option>
                         <option value="price_asc" selected="@(Model.Sort == "price_asc")">Giá tăng dần</option>
