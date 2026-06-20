@@ -34,6 +34,7 @@ public class ProductsController : Controller
         string[]? priceRanges,
         string[]? brands,
         string[]? componentTypes,
+        string[]? componentFamilies,
         string[]? specs,
         string[]? cpu,
         string[]? ram,
@@ -58,6 +59,7 @@ public class ProductsController : Controller
             Brands = CleanSelections(brands).Concat(CleanSelections(string.IsNullOrWhiteSpace(brand) ? null : new[] { brand })).Distinct(StringComparer.OrdinalIgnoreCase).ToArray(),
             Type = ResolveComponentType(type, typeSlug),
             ComponentTypes = Array.Empty<string>(),
+            ComponentFamilies = CleanSelections(componentFamilies),
             Specs = CleanSelections(specs),
             Cpu = CleanSelections(cpu),
             Ram = CleanSelections(ram),
@@ -150,6 +152,8 @@ public class ProductsController : Controller
         IEnumerable<Product> filteredProducts = filteredFacetProducts;
         if (vm.Brands.Length > 0)
             filteredProducts = filteredProducts.Where(product => product.Brand != null && vm.Brands.Contains(product.Brand, StringComparer.OrdinalIgnoreCase));
+        if (vm.ComponentFamilies.Length > 0)
+            filteredProducts = filteredProducts.Where(product => vm.ComponentFamilies.Any(family => ProductMatchesFamily(product, family)));
 
         var matchingIds = GetMatchingParsedFacetIds(filteredFacetProducts, filteredParsedFacets, vm);
         if (matchingIds is not null)
@@ -179,7 +183,7 @@ public class ProductsController : Controller
 
     public Task<IActionResult> Category(string? type, string? brand)
     {
-        return Index(keyword: null, categoryId: null, categorySlug: null, brand: brand, type: type, typeSlug: null, minPrice: null, maxPrice: null, priceRanges: null, brands: null, componentTypes: null, specs: null, cpu: null, ram: null, gpu: null, storage: null, mainboard: null, psu: null, @case: null, cooling: null, sort: null);
+        return Index(keyword: null, categoryId: null, categorySlug: null, brand: brand, type: type, typeSlug: null, minPrice: null, maxPrice: null, priceRanges: null, brands: null, componentTypes: null, componentFamilies: null, specs: null, cpu: null, ram: null, gpu: null, storage: null, mainboard: null, psu: null, @case: null, cooling: null, sort: null);
     }
 
     public async Task<IActionResult> Detail(int id, int? rating)
@@ -365,6 +369,7 @@ public class ProductsController : Controller
         if (vm.PriceRanges.Length > 0) yield return $"price=[{string.Join(',', vm.PriceRanges)}]";
         if (vm.Brands.Length > 0) yield return $"brands=[{string.Join(',', vm.Brands)}]";
         if (vm.ComponentTypes.Length > 0) yield return $"componentTypes=[{string.Join(',', vm.ComponentTypes)}]";
+        if (vm.ComponentFamilies.Length > 0) yield return $"componentFamilies=[{string.Join(',', vm.ComponentFamilies)}]";
         if (vm.Cpu.Length > 0) yield return $"cpu=[{string.Join(',', vm.Cpu)}]";
         if (vm.Ram.Length > 0) yield return $"ram=[{string.Join(',', vm.Ram)}]";
         if (vm.Gpu.Length > 0) yield return $"gpu=[{string.Join(',', vm.Gpu)}]";
@@ -381,43 +386,48 @@ public class ProductsController : Controller
         IReadOnlyCollection<Product> products,
         IReadOnlyDictionary<int, ProductParsedFacets> parsedFacets)
     {
+        var scopedProducts = vm.IsComponentListing && !string.IsNullOrWhiteSpace(vm.Type)
+            ? products.Where(product => ComponentTypes.GetAliases(vm.Type).Contains(product.ComponentType, StringComparer.OrdinalIgnoreCase)).ToList()
+            : products.ToList();
+
         vm.PriceRangeOptions = ProductFilterFacetHelper.PriceRanges
             .Select(range => new ProductFilterOptionVm
             {
                 Value = range.Value,
                 Label = range.Label,
-                Count = products.Count(product => ProductFilterFacetHelper.IsInPriceRange(
+                Count = scopedProducts.Count(product => ProductFilterFacetHelper.IsInPriceRange(
                     ProductFilterFacetHelper.GetEffectivePrice(product), range))
             })
             .ToList();
 
-        vm.BrandOptions = products
+        vm.BrandOptions = scopedProducts
             .Where(product => !string.IsNullOrWhiteSpace(product.Brand) && !string.Equals(product.Brand.Trim(), "N/A", StringComparison.OrdinalIgnoreCase))
             .GroupBy(product => product.Brand!.Trim(), StringComparer.OrdinalIgnoreCase)
             .Select(group => new ProductFilterOptionVm { Value = group.Key, Label = group.Key, Count = group.Count() })
             .OrderBy(option => option.Label)
             .ToList();
 
-        vm.ComponentTypeGroups = vm.IsComponentListing ? BuildComponentTypeGroups(products, vm.Type) : new List<ProductFilterGroupVm>();
-        vm.SpecFilterGroups = string.IsNullOrWhiteSpace(vm.Type) ? new List<ProductSpecFilterGroupVm>() : BuildSpecFilterGroups(products, vm.Type);
+        vm.ComponentTypeGroups = vm.IsComponentListing && string.IsNullOrWhiteSpace(vm.Type) ? BuildComponentTypeGroups(products, vm.Type) : new List<ProductFilterGroupVm>();
+        vm.ComponentFamilyOptions = vm.IsComponentListing && !string.IsNullOrWhiteSpace(vm.Type) ? BuildComponentFamilyOptions(scopedProducts, vm.Type) : new List<ProductFilterOptionVm>();
+        vm.SpecFilterGroups = string.IsNullOrWhiteSpace(vm.Type) ? new List<ProductSpecFilterGroupVm>() : BuildSpecFilterGroups(scopedProducts, vm.Type);
 
         var showPcFacets = !vm.IsComponentListing;
         if (showPcFacets || string.Equals(ComponentTypes.Normalize(vm.Type), ComponentTypes.CPU, StringComparison.OrdinalIgnoreCase))
         {
-            vm.CpuOptions = BuildParsedOptions(products, parsedFacets, facets => facets.Cpu)
+            vm.CpuOptions = BuildParsedOptions(scopedProducts, parsedFacets, facets => facets.Cpu)
                 .OrderBy(option => GetCpuSortOrder(option.Value))
                 .ThenBy(option => option.Label)
                 .ToList();
         }
         if (showPcFacets || string.Equals(ComponentTypes.Normalize(vm.Type), ComponentTypes.RAM, StringComparison.OrdinalIgnoreCase))
         {
-            vm.RamOptions = BuildParsedOptions(products, parsedFacets, facets => facets.Ram)
+            vm.RamOptions = BuildParsedOptions(scopedProducts, parsedFacets, facets => facets.Ram)
                 .OrderBy(option => ParseRamCapacity(option.Value))
                 .ToList();
         }
         if (showPcFacets || string.Equals(ComponentTypes.Normalize(vm.Type), ComponentTypes.VGA, StringComparison.OrdinalIgnoreCase))
         {
-            vm.GpuOptions = BuildParsedOptions(products, parsedFacets, facets => facets.Gpu)
+            vm.GpuOptions = BuildParsedOptions(scopedProducts, parsedFacets, facets => facets.Gpu)
                 .OrderBy(option => GetGpuSortOrder(option.Value))
                 .ThenBy(option => option.Label)
                 .ToList();
@@ -428,7 +438,7 @@ public class ProductsController : Controller
             // price, brand, CPU series, RAM capacity, GPU series, and storage capacity.
             // Detailed component facets such as mainboard, PSU, case, and cooling are
             // omitted to avoid exposing long component names as noisy filter options.
-            vm.StorageOptions = BuildParsedOptions(products, parsedFacets, facets => facets.Storage)
+            vm.StorageOptions = BuildParsedOptions(scopedProducts, parsedFacets, facets => facets.Storage)
                 .OrderBy(option => ParseStorageCapacity(option.Value))
                 .ToList();
             vm.MainboardOptions.Clear();
@@ -436,6 +446,43 @@ public class ProductsController : Controller
             vm.CaseOptions.Clear();
             vm.CoolingOptions.Clear();
         }
+    }
+
+
+    private static List<ProductFilterOptionVm> BuildComponentFamilyOptions(IEnumerable<Product> products, string componentType)
+    {
+        var normalizedType = ComponentTypes.Normalize(componentType);
+        var families = GetComponentFamilyLabels(normalizedType);
+        if (families.Length == 0)
+            return new List<ProductFilterOptionVm>();
+
+        var productList = products.ToList();
+        return families
+            .Select(family => new ProductFilterOptionVm
+            {
+                Value = family.BrandValue,
+                Label = family.Label,
+                Count = productList.Count(product => ProductMatchesFamily(product, family.BrandValue))
+            })
+            .Where(option => option.Count > 0)
+            .ToList();
+    }
+
+    private static (string BrandValue, string Label)[] GetComponentFamilyLabels(string componentType) => componentType switch
+    {
+        ComponentTypes.CPU => new[] { ("Intel", "CPU Intel"), ("AMD", "CPU AMD") },
+        ComponentTypes.Mainboard => new[] { ("Intel", "Mainboard Intel"), ("AMD", "Mainboard AMD") },
+        ComponentTypes.VGA => new[] { ("NVIDIA", "NVIDIA"), ("AMD", "AMD") },
+        _ => Array.Empty<(string BrandValue, string Label)>()
+    };
+
+    private static bool ProductMatchesFamily(Product product, string family)
+    {
+        var haystack = string.Join(' ', product.Brand, product.Name, product.ShortDescription, product.Description, product.DetailDescription, product.Specifications);
+        if (string.Equals(family, "NVIDIA", StringComparison.OrdinalIgnoreCase))
+            return haystack.Contains("NVIDIA", StringComparison.OrdinalIgnoreCase) || haystack.Contains("RTX", StringComparison.OrdinalIgnoreCase) || haystack.Contains("GTX", StringComparison.OrdinalIgnoreCase);
+
+        return haystack.Contains(family, StringComparison.OrdinalIgnoreCase);
     }
 
     private static List<ProductFilterGroupVm> BuildComponentTypeGroups(IReadOnlyCollection<Product> products, string? currentType)
@@ -452,14 +499,7 @@ public class ProductsController : Controller
                 Title = "Linh kiện máy tính",
                 Options = BuildComponentOptions(counts, currentType,
                     ComponentTypes.CPU, ComponentTypes.Mainboard, ComponentTypes.RAM, ComponentTypes.VGA,
-                    ComponentTypes.MonitorArm, ComponentTypes.Storage, ComponentTypes.Cooler, ComponentTypes.Case, ComponentTypes.PSU)
-            },
-            new()
-            {
-                Title = "Ngoại vi",
-                Options = BuildComponentOptions(counts, currentType,
-                    ComponentTypes.Monitor, ComponentTypes.Keyboard, ComponentTypes.Mouse,
-                    ComponentTypes.Headphone, ComponentTypes.Other)
+                    ComponentTypes.MonitorArm, ComponentTypes.Storage, ComponentTypes.Cooler, ComponentTypes.Case, ComponentTypes.PSU, ComponentTypes.Monitor, ComponentTypes.Keyboard, ComponentTypes.Mouse, ComponentTypes.Headphone)
             }
         };
 

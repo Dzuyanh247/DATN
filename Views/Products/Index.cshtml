@@ -86,6 +86,34 @@
                        class="products-clear-filter" data-preserve-filter-scroll>Xóa lọc</a>
                 </div>
 
+
+                @* ComponentSpecFilter: cấp 2 - bộ lọc chuyên biệt theo loại linh kiện đã chọn. *@
+                @if (Model.HasScopedComponentType)
+                {
+                    <div class="products-filter-current-type">@Model.ComponentTypeLabel</div>
+
+                    @if (Model.ComponentFamilyOptions.Count > 0)
+                    {
+                        <details class="products-filter-group" open>
+                            <summary>@Model.ComponentTypeLabel <i class="bi bi-chevron-down"></i></summary>
+                            <div class="products-filter-options component-filter-options">
+                                @foreach (var option in Model.ComponentFamilyOptions)
+                                {
+                                    var id = $"component-family-{Math.Abs(option.Value.GetHashCode())}";
+                                    var isSelected = Model.ComponentFamilies.Contains(option.Value, StringComparer.OrdinalIgnoreCase);
+                                    <label class="products-filter-option" for="@id">
+                                        <input id="@id" type="checkbox" name="componentFamilies" value="@option.Value" checked="@(isSelected)" />
+                                        <span>» @option.Label</span>
+                                        <small>(@option.Count)</small>
+                                    </label>
+                                }
+                            </div>
+                        </details>
+                    }
+                }
+
+                @if (!Model.IsComponentListing || Model.HasScopedComponentType)
+                {
                 <details class="products-filter-group" open>
                     <summary>KHOẢNG GIÁ <i class="bi bi-chevron-down"></i></summary>
                     <div class="products-filter-options">
@@ -106,11 +134,13 @@
                         }
                     </div>
                 </details>
+                }
 
+                @* ComponentTypeFilter: cấp 1 - chọn loại linh kiện tại /linh-kien. *@
                 @if (Model.ComponentTypeGroups.Count > 0)
                 {
                     <details class="products-filter-group" open>
-                        <summary>LOẠI LINH KIỆN <i class="bi bi-chevron-down"></i></summary>
+                        <summary>Linh kiện máy tính <i class="bi bi-chevron-down"></i></summary>
                         <div class="products-filter-options component-filter-options">
                             @foreach (var group in Model.ComponentTypeGroups)
                             {
@@ -133,6 +163,8 @@
                     </details>
                 }
 
+                @if (!Model.IsComponentListing || Model.HasScopedComponentType)
+                {
                 <details class="products-filter-group" open>
                         <summary>THƯƠNG HIỆU <i class="bi bi-chevron-down"></i></summary>
                         <div class="products-filter-options">
@@ -157,6 +189,7 @@
                             }
                         </div>
                     </details>
+                }
 
                 @if (Model.CpuOptions.Count > 0)
                 {
@@ -367,6 +400,7 @@
                     <input type="hidden" name="keyword" value="@Model.Keyword" />
                     @foreach (var value in Model.PriceRanges) { <input type="hidden" name="priceRanges" value="@value" /> }
                     @foreach (var value in Model.Brands) { <input type="hidden" name="brands" value="@value" /> }
+                    @foreach (var value in Model.ComponentFamilies) { <input type="hidden" name="componentFamilies" value="@value" /> }
                     
                     @foreach (var value in Model.Specs) { <input type="hidden" name="specs" value="@value" /> }
                     @foreach (var value in Model.Cpu) { <input type="hidden" name="cpu" value="@value" /> }
