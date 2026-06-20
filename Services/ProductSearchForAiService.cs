@@ -15,7 +15,8 @@ public record AiProductContext(
     string StockStatus,
     string Link,
     string Category,
-    int StockQuantity);
+    int StockQuantity,
+    string CategoryScope = "COMPONENT");
 
 public interface IProductSearchForAiService
 {
@@ -26,65 +27,60 @@ public partial class ProductSearchForAiService : IProductSearchForAiService
 {
     private readonly ApplicationDbContext _db;
     private readonly AiChatOptions _options;
+    private readonly ILogger<ProductSearchForAiService> _logger;
 
-    public ProductSearchForAiService(ApplicationDbContext db, IOptions<AiChatOptions> options)
+    public ProductSearchForAiService(ApplicationDbContext db, IOptions<AiChatOptions> options, ILogger<ProductSearchForAiService> logger)
     {
         _db = db;
         _options = options.Value;
+        _logger = logger;
     }
 
     public async Task<IReadOnlyList<AiProductContext>> SearchAsync(string message, CancellationToken cancellationToken = default)
     {
         message = (message ?? string.Empty).Trim();
         var max = Math.Clamp(_options.MaxProductsContext, 1, 10);
-        var budget = ParseBudget(message);
-        var tokens = ExtractTokens(message);
-        var needsPc = IsPcQuestion(message);
+        var analysis = Analyze(message);
+        var tokens = ExtractTokens(message, analysis);
 
         var baseQuery = _db.Products.AsNoTracking().Include(x => x.Category)
             .Where(x => x.IsActive && (x.IsInStock || x.StockQuantity > 0));
 
-        if (needsPc)
-            baseQuery = baseQuery.Where(x => x.ProductType == ProductKinds.PC || (x.Category != null && x.Category.Name.Contains("PC")) || x.Name.Contains("PC"));
+        baseQuery = analysis.CategoryScope == "PC"
+            ? baseQuery.Where(x => PcCategoryNames.Contains(x.Category!.Name) || x.ProductType == ProductKinds.PC && x.ComponentType == "PC")
+            : ApplyComponentScope(baseQuery, analysis.ComponentType);
 
-        if (budget.HasValue)
-            baseQuery = baseQuery.Where(x => (x.DiscountPrice ?? x.SalePrice ?? x.Price) <= budget.Value);
+        if (analysis.Budget.HasValue)
+            baseQuery = baseQuery.Where(x => (x.DiscountPrice ?? x.SalePrice ?? x.Price) <= analysis.Budget.Value);
 
+        List<AiProductContext> products;
         if (tokens.Count > 0)
         {
-            var query = baseQuery;
-            foreach (var token in tokens.Take(8))
-            {
-                var like = $"%{token}%";
-                query = query.Where(x => EF.Functions.Like(x.Name, like)
-                    || (x.ShortDescription != null && EF.Functions.Like(x.ShortDescription, like))
-                    || (x.Description != null && EF.Functions.Like(x.Description, like))
-                    || (x.Specifications != null && EF.Functions.Like(x.Specifications, like))
-                    || (x.Category != null && EF.Functions.Like(x.Category.Name, like)));
-            }
-
-            var strict = await Project(query.OrderBy(x => x.DiscountPrice ?? x.SalePrice ?? x.Price).Take(max), cancellationToken);
-            if (strict.Count > 0) return strict;
-
-            var sample = await baseQuery.OrderBy(x => x.DiscountPrice ?? x.SalePrice ?? x.Price).Take(60).ToListAsync(cancellationToken);
-            var looseRows = sample.Where(x => tokens.Take(10).Any(t => ContainsIgnoreCase(x.Name, t)
-                || ContainsIgnoreCase(x.ShortDescription, t)
-                || ContainsIgnoreCase(x.Description, t)
-                || ContainsIgnoreCase(x.Specifications, t)))
+            var sample = await baseQuery.OrderBy(x => x.DiscountPrice ?? x.SalePrice ?? x.Price).Take(80).ToListAsync(cancellationToken);
+            products = sample
+                .Select(x => new { Product = x, Score = ScoreProduct(x, tokens, analysis) })
+                .Where(x => x.Score > 0 || analysis.CategoryScope == "PC")
+                .OrderByDescending(x => x.Score)
+                .ThenBy(x => x.Product.DiscountPrice ?? x.Product.SalePrice ?? x.Product.Price)
                 .Take(max)
-                .Select(x => new AiProductContext(
-                    x.Id, x.Name, x.DiscountPrice ?? x.SalePrice ?? x.Price,
-                    TrimText(string.IsNullOrWhiteSpace(x.Specifications) ? x.ShortDescription ?? string.Empty : x.Specifications!, 450),
-                    x.StockQuantity > 0 ? $"Còn hàng ({x.StockQuantity})" : "Tạm hết hàng",
-                    $"/Products/Detail/{x.Id}", x.Category?.Name ?? "Chưa phân loại", x.StockQuantity))
+                .Select(x => ToContext(x.Product, analysis.CategoryScope))
                 .ToList();
-            if (looseRows.Count > 0) return looseRows;
+        }
+        else
+        {
+            products = await Project(baseQuery.OrderBy(x => x.DiscountPrice ?? x.SalePrice ?? x.Price).Take(max), analysis.CategoryScope, cancellationToken);
         }
 
-        return await Project(baseQuery.OrderBy(x => x.DiscountPrice ?? x.SalePrice ?? x.Price).Take(max), cancellationToken);
+        if (products.Count == 0 && analysis.CategoryScope == "PC" && analysis.Budget.HasValue)
+            products = await Project(_db.Products.AsNoTracking().Include(x => x.Category)
+                .Where(x => x.IsActive && (x.IsInStock || x.StockQuantity > 0) && (PcCategoryNames.Contains(x.Category!.Name) || x.ProductType == ProductKinds.PC && x.ComponentType == "PC"))
+                .OrderBy(x => x.DiscountPrice ?? x.SalePrice ?? x.Price).Take(max), analysis.CategoryScope, cancellationToken);
+
+        LogSearch(message, analysis, products);
+        return products;
     }
 
-    private static async Task<List<AiProductContext>> Project(IQueryable<Product> query, CancellationToken ct)
+    private static async Task<List<AiProductContext>> Project(IQueryable<Product> query, string scope, CancellationToken ct)
     {
         var rows = await query.Select(x => new
         {
@@ -99,7 +95,63 @@ public partial class ProductSearchForAiService : IProductSearchForAiService
             x.StockQuantity > 0 ? $"Còn hàng ({x.StockQuantity})" : "Tạm hết hàng",
             $"/Products/Detail/{x.Id}",
             x.Category,
-            x.StockQuantity)).ToList();
+            x.StockQuantity,
+            scope)).ToList();
+    }
+
+
+    private static IQueryable<Product> ApplyComponentScope(IQueryable<Product> query, string? componentType)
+    {
+        query = query.Where(x => x.ProductType == ProductKinds.Component || x.Category!.Name == "Linh kiện" || x.Category.Name == "Màn hình");
+        return string.IsNullOrWhiteSpace(componentType) ? query : query.Where(x => x.ComponentType == componentType);
+    }
+
+    private static AiProductContext ToContext(Product x, string scope) => new(
+        x.Id, x.Name, x.DiscountPrice ?? x.SalePrice ?? x.Price,
+        TrimText(string.IsNullOrWhiteSpace(x.Specifications) ? x.ShortDescription ?? string.Empty : x.Specifications!, 450),
+        x.StockQuantity > 0 ? $"Còn hàng ({x.StockQuantity})" : "Tạm hết hàng",
+        $"/Products/Detail/{x.Id}", x.Category?.Name ?? "Chưa phân loại", x.StockQuantity, scope);
+
+    private void LogSearch(string message, AiSearchAnalysis analysis, IReadOnlyList<AiProductContext> products)
+    {
+        var topProducts = products.Take(3).Select(p => new { p.Id, p.Name, p.Price, p.Category }).ToList();
+        _logger.LogInformation("KKSHOP AI product search: userMessage={UserMessage}; detectedIntent={DetectedIntent}; budget={Budget}; targetGame={TargetGame}; targetFps={TargetFps}; selectedCategoryScope={CategoryScope}; productsFound={ProductsFound}; topProducts={TopProducts}",
+            TrimText(message, 180), analysis.Intent, analysis.Budget, analysis.TargetGame, analysis.TargetFps, analysis.CategoryScope, products.Count, topProducts);
+    }
+
+    private static int ScoreProduct(Product product, IReadOnlyList<string> tokens, AiSearchAnalysis analysis)
+    {
+        var haystack = $"{product.Name} {product.ShortDescription} {product.Description} {product.Specifications} {product.Category?.Name}";
+        var score = tokens.Count(token => ContainsIgnoreCase(haystack, token));
+        if (analysis.CategoryScope == "PC" && PcCategoryNames.Contains(product.Category?.Name ?? string.Empty)) score += 5;
+        if (!string.IsNullOrWhiteSpace(analysis.TargetGame) && ContainsIgnoreCase(haystack, analysis.TargetGame)) score += 3;
+        return score;
+    }
+
+    private static AiSearchAnalysis Analyze(string text)
+    {
+        var normalized = NormalizeText(text);
+        var componentType = DetectComponentType(normalized);
+        var isPcAdvice = PcIntentWords.Any(normalized.Contains) && componentType == null;
+        var game = GameWords.FirstOrDefault(g => normalized.Contains(g.Key)).Value;
+        if (!string.IsNullOrWhiteSpace(game) && componentType == null) isPcAdvice = true;
+        return new AiSearchAnalysis(
+            isPcAdvice ? "PC_ADVICE" : componentType != null ? "COMPONENT_ADVICE" : "GENERAL_PRODUCT_ADVICE",
+            isPcAdvice ? "PC" : "COMPONENT",
+            ParseBudget(text), game, ParseFps(normalized), componentType);
+    }
+
+    private static string? DetectComponentType(string normalized)
+    {
+        foreach (var item in ComponentIntentWords)
+            if (item.Value.Any(normalized.Contains)) return item.Key;
+        return null;
+    }
+
+    private static int? ParseFps(string normalized)
+    {
+        var match = FpsRegex().Match(normalized);
+        return match.Success && int.TryParse(match.Groups[1].Value, out var fps) ? fps : null;
     }
 
     private static decimal? ParseBudget(string text)
@@ -110,19 +162,25 @@ public partial class ProductSearchForAiService : IProductSearchForAiService
         return amount < 1000 ? amount * 1_000_000 : amount;
     }
 
-    private static List<string> ExtractTokens(string text)
+    private static List<string> ExtractTokens(string text, AiSearchAnalysis analysis)
     {
         var lower = text.ToLowerInvariant();
         var tokens = new List<string>();
         foreach (Match match in HardwareRegex().Matches(text)) tokens.Add(match.Value);
-        foreach (var word in new[] { "valorant", "gaming", "game", "văn phòng", "do hoa", "đồ họa", "livestream", "rtx", "rx", "ryzen", "intel" })
+        foreach (var word in new[] { "valorant", "gaming", "game", "văn phòng", "do hoa", "đồ họa", "livestream", "stream", "rtx", "rx", "ryzen", "intel" })
             if (lower.Contains(word)) tokens.Add(word);
+        if (!string.IsNullOrWhiteSpace(analysis.TargetGame)) tokens.Add(analysis.TargetGame);
         return tokens.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
     }
 
     private static bool ContainsIgnoreCase(string? source, string value) => !string.IsNullOrWhiteSpace(source) && source.Contains(value, StringComparison.OrdinalIgnoreCase);
 
-    private static bool IsPcQuestion(string text) => text.Contains("pc", StringComparison.OrdinalIgnoreCase) || text.Contains("máy tính", StringComparison.OrdinalIgnoreCase) || text.Contains("cấu hình", StringComparison.OrdinalIgnoreCase);
+    private static string NormalizeText(string value)
+    {
+        var normalized = value.Replace('đ', 'd').Replace('Đ', 'D').Normalize(System.Text.NormalizationForm.FormD);
+        return new string(normalized.Where(c => CharUnicodeInfo.GetUnicodeCategory(c) != UnicodeCategory.NonSpacingMark).ToArray()).Normalize(System.Text.NormalizationForm.FormC).ToLowerInvariant();
+    }
+
     private static string TrimText(string value, int max) => string.IsNullOrWhiteSpace(value) ? "Đang cập nhật" : value.Length <= max ? value : value[..max] + "...";
 
     [GeneratedRegex(@"(?:dưới|duoi|khoảng|tam|tầm|<=|<)?\s*(\d+(?:[\.,]\d+)?)\s*(?:triệu|tr|m|million)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
@@ -130,4 +188,25 @@ public partial class ProductSearchForAiService : IProductSearchForAiService
 
     [GeneratedRegex(@"\b(?:rtx\s*\d{4}|rx\s*\d{4}|gtx\s*\d{4}|i[3579](?:-\d{4,5}[a-z]*)?|ryzen\s*[3579](?:\s*\d{4}[a-z]*)?)\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex HardwareRegex();
+
+
+    [GeneratedRegex(@"(\d{2,3})\s*fps", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    private static partial Regex FpsRegex();
+
+    private static readonly string[] PcCategoryNames = ["PC Gaming", "Workstation", "AMD Gaming", "PC Mini", "PC Văn Phòng"];
+    private static readonly string[] PcIntentWords = ["cau hinh", "pc", "may tinh", "choi game", "gaming", "fps", "setting", "build", "stream", "do hoa", "valorant", "gta", "black myth"];
+    private static readonly Dictionary<string, string> GameWords = new(StringComparer.OrdinalIgnoreCase) { ["valorant"] = "Valorant", ["gta"] = "GTA", ["black myth"] = "Black Myth" };
+    private static readonly Dictionary<string, string[]> ComponentIntentWords = new(StringComparer.OrdinalIgnoreCase)
+    {
+        [ComponentTypes.Headphone] = ["tai nghe", "headphone", "headset"],
+        [ComponentTypes.Keyboard] = ["ban phim", "keyboard"],
+        [ComponentTypes.Mouse] = ["chuot", "mouse"],
+        [ComponentTypes.Monitor] = ["man hinh", "monitor"],
+        [ComponentTypes.RAM] = [" ram", "bo nho"],
+        [ComponentTypes.Storage] = ["ssd", "hdd", "o cung"],
+        [ComponentTypes.VGA] = ["vga", "gpu", "card man hinh"],
+        [ComponentTypes.CPU] = ["cpu", "bo vi xu ly"]
+    };
+
+    private sealed record AiSearchAnalysis(string Intent, string CategoryScope, decimal? Budget, string? TargetGame, int? TargetFps, string? ComponentType);
 }

@@ -377,3 +377,6 @@
 .kk-chat-bot-loading span:nth-child(2){animation-delay:.15s}.kk-chat-bot-loading span:nth-child(3){animation-delay:.3s}
 @keyframes kk-chat-dot { to { transform:translateY(-3px); opacity:.45; } }
 .kk-chat-bot-loading small { margin-right:5px; color:#17558e; font-size:.66rem; font-weight:700; }
+.kk-chat-product-badge { align-self:flex-start; padding:2px 6px; border-radius:999px; background:#e0f2fe; color:#075985; font-size:.58rem; font-weight:800; }
+.kk-chat-quick-chip:last-child { border-color:#f0a16d; background:#fff7ed; color:#b45309; font-weight:750; }
+.kk-chat-card--product { width:min(86%, 285px); }

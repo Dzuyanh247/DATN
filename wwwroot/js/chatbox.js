@@ -46,7 +46,11 @@
         if (value) localStorage.setItem(storageKey, JSON.stringify(value));
         else localStorage.removeItem(storageKey);
     }
-    function scrollToLatest() {
+    function isNearBottom() {
+        return messagesElement.scrollHeight - messagesElement.scrollTop - messagesElement.clientHeight < 90;
+    }
+    function scrollToLatest(force = false) {
+        if (!force && !isNearBottom()) return;
         requestAnimationFrame(() => { messagesElement.scrollTop = messagesElement.scrollHeight; });
     }
     function setOpen(open) {
@@ -93,7 +97,7 @@
         cluster.appendChild(item);
         renderMessageMetadata(message.metadata, cluster);
         messagesElement.appendChild(cluster);
-        scrollToLatest();
+        scrollToLatest(message.forceScroll === true);
         return cluster;
     }
     function showConversation(status) {
@@ -197,6 +201,7 @@
             wrapper.className = `kk-chat-card kk-chat-card--${String(card.type || '').toLowerCase()}`;
             if (card.imageUrl) { const image = document.createElement('img'); image.src = card.imageUrl; image.alt = ''; wrapper.append(image); }
             const body = document.createElement('div'); body.className = 'kk-chat-card-body';
+            if (card.badge) { const badge = document.createElement('span'); badge.className = 'kk-chat-product-badge'; badge.textContent = card.badge; body.append(badge); }
             if (card.type === 'order' && card.orderCode) {
                 const header = document.createElement('div'); header.className = 'kk-chat-card-header';
                 const code = document.createElement('b'); code.textContent = card.orderCode;
@@ -254,7 +259,7 @@
         document.getElementById('kk-chat-bot-loading')?.remove();
         if (!show) return;
         const loading = document.createElement('div'); loading.id = 'kk-chat-bot-loading'; loading.className = 'kk-chat-bot-loading';
-        loading.setAttribute('aria-label', 'KKSHOP AI đang trả lời...'); loading.title = 'KKSHOP AI đang trả lời...'; loading.innerHTML = '<small>KKSHOP AI đang trả lời...</small><span></span><span></span><span></span>'; messagesElement.append(loading); scrollToLatest();
+        loading.setAttribute('aria-label', 'KKSHOP AI đang phân tích sản phẩm...'); loading.title = 'KKSHOP AI đang phân tích sản phẩm...'; loading.innerHTML = '<small>KKSHOP AI đang phân tích sản phẩm...</small><span></span><span></span><span></span>'; messagesElement.append(loading); scrollToLatest(true);
     }
     async function runQuickAction(actionType, payload = null) {
         if (quickActionPending) return;
@@ -434,7 +439,7 @@
             console.error('[SupportChat] Could not start conversation', error);
             errorElement.textContent = error.message;
         }
-        finally { button.disabled = false; }
+        finally { setBotLoading(false); button.disabled = false; }
     });
     messageForm.addEventListener('submit', async event => {
         event.preventDefault();
@@ -443,22 +448,28 @@
         sendErrorElement.textContent = '';
         const button = messageForm.querySelector('button');
         button.disabled = true;
+        const localId = `local-${Date.now()}`;
+        addMessage({ id: localId, senderType: 'Customer', senderName: 'Bạn', message: text, createdAt: new Date().toISOString(), forceScroll: true });
+        setBotLoading(true);
         try {
             const data = await jsonFetch(conversationUrl(sendUrlTemplate, session.conversationId), {
                 method: 'POST', body: JSON.stringify({ accessToken: session.accessToken, message: text })
             });
+            setBotLoading(false);
+            messagesElement.querySelector(`[data-chat-message-id="${localId}"]`)?.closest('.kk-chat-response-cluster')?.remove();
+            if (data.customerMessage) data.customerMessage.forceScroll = true;
             addMessage(data.customerMessage || data);
             if (data.automation) renderAutomation(data.automation);
-            if (data.aiMessage) addMessage(data.aiMessage);
+            if (data.aiMessage) { data.aiMessage.forceScroll = true; addMessage(data.aiMessage); }
             messageInput.value = '';
             messageInput.style.height = '';
             messageInput.focus();
-            scrollToLatest();
+            scrollToLatest(true);
         } catch (error) {
             console.error('[SupportChat] Could not send message', error);
             sendErrorElement.textContent = error.message;
         }
-        finally { button.disabled = false; }
+        finally { setBotLoading(false); button.disabled = false; }
     });
     messageInput.addEventListener('input', () => {
         messageInput.style.height = 'auto';
