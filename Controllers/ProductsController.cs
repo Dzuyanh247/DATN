@@ -81,11 +81,14 @@ public class ProductsController : Controller
         var query = _db.Products.Include(p => p.Category).AsNoTracking().AsQueryable();
         if (!vm.CategoryId.HasValue && !string.IsNullOrWhiteSpace(vm.CategorySlug))
         {
-            var normalizedSlug = vm.CategorySlug.Trim().ToLowerInvariant();
-            vm.CategoryId = await _db.Categories
-                .Where(c => c.Name.ToLower().Replace(" ", "-") == normalizedSlug)
+            var normalizedSlug = NormalizeSlug(vm.CategorySlug);
+            vm.CategoryId = (await _db.Categories
+                    .AsNoTracking()
+                    .Select(c => new { c.Id, c.Name })
+                    .ToListAsync())
+                .Where(c => string.Equals(NormalizeSlug(c.Name), normalizedSlug, StringComparison.OrdinalIgnoreCase))
                 .Select(c => (int?)c.Id)
-                .FirstOrDefaultAsync();
+                .FirstOrDefault();
         }
 
         var selectedCategory = vm.CategoryId.HasValue
@@ -96,7 +99,7 @@ public class ProductsController : Controller
                 {
                     category.Id,
                     category.Name,
-                    Slug = category.Name.ToLower().Replace(" ", "-")
+                    Slug = NormalizeSlug(category.Name)
                 })
                 .FirstOrDefaultAsync()
             : null;
@@ -328,17 +331,54 @@ public class ProductsController : Controller
 
     private async Task<bool> IsComponentListingAsync(string? type, string? categorySlug, int? categoryId)
     {
-        var slug = categorySlug?.Trim().ToLowerInvariant();
-        if (slug is "linh-kien" or "linh-kien-may-tinh" or "components" or "component") return true;
-        if (!string.IsNullOrWhiteSpace(slug)) return false;
         if (!string.IsNullOrWhiteSpace(type)) return true;
+
+        var normalizedSlug = NormalizeSlug(categorySlug);
+        if (IsComponentCategorySlug(normalizedSlug)) return true;
+
         if (!categoryId.HasValue) return false;
-        var categoryName = await _db.Categories
-            .Where(category => category.Id == categoryId.Value)
-            .Select(category => category.Name)
+
+        var category = await _db.Categories
+            .AsNoTracking()
+            .Where(item => item.Id == categoryId.Value)
+            .Select(item => new { item.Name })
             .FirstOrDefaultAsync();
-        return categoryName?.Contains("linh kiện", StringComparison.OrdinalIgnoreCase) == true
-            || categoryName?.Contains("component", StringComparison.OrdinalIgnoreCase) == true;
+
+        if (category is null) return false;
+
+        var normalizedCategoryName = NormalizeSearchValue(category.Name);
+        if (normalizedCategoryName.Contains("linh kien", StringComparison.OrdinalIgnoreCase)
+            || normalizedCategoryName.Contains("component", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        return IsComponentCategorySlug(NormalizeSlug(category.Name));
+    }
+
+    private static bool IsComponentCategorySlug(string? slug) =>
+        slug is "linh-kien" or "linh-kien-may-tinh" or "components" or "component";
+
+    private static string? NormalizeSlug(string? value)
+    {
+        var normalized = NormalizeSearchValue(value);
+        if (string.IsNullOrWhiteSpace(normalized)) return null;
+
+        var chars = normalized
+            .Select(character => char.IsLetterOrDigit(character) ? character : '-')
+            .ToArray();
+        return string.Join('-', new string(chars).Split('-', StringSplitOptions.RemoveEmptyEntries));
+    }
+
+    private static string NormalizeSearchValue(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return string.Empty;
+
+        var normalized = value.Trim().ToLowerInvariant().Replace('đ', 'd').Normalize(System.Text.NormalizationForm.FormD);
+        var chars = normalized
+            .Where(character => System.Globalization.CharUnicodeInfo.GetUnicodeCategory(character) != System.Globalization.UnicodeCategory.NonSpacingMark)
+            .ToArray();
+        return new string(chars).Normalize(System.Text.NormalizationForm.FormC);
     }
 
     private void LogFilterDebug(ProductFilterVm vm, int baseProductCount, int filteredProductCount)
@@ -515,7 +555,6 @@ public class ProductsController : Controller
                 Count = GetComponentTypeCount(counts, option),
                 Url = $"/linh-kien/{GetComponentTypeSlug(option)}"
             })
-            .Where(option => option.Count > 0 || string.Equals(option.Value, currentType, StringComparison.OrdinalIgnoreCase))
             .ToList();
 
     private static int GetComponentTypeCount(Dictionary<string, int> counts, string type)
