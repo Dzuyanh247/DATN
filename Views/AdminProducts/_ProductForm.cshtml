@@ -256,7 +256,7 @@
                             <input id="promotion-new-option" type="text" class="form-control js-promotion-new-option" placeholder="Nhập tên option mới" />
                             <button type="button" class="btn btn-outline-primary js-promotion-add-option"><i class="bi bi-plus-lg me-1"></i>Thêm option</button>
                         </div>
-                        <div class="form-text text-muted">Option thêm nhanh chỉ áp dụng trên form hiện tại và sẽ được tick sẵn để gom vào dữ liệu khi lưu.</div>
+                        <div class="form-text text-muted">Option thêm nhanh sẽ được tick sẵn và được lưu trên trình duyệt này để lần sau mở form vẫn còn.</div>
                     </div>
                 </div>
                 <textarea asp-for="CustomPromotionText" class="d-none js-promotion-bound-field" aria-hidden="true" tabindex="-1"></textarea>
@@ -334,6 +334,9 @@
         const confirmBox = document.querySelector('.js-promotion-confirm');
         const cancelRemoveButton = document.querySelector('.js-promotion-cancel-remove');
         const confirmRemoveButton = document.querySelector('.js-promotion-confirm-remove');
+        const promotionStorageKey = 'admin-products:promotion-preset-options';
+        const defaultPromotionOptions = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(promotionPresetOptions));
+        const currentPromotionLines = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(promotionLines));
         let pendingRemoveItem = null;
         if (!form || !boundField || !presetGrid || !newOptionInput || !addOptionButton || !confirmBox || !cancelRemoveButton || !confirmRemoveButton) return;
 
@@ -345,9 +348,60 @@
             return Array.from(presetGrid.querySelectorAll('.js-promotion-preset'));
         }
 
+        function optionKey(option) {
+            return normalizeOption(option).toLocaleLowerCase('vi-VN');
+        }
+
+        function uniqueOptions(options) {
+            const seen = new Set();
+            const result = [];
+            (options || []).forEach(option => {
+                const normalized = normalizeOption(option);
+                const key = optionKey(normalized);
+                if (!normalized || seen.has(key)) return;
+                seen.add(key);
+                result.push(normalized);
+            });
+            return result;
+        }
+
         function findPreset(option) {
-            const normalized = normalizeOption(option).toLocaleLowerCase('vi-VN');
-            return getPresetCheckboxes().find(checkbox => normalizeOption(checkbox.value).toLocaleLowerCase('vi-VN') === normalized);
+            const normalized = optionKey(option);
+            return getPresetCheckboxes().find(checkbox => optionKey(checkbox.value) === normalized);
+        }
+
+        function loadStoredPromotionOptions() {
+            try {
+                const storedValue = window.localStorage?.getItem(promotionStorageKey);
+                if (!storedValue) return uniqueOptions(defaultPromotionOptions);
+
+                const parsedOptions = JSON.parse(storedValue);
+                if (!Array.isArray(parsedOptions)) return uniqueOptions(defaultPromotionOptions);
+
+                return uniqueOptions(parsedOptions);
+            } catch {
+                return uniqueOptions(defaultPromotionOptions);
+            }
+        }
+
+        function savePromotionOptions() {
+            try {
+                const options = getPresetCheckboxes().map(checkbox => checkbox.value);
+                window.localStorage?.setItem(promotionStorageKey, JSON.stringify(uniqueOptions(options)));
+            } catch {
+                // localStorage may be unavailable in private/restricted browsers; the form still works for this session.
+            }
+        }
+
+        function renderPromotionOptions() {
+            const storedOptions = loadStoredPromotionOptions();
+            const displayOptions = uniqueOptions(storedOptions.concat(currentPromotionLines));
+            const currentKeys = new Set(uniqueOptions(currentPromotionLines).map(optionKey));
+
+            presetGrid.innerHTML = '';
+            displayOptions.forEach(option => {
+                presetGrid.appendChild(createPromotionOption(option, currentKeys.has(optionKey(option))));
+            });
         }
 
         function createPromotionOption(option, checked) {
@@ -397,6 +451,7 @@
                 existing.closest('.promotion-preset-option')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
             } else {
                 presetGrid.appendChild(createPromotionOption(option, true));
+                savePromotionOptions();
             }
 
             newOptionInput.value = '';
@@ -433,6 +488,7 @@
         });
         confirmRemoveButton.addEventListener('click', function () {
             pendingRemoveItem?.remove();
+            savePromotionOptions();
             closeRemoveConfirm();
             syncPromotionText();
         });
@@ -447,6 +503,7 @@
             addPromotionOption();
         });
         form.addEventListener('submit', syncPromotionText);
+        renderPromotionOptions();
         syncPromotionText();
     })();
 
