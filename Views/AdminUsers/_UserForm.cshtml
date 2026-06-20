@@ -1,23 +1,23 @@
 @model Datn.PcStore.ViewModels.AdminUserUpsertVm
 
-<form method="post" class="admin-form-grid">
+<form method="post" class="admin-form-grid admin-form-section">
     @Html.AntiForgeryToken()
     <input type="hidden" asp-for="Id" />
     <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
-    <div class="admin-field-third"><label class="form-label">Username</label><input asp-for="Username" class="form-control" /></div>
-    <div class="admin-field-third"><label class="form-label">Họ tên</label><input asp-for="FullName" class="form-control" /></div>
-    <div class="admin-field-third"><label class="form-label">Email</label><input asp-for="Email" class="form-control" /></div>
+    <div class="admin-field-md"><label class="form-label">Username</label><input asp-for="Username" class="form-control" /></div>
+    <div class="admin-field-md"><label class="form-label">Họ tên</label><input asp-for="FullName" class="form-control" /></div>
+    <div class="admin-field-md"><label class="form-label">Email</label><input asp-for="Email" class="form-control" /></div>
 
-    <div class="admin-field-short"><label class="form-label">SĐT</label><input asp-for="Phone" class="form-control" /></div>
-    <div class="admin-field-medium"><label class="form-label">Địa chỉ</label><input asp-for="Address" class="form-control" /></div>
-    <div class="admin-field-short">
+    <div class="admin-field-sm"><label class="form-label">SĐT</label><input asp-for="Phone" class="form-control" /></div>
+    <div class="admin-field-lg"><label class="form-label">Địa chỉ</label><input asp-for="Address" class="form-control" /></div>
+    <div class="admin-field-sm">
         <label class="form-label">Role</label>
         <select asp-for="RoleId" class="form-select" asp-items="@(new Microsoft.AspNetCore.Mvc.Rendering.SelectList(Model.Roles, "Id", "Name"))"></select>
     </div>
 
-    <div class="admin-field-medium"><label class="form-label">Mật khẩu mới @(Model.Id == 0 ? string.Empty : "(bỏ trống nếu không đổi)")</label><input asp-for="Password" type="password" class="form-control" /></div>
-    <div class="admin-field-short admin-field-check form-check ms-2"><input asp-for="IsActive" class="form-check-input" /><label asp-for="IsActive" class="form-check-label">Active</label></div>
+    <div class="admin-field-md"><label class="form-label">Mật khẩu mới @(Model.Id == 0 ? string.Empty : "(bỏ trống nếu không đổi)")</label><input asp-for="Password" type="password" class="form-control" /></div>
+    <div class="admin-field-xs admin-field-check form-check ms-2"><input asp-for="IsActive" class="form-check-input" /><label asp-for="IsActive" class="form-check-label">Active</label></div>
 
     <div class="admin-field-full d-flex gap-2">
         <button class="btn btn-primary">Lưu</button>
