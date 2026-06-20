@@ -14,6 +14,8 @@ builder.Logging.AddFilter("Microsoft.EntityFrameworkCore", LogLevel.Warning);
 
 builder.Services.AddControllersWithViews();
 builder.Services.AddSignalR();
+builder.Services.AddMemoryCache();
+builder.Services.Configure<AiChatOptions>(builder.Configuration.GetSection("AiChat"));
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(databaseConnection.ConnectionString));
 
@@ -86,6 +88,8 @@ builder.Services.AddScoped<IOrderExpirationService, OrderExpirationService>();
 builder.Services.AddScoped<IVoucherService, VoucherService>();
 builder.Services.AddScoped<IProductReviewService, ProductReviewService>();
 builder.Services.AddScoped<ISupportChatAutomationService, SupportChatAutomationService>();
+builder.Services.AddScoped<IProductSearchForAiService, ProductSearchForAiService>();
+builder.Services.AddHttpClient<IAiChatService, GeminiChatService>();
 builder.Services.AddHttpClient<IGhnShippingService, GhnShippingService>((sp, client) =>
 {
     var options = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<GhnOptions>>().Value;
@@ -154,6 +158,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapHub<ChatHub>("/hubs/support-chat");
+app.MapControllers();
 
 app.MapControllerRoute(
     name: "areas",

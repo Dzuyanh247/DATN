@@ -1,0 +1,121 @@
+using System.Net.Http.Json;
+using System.Text.Json;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Options;
+
+namespace Datn.PcStore.Services;
+
+public record AiChatResponse(bool Success, string Reply, IReadOnlyList<AiProductContext> SuggestedProducts);
+
+public interface IAiChatService
+{
+    Task<AiChatResponse> AskAsync(string message, string? sessionId, string? ipAddress, CancellationToken cancellationToken = default);
+}
+
+public class GeminiChatService : IAiChatService
+{
+    private const string BusyMessage = "AI đang bận, bạn vui lòng thử lại sau hoặc chọn Gặp nhân viên.";
+    private readonly HttpClient _httpClient;
+    private readonly IProductSearchForAiService _productSearch;
+    private readonly IMemoryCache _cache;
+    private readonly AiChatOptions _options;
+    private readonly ILogger<GeminiChatService> _logger;
+
+    public GeminiChatService(HttpClient httpClient, IProductSearchForAiService productSearch, IMemoryCache cache, IOptions<AiChatOptions> options, ILogger<GeminiChatService> logger)
+    {
+        _httpClient = httpClient;
+        _productSearch = productSearch;
+        _cache = cache;
+        _options = options.Value;
+        _logger = logger;
+    }
+
+    public async Task<AiChatResponse> AskAsync(string message, string? sessionId, string? ipAddress, CancellationToken cancellationToken = default)
+    {
+        message = (message ?? string.Empty).Trim();
+        if (message.Length == 0) return new(false, "Bạn vui lòng nhập câu hỏi cần tư vấn.", []);
+        if (message.Length > 500) return new(false, "Câu hỏi quá dài, bạn vui lòng rút gọn dưới 500 ký tự.", []);
+        if (!IsAllowed(sessionId, ipAddress)) return new(false, "Bạn đang gửi quá nhanh, vui lòng thử lại sau vài giây.", []);
+        if (!_options.Enabled || string.IsNullOrWhiteSpace(_options.ApiKey)) return new(false, BusyMessage, []);
+
+        var cacheKey = $"ai-chat:{NormalizeCacheKey(message)}";
+        if (_cache.TryGetValue<AiChatResponse>(cacheKey, out var cached) && cached != null) return cached;
+
+        var products = await _productSearch.SearchAsync(message, cancellationToken);
+        if (IsOutOfScope(message))
+        {
+            return new(true, "KKSHOP AI chỉ hỗ trợ tư vấn PC, linh kiện, đơn hàng, bảo hành và thanh toán. Bạn cần mình tư vấn cấu hình hoặc sản phẩm nào không?", products);
+        }
+
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(TimeSpan.FromSeconds(Math.Clamp(_options.TimeoutSeconds, 10, 15)));
+
+        try
+        {
+            var prompt = BuildPrompt(message, products);
+            var request = new
+            {
+                systemInstruction = new { parts = new[] { new { text = SystemPrompt } } },
+                contents = new[] { new { role = "user", parts = new[] { new { text = prompt } } } },
+                generationConfig = new { temperature = 0.2, maxOutputTokens = 700 }
+            };
+            var url = $"https://generativelanguage.googleapis.com/v1beta/models/{Uri.EscapeDataString(_options.Model)}:generateContent?key={Uri.EscapeDataString(_options.ApiKey)}";
+            var response = await _httpClient.PostAsJsonAsync(url, request, timeout.Token);
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("Gemini returned status {StatusCode}", response.StatusCode);
+                return new(false, BusyMessage, products);
+            }
+            using var document = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync(timeout.Token), cancellationToken: timeout.Token);
+            var reply = ExtractReply(document.RootElement);
+            if (string.IsNullOrWhiteSpace(reply)) reply = BusyMessage;
+            var result = new AiChatResponse(true, reply.Trim(), products);
+            _cache.Set(cacheKey, result, TimeSpan.FromMinutes(7));
+            return result;
+        }
+        catch (OperationCanceledException)
+        {
+            return new(false, BusyMessage, products);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Gemini chat failed");
+            return new(false, BusyMessage, products);
+        }
+    }
+
+    private bool IsAllowed(string? sessionId, string? ipAddress)
+    {
+        var key = $"ai-rate:{sessionId ?? ipAddress ?? "unknown"}";
+        var count = _cache.Get<int>(key);
+        if (count >= 12) return false;
+        _cache.Set(key, count + 1, TimeSpan.FromMinutes(1));
+        return true;
+    }
+
+    private static bool IsOutOfScope(string message)
+    {
+        var lower = message.ToLowerInvariant();
+        return lower.Contains("thời tiết") || lower.Contains("bóng đá") || lower.Contains("chứng khoán") || lower.Contains("nấu ăn");
+    }
+
+    private static string BuildPrompt(string message, IReadOnlyList<AiProductContext> products)
+    {
+        var productLines = products.Count == 0
+            ? "Không tìm thấy sản phẩm phù hợp trong database KKSHOP."
+            : string.Join("\n", products.Select((p, i) => $"{i + 1}. Tên: {p.Name}; Giá: {p.Price:N0} đ; Cấu hình/thông số: {p.Specifications}; Tồn kho: {p.StockStatus}; Link: {p.Link}; Danh mục: {p.Category}"));
+        return $"Câu hỏi khách hàng: {message}\n\nDữ liệu sản phẩm KKSHOP được phép dùng:\n{productLines}";
+    }
+
+    private static string ExtractReply(JsonElement root)
+    {
+        if (!root.TryGetProperty("candidates", out var candidates) || candidates.GetArrayLength() == 0) return string.Empty;
+        var first = candidates[0];
+        if (!first.TryGetProperty("content", out var content) || !content.TryGetProperty("parts", out var parts)) return string.Empty;
+        return string.Join("\n", parts.EnumerateArray().Select(p => p.TryGetProperty("text", out var text) ? text.GetString() : null).Where(x => !string.IsNullOrWhiteSpace(x)));
+    }
+
+    private static string NormalizeCacheKey(string text) => text.Trim().ToLowerInvariant()[..Math.Min(text.Trim().Length, 160)];
+
+    private const string SystemPrompt = "Bạn là KKSHOP AI, trợ lý tư vấn bán PC và linh kiện của KKSHOP. Chỉ tư vấn dựa trên dữ liệu sản phẩm được cung cấp từ hệ thống. Trả lời bằng tiếng Việt, ngắn gọn, dễ hiểu. Không bịa sản phẩm, không bịa giá, không bịa tồn kho. Nếu shop không có sản phẩm phù hợp, hãy nói rõ và gợi ý sản phẩm gần nhất nếu có. Nếu câu hỏi liên quan bảo hành, đơn hàng, thanh toán thì ưu tiên hướng người dùng dùng nút chức năng tương ứng hoặc gặp nhân viên. Nếu câu hỏi nhạy cảm như giá đặc biệt, khiếu nại, hủy đơn, bảo hành phức tạp, lỗi thanh toán, đổi trả thì gợi ý gặp nhân viên.";
+}

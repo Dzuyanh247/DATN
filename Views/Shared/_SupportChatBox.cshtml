@@ -22,18 +22,18 @@
     <script type="application/json" id="kk-chat-quick-questions">@Html.Raw(JsonSerializer.Serialize(SupportChatDefaults.QuickQuestions))</script>
     <form class="d-none" id="kk-chat-antiforgery">@Html.AntiForgeryToken()</form>
 
-    <button type="button" class="kk-chat-launcher" id="kk-chat-launcher" aria-label="Mở KKSHOP hỗ trợ" aria-expanded="false">
+    <button type="button" class="kk-chat-launcher" id="kk-chat-launcher" aria-label="Mở KKSHOP AI" aria-expanded="false">
         <span class="kk-chat-launcher-icon"><i class="bi bi-headset"></i></span>
-        <span class="kk-chat-launcher-text">Hỗ trợ</span>
+        <span class="kk-chat-launcher-text">KKSHOP AI</span>
         <span class="kk-chat-unread d-none" id="kk-chat-unread">0</span>
     </button>
 
-    <section class="kk-chat-panel" id="kk-chat-panel" aria-hidden="true" aria-label="KKSHOP hỗ trợ">
+    <section class="kk-chat-panel" id="kk-chat-panel" aria-hidden="true" aria-label="KKSHOP AI">
         <header class="kk-chat-header">
             <div class="kk-chat-brand-icon"><i class="bi bi-chat-heart-fill"></i></div>
             <div>
-                <strong>KKSHOP hỗ trợ</strong>
-                <small id="kk-chat-connection"><span></span> Shop sẽ phản hồi sớm</small>
+                <strong>KKSHOP AI</strong>
+                <small id="kk-chat-connection"><span></span> AI tư vấn tự động</small>
             </div>
             <button type="button" id="kk-chat-close" class="kk-chat-close" aria-label="Thu nhỏ"><i class="bi bi-dash-lg"></i></button>
         </header>
@@ -69,7 +69,7 @@
                     <div class="kk-chat-user-note"><i class="bi bi-person-check-fill"></i> Đang chat với tên <strong>@fullName</strong></div>
                 }
                 <label for="kk-chat-first-message">Bạn cần KKSHOP hỗ trợ gì?</label>
-                <textarea id="kk-chat-first-message" maxlength="1000" rows="3" placeholder="Nhập nội dung cần hỗ trợ..." required></textarea>
+                <textarea id="kk-chat-first-message" maxlength="500" rows="3" placeholder="Nhập câu hỏi để KKSHOP AI tư vấn..." required></textarea>
                 <small class="kk-chat-enter-hint">Enter để gửi • Shift + Enter để xuống dòng</small>
                 <div class="kk-chat-error" id="kk-chat-start-error" role="alert"></div>
                 <button type="submit" class="kk-chat-primary" id="kk-chat-start-submit">
@@ -87,7 +87,7 @@
                 <div class="kk-chat-closed d-none" id="kk-chat-closed">Cuộc trò chuyện đã đóng.<button type="button" id="kk-chat-new-conversation">Bắt đầu hội thoại mới</button></div>
                 <div class="kk-chat-error kk-chat-send-error" id="kk-chat-send-error" role="alert"></div>
                 <form class="kk-chat-compose" id="kk-chat-message-form">
-                    <textarea id="kk-chat-message" maxlength="1000" rows="1" placeholder="Nhập tin nhắn..." aria-label="Tin nhắn"></textarea>
+                    <textarea id="kk-chat-message" maxlength="500" rows="1" placeholder="Nhập câu hỏi cho KKSHOP AI..." aria-label="Tin nhắn"></textarea>
                     <button type="submit" aria-label="Gửi tin nhắn"><i class="bi bi-send-fill"></i></button>
                 </form>
             </div>

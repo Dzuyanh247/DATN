@@ -276,7 +276,7 @@ public partial class SupportChatAutomationService : ISupportChatAutomationServic
     private SupportAutomationResult StaffSupport(ChatConversation c)
     {
         SetContext(c, "StaffSupport", true, 3);
-        return Result(AddSystem(c, "KKSHOP đã chuyển yêu cầu của bạn đến nhân viên hỗ trợ. Bạn vui lòng để lại nội dung cần tư vấn, nhân viên sẽ phản hồi sớm nhất."));
+        return Result(AddSystem(c, "Bạn đã được chuyển sang hỗ trợ nhân viên. Shop sẽ phản hồi sớm nhất."));
     }
 
     private IQueryable<Order> OwnedOrders(int userId) => _db.Orders.AsNoTracking().Where(x => x.UserId == userId);
