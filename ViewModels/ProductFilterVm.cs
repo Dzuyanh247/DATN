@@ -43,6 +43,7 @@ public class ProductFilterVm
     public List<ProductFilterOptionVm> CoolingOptions { get; set; } = new();
     public bool IsEquivalentSearch { get; set; }
     public bool IsComponentListing { get; set; }
+    public string CurrentPath { get; set; } = string.Empty;
     public string FilterActionUrl { get; set; } = "/Products";
     public string ClearFilterUrl { get; set; } = "/Products";
 
