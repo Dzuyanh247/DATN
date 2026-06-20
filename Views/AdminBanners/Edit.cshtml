@@ -16,9 +16,9 @@
                 <div class="mb-3"><label class="form-label">Tên banner</label><input asp-for="Title" class="form-control" /><span asp-validation-for="Title" class="text-danger"></span></div>
                 <div class="mb-3"><label asp-for="ImageUrl" class="form-label">URL ảnh banner</label><input asp-for="ImageUrl" class="form-control" placeholder="https://..." data-banner-url /><div class="form-text">Dán URL ảnh Cloudinary</div><span asp-validation-for="ImageUrl" class="text-danger"></span></div>
                 <div class="mb-3"><label class="form-label">Link khi click</label><input asp-for="LinkUrl" class="form-control" /></div>
-                <div class="row g-3">
-                    <div class="col-md-6"><label class="form-label">Vị trí hiển thị</label><select asp-for="Position" class="form-select" data-banner-position><option value="MainBanner">MainBanner - Banner chính</option><option value="SubBanner">SubBanner - Banner phụ</option><option value="Other">Other - Banner khác</option></select></div>
-                    <div class="col-md-6"><label class="form-label">Thứ tự hiển thị</label><input asp-for="SortOrder" class="form-control" /></div>
+                <div class="admin-form-grid">
+                    <div class="admin-field-medium"><label class="form-label">Vị trí hiển thị</label><select asp-for="Position" class="form-select" data-banner-position><option value="MainBanner">MainBanner - Banner chính</option><option value="SubBanner">SubBanner - Banner phụ</option><option value="Other">Other - Banner khác</option></select></div>
+                    <div class="admin-field-short admin-field-number"><label class="form-label">Thứ tự hiển thị</label><input asp-for="SortOrder" class="form-control" type="number" /></div>
                 </div>
                 <div class="form-check mt-3"><input asp-for="IsActive" class="form-check-input" /><label asp-for="IsActive" class="form-check-label">Đang hiển thị</label></div>
 

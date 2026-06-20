@@ -31,9 +31,9 @@
                 </div>
             </div>
 
-            <form method="post">
+            <form method="post" class="admin-form-grid">
                 @Html.AntiForgeryToken()
-                <div class="mb-3">
+                <div class="admin-field-full mb-3">
                     <label asp-for="LogoUrl" class="form-label">Logo URL (Cloudinary)</label>
                     <input asp-for="LogoUrl" class="form-control" id="logo-url-input" placeholder="https://res.cloudinary.com/..." />
                     <span asp-validation-for="LogoUrl" class="text-danger"></span>
@@ -43,20 +43,20 @@
 
                 <hr />
                 <h2 class="h5 mb-3">Background section khuyến mãi</h2>
-                <div class="row g-3 mb-3">
-                    <div class="col-md-6">
+                <div class="admin-form-grid admin-field-full mb-3">
+                    <div class="admin-field-medium">
                         <label asp-for="DealSectionBackgroundUrl" class="form-label fw-semibold">URL ảnh nền Deal Hot</label>
                         <img src="@ImageUrlHelper.ResolveImageUrl(Model.DealSectionBackgroundUrl, "/images/defaults/deal-bg.jpg")" class="img-fluid rounded border" alt="Deal background" onerror="this.style.display='none';" />
                         <input asp-for="DealSectionBackgroundUrl" class="form-control mt-2" placeholder="https://..." />
                     </div>
-                    <div class="col-md-6">
+                    <div class="admin-field-medium">
                         <label asp-for="HotPromotionBackgroundUrl" class="form-label fw-semibold">URL ảnh nền Khuyến mãi Hot</label>
                         <img src="@ImageUrlHelper.ResolveImageUrl(Model.HotPromotionBackgroundUrl, "/images/defaults/hot-promotion-bg.jpg")" class="img-fluid rounded border" alt="Hot promotion background" onerror="this.style.display='none';" />
                         <input asp-for="HotPromotionBackgroundUrl" class="form-control mt-2" placeholder="https://..." />
                     </div>
                 </div>
 
-                <button type="submit" class="btn btn-primary">Lưu cấu hình</button>
+                <div class="admin-field-full"><button type="submit" class="btn btn-primary">Lưu cấu hình</button></div>
             </form>
         </div>
     </div>
