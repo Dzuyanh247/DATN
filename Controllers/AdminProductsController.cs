@@ -186,7 +186,7 @@ public class AdminProductsController : Controller
         vm.Id = product.Id; vm.Name = product.Name; vm.Brand = product.Brand; vm.ProductType = product.ProductType; vm.ComponentType = ProductKinds.PC; vm.Price = product.Price; vm.PriceInput = FormatMoneyForInput(product.Price); vm.DiscountPrice = product.DiscountPrice ?? product.SalePrice; vm.DiscountPriceInput = FormatMoneyForInput(vm.DiscountPrice);
         vm.IsHotSale = product.IsHotSale; vm.IsDailyDeal = product.IsDailyDeal; vm.IsPromotion = product.IsPromotion;
         vm.PromotionStartDate = product.PromotionStartDate; vm.PromotionEndDate = product.PromotionEndDate;
-        vm.SelectedPromotionTexts = ProductPromotionHelper.GetSelectedPresetTexts(product.PromotionText); vm.CustomPromotionText = ProductPromotionHelper.GetCustomText(product.PromotionText);
+        vm.SelectedPromotionTexts = new List<string>(); vm.CustomPromotionText = product.PromotionText;
         vm.StockQuantity = product.StockQuantity; vm.WarrantyMonths = product.WarrantyMonths > 0 ? product.WarrantyMonths : 12; vm.CategoryId = product.CategoryId;
         vm.Description = ResolveDescriptionForEditing(product); vm.Specifications = product.TechnicalSpecifications; vm.ComponentSpecs = ProductComponentSpecHelper.ParseStored(product.TechnicalSpecifications); vm.IsActive = product.IsActive;
         var orderedImages = product.ProductImages.OrderBy(x => x.SortOrder).ToList();
