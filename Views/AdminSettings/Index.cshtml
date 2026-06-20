@@ -31,25 +31,25 @@
                 </div>
             </div>
 
-            <form method="post" class="admin-form-grid">
+            <form method="post" class="admin-form-grid admin-form-section">
                 @Html.AntiForgeryToken()
-                <div class="admin-field-full mb-3">
+                <div class="admin-field-lg mb-3">
                     <label asp-for="LogoUrl" class="form-label">Logo URL (Cloudinary)</label>
                     <input asp-for="LogoUrl" class="form-control" id="logo-url-input" placeholder="https://res.cloudinary.com/..." />
                     <span asp-validation-for="LogoUrl" class="text-danger"></span>
                 </div>
 
-                <p class="text-muted mb-3">Dán URL ảnh động/tĩnh từ Cloudinary. Hệ thống sẽ lưu URL vào DB và dùng trực tiếp trên mọi máy sau khi pull code + DB.</p>
+                <p class="admin-field-full text-muted mb-3">Dán URL ảnh động/tĩnh từ Cloudinary. Hệ thống sẽ lưu URL vào DB và dùng trực tiếp trên mọi máy sau khi pull code + DB.</p>
 
-                <hr />
-                <h2 class="h5 mb-3">Background section khuyến mãi</h2>
-                <div class="admin-form-grid admin-field-full mb-3">
-                    <div class="admin-field-medium">
+                <hr class="admin-field-full" />
+                <h2 class="admin-field-full h5 mb-3">Background section khuyến mãi</h2>
+                <div class="admin-form-grid admin-field-full admin-form-section mb-3">
+                    <div class="admin-field-lg">
                         <label asp-for="DealSectionBackgroundUrl" class="form-label fw-semibold">URL ảnh nền Deal Hot</label>
                         <img src="@ImageUrlHelper.ResolveImageUrl(Model.DealSectionBackgroundUrl, "/images/defaults/deal-bg.jpg")" class="img-fluid rounded border" alt="Deal background" onerror="this.style.display='none';" />
                         <input asp-for="DealSectionBackgroundUrl" class="form-control mt-2" placeholder="https://..." />
                     </div>
-                    <div class="admin-field-medium">
+                    <div class="admin-field-lg">
                         <label asp-for="HotPromotionBackgroundUrl" class="form-label fw-semibold">URL ảnh nền Khuyến mãi Hot</label>
                         <img src="@ImageUrlHelper.ResolveImageUrl(Model.HotPromotionBackgroundUrl, "/images/defaults/hot-promotion-bg.jpg")" class="img-fluid rounded border" alt="Hot promotion background" onerror="this.style.display='none';" />
                         <input asp-for="HotPromotionBackgroundUrl" class="form-control mt-2" placeholder="https://..." />
