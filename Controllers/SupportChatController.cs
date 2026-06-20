@@ -195,8 +195,12 @@ public class SupportChatController : Controller
             type = "product",
             title = p.Name,
             subtitle = $"{p.Price:N0} đ • {p.StockStatus}",
+            badge = p.CategoryScope == "PC" ? "PC đề xuất" : null,
             actions = new[] { new { label = "Xem chi tiết", url = p.Link } }
-        });
+        }).ToList();
+        var actions = products.Count > 3
+            ? new object[] { new { label = "Xem thêm sản phẩm phù hợp", style = "secondary", url = "/Products" } }
+            : Array.Empty<object>();
         var message = new ChatMessage
         {
             Conversation = conversation,
@@ -206,7 +210,7 @@ public class SupportChatController : Controller
             IsSystem = true,
             IsRead = true,
             ReadAt = DateTime.UtcNow,
-            MetadataJson = JsonSerializer.Serialize(new { type = "ai", cards, messageActions = Array.Empty<object>(), quickReplies = Array.Empty<object>() })
+            MetadataJson = JsonSerializer.Serialize(new { type = "ai", cards, messageActions = actions, quickReplies = Array.Empty<object>() })
         };
         _db.ChatMessages.Add(message);
         conversation.LastMessageAt = DateTime.UtcNow;

@@ -102,9 +102,9 @@ public class GeminiChatService : IAiChatService
     private static string BuildPrompt(string message, IReadOnlyList<AiProductContext> products)
     {
         var productLines = products.Count == 0
-            ? "Không tìm thấy sản phẩm phù hợp trong database KKSHOP."
+            ? "Hiện KKSHOP chưa tìm thấy cấu hình phù hợp trong dữ liệu hiện có."
             : string.Join("\n", products.Select((p, i) => $"{i + 1}. Tên: {p.Name}; Giá: {p.Price:N0} đ; Cấu hình/thông số: {p.Specifications}; Tồn kho: {p.StockStatus}; Link: {p.Link}; Danh mục: {p.Category}"));
-        return $"Câu hỏi khách hàng: {message}\n\nDữ liệu sản phẩm KKSHOP được phép dùng:\n{productLines}";
+        return $"Câu hỏi khách hàng: {message}\n\nQuy tắc bắt buộc khi trả lời:\n- Chỉ tư vấn dựa trên danh sách sản phẩm backend cung cấp bên dưới. Không bịa sản phẩm ngoài danh sách.\n- Nếu danh sách sản phẩm trống, nói đúng: \"Hiện KKSHOP chưa tìm thấy cấu hình phù hợp trong dữ liệu hiện có\" và gợi ý khách nhập ngân sách hoặc bấm Gặp nhân viên.\n- Nếu có sản phẩm, chọn 2-3 sản phẩm phù hợp nhất, nêu giá và lý do phù hợp.\n- Với FPS/game, không cam kết tuyệt đối; dùng các cụm như \"dự kiến\", \"phù hợp ở mức tham khảo\" vì FPS phụ thuộc setting và bản cập nhật game.\n- Nếu khách hỏi PC/cấu hình/gaming, chỉ tư vấn PC bộ/cấu hình PC có trong danh sách.\n\nDữ liệu sản phẩm KKSHOP được phép dùng:\n{productLines}";
     }
 
     private static string ExtractReply(JsonElement root)
@@ -117,5 +117,5 @@ public class GeminiChatService : IAiChatService
 
     private static string NormalizeCacheKey(string text) => text.Trim().ToLowerInvariant()[..Math.Min(text.Trim().Length, 160)];
 
-    private const string SystemPrompt = "Bạn là KKSHOP AI, trợ lý tư vấn bán PC và linh kiện của KKSHOP. Chỉ tư vấn dựa trên dữ liệu sản phẩm được cung cấp từ hệ thống. Trả lời bằng tiếng Việt, ngắn gọn, dễ hiểu. Không bịa sản phẩm, không bịa giá, không bịa tồn kho. Nếu shop không có sản phẩm phù hợp, hãy nói rõ và gợi ý sản phẩm gần nhất nếu có. Nếu câu hỏi liên quan bảo hành, đơn hàng, thanh toán thì ưu tiên hướng người dùng dùng nút chức năng tương ứng hoặc gặp nhân viên. Nếu câu hỏi nhạy cảm như giá đặc biệt, khiếu nại, hủy đơn, bảo hành phức tạp, lỗi thanh toán, đổi trả thì gợi ý gặp nhân viên.";
+    private const string SystemPrompt = "Bạn là KKSHOP AI, trợ lý tư vấn bán PC và linh kiện của KKSHOP. Chỉ tư vấn dựa trên dữ liệu sản phẩm được backend cung cấp. Không bịa sản phẩm, giá hoặc tồn kho. Nếu không có sản phẩm phù hợp, nói rõ hiện KKSHOP chưa tìm thấy cấu hình phù hợp trong dữ liệu hiện có và gợi ý nhập ngân sách hoặc gặp nhân viên. Khi tư vấn gaming/FPS chỉ nói dự kiến/phù hợp ở mức tham khảo, không cam kết FPS tuyệt đối. Trả lời tiếng Việt ngắn gọn, dễ hiểu. Nếu câu hỏi liên quan bảo hành, đơn hàng, thanh toán thì ưu tiên hướng người dùng dùng nút chức năng tương ứng hoặc gặp nhân viên.";
 }
