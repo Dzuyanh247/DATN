@@ -452,28 +452,19 @@ public class ProductsController : Controller
         vm.SpecFilterGroups = string.IsNullOrWhiteSpace(vm.Type) ? new List<ProductSpecFilterGroupVm>() : BuildSpecFilterGroups(scopedProducts, vm.Type);
 
         var showPcFacets = !vm.IsComponentListing;
-        if (showPcFacets || string.Equals(ComponentTypes.Normalize(vm.Type), ComponentTypes.CPU, StringComparison.OrdinalIgnoreCase))
+        if (showPcFacets)
         {
             vm.CpuOptions = BuildParsedOptions(scopedProducts, parsedFacets, facets => facets.Cpu)
                 .OrderBy(option => GetCpuSortOrder(option.Value))
                 .ThenBy(option => option.Label)
                 .ToList();
-        }
-        if (showPcFacets || string.Equals(ComponentTypes.Normalize(vm.Type), ComponentTypes.RAM, StringComparison.OrdinalIgnoreCase))
-        {
             vm.RamOptions = BuildParsedOptions(scopedProducts, parsedFacets, facets => facets.Ram)
                 .OrderBy(option => ParseRamCapacity(option.Value))
                 .ToList();
-        }
-        if (showPcFacets || string.Equals(ComponentTypes.Normalize(vm.Type), ComponentTypes.VGA, StringComparison.OrdinalIgnoreCase))
-        {
             vm.GpuOptions = BuildParsedOptions(scopedProducts, parsedFacets, facets => facets.Gpu)
                 .OrderBy(option => GetGpuSortOrder(option.Value))
                 .ThenBy(option => option.Label)
                 .ToList();
-        }
-        if (showPcFacets)
-        {
             // PC listings intentionally whitelist only the friendly top-level facets:
             // price, brand, CPU series, RAM capacity, GPU series, and storage capacity.
             // Detailed component facets such as mainboard, PSU, case, and cooling are
@@ -539,7 +530,7 @@ public class ProductsController : Controller
                 Title = "Linh kiện máy tính",
                 Options = BuildComponentOptions(counts, currentType,
                     ComponentTypes.CPU, ComponentTypes.Mainboard, ComponentTypes.RAM, ComponentTypes.VGA,
-                    ComponentTypes.MonitorArm, ComponentTypes.Storage, ComponentTypes.Cooler, ComponentTypes.Case, ComponentTypes.PSU, ComponentTypes.Monitor, ComponentTypes.Keyboard, ComponentTypes.Mouse, ComponentTypes.Headphone)
+                    ComponentTypes.MonitorArm, ComponentTypes.Storage, ComponentTypes.Cooler, ComponentTypes.Case, ComponentTypes.PSU)
             }
         };
 
@@ -596,7 +587,7 @@ public class ProductsController : Controller
     private static bool IsSpecAllowedForComponent(string componentType, string specName)
     {
         var allowedKeys = GetAllowedSpecKeys(componentType);
-        if (allowedKeys.Count == 0) return true;
+        if (allowedKeys.Count == 0) return false;
         return allowedKeys.Contains(NormalizeSpecKey(specName));
     }
 
@@ -604,10 +595,10 @@ public class ProductsController : Controller
     {
         var keys = componentType.Trim().ToLowerInvariant() switch
         {
-            "cpu" => new[] { "thuonghieu", "loaicpu", "socket", "thehecpu", "thehe", "tengoi", "tenthehe", "sonhan", "soluong", "tdp", "hotrobonho", "hotroram", "tan-nhiet", "tannhiet", "dongcpu", "series" },
+            "cpu" => new[] { "hangcpu", "hang", "thuonghieu", "socket", "sonhan", "nhan", "soluong", "luong", "tdp", "thehecpu", "thehe" },
             "ram" => new[] { "dungluong", "busram", "bus", "loairam", "chuanram" },
             "vga" => new[] { "chipset", "dungluongvram", "vram", "seriesgpu", "series" },
-            "mainboard" => new[] { "socket", "chipset", "formfactor", "ramhotro", "chuanram" },
+            "mainboard" => new[] { "hang", "thuonghieu", "socket", "chipset" },
             "ssd" or "hdd" or "storage" => new[] { "dungluong", "chuanocung", "giaotiep", "loaiocung" },
             "psu" => new[] { "congsuat", "chuannnguon", "chuannguon", "hieusuat80plus", "80plus" },
             "monitor" => new[] { "kichthuoc", "tansoquet", "dophangiai", "tamnen" },

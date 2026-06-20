@@ -89,6 +89,7 @@ builder.Services.AddScoped<IVoucherService, VoucherService>();
 builder.Services.AddScoped<IProductReviewService, ProductReviewService>();
 builder.Services.AddScoped<ISupportChatAutomationService, SupportChatAutomationService>();
 builder.Services.AddScoped<IProductSearchForAiService, ProductSearchForAiService>();
+builder.Services.AddSingleton<IShopPolicyService, ShopPolicyService>();
 builder.Services.AddHttpClient<IAiChatService, GeminiChatService>();
 builder.Services.AddHttpClient<IGhnShippingService, GhnShippingService>((sp, client) =>
 {

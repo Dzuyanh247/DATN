@@ -100,6 +100,20 @@
         scrollToLatest(message.forceScroll === true);
         return cluster;
     }
+    function replaceLocalMessage(localId, serverMessage) {
+        const localItem = messagesElement.querySelector(`[data-chat-message-id="${localId}"]`);
+        if (!localItem || !serverMessage) return addMessage(serverMessage);
+        localItem.dataset.chatMessageId = serverMessage.id;
+        const bubble = localItem.querySelector('.kk-chat-bubble');
+        if (bubble) bubble.textContent = serverMessage.message;
+        const time = localItem.querySelector('.kk-chat-time');
+        if (time) {
+            const sender = serverMessage.displaySenderName || serverMessage.senderName || 'Bạn';
+            time.textContent = `${sender}${formatTime(serverMessage.createdAt) ? ` • ${formatTime(serverMessage.createdAt)}` : ''}`;
+        }
+        scrollToLatest(true);
+        return localItem.closest('.kk-chat-response-cluster') || localItem;
+    }
     function showConversation(status) {
         startForm.classList.add('d-none');
         conversationView.classList.remove('d-none');
@@ -456,9 +470,8 @@
                 method: 'POST', body: JSON.stringify({ accessToken: session.accessToken, message: text })
             });
             setBotLoading(false);
-            messagesElement.querySelector(`[data-chat-message-id="${localId}"]`)?.closest('.kk-chat-response-cluster')?.remove();
             if (data.customerMessage) data.customerMessage.forceScroll = true;
-            addMessage(data.customerMessage || data);
+            replaceLocalMessage(localId, data.customerMessage || data);
             if (data.automation) renderAutomation(data.automation);
             if (data.aiMessage) { data.aiMessage.forceScroll = true; addMessage(data.aiMessage); }
             messageInput.value = '';

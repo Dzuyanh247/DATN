@@ -365,7 +365,9 @@
 
                 @foreach (var specGroup in Model.SpecFilterGroups)
                 {
-                    <details class="products-filter-group">
+                    var specGroupPrefix = $"{specGroup.Name}::";
+                    var specGroupHasSelection = Model.Specs.Any(value => value.StartsWith(specGroupPrefix, StringComparison.OrdinalIgnoreCase));
+                    <details class="products-filter-group" data-filter-group-key="spec-@specGroup.Name" open="@(specGroupHasSelection)">
                         <summary>@specGroup.Name <i class="bi bi-chevron-down"></i></summary>
                         <div class="products-filter-options">
                             @foreach (var option in specGroup.Options)
@@ -471,6 +473,24 @@
             if ('scrollRestoration' in history) {
                 history.scrollRestoration = 'manual';
             }
+
+            const detailsStorageKey = `productsFilterGroups:${location.pathname}`;
+            const readOpenGroups = () => {
+                try { return JSON.parse(localStorage.getItem(detailsStorageKey) || '{}'); } catch { return {}; }
+            };
+            const writeOpenGroups = value => localStorage.setItem(detailsStorageKey, JSON.stringify(value));
+            const groupState = readOpenGroups();
+            filterForm.querySelectorAll('details.products-filter-group').forEach((details, index) => {
+                const summary = details.querySelector('summary')?.textContent?.trim() || `group-${index}`;
+                const key = details.dataset.filterGroupKey || summary;
+                details.dataset.filterGroupKey = key;
+                if (Object.prototype.hasOwnProperty.call(groupState, key)) details.open = groupState[key] === true;
+                details.addEventListener('toggle', () => {
+                    const latest = readOpenGroups();
+                    latest[key] = details.open;
+                    writeOpenGroups(latest);
+                });
+            });
 
             const saveScrollPosition = () => {
                 sessionStorage.setItem(scrollStorageKey, window.scrollY);
