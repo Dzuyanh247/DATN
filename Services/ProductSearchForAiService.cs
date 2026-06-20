@@ -16,7 +16,9 @@ public record AiProductContext(
     string Link,
     string Category,
     int StockQuantity,
-    string CategoryScope = "COMPONENT");
+    string CategoryScope = "COMPONENT",
+    string Description = "",
+    string Warranty = "");
 
 public interface IProductSearchForAiService
 {
@@ -84,7 +86,7 @@ public partial class ProductSearchForAiService : IProductSearchForAiService
     {
         var rows = await query.Select(x => new
         {
-            x.Id, x.Name, Price = x.DiscountPrice ?? x.SalePrice ?? x.Price, x.Specifications, x.ShortDescription, x.StockQuantity, x.Slug,
+            x.Id, x.Name, Price = x.DiscountPrice ?? x.SalePrice ?? x.Price, x.Specifications, x.ShortDescription, x.Description, x.WarrantyDuration, x.WarrantyMonths, x.StockQuantity, x.Slug,
             Category = x.Category != null ? x.Category.Name : "Chưa phân loại"
         }).ToListAsync(ct);
         return rows.Select(x => new AiProductContext(
@@ -96,7 +98,7 @@ public partial class ProductSearchForAiService : IProductSearchForAiService
             $"/Products/Detail/{x.Id}",
             x.Category,
             x.StockQuantity,
-            scope)).ToList();
+            scope, TrimText(x.Description ?? string.Empty, 300), !string.IsNullOrWhiteSpace(x.WarrantyDuration) ? x.WarrantyDuration : $"{x.WarrantyMonths} tháng")).ToList();
     }
 
 
@@ -110,13 +112,14 @@ public partial class ProductSearchForAiService : IProductSearchForAiService
         x.Id, x.Name, x.DiscountPrice ?? x.SalePrice ?? x.Price,
         TrimText(string.IsNullOrWhiteSpace(x.Specifications) ? x.ShortDescription ?? string.Empty : x.Specifications!, 450),
         x.StockQuantity > 0 ? $"Còn hàng ({x.StockQuantity})" : "Tạm hết hàng",
-        $"/Products/Detail/{x.Id}", x.Category?.Name ?? "Chưa phân loại", x.StockQuantity, scope);
+        $"/Products/Detail/{x.Id}", x.Category?.Name ?? "Chưa phân loại", x.StockQuantity, scope,
+        TrimText(x.Description ?? string.Empty, 300), !string.IsNullOrWhiteSpace(x.WarrantyDuration) ? x.WarrantyDuration : $"{x.WarrantyMonths} tháng");
 
     private void LogSearch(string message, AiSearchAnalysis analysis, IReadOnlyList<AiProductContext> products)
     {
         var topProducts = products.Take(3).Select(p => new { p.Id, p.Name, p.Price, p.Category }).ToList();
-        _logger.LogInformation("KKSHOP AI product search: userMessage={UserMessage}; detectedIntent={DetectedIntent}; budget={Budget}; targetGame={TargetGame}; targetFps={TargetFps}; selectedCategoryScope={CategoryScope}; productsFound={ProductsFound}; topProducts={TopProducts}",
-            TrimText(message, 180), analysis.Intent, analysis.Budget, analysis.TargetGame, analysis.TargetFps, analysis.CategoryScope, products.Count, topProducts);
+        _logger.LogInformation("[AI] Message: {Message}; Intent: {Intent}; Scope: {Scope}; Products: {Products}; TopProducts: {TopProducts}; MatchedProduct: {MatchedProduct}; SearchCategory: {SearchCategory}; TargetGame: {TargetGame}; TargetFps: {TargetFps}",
+            TrimText(message, 180), analysis.Intent, analysis.CategoryScope, products.Count, string.Join(" | ", products.Take(3).Select(p => p.Name)), products.FirstOrDefault()?.Name ?? "none", analysis.ComponentType ?? analysis.CategoryScope, analysis.TargetGame, analysis.TargetFps);
     }
 
     private static int ScoreProduct(Product product, IReadOnlyList<string> tokens, AiSearchAnalysis analysis)
@@ -132,13 +135,16 @@ public partial class ProductSearchForAiService : IProductSearchForAiService
     {
         var normalized = NormalizeText(text);
         var componentType = DetectComponentType(normalized);
-        var isPcAdvice = PcIntentWords.Any(normalized.Contains) && componentType == null;
         var game = GameWords.FirstOrDefault(g => normalized.Contains(g.Key)).Value;
-        if (!string.IsNullOrWhiteSpace(game) && componentType == null) isPcAdvice = true;
-        return new AiSearchAnalysis(
-            isPcAdvice ? "PC_ADVICE" : componentType != null ? "COMPONENT_ADVICE" : "GENERAL_PRODUCT_ADVICE",
-            isPcAdvice ? "PC" : "COMPONENT",
-            ParseBudget(text), game, ParseFps(normalized), componentType);
+        var isCompare = ContainsAny(normalized, "so sanh", "compare", "khac nhau");
+        var isPcAdvice = (PcIntentWords.Any(normalized.Contains) || !string.IsNullOrWhiteSpace(game)) && componentType == null;
+        var isPolicy = ContainsAny(normalized, "tra gop", "freeship", "doi tra", "bao hanh tan noi", "hoa toc", "chinh sach");
+        var isOrder = ContainsAny(normalized, "don hang", "ma don", "dh0");
+        var isWarranty = ContainsAny(normalized, "bao hanh", "warranty");
+        var isPayment = ContainsAny(normalized, "thanh toan", "chuyen khoan", "cod");
+        var isHuman = ContainsAny(normalized, "nhan vien", "tu van vien", "nguoi that");
+        var intent = isHuman ? "HUMAN_SUPPORT" : isOrder ? "ORDER_QA" : isPayment ? "PAYMENT_QA" : isWarranty ? "WARRANTY_QA" : isPolicy ? "POLICY_QA" : isPcAdvice ? "PC_ADVICE" : isCompare ? "PRODUCT_COMPARE" : "PRODUCT_QA";
+        return new AiSearchAnalysis(intent, isPcAdvice ? "PC" : "COMPONENT", ParseBudget(text), game, ParseFps(normalized), componentType);
     }
 
     private static string? DetectComponentType(string normalized)
@@ -172,6 +178,8 @@ public partial class ProductSearchForAiService : IProductSearchForAiService
         if (!string.IsNullOrWhiteSpace(analysis.TargetGame)) tokens.Add(analysis.TargetGame);
         return tokens.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
     }
+
+    private static bool ContainsAny(string source, params string[] values) => values.Any(source.Contains);
 
     private static bool ContainsIgnoreCase(string? source, string value) => !string.IsNullOrWhiteSpace(source) && source.Contains(value, StringComparison.OrdinalIgnoreCase);
 
