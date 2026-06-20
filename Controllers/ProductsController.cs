@@ -205,17 +205,22 @@ public class ProductsController : Controller
     private void SetFilterRouteUrls(ProductFilterVm vm)
     {
         vm.CurrentPath = Request.Path.Value ?? string.Empty;
-        var isComponentFilterRoute = vm.IsComponentListing
-            && vm.CurrentPath.StartsWith("/linh-kien", StringComparison.OrdinalIgnoreCase);
+        var isComponentFilterRoute = IsComponentFilterRoute(vm.CurrentPath);
 
+        // Keep filter submissions on the page that rendered the sidebar. PC category
+        // filters (CPU/RAM/GPU/SSD) are product-spec filters, not component-category
+        // navigation, so /Products must never fall back to /linh-kien.
         vm.FilterActionUrl = isComponentFilterRoute
             ? BuildComponentFilterPath(vm)
             : Url.Action(nameof(Index), "Products") ?? "/Products";
 
         vm.ClearFilterUrl = isComponentFilterRoute
             ? BuildComponentFilterPath(vm)
-            : Url.Action(nameof(Index), "Products", new { categoryId = vm.CategoryId, categorySlug = vm.CategorySlug, keyword = vm.Keyword }) ?? "/Products";
+            : Url.Action(nameof(Index), "Products", new { categoryId = vm.CategoryId, categorySlug = vm.CategorySlug }) ?? "/Products";
     }
+
+    private static bool IsComponentFilterRoute(string currentPath) =>
+        currentPath.StartsWith("/linh-kien", StringComparison.OrdinalIgnoreCase);
 
     private static string BuildComponentFilterPath(ProductFilterVm vm) =>
         vm.HasScopedComponentType ? $"/linh-kien/{vm.TypeSlug}" : "/linh-kien";
