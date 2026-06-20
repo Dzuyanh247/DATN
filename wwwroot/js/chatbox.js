@@ -65,7 +65,7 @@
     }
     function setConnection(online) {
         connectionElement.classList.toggle('is-online', online);
-        connectionElement.innerHTML = `<span></span> ${online ? 'Đang trực tuyến' : 'Shop sẽ phản hồi sớm'}`;
+        connectionElement.innerHTML = `<span></span> ${online ? 'AI tư vấn tự động' : 'Shop sẽ phản hồi sớm'}`;
     }
     function formatTime(value) {
         const date = new Date(value);
@@ -254,7 +254,7 @@
         document.getElementById('kk-chat-bot-loading')?.remove();
         if (!show) return;
         const loading = document.createElement('div'); loading.id = 'kk-chat-bot-loading'; loading.className = 'kk-chat-bot-loading';
-        loading.innerHTML = '<span></span><span></span><span></span>'; messagesElement.append(loading); scrollToLatest();
+        loading.setAttribute('aria-label', 'KKSHOP AI đang trả lời...'); loading.title = 'KKSHOP AI đang trả lời...'; loading.innerHTML = '<small>KKSHOP AI đang trả lời...</small><span></span><span></span><span></span>'; messagesElement.append(loading); scrollToLatest();
     }
     async function runQuickAction(actionType, payload = null) {
         if (quickActionPending) return;
@@ -449,6 +449,7 @@
             });
             addMessage(data.customerMessage || data);
             if (data.automation) renderAutomation(data.automation);
+            if (data.aiMessage) addMessage(data.aiMessage);
             messageInput.value = '';
             messageInput.style.height = '';
             messageInput.focus();

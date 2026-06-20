@@ -22,9 +22,10 @@ public class SupportChatController : Controller
     private readonly IHubContext<ChatHub> _hub;
     private readonly ILogger<SupportChatController> _logger;
     private readonly ISupportChatAutomationService _automation;
+    private readonly IAiChatService _aiChat;
 
-    public SupportChatController(ApplicationDbContext db, IHubContext<ChatHub> hub, ILogger<SupportChatController> logger, ISupportChatAutomationService automation)
-        => (_db, _hub, _logger, _automation) = (db, hub, logger, automation);
+    public SupportChatController(ApplicationDbContext db, IHubContext<ChatHub> hub, ILogger<SupportChatController> logger, ISupportChatAutomationService automation, IAiChatService aiChat)
+        => (_db, _hub, _logger, _automation, _aiChat) = (db, hub, logger, automation, aiChat);
 
     [HttpPost("conversations")]
     [ValidateAntiForgeryToken]
@@ -82,8 +83,15 @@ public class SupportChatController : Controller
         conversation.StaffUnreadCount++;
         await _db.SaveChangesAsync();
 
-        var messages = await LoadMessages(conversation.Id);
         await NotifyStaff(conversation.Id, MessagePayload(customerMessage));
+        if (!IsQuickActionLabel(request.Message) && !conversation.NeedsStaff)
+        {
+            var aiResult = await _aiChat.AskAsync(request.Message, conversation.Id.ToString(), HttpContext.Connection.RemoteIpAddress?.ToString());
+            var aiMessage = AddAiMessage(conversation, aiResult.Reply, aiResult.SuggestedProducts);
+            await _db.SaveChangesAsync();
+            await NotifyConversation(conversation.Id, MessagePayload(aiMessage));
+        }
+        var messages = await LoadMessages(conversation.Id);
         return Ok(Api(true, isNew ? "Đã bắt đầu cuộc trò chuyện." : "Đã tiếp tục cuộc trò chuyện đang mở.", new
         {
             conversationId = conversation.Id, accessToken = conversation.AccessToken,
@@ -133,6 +141,14 @@ public class SupportChatController : Controller
                 automation = AutomationPayload(automated)
             }));
         }
+        if (!conversation.NeedsStaff)
+        {
+            var aiResult = await _aiChat.AskAsync(request.Message, conversation.Id.ToString(), HttpContext.Connection.RemoteIpAddress?.ToString(), HttpContext.RequestAborted);
+            var aiMessage = AddAiMessage(conversation, aiResult.Reply, aiResult.SuggestedProducts);
+            await _db.SaveChangesAsync();
+            await NotifyConversation(conversation.Id, MessagePayload(aiMessage));
+            return Ok(Api(true, "Đã gửi tin nhắn.", new { customerMessage = payload, aiMessage = MessagePayload(aiMessage) }));
+        }
         return Ok(Api(true, "Đã gửi tin nhắn.", new { customerMessage = payload }));
     }
 
@@ -168,6 +184,33 @@ public class SupportChatController : Controller
         _db.ChatMessages.Add(message);
         await _db.SaveChangesAsync();
         return Ok(Api(true, "Đã gửi lời cảm ơn.", MessagePayload(message)));
+    }
+
+
+    private static bool IsQuickActionLabel(string text) => SupportChatDefaults.QuickQuestions.Any(x => string.Equals((string?)x.GetType().GetProperty("label")?.GetValue(x), text, StringComparison.OrdinalIgnoreCase));
+    private ChatMessage AddAiMessage(ChatConversation conversation, string reply, IReadOnlyList<AiProductContext> products)
+    {
+        var cards = products.Take(3).Select(p => new
+        {
+            type = "product",
+            title = p.Name,
+            subtitle = $"{p.Price:N0} đ • {p.StockStatus}",
+            actions = new[] { new { label = "Xem chi tiết", url = p.Link } }
+        });
+        var message = new ChatMessage
+        {
+            Conversation = conversation,
+            SenderType = ChatSenderType.System,
+            SenderName = "KKSHOP AI",
+            Message = reply,
+            IsSystem = true,
+            IsRead = true,
+            ReadAt = DateTime.UtcNow,
+            MetadataJson = JsonSerializer.Serialize(new { type = "ai", cards, messageActions = Array.Empty<object>(), quickReplies = Array.Empty<object>() })
+        };
+        _db.ChatMessages.Add(message);
+        conversation.LastMessageAt = DateTime.UtcNow;
+        return message;
     }
 
     private async Task<ChatConversation?> FindOpenConversation(int? userId, string? guestId, string? email, string? phone)
