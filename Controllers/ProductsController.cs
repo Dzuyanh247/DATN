@@ -106,6 +106,11 @@ public class ProductsController : Controller
             vm.CategorySlug,
             selectedCategory?.Slug);
 
+        if (selectedCategory is not null)
+        {
+            vm.CategorySlug = selectedCategory.Slug;
+        }
+
         vm.IsComponentListing = await IsComponentListingAsync(vm.Type, vm.CategorySlug, vm.CategoryId);
         if (!vm.IsComponentListing)
         {
@@ -236,24 +241,26 @@ public class ProductsController : Controller
     {
         vm.CurrentPath = Request.Path.Value ?? string.Empty;
         var isComponentFilterRoute = IsComponentFilterRoute(vm.CurrentPath);
+        var routeBasedFilterActionUrl = isComponentFilterRoute ? BuildComponentFilterPath(vm) : "/Products";
 
-        // Keep filter submissions on the page that rendered the sidebar. PC category
-        // filters (CPU/RAM/GPU/SSD) are product-spec filters, not component-category
-        // navigation, so /Products must never fall back to /linh-kien.
-        var routeBasedFilterActionUrl = isComponentFilterRoute
-            ? BuildComponentFilterPath(vm)
-            : Url.Action(nameof(Index), "Products") ?? "/Products";
-        var routeBasedClearFilterUrl = isComponentFilterRoute
-            ? BuildComponentFilterPath(vm)
-            : Url.Action(nameof(Index), "Products", new { categoryId = vm.CategoryId, categorySlug = vm.CategorySlug }) ?? "/Products";
-
-        vm.FilterActionUrl = routeBasedFilterActionUrl;
-        vm.ClearFilterUrl = routeBasedClearFilterUrl;
-
-        if (!vm.IsComponentListing || IsNonComponentCategorySlug(vm.CategorySlug))
+        if (vm.IsComponentListing)
         {
-            vm.FilterActionUrl = Url.Action(nameof(Index), "Products") ?? "/Products";
-            vm.ClearFilterUrl = Url.Action(nameof(Index), "Products", new { categoryId = vm.CategoryId, categorySlug = vm.CategorySlug }) ?? "/Products";
+            vm.FilterActionUrl = vm.HasScopedComponentType
+                ? $"/linh-kien/{vm.TypeSlug}"
+                : "/linh-kien";
+
+            vm.ClearFilterUrl = vm.HasScopedComponentType
+                ? $"/linh-kien/{vm.TypeSlug}"
+                : "/linh-kien";
+        }
+        else
+        {
+            vm.FilterActionUrl = "/Products";
+            vm.ClearFilterUrl = Url.Action(nameof(Index), "Products", new
+            {
+                categoryId = vm.CategoryId,
+                categorySlug = vm.CategorySlug
+            }) ?? "/Products";
         }
 
         _logger.LogWarning(
@@ -269,14 +276,6 @@ public class ProductsController : Controller
 
     private static string BuildComponentFilterPath(ProductFilterVm vm) =>
         vm.HasScopedComponentType ? $"/linh-kien/{vm.TypeSlug}" : "/linh-kien";
-
-    private static bool IsNonComponentCategorySlug(string? categorySlug)
-    {
-        if (string.IsNullOrWhiteSpace(categorySlug)) return false;
-
-        var slug = categorySlug.Trim().ToLowerInvariant();
-        return slug is not ("linh-kien" or "linh-kien-may-tinh" or "components" or "component");
-    }
 
     private static string? ResolveComponentType(string? type, string? typeSlug)
     {
