@@ -42,8 +42,9 @@
         const escapeHtml = (value) => String(value).replace(/[&<>'"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[ch]));
         const renderIdle = () => {
             const history = getHistory();
-            suggestBox.innerHTML = `${section("LỊCH SỬ TÌM KIẾM", history, "🕒", true)}${history.length ? '<div class="ttg-search-suggest-divider"></div>' : ''}${section("TỪ KHÓA HOT", hotKeywords, "🔥")}`;
-            suggestBox.hidden = !suggestBox.innerHTML.trim();
+            const hotSection = section("TỪ KHÓA ĐƯỢC TÌM NHIỀU", hotKeywords, "🔥") || '<div class="ttg-search-suggest-section"><div class="ttg-search-suggest-title">TỪ KHÓA ĐƯỢC TÌM NHIỀU</div><div class="ttg-search-suggest-empty">Chưa có từ khóa phổ biến.</div></div>';
+            suggestBox.innerHTML = `${section("LỊCH SỬ TÌM KIẾM", history, "🕒", true)}${history.length ? '<div class="ttg-search-suggest-divider"></div>' : ''}${hotSection}`;
+            suggestBox.hidden = false;
         };
         const renderRealtime = () => {
             const q = searchInput.value.trim().toLowerCase();
@@ -56,6 +57,7 @@
         categoryItems.forEach((item) => {
             item.addEventListener("click", () => {
                 categoryInput.value = item.dataset.categoryId || "";
+                categoryInput.disabled = !categoryInput.value;
                 categoryLabel.textContent = item.dataset.categoryName || "Tất cả danh mục";
                 categoryItems.forEach((candidate) => candidate.classList.remove("active"));
                 item.classList.add("active");
@@ -63,7 +65,7 @@
         });
         searchInput?.addEventListener("focus", renderRealtime);
         searchInput?.addEventListener("input", renderRealtime);
-        searchForm.addEventListener("submit", () => saveHistory(searchInput?.value));
+        searchForm.addEventListener("submit", () => { categoryInput.disabled = !categoryInput.value; saveHistory(searchInput?.value); });
         suggestBox?.addEventListener("mousedown", (event) => event.preventDefault());
         suggestBox?.addEventListener("click", (event) => {
             const remove = event.target.closest("[data-remove-history]");

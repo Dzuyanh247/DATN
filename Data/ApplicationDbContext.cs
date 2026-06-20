@@ -33,6 +33,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<ProductReview> ProductReviews => Set<ProductReview>();
     public DbSet<Voucher> Vouchers => Set<Voucher>();
     public DbSet<VoucherUsage> VoucherUsages => Set<VoucherUsage>();
+    public DbSet<SearchKeyword> SearchKeywords => Set<SearchKeyword>();
 
 
     public override int SaveChanges()
@@ -111,6 +112,7 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<ProductReview>().ToTable("ProductReviews");
         modelBuilder.Entity<Voucher>().ToTable("Vouchers");
         modelBuilder.Entity<VoucherUsage>().ToTable("VoucherUsages");
+        modelBuilder.Entity<SearchKeyword>().ToTable("SearchKeywords");
 
         foreach (var entityType in modelBuilder.Model.GetEntityTypes())
         {
@@ -169,6 +171,16 @@ public class ApplicationDbContext : DbContext
                 .WithMany(x => x.Messages)
                 .HasForeignKey(x => x.ConversationId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<SearchKeyword>(entity =>
+        {
+            entity.Property(x => x.Keyword).HasMaxLength(120).IsRequired();
+            entity.Property(x => x.SearchCount).HasDefaultValue(0);
+            entity.Property(x => x.IsVisible).HasDefaultValue(true);
+            entity.Property(x => x.IsPinned).HasDefaultValue(false);
+            entity.HasIndex(x => x.Keyword).IsUnique();
+            entity.HasIndex(x => new { x.IsVisible, x.IsPinned, x.SearchCount, x.LastSearchedAt });
         });
 
         modelBuilder.Entity<User>().HasIndex(x => x.Email).IsUnique();

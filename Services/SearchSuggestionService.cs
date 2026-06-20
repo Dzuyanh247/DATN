@@ -16,15 +16,6 @@ public sealed record SearchSuggestionData(
 
 public class SearchSuggestionService : ISearchSuggestionService
 {
-    private static readonly string[] FallbackHotKeywords =
-    [
-        "RTX 5070 Ti",
-        "RTX 5060",
-        "Ryzen 7 9800X3D",
-        "PC Gaming",
-        "PC Văn Phòng"
-    ];
-
     private readonly ApplicationDbContext _db;
 
     public SearchSuggestionService(ApplicationDbContext db) => _db = db;
@@ -62,29 +53,13 @@ public class SearchSuggestionService : ISearchSuggestionService
 
     private async Task<IReadOnlyList<string>> GetHotKeywordsAsync(CancellationToken cancellationToken)
     {
-        var productKeywords = await _db.Products.AsNoTracking()
-            .Where(product => product.IsActive && (product.IsHotSale || product.IsDailyDeal || product.IsPromotion))
-            .OrderByDescending(product => product.IsHotSale)
-            .ThenByDescending(product => product.IsDailyDeal)
-            .ThenByDescending(product => product.IsPromotion)
-            .ThenByDescending(product => product.StockQuantity)
-            .Select(product => product.Name)
-            .Where(name => name != string.Empty)
-            .Take(5)
+        return await _db.SearchKeywords.AsNoTracking()
+            .Where(keyword => keyword.IsVisible)
+            .OrderByDescending(keyword => keyword.IsPinned)
+            .ThenByDescending(keyword => keyword.SearchCount)
+            .ThenByDescending(keyword => keyword.LastSearchedAt)
+            .Select(keyword => keyword.Keyword)
+            .Take(8)
             .ToListAsync(cancellationToken);
-
-        if (productKeywords.Count > 0)
-        {
-            return productKeywords;
-        }
-
-        var categoryKeywords = await _db.Categories.AsNoTracking()
-            .Where(category => category.Name.Contains("PC") || category.Name.Contains("Gaming"))
-            .OrderBy(category => category.Name)
-            .Select(category => category.Name)
-            .Take(5)
-            .ToListAsync(cancellationToken);
-
-        return categoryKeywords.Count > 0 ? categoryKeywords : FallbackHotKeywords;
     }
 }

@@ -1,0 +1,60 @@
+@model List<SearchKeyword>
+@{
+    ViewData["Title"] = "Từ khóa tìm kiếm";
+}
+
+<section class="admin-card mb-3">
+    <form method="get" class="row g-2 align-items-end">
+        <div class="col-md-8"><label class="form-label small text-muted">Tìm từ khóa</label><input name="keyword" value="@ViewBag.Keyword" class="form-control" placeholder="Nhập từ khóa cần lọc" /></div>
+        <div class="col-md-4"><button class="btn btn-danger w-100"><i class="bi bi-search"></i> Lọc</button></div>
+    </form>
+</section>
+
+<section class="admin-card mb-3">
+    <h5 class="mb-3">Thêm từ khóa thủ công</h5>
+    <form asp-action="Create" method="post" class="row g-2 align-items-end">
+        @Html.AntiForgeryToken()
+        <div class="col-md-6"><label class="form-label small text-muted">Từ khóa</label><input name="keyword" class="form-control" maxlength="120" required /></div>
+        <div class="col-md-2 form-check"><input class="form-check-input" type="checkbox" name="isVisible" value="true" checked id="createVisible"><label class="form-check-label" for="createVisible">Hiển thị</label></div>
+        <div class="col-md-2 form-check"><input class="form-check-input" type="checkbox" name="isPinned" value="true" id="createPinned"><label class="form-check-label" for="createPinned">Ghim</label></div>
+        <div class="col-md-2"><button class="btn btn-danger w-100"><i class="bi bi-plus-circle"></i> Thêm</button></div>
+    </form>
+</section>
+
+<section class="admin-card">
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead><tr><th>Từ khóa</th><th>Lượt tìm</th><th>Lần tìm gần nhất</th><th>Hiển thị</th><th>Ghim</th><th class="text-end">Thao tác</th></tr></thead>
+            <tbody>
+            @if (!Model.Any())
+            {
+                <tr><td colspan="6" class="text-center text-muted py-4">Chưa có từ khóa tìm kiếm thật.</td></tr>
+            }
+            @foreach (var item in Model)
+            {
+                var formId = $"keyword-edit-{item.Id}";
+                <tr>
+                    <td>
+                        <form id="@formId" asp-action="Edit" method="post">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="id" value="@item.Id" />
+                            <input name="keyword" value="@item.Keyword" class="form-control" maxlength="120" required />
+                        </form>
+                    </td>
+                    <td style="max-width:120px"><input form="@formId" name="searchCount" value="@item.SearchCount" type="number" min="0" class="form-control" /></td>
+                    <td>@item.LastSearchedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                    <td><input form="@formId" class="form-check-input" type="checkbox" name="isVisible" value="true" checked="@item.IsVisible" /></td>
+                    <td><input form="@formId" class="form-check-input" type="checkbox" name="isPinned" value="true" checked="@item.IsPinned" /></td>
+                    <td class="text-end">
+                        <button form="@formId" class="btn btn-sm btn-outline-primary">Lưu</button>
+                        <form asp-action="ToggleVisible" method="post" class="d-inline">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@item.Id" /><button class="btn btn-sm btn-outline-secondary">@(item.IsVisible ? "Ẩn" : "Hiện")</button></form>
+                        <form asp-action="TogglePinned" method="post" class="d-inline">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@item.Id" /><button class="btn btn-sm btn-outline-secondary">@(item.IsPinned ? "Bỏ ghim" : "Ghim")</button></form>
+                        <form asp-action="ResetCount" method="post" class="d-inline">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@item.Id" /><button class="btn btn-sm btn-outline-warning">Reset</button></form>
+                        <form asp-action="Delete" method="post" class="d-inline" onsubmit="return confirm('Xóa từ khóa này?')">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@item.Id" /><button class="btn btn-sm btn-outline-danger">Xóa</button></form>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</section>

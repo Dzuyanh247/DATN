@@ -14,12 +14,14 @@ public class ProductsController : Controller
     private readonly ApplicationDbContext _db;
     private readonly IProductReviewService _reviewService;
     private readonly ILogger<ProductsController> _logger;
+    private readonly ISearchKeywordService _searchKeywordService;
 
-    public ProductsController(ApplicationDbContext db, IProductReviewService reviewService, ILogger<ProductsController> logger)
+    public ProductsController(ApplicationDbContext db, IProductReviewService reviewService, ILogger<ProductsController> logger, ISearchKeywordService searchKeywordService)
     {
         _db = db;
         _reviewService = reviewService;
         _logger = logger;
+        _searchKeywordService = searchKeywordService;
     }
 
     public async Task<IActionResult> Index(
@@ -78,6 +80,11 @@ public class ProductsController : Controller
         vm.TypeSlug = string.IsNullOrWhiteSpace(vm.Type) ? null : GetComponentTypeSlug(vm.Type);
 
         vm.Keyword = vm.Keyword?.Trim();
+        if (!string.IsNullOrWhiteSpace(vm.Keyword))
+        {
+            await _searchKeywordService.TrackSearchAsync(vm.Keyword);
+        }
+
         var query = _db.Products.Include(p => p.Category).AsNoTracking().AsQueryable();
         if (!vm.CategoryId.HasValue && !string.IsNullOrWhiteSpace(vm.CategorySlug))
         {

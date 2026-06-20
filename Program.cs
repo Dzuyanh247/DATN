@@ -90,6 +90,7 @@ builder.Services.AddScoped<IProductReviewService, ProductReviewService>();
 builder.Services.AddScoped<ISupportChatAutomationService, SupportChatAutomationService>();
 builder.Services.AddScoped<IProductSearchForAiService, ProductSearchForAiService>();
 builder.Services.AddScoped<ISearchSuggestionService, SearchSuggestionService>();
+builder.Services.AddScoped<ISearchKeywordService, SearchKeywordService>();
 builder.Services.AddSingleton<IShopPolicyService, ShopPolicyService>();
 builder.Services.AddHttpClient<IAiChatService, GeminiChatService>();
 builder.Services.AddHttpClient<IGhnShippingService, GhnShippingService>((sp, client) =>
@@ -199,6 +200,25 @@ using (var scope = app.Services.CreateScope())
     await EnsurePasswordResetOtpTableAsync(db);
 
     await EnsureProductPromotionColumnsAsync(db);
+
+    await db.Database.ExecuteSqlRawAsync(@"IF OBJECT_ID('SearchKeywords', 'U') IS NULL
+BEGIN
+    CREATE TABLE SearchKeywords (
+        Id INT IDENTITY(1,1) PRIMARY KEY,
+        Keyword NVARCHAR(120) NOT NULL,
+        SearchCount INT NOT NULL DEFAULT 0,
+        LastSearchedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+        IsVisible BIT NOT NULL DEFAULT 1,
+        IsPinned BIT NOT NULL DEFAULT 0,
+        CreatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+        UpdatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
+    );
+    CREATE UNIQUE INDEX IX_SearchKeywords_Keyword ON SearchKeywords(Keyword);
+END
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_SearchKeywords_Visible_Ranking' AND object_id = OBJECT_ID('SearchKeywords'))
+BEGIN
+    CREATE INDEX IX_SearchKeywords_Visible_Ranking ON SearchKeywords(IsVisible, IsPinned, SearchCount, LastSearchedAt);
+END");
 
     await db.Database.ExecuteSqlRawAsync(@"IF OBJECT_ID('ComponentBrands', 'U') IS NULL
 BEGIN
