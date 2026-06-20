@@ -15,9 +15,6 @@
         .Select(x => x.Trim())
         .Where(x => !string.IsNullOrWhiteSpace(x))
         .ToList();
-    var selectedPromotionPresets = promotionPresetOptions
-        .Where(option => promotionLines.Any(line => string.Equals(line, option, StringComparison.OrdinalIgnoreCase)))
-        .ToHashSet(StringComparer.OrdinalIgnoreCase);
     var customPromotionLines = promotionLines
         .Where(line => !promotionPresetOptions.Any(option => string.Equals(line, option, StringComparison.OrdinalIgnoreCase)))
         .ToList();
@@ -74,46 +71,53 @@
         position: relative;
         display: flex;
         gap: .65rem;
-        align-items: flex-start;
-        min-height: 100%;
-        padding: .85rem 2.25rem .85rem .95rem;
-        border: 1px solid #fed7aa;
+        align-items: center;
+        min-height: 48px;
+        padding: .7rem 2rem .7rem .9rem;
+        border: 1px solid #e5e7eb;
         border-radius: 999px;
-        background: #fff7ed;
-        color: #7c2d12;
+        background: #fff;
+        color: #374151;
         cursor: pointer;
-        transition: border-color .15s ease, background-color .15s ease, box-shadow .15s ease;
+        transition: border-color .15s ease, background-color .15s ease, box-shadow .15s ease, transform .15s ease;
     }
 
-    .promotion-preset-option:hover,
+    .promotion-preset-option:hover {
+        border-color: #cbd5e1;
+        background: #f8fafc;
+        box-shadow: 0 8px 18px rgba(15, 23, 42, .07);
+        transform: translateY(-1px);
+    }
+
     .promotion-preset-option:has(.form-check-input:checked) {
-        border-color: #fb923c;
-        background: #ffedd5;
-        box-shadow: 0 8px 18px rgba(251, 146, 60, .14);
+        border-color: #93c5fd;
+        background: #eff6ff;
+        color: #1e3a8a;
+        box-shadow: 0 8px 18px rgba(37, 99, 235, .10);
     }
 
     .promotion-preset-option .form-check-input {
-        margin-top: .15rem;
+        margin-top: 0;
         flex: 0 0 auto;
     }
 
     .promotion-preset-option .form-check-label {
         cursor: pointer;
         font-weight: 600;
-        line-height: 1.35;
+        line-height: 1.3;
     }
 
     .promotion-remove-option {
         position: absolute;
         top: 50%;
         right: .55rem;
-        width: 1.45rem;
-        height: 1.45rem;
+        width: 1.35rem;
+        height: 1.35rem;
         transform: translateY(-50%);
         border: 0;
         border-radius: 999px;
-        background: rgba(124, 45, 18, .08);
-        color: #9a3412;
+        background: rgba(100, 116, 139, .10);
+        color: #64748b;
         font-size: 1rem;
         line-height: 1;
         display: inline-flex;
@@ -130,14 +134,49 @@
     }
 
     .promotion-quick-add {
-        border: 1px dashed #fdba74;
+        border: 1px solid #e5e7eb;
         border-radius: .85rem;
-        background: #fffbeb;
+        background: #f8fafc;
         padding: .85rem;
     }
 
-    .promotion-extra-textarea {
-        min-height: 110px;
+    .promotion-quick-add .input-group .form-control,
+    .promotion-quick-add .input-group .btn {
+        min-height: 42px;
+    }
+
+    .promotion-confirm-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 1060;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+        background: rgba(15, 23, 42, .38);
+    }
+
+    .promotion-confirm-overlay.is-visible {
+        display: flex;
+    }
+
+    .promotion-confirm-modal {
+        width: min(420px, 100%);
+        border-radius: 1rem;
+        background: #fff;
+        padding: 1.25rem;
+        box-shadow: 0 24px 60px rgba(15, 23, 42, .22);
+    }
+
+    .promotion-confirm-icon {
+        width: 40px;
+        height: 40px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        background: #fee2e2;
+        color: #dc2626;
     }
 
     @@media (max-width: 767.98px) {
@@ -196,12 +235,16 @@
                     <div class="fw-semibold mb-1">Chọn ưu đãi có sẵn</div>
                     <div class="form-text text-muted mb-3">Có thể chọn nhiều ưu đãi. Nội dung được hiển thị ở trang chi tiết sản phẩm.</div>
                     <div class="promotion-preset-grid js-promotion-preset-grid">
-                        @for (var i = 0; i < promotionPresetOptions.Length; i++)
+                        @{
+                            var promotionDisplayOptions = promotionPresetOptions.Concat(customPromotionLines).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+                        }
+                        @for (var i = 0; i < promotionDisplayOptions.Count; i++)
                         {
-                            var option = promotionPresetOptions[i];
+                            var option = promotionDisplayOptions[i];
                             var checkboxId = $"promotion-preset-{i}";
+                            var isChecked = promotionLines.Any(line => string.Equals(line, option, StringComparison.OrdinalIgnoreCase));
                             <label class="promotion-preset-option" for="@checkboxId">
-                                <input class="form-check-input js-promotion-preset" type="checkbox" id="@checkboxId" value="@option" checked="@selectedPromotionPresets.Contains(option)" />
+                                <input class="form-check-input js-promotion-preset" type="checkbox" id="@checkboxId" value="@option" checked="@isChecked" />
                                 <span class="form-check-label">@option</span>
                                 <button type="button" class="promotion-remove-option js-promotion-remove-option" aria-label="Xóa option @option" title="Xóa option">×</button>
                             </label>
@@ -216,10 +259,22 @@
                         <div class="form-text text-muted">Option thêm nhanh chỉ áp dụng trên form hiện tại và sẽ được tick sẵn để gom vào dữ liệu khi lưu.</div>
                     </div>
                 </div>
-                <label for="custom-promotion-extra" class="form-label">Thêm khuyến mãi khác</label>
-                <textarea id="custom-promotion-extra" rows="4" class="form-control promotion-extra-textarea" placeholder="Nhập thêm ưu đãi/quà tặng, mỗi dòng là một nội dung riêng">@string.Join(Environment.NewLine, customPromotionLines)</textarea>
-                <div class="form-text text-muted">Mỗi dòng là một ưu đãi riêng. Các lựa chọn phía trên và nội dung nhập thêm sẽ được gom về trường khuyến mãi hiện tại khi lưu.</div>
                 <textarea asp-for="CustomPromotionText" class="d-none js-promotion-bound-field" aria-hidden="true" tabindex="-1"></textarea>
+                <div class="promotion-confirm-overlay js-promotion-confirm" aria-hidden="true">
+                    <div class="promotion-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="promotion-confirm-title">
+                        <div class="d-flex gap-3 align-items-start mb-3">
+                            <span class="promotion-confirm-icon"><i class="bi bi-trash3"></i></span>
+                            <div>
+                                <h6 id="promotion-confirm-title" class="mb-1 fw-bold">Xóa option khuyến mãi</h6>
+                                <div class="text-muted">Xóa option khuyến mãi này khỏi form hiện tại?</div>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-end gap-2">
+                            <button type="button" class="btn btn-outline-secondary js-promotion-cancel-remove">Hủy</button>
+                            <button type="button" class="btn btn-danger js-promotion-confirm-remove">Xóa</button>
+                        </div>
+                    </div>
+                </div>
                 <span asp-validation-for="CustomPromotionText" class="text-danger"></span>
             </div>
 
@@ -273,21 +328,17 @@
     (function () {
         const form = document.querySelector('.admin-product-form');
         const boundField = document.querySelector('.js-promotion-bound-field');
-        const customPromotion = document.getElementById('custom-promotion-extra');
         const presetGrid = document.querySelector('.js-promotion-preset-grid');
         const newOptionInput = document.querySelector('.js-promotion-new-option');
         const addOptionButton = document.querySelector('.js-promotion-add-option');
-        if (!form || !boundField || !customPromotion || !presetGrid || !newOptionInput || !addOptionButton) return;
+        const confirmBox = document.querySelector('.js-promotion-confirm');
+        const cancelRemoveButton = document.querySelector('.js-promotion-cancel-remove');
+        const confirmRemoveButton = document.querySelector('.js-promotion-confirm-remove');
+        let pendingRemoveItem = null;
+        if (!form || !boundField || !presetGrid || !newOptionInput || !addOptionButton || !confirmBox || !cancelRemoveButton || !confirmRemoveButton) return;
 
         function normalizeOption(value) {
             return (value || '').replace(/\s+/g, ' ').trim();
-        }
-
-        function normalizeLines(value) {
-            return (value || '')
-                .split(/\r?\n/)
-                .map(normalizeOption)
-                .filter(Boolean);
         }
 
         function getPresetCheckboxes() {
@@ -333,8 +384,7 @@
                 .filter(checkbox => checkbox.checked)
                 .map(checkbox => normalizeOption(checkbox.value))
                 .filter(Boolean);
-            const customLines = normalizeLines(customPromotion.value);
-            boundField.value = selectedPresetLines.concat(customLines).join('\n');
+            boundField.value = selectedPresetLines.join('\n');
         }
 
         function addPromotionOption() {
@@ -365,11 +415,29 @@
             event.preventDefault();
             event.stopPropagation();
             const optionItem = removeButton.closest('.promotion-preset-option');
-            const optionText = optionItem?.querySelector('.js-promotion-preset')?.value || 'option này';
-            if (!window.confirm(`Xóa option khuyến mãi "${optionText}" khỏi danh sách hiển thị trên form hiện tại?`)) return;
+            pendingRemoveItem = optionItem;
+            confirmBox.classList.add('is-visible');
+            confirmBox.setAttribute('aria-hidden', 'false');
+            confirmRemoveButton.focus();
+        });
 
-            optionItem?.remove();
+        function closeRemoveConfirm() {
+            pendingRemoveItem = null;
+            confirmBox.classList.remove('is-visible');
+            confirmBox.setAttribute('aria-hidden', 'true');
+        }
+
+        cancelRemoveButton.addEventListener('click', closeRemoveConfirm);
+        confirmBox.addEventListener('click', function (event) {
+            if (event.target === confirmBox) closeRemoveConfirm();
+        });
+        confirmRemoveButton.addEventListener('click', function () {
+            pendingRemoveItem?.remove();
+            closeRemoveConfirm();
             syncPromotionText();
+        });
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape' && confirmBox.classList.contains('is-visible')) closeRemoveConfirm();
         });
 
         addOptionButton.addEventListener('click', addPromotionOption);
@@ -378,7 +446,6 @@
             event.preventDefault();
             addPromotionOption();
         });
-        customPromotion.addEventListener('input', syncPromotionText);
         form.addEventListener('submit', syncPromotionText);
         syncPromotionText();
     })();
