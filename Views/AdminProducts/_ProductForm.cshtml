@@ -83,66 +83,82 @@
     <input type="hidden" asp-for="Brand" value="" />
     <div asp-validation-summary="All" class="alert alert-danger mb-3" role="alert"></div>
 
-    <div class="apf-card admin-form-section mb-4">
-        <h5 class="apf-title"><i class="bi bi-box-seam me-2"></i>Thông tin sản phẩm</h5>
-        <div class="admin-form-grid">
-            <div class="admin-field-full"><label asp-for="Name" class="form-label">Tên sản phẩm</label><input asp-for="Name" class="form-control" placeholder="VD: PC Gaming i5 RTX 4060" /><span asp-validation-for="Name" class="text-danger"></span></div>
-            <div class="admin-field-md"><label asp-for="CategoryId" class="form-label">Danh mục</label><select asp-for="CategoryId" class="form-select" asp-items="@(new Microsoft.AspNetCore.Mvc.Rendering.SelectList(Model.Categories, "Id", "Name"))"><option value="">-- Chọn danh mục --</option></select><span asp-validation-for="CategoryId" class="text-danger"></span></div>
-            <div class="admin-field-xs admin-field-number"><label asp-for="StockQuantity" class="form-label">Tồn kho</label><input asp-for="StockQuantity" class="form-control" type="number" min="0" /><span asp-validation-for="StockQuantity" class="text-danger"></span></div>
-        </div>
-    </div>
-
-    <div class="apf-card admin-form-section mb-4">
-        <h5 class="apf-title"><i class="bi bi-cash-coin me-2"></i>Giá bán & bảo hành</h5>
-        <div class="admin-form-grid">
-            <div class="admin-field-md"><label asp-for="PriceInput" class="form-label">Giá gốc</label><input asp-for="PriceInput" type="text" inputmode="decimal" class="form-control" placeholder="VD: 70990000 hoặc 70.990.000" /><span asp-validation-for="PriceInput" class="text-danger"></span></div>
-            <div class="admin-field-md"><label asp-for="DiscountPriceInput" class="form-label">Giá khuyến mãi</label><input asp-for="DiscountPriceInput" type="text" inputmode="decimal" class="form-control" placeholder="VD: 69980000 hoặc 69,980,000" /><span asp-validation-for="DiscountPriceInput" class="text-danger"></span></div>
-            <div class="admin-field-md"><label asp-for="PromotionStartDate" class="form-label">Ngày bắt đầu khuyến mãi</label><input asp-for="PromotionStartDate" type="datetime-local" class="form-control" /><span asp-validation-for="PromotionStartDate" class="text-danger"></span></div>
-            <div class="admin-field-md"><label asp-for="PromotionEndDate" class="form-label">Ngày kết thúc khuyến mãi</label><input asp-for="PromotionEndDate" type="datetime-local" class="form-control" /><span asp-validation-for="PromotionEndDate" class="text-danger"></span></div>
-            <div class="admin-field-xs admin-field-number"><label asp-for="WarrantyMonths" class="form-label">Bảo hành tháng</label><input asp-for="WarrantyMonths" class="form-control" type="number" min="0" /><span asp-validation-for="WarrantyMonths" class="text-danger"></span></div>
-        </div>
-    </div>
-
-    <div class="apf-card admin-form-section mb-4">
-        <h5 class="apf-title"><i class="bi bi-images me-2"></i>Hình ảnh sản phẩm</h5>
-        @if (isEdit) { <div class="form-text text-muted mb-3">Không chỉnh textarea nếu muốn giữ nguyên thư viện ảnh hiện tại.</div> }
-        @if (orderedImages.Any())
-        {
-            <label class="form-label">Ảnh hiện có</label>
-            <div id="existing-image-list" class="apf-image-list mb-3">
-                @foreach (var image in orderedImages)
-                {
-                    <div class="apf-image-item" data-image-id="@image.Id"><img src="@image.ImageUrl" alt="Ảnh sản phẩm" onerror="this.onerror=null;this.src='/images/placeholders/product-placeholder.png';" /><div class="apf-image-meta"><div class="d-flex justify-content-between align-items-center mb-2"><span class="badge text-bg-warning apf-primary-badge">Ảnh đại diện</span><label class="form-check-label text-danger small"><input class="form-check-input" type="checkbox" name="RemoveImageIds" value="@image.Id" /> Xóa</label></div><div class="d-flex gap-2"><button type="button" class="btn btn-sm btn-outline-secondary js-move-up">Lên</button><button type="button" class="btn btn-sm btn-outline-secondary js-move-down">Xuống</button></div></div></div>
-                }
+    <div class="admin-two-column-form">
+        <div class="admin-main-column">
+            <div class="apf-card admin-form-card mb-4">
+                <h5 class="admin-card-title apf-title"><i class="bi bi-box-seam me-2"></i>Thông tin sản phẩm</h5>
+                <div class="admin-form-grid">
+                    <div class="admin-field-full"><label asp-for="Name" class="form-label">Tên sản phẩm</label><input asp-for="Name" class="form-control" placeholder="VD: PC Gaming i5 RTX 4060" /><span asp-validation-for="Name" class="text-danger"></span></div>
+                </div>
             </div>
-        }
-        <div class="admin-form-grid"><div class="admin-field-lg"><label asp-for="ThumbnailImageUrl" class="form-label">Ảnh đại diện</label><input asp-for="ThumbnailImageUrl" class="form-control" placeholder="https://..." /><div class="form-text text-muted">URL ảnh đại diện hoặc ảnh đầu danh sách hiện có.</div><span asp-validation-for="ThumbnailImageUrl" class="text-danger"></span></div><div class="admin-field-full">
-        <label asp-for="ProductImageUrlsText" class="form-label mt-3">Thư viện ảnh sản phẩm</label><textarea asp-for="ProductImageUrlsText" rows="6" class="form-control" placeholder="Mỗi URL ảnh trên một dòng"></textarea><div class="form-text text-muted">Mỗi dòng là một URL ảnh. Tick Xóa ở ảnh hiện có nếu cần bỏ ảnh.</div><span asp-validation-for="ProductImageUrlsText" class="text-danger"></span></div></div>
-        <div id="existing-image-order-container"></div>
+
+            <div class="apf-card admin-form-card mb-4">
+                <h5 class="admin-card-title apf-title"><i class="bi bi-images me-2"></i>Hình ảnh sản phẩm</h5>
+                @if (isEdit) { <div class="form-text text-muted mb-3">Không chỉnh textarea nếu muốn giữ nguyên thư viện ảnh hiện tại.</div> }
+                @if (orderedImages.Any())
+                {
+                    <label class="form-label">Ảnh hiện có</label>
+                    <div id="existing-image-list" class="apf-image-list mb-3">
+                        @foreach (var image in orderedImages)
+                        {
+                            <div class="apf-image-item" data-image-id="@image.Id"><img src="@image.ImageUrl" alt="Ảnh sản phẩm" onerror="this.onerror=null;this.src='/images/placeholders/product-placeholder.png';" /><div class="apf-image-meta"><div class="d-flex justify-content-between align-items-center mb-2"><span class="badge text-bg-warning apf-primary-badge">Ảnh đại diện</span><label class="form-check-label text-danger small"><input class="form-check-input" type="checkbox" name="RemoveImageIds" value="@image.Id" /> Xóa</label></div><div class="d-flex gap-2"><button type="button" class="btn btn-sm btn-outline-secondary js-move-up">Lên</button><button type="button" class="btn btn-sm btn-outline-secondary js-move-down">Xuống</button></div></div></div>
+                        }
+                    </div>
+                }
+                <div class="admin-form-grid">
+                    <div class="admin-field-md"><label asp-for="ThumbnailImageUrl" class="form-label">Ảnh đại diện</label><input asp-for="ThumbnailImageUrl" class="form-control" placeholder="https://..." /><div class="form-text text-muted">URL ảnh đại diện hoặc ảnh đầu danh sách hiện có.</div><span asp-validation-for="ThumbnailImageUrl" class="text-danger"></span></div>
+                    <div class="admin-field-full"><label asp-for="ProductImageUrlsText" class="form-label mt-3">Thư viện ảnh sản phẩm</label><textarea asp-for="ProductImageUrlsText" rows="6" class="form-control" placeholder="Mỗi URL ảnh trên một dòng"></textarea><div class="form-text text-muted">Mỗi dòng là một URL ảnh. Tick Xóa ở ảnh hiện có nếu cần bỏ ảnh.</div><span asp-validation-for="ProductImageUrlsText" class="text-danger"></span></div>
+                </div>
+                <div id="existing-image-order-container"></div>
+            </div>
+
+            <div class="apf-card admin-form-card mb-4">
+                <h5 class="admin-card-title apf-title"><i class="bi bi-card-text me-2"></i>Mô tả sản phẩm</h5>
+                <label asp-for="Description" class="form-label">Mô tả ngắn / chi tiết</label><textarea asp-for="Description" rows="7" class="form-control" placeholder="Nhập mô tả nổi bật, ưu điểm và thông tin cần hiển thị"></textarea><div class="form-text text-muted">Dòng đầu tiên sẽ được dùng làm mô tả ngắn.</div><span asp-validation-for="Description" class="text-danger"></span>
+            </div>
+
+            <div class="apf-card admin-form-card mb-4">
+                <h5 class="admin-card-title apf-title"><i class="bi bi-cpu me-2"></i>Cấu hình / Thông số sản phẩm</h5>
+                <input type="hidden" asp-for="Specifications" />
+                <label for="component-spec-paste" class="form-label">Nhập nhanh cấu hình</label><textarea id="component-spec-paste" rows="5" class="form-control" placeholder="Dán cấu hình, mỗi dòng một linh kiện/thông số"></textarea>
+                <div class="d-flex flex-wrap gap-2 mt-3 mb-3"><button type="button" class="btn btn-outline-primary" id="parse-component-specs"><i class="bi bi-magic me-1"></i>Nhận diện cấu hình</button><button type="button" class="btn btn-outline-secondary" id="add-component-spec-row"><i class="bi bi-plus-lg me-1"></i>Thêm dòng</button></div>
+                <div class="table-responsive"><table class="table table-sm align-middle" id="component-spec-table"><thead><tr><th class="text-center" style="width:80px;">Thứ tự</th><th>Linh kiện / thông số</th><th class="text-center" style="width:90px;">Số lượng</th><th class="text-center" style="width:120px;">Bảo hành</th><th class="text-center" style="width:100px;">Xóa</th></tr></thead><tbody>@for (var i = 0; i < Model.ComponentSpecs.Count; i++) { <tr><td><input class="form-control form-control-sm text-center js-spec-stt admin-field-number" type="number" min="1" name="ComponentSpecs[@i].Stt" value="@Model.ComponentSpecs[i].Stt" /><span asp-validation-for="ComponentSpecs[i].Stt" class="text-danger small"></span></td><td><input class="form-control form-control-sm js-spec-description" name="ComponentSpecs[@i].Description" value="@Model.ComponentSpecs[i].Description" /><span asp-validation-for="ComponentSpecs[i].Description" class="text-danger small"></span></td><td><input class="form-control form-control-sm text-center js-spec-quantity admin-field-number" type="number" min="1" name="ComponentSpecs[@i].Quantity" value="@Model.ComponentSpecs[i].Quantity" /><span asp-validation-for="ComponentSpecs[i].Quantity" class="text-danger small"></span></td><td><input class="form-control form-control-sm text-center js-spec-warranty" name="ComponentSpecs[@i].Warranty" value="@Model.ComponentSpecs[i].Warranty" /><span asp-validation-for="ComponentSpecs[i].Warranty" class="text-danger small"></span></td><td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger js-remove-component-spec">Xóa</button></td></tr> }</tbody></table></div>
+            </div>
+        </div>
+
+        <aside class="admin-side-column">
+            <div class="apf-sticky-side">
+                <div class="apf-card admin-form-card mb-4">
+                    <h5 class="admin-card-title apf-title"><i class="bi bi-diagram-3 me-2"></i>Phân loại</h5>
+                    <div class="admin-form-grid">
+                        <div class="admin-field-full"><label asp-for="CategoryId" class="form-label">Danh mục</label><select asp-for="CategoryId" class="form-select" asp-items="@(new Microsoft.AspNetCore.Mvc.Rendering.SelectList(Model.Categories, "Id", "Name"))"><option value="">-- Chọn danh mục --</option></select><span asp-validation-for="CategoryId" class="text-danger"></span></div>
+                        <div class="admin-field-sm admin-field-number"><label asp-for="StockQuantity" class="form-label">Tồn kho</label><input asp-for="StockQuantity" class="form-control" type="number" min="0" /><span asp-validation-for="StockQuantity" class="text-danger"></span></div>
+                        <div class="admin-field-full"><div class="form-check form-switch apf-switch mb-3"><input asp-for="IsActive" class="form-check-input" /><label asp-for="IsActive" class="form-check-label">Đang kinh doanh</label></div></div>
+                    </div>
+                </div>
+
+                <div class="apf-card admin-form-card mb-4">
+                    <h5 class="admin-card-title apf-title"><i class="bi bi-cash-coin me-2"></i>Giá bán & khuyến mãi</h5>
+                    <div class="admin-form-grid">
+                        <div class="admin-field-full"><label asp-for="PriceInput" class="form-label">Giá gốc</label><input asp-for="PriceInput" type="text" inputmode="decimal" class="form-control" placeholder="VD: 70990000 hoặc 70.990.000" /><span asp-validation-for="PriceInput" class="text-danger"></span></div>
+                        <div class="admin-field-full"><label asp-for="DiscountPriceInput" class="form-label">Giá khuyến mãi</label><input asp-for="DiscountPriceInput" type="text" inputmode="decimal" class="form-control" placeholder="VD: 69980000 hoặc 69,980,000" /><span asp-validation-for="DiscountPriceInput" class="text-danger"></span></div>
+                        <div class="admin-field-full"><label asp-for="PromotionStartDate" class="form-label">Ngày bắt đầu khuyến mãi</label><input asp-for="PromotionStartDate" type="datetime-local" class="form-control" /><span asp-validation-for="PromotionStartDate" class="text-danger"></span></div>
+                        <div class="admin-field-full"><label asp-for="PromotionEndDate" class="form-label">Ngày kết thúc khuyến mãi</label><input asp-for="PromotionEndDate" type="datetime-local" class="form-control" /><span asp-validation-for="PromotionEndDate" class="text-danger"></span></div>
+                        <div class="admin-field-sm admin-field-number"><label asp-for="WarrantyMonths" class="form-label">Bảo hành tháng</label><input asp-for="WarrantyMonths" class="form-control" type="number" min="0" /><span asp-validation-for="WarrantyMonths" class="text-danger"></span></div>
+                    </div>
+                </div>
+
+                <div class="apf-card admin-form-card mb-4">
+                    <h5 class="admin-card-title apf-title"><i class="bi bi-toggle-on me-2"></i>Tuỳ chọn hiển thị</h5>
+                    <div class="apf-check-grid"><div class="form-check"><input asp-for="IsHotSale" class="form-check-input" /><label asp-for="IsHotSale" class="form-check-label">HOT SALE</label></div><div class="form-check"><input asp-for="IsDailyDeal" class="form-check-input" /><label asp-for="IsDailyDeal" class="form-check-label">Deal hot mỗi ngày</label></div><div class="form-check"><input asp-for="IsPromotion" class="form-check-input" /><label asp-for="IsPromotion" class="form-check-label">Khuyến mãi hot</label></div></div>
+                </div>
+
+                <div class="apf-card admin-form-card mb-4"><h5 class="admin-card-title apf-title"><i class="bi bi-bag-plus me-2"></i>Sản phẩm mua kèm nếu có</h5><div class="text-muted small">Các phụ kiện mua kèm hiện được lấy từ nhóm linh kiện phù hợp ở trang chi tiết sản phẩm.</div></div>
+
+                <div class="admin-actions-card apf-actions mt-0 d-flex flex-column gap-3"><div class="text-muted small">Kiểm tra lỗi dưới từng trường trước khi lưu.</div><div class="d-grid gap-2"><button type="submit" class="btn btn-primary"><i class="bi bi-save me-1"></i>Lưu sản phẩm</button><a asp-action="Index" class="btn btn-outline-secondary">Hủy / Quay lại danh sách</a></div></div>
+            </div>
+        </aside>
     </div>
-
-    <div class="apf-card admin-form-section mb-4">
-        <h5 class="apf-title"><i class="bi bi-card-text me-2"></i>Mô tả sản phẩm</h5>
-        <label asp-for="Description" class="form-label">Mô tả ngắn / chi tiết</label><textarea asp-for="Description" rows="7" class="form-control" placeholder="Nhập mô tả nổi bật, ưu điểm và thông tin cần hiển thị"></textarea><div class="form-text text-muted">Dòng đầu tiên sẽ được dùng làm mô tả ngắn.</div><span asp-validation-for="Description" class="text-danger"></span>
-    </div>
-
-    <div class="apf-card admin-form-section mb-4">
-        <h5 class="apf-title"><i class="bi bi-cpu me-2"></i>Cấu hình / Thông số sản phẩm</h5>
-        <input type="hidden" asp-for="Specifications" />
-        <label for="component-spec-paste" class="form-label">Nhập nhanh cấu hình</label><textarea id="component-spec-paste" rows="5" class="form-control" placeholder="Dán cấu hình, mỗi dòng một linh kiện/thông số"></textarea>
-        <div class="d-flex flex-wrap gap-2 mt-3 mb-3"><button type="button" class="btn btn-outline-primary" id="parse-component-specs"><i class="bi bi-magic me-1"></i>Nhận diện cấu hình</button><button type="button" class="btn btn-outline-secondary" id="add-component-spec-row"><i class="bi bi-plus-lg me-1"></i>Thêm dòng</button></div>
-        <div class="table-responsive"><table class="table table-sm align-middle" id="component-spec-table"><thead><tr><th class="text-center" style="width:80px;">Thứ tự</th><th>Linh kiện / thông số</th><th class="text-center" style="width:90px;">Số lượng</th><th class="text-center" style="width:120px;">Bảo hành</th><th class="text-center" style="width:100px;">Xóa</th></tr></thead><tbody>@for (var i = 0; i < Model.ComponentSpecs.Count; i++) { <tr><td><input class="form-control form-control-sm text-center js-spec-stt admin-field-number" type="number" min="1" name="ComponentSpecs[@i].Stt" value="@Model.ComponentSpecs[i].Stt" /><span asp-validation-for="ComponentSpecs[i].Stt" class="text-danger small"></span></td><td><input class="form-control form-control-sm js-spec-description" name="ComponentSpecs[@i].Description" value="@Model.ComponentSpecs[i].Description" /><span asp-validation-for="ComponentSpecs[i].Description" class="text-danger small"></span></td><td><input class="form-control form-control-sm text-center js-spec-quantity admin-field-number" type="number" min="1" name="ComponentSpecs[@i].Quantity" value="@Model.ComponentSpecs[i].Quantity" /><span asp-validation-for="ComponentSpecs[i].Quantity" class="text-danger small"></span></td><td><input class="form-control form-control-sm text-center js-spec-warranty" name="ComponentSpecs[@i].Warranty" value="@Model.ComponentSpecs[i].Warranty" /><span asp-validation-for="ComponentSpecs[i].Warranty" class="text-danger small"></span></td><td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger js-remove-component-spec">Xóa</button></td></tr> }</tbody></table></div>
-    </div>
-
-    <div class="apf-card admin-form-section mb-4">
-        <h5 class="apf-title"><i class="bi bi-toggle-on me-2"></i>Các tuỳ chọn hiển thị / trạng thái</h5>
-        <div class="form-check form-switch apf-switch mb-3"><input asp-for="IsActive" class="form-check-input" /><label asp-for="IsActive" class="form-check-label">Đang kinh doanh</label></div>
-        <div class="apf-check-grid"><div class="form-check"><input asp-for="IsHotSale" class="form-check-input" /><label asp-for="IsHotSale" class="form-check-label">HOT SALE</label></div><div class="form-check"><input asp-for="IsDailyDeal" class="form-check-input" /><label asp-for="IsDailyDeal" class="form-check-label">Deal hot mỗi ngày</label></div><div class="form-check"><input asp-for="IsPromotion" class="form-check-input" /><label asp-for="IsPromotion" class="form-check-label">Khuyến mãi hot</label></div></div>
-    </div>
-
-    <div class="apf-card admin-form-section mb-4"><h5 class="apf-title"><i class="bi bi-bag-plus me-2"></i>Sản phẩm mua kèm nếu có</h5><div class="text-muted small">Các phụ kiện mua kèm hiện được lấy từ nhóm linh kiện phù hợp ở trang chi tiết sản phẩm.</div></div>
-
-    <div class="apf-actions mt-4 d-flex flex-wrap gap-2 justify-content-between align-items-center"><div class="text-muted small">Kiểm tra lỗi dưới từng trường trước khi lưu.</div><div class="d-flex flex-wrap gap-2"><button type="submit" class="btn btn-primary"><i class="bi bi-save me-1"></i>Lưu sản phẩm</button><a asp-action="Index" class="btn btn-outline-secondary">Hủy / Quay lại danh sách</a></div></div>
 </form>
 
 <partial name="_ValidationScriptsPartial" />
