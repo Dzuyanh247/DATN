@@ -8,6 +8,14 @@
         const searchInput = searchForm.querySelector("[data-search-input]");
         const suggestBox = searchForm.querySelector("[data-search-suggest]");
         const historyKey = "kkshop.searchHistory";
+        const generalSearchUrl = searchForm.dataset.generalSearchUrl || "/Products";
+        const normalizeSearchTarget = () => {
+            searchForm.setAttribute("action", generalSearchUrl);
+            if (categoryInput && !categoryInput.value) {
+                categoryInput.disabled = true;
+            }
+        };
+        normalizeSearchTarget();
 
         const readJson = (name) => {
             try { return JSON.parse(searchForm.dataset[name] || "[]").filter(Boolean); }
@@ -32,6 +40,7 @@
         const submitSearch = (keyword) => {
             searchInput.value = keyword;
             saveHistory(keyword);
+            normalizeSearchTarget();
             searchForm.submit();
         };
         const section = (title, rows, icon, removable = false) => rows.length ? `
@@ -61,11 +70,12 @@
                 categoryLabel.textContent = item.dataset.categoryName || "Tất cả danh mục";
                 categoryItems.forEach((candidate) => candidate.classList.remove("active"));
                 item.classList.add("active");
+                normalizeSearchTarget();
             });
         });
         searchInput?.addEventListener("focus", renderRealtime);
         searchInput?.addEventListener("input", renderRealtime);
-        searchForm.addEventListener("submit", () => { categoryInput.disabled = !categoryInput.value; saveHistory(searchInput?.value); });
+        searchForm.addEventListener("submit", () => { normalizeSearchTarget(); saveHistory(searchInput?.value); });
         suggestBox?.addEventListener("mousedown", (event) => event.preventDefault());
         suggestBox?.addEventListener("click", (event) => {
             const remove = event.target.closest("[data-remove-history]");
