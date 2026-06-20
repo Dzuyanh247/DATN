@@ -120,12 +120,7 @@ public class ProductsController : Controller
         if (vm.CategoryId.HasValue)
             query = query.Where(p => p.CategoryId == vm.CategoryId.Value);
 
-        if (!string.IsNullOrWhiteSpace(vm.Type))
-        {
-            var scopedComponentType = ComponentTypes.Normalize(vm.Type);
-            query = ApplyComponentTypeQuery(await ApplyComponentListingScopeAsync(query), new[] { scopedComponentType });
-        }
-        else if (vm.IsComponentListing)
+        if (vm.IsComponentListing)
         {
             query = await ApplyComponentListingScopeAsync(query);
         }
@@ -249,9 +244,7 @@ public class ProductsController : Controller
                 ? $"/linh-kien/{vm.TypeSlug}"
                 : "/linh-kien";
 
-            vm.ClearFilterUrl = vm.HasScopedComponentType
-                ? $"/linh-kien/{vm.TypeSlug}"
-                : "/linh-kien";
+            vm.ClearFilterUrl = "/linh-kien";
         }
         else
         {
@@ -325,8 +318,8 @@ public class ProductsController : Controller
             .ToListAsync();
 
         return componentCategoryIds.Count == 0
-            ? query.Where(product => product.ProductType == ProductKinds.Component || product.ProductType.Contains("Linh"))
-            : query.Where(product => product.ProductType == ProductKinds.Component || product.ProductType.Contains("Linh") || componentCategoryIds.Contains(product.CategoryId));
+            ? query.Where(product => product.ProductType == ProductKinds.Component || (product.ProductType != null && product.ProductType.Contains("Linh")))
+            : query.Where(product => product.ProductType == ProductKinds.Component || (product.ProductType != null && product.ProductType.Contains("Linh") && componentCategoryIds.Contains(product.CategoryId)));
     }
 
     private async Task<bool> IsComponentListingAsync(string? type, string? categorySlug, int? categoryId)
@@ -459,14 +452,14 @@ public class ProductsController : Controller
                 Title = "Linh kiện máy tính",
                 Options = BuildComponentOptions(counts, currentType,
                     ComponentTypes.CPU, ComponentTypes.Mainboard, ComponentTypes.RAM, ComponentTypes.VGA,
-                    ComponentTypes.Storage, ComponentTypes.Cooler, ComponentTypes.Case, ComponentTypes.PSU)
+                    ComponentTypes.MonitorArm, ComponentTypes.Storage, ComponentTypes.Cooler, ComponentTypes.Case, ComponentTypes.PSU)
             },
             new()
             {
                 Title = "Ngoại vi",
                 Options = BuildComponentOptions(counts, currentType,
                     ComponentTypes.Monitor, ComponentTypes.Keyboard, ComponentTypes.Mouse,
-                    ComponentTypes.Headphone, ComponentTypes.MonitorArm, ComponentTypes.Other)
+                    ComponentTypes.Headphone, ComponentTypes.Other)
             }
         };
 

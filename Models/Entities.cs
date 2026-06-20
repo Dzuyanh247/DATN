@@ -46,7 +46,7 @@ public static class ComponentTypes
         [Keyboard] = "Bàn phím",
         [Mouse] = "Chuột",
         [Headphone] = "Tai nghe",
-        [MonitorArm] = "Giá treo màn hình",
+        [MonitorArm] = "GIÁ TREO MÀN HÌNH",
         [Other] = "Khác"
     };
 
