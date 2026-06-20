@@ -118,6 +118,16 @@
             </div>
 
             <div class="apf-card admin-form-card mb-4">
+                <h5 class="admin-card-title apf-title"><i class="bi bi-gift me-2"></i>Khuyến mãi / quà tặng</h5>
+                <label asp-for="CustomPromotionText" class="form-label">Nội dung khuyến mãi / quà tặng</label>
+                <textarea asp-for="CustomPromotionText" rows="5" class="form-control" placeholder="VD:
+Tặng kèm key Windows 10 bản quyền
+Hỗ trợ cài đặt phần mềm miễn phí"></textarea>
+                <div class="form-text text-muted">Mỗi dòng là một ưu đãi/quà tặng hiển thị ở trang chi tiết sản phẩm.</div>
+                <span asp-validation-for="CustomPromotionText" class="text-danger"></span>
+            </div>
+
+            <div class="apf-card admin-form-card mb-4">
                 <h5 class="admin-card-title apf-title"><i class="bi bi-cpu me-2"></i>Cấu hình / Thông số sản phẩm</h5>
                 <input type="hidden" asp-for="Specifications" />
                 <label for="component-spec-paste" class="form-label">Nhập nhanh cấu hình</label><textarea id="component-spec-paste" rows="5" class="form-control" placeholder="Dán cấu hình, mỗi dòng một linh kiện/thông số"></textarea>
