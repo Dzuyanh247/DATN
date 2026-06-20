@@ -2,19 +2,9 @@
 @{
     ViewData["Title"] = "Trang chủ";
     
-var dealSectionBackground = ImageUrlHelper.ResolveImageUrl(Model.SiteSettings?.DealSectionBackgroundUrl, string.Empty);
-    var hotPromotionBackground = ImageUrlHelper.ResolveImageUrl(Model.SiteSettings?.HotPromotionBackgroundUrl, string.Empty);
     var fallbackBanner = "/images/banners/banner_main1.png";
 }
 
-@{
-    var dealHotProducts = Model.DailyDealProducts
-        .Concat(Model.HotSaleProducts)
-        .GroupBy(p => p.Id)
-        .Select(g => g.First())
-        .Take(6)
-        .ToList();
-}
 
 <div class="ttg-home">
 @{
@@ -96,7 +86,6 @@ var dealSectionBackground = ImageUrlHelper.ResolveImageUrl(Model.SiteSettings?.D
     </div>
 }
 
-<partial name="_ProductSection" model='Tuple.Create("Deal hot mỗi ngày", dealHotProducts, dealSectionBackground)' />
 <partial name="_ProductSection" model='Tuple.Create("PC GAMING", Model.PcGamingProducts, string.Empty)' />
 <partial name="_ProductSection" model='Tuple.Create("PC WORKSTATION 2D 3D", Model.WorkstationProducts, string.Empty)' />
 <partial name="_ProductSection" model='Tuple.Create("PC AMD GAMING", Model.AmdGamingProducts, string.Empty)' />
@@ -105,7 +94,6 @@ var dealSectionBackground = ImageUrlHelper.ResolveImageUrl(Model.SiteSettings?.D
 <partial name="_ProductSection" model='Tuple.Create("LAPTOP", Model.LaptopProducts, string.Empty)' />
 <partial name="_ProductSection" model='Tuple.Create("MÀN HÌNH", Model.MonitorProducts, string.Empty)' />
 <partial name="_ProductSection" model='Tuple.Create("LINH KIỆN", Model.ComponentProducts, string.Empty)' />
-<partial name="_ProductSection" model='Tuple.Create("Khuyến mãi hot", Model.PromotionProducts, hotPromotionBackground)' />
 
 </div>
 

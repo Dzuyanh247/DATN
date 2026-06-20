@@ -1,33 +1,16 @@
 @model Tuple<string, List<Product>, string?>
 @{
     var sectionTitle = Model.Item1;
-    var isDeal = sectionTitle == "Deal hot mỗi ngày" || sectionTitle == "Khuyến mãi hot";
-    var defaultBg = sectionTitle == "Deal hot mỗi ngày" ? "/images/defaults/deal-bg.jpg" : "/images/defaults/hot-promotion-bg.jpg";
-    var sectionBackground = ImageUrlHelper.ResolveImageUrl(Model.Item3, defaultBg);
-    var sectionStyle = $"background-image:url('{sectionBackground}')";
     ViewData["CompactProductCard"] = true;
 }
-<section class="ttg-section standard-product-section @(isDeal ? "promo-section" : string.Empty)" style="@(isDeal ? sectionStyle : string.Empty)">
+<section class="ttg-section standard-product-section">
     <div class="ttg-section-head">
         <div class="d-flex align-items-center gap-2 flex-wrap">
-            <h4 class="ttg-section-title">@(sectionTitle == "Deal hot mỗi ngày" ? "DEAL HOT MỖI NGÀY - KHUYẾN MÃI LIỀN TAY" : sectionTitle.ToUpperInvariant())</h4>
-            @if (isDeal)
-            {
-                <span class="ttg-hot-badge">HOT SALE</span>
-            }
-            else
-            {
-                <div class="ttg-tabs">
-                    <a href="#" class="ttg-tab">PC Gaming giá rẻ</a>
-                    <a href="#" class="ttg-tab">PC Stream Game</a>
-                    <a href="#" class="ttg-tab">PC Core Ultra</a>
-                    <a href="#" class="ttg-tab">PC Gaming cao cấp</a>
-                </div>
-            }
+            <h4 class="ttg-section-title">@sectionTitle.ToUpperInvariant()</h4>
         </div>
         <a class="ttg-view-all" asp-controller="Products" asp-action="Index">Xem tất cả &gt;&gt;</a>
     </div>
-    <div class="ttg-products-grid @(isDeal ? "promo-product-grid" : string.Empty)">
+    <div class="ttg-products-grid">
         @if (Model.Item2 != null && Model.Item2.Any())
         {
             @foreach (var p in Model.Item2)
