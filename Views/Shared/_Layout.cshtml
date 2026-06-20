@@ -156,7 +156,7 @@ else
                      decoding="async" />
             }
         </a>
-        <form class="ttg-search" asp-controller="Products" asp-action="Index" method="get" data-header-search data-hot-keywords='@System.Text.Json.JsonSerializer.Serialize(searchSuggestionData.HotKeywords)' data-product-suggestions='@System.Text.Json.JsonSerializer.Serialize(searchSuggestionData.ProductNames)' data-category-suggestions='@System.Text.Json.JsonSerializer.Serialize(searchSuggestionData.CategoryNames)' data-brand-suggestions='@System.Text.Json.JsonSerializer.Serialize(searchSuggestionData.BrandNames)'>
+        <form class="ttg-search" action="/Products" method="get" data-header-search data-general-search-url="/Products" data-hot-keywords='@System.Text.Json.JsonSerializer.Serialize(searchSuggestionData.HotKeywords)' data-product-suggestions='@System.Text.Json.JsonSerializer.Serialize(searchSuggestionData.ProductNames)' data-category-suggestions='@System.Text.Json.JsonSerializer.Serialize(searchSuggestionData.CategoryNames)' data-brand-suggestions='@System.Text.Json.JsonSerializer.Serialize(searchSuggestionData.BrandNames)'>
             <input type="hidden" name="categoryId" value="@selectedHeaderCategory?.Id" data-search-category-id @(selectedHeaderCategory is null ? "disabled" : null) />
             <div class="ttg-search-group">
                 <div class="dropdown ttg-search-category">
