@@ -86,6 +86,26 @@ public class ProductsController : Controller
                 .FirstOrDefaultAsync();
         }
 
+        var selectedCategory = vm.CategoryId.HasValue
+            ? await _db.Categories
+                .AsNoTracking()
+                .Where(category => category.Id == vm.CategoryId.Value)
+                .Select(category => new
+                {
+                    category.Id,
+                    category.Name,
+                    Slug = category.Name.ToLower().Replace(" ", "-")
+                })
+                .FirstOrDefaultAsync()
+            : null;
+
+        _logger.LogWarning(
+            "DEBUG CATEGORY => categoryId={CategoryId}, categoryName={CategoryName}, requestedCategorySlug={RequestedCategorySlug}, loadedCategorySlug={LoadedCategorySlug}",
+            vm.CategoryId,
+            selectedCategory?.Name,
+            vm.CategorySlug,
+            selectedCategory?.Slug);
+
         vm.IsComponentListing = await IsComponentListingAsync(vm.Type, vm.CategorySlug, vm.CategoryId);
         if (!vm.IsComponentListing)
         {
@@ -141,6 +161,16 @@ public class ProductsController : Controller
         vm.Products = ApplySort(filteredProducts, vm.Sort).ToList();
 
         SetFilterRouteUrls(vm);
+
+        _logger.LogWarning(
+            "DEBUG FILTER => categoryId={CategoryId}, categorySlug={CategorySlug}, type={Type}, typeSlug={TypeSlug}, isComponentListing={IsComponentListing}, filterActionUrl={FilterActionUrl}, clearFilterUrl={ClearFilterUrl}",
+            vm.CategoryId,
+            vm.CategorySlug,
+            vm.Type,
+            vm.TypeSlug,
+            vm.IsComponentListing,
+            vm.FilterActionUrl,
+            vm.ClearFilterUrl);
 
         LogFilterDebug(vm, categoryProducts.Count, vm.Products.Count);
 
@@ -210,13 +240,28 @@ public class ProductsController : Controller
         // Keep filter submissions on the page that rendered the sidebar. PC category
         // filters (CPU/RAM/GPU/SSD) are product-spec filters, not component-category
         // navigation, so /Products must never fall back to /linh-kien.
-        vm.FilterActionUrl = isComponentFilterRoute
+        var routeBasedFilterActionUrl = isComponentFilterRoute
             ? BuildComponentFilterPath(vm)
             : Url.Action(nameof(Index), "Products") ?? "/Products";
-
-        vm.ClearFilterUrl = isComponentFilterRoute
+        var routeBasedClearFilterUrl = isComponentFilterRoute
             ? BuildComponentFilterPath(vm)
             : Url.Action(nameof(Index), "Products", new { categoryId = vm.CategoryId, categorySlug = vm.CategorySlug }) ?? "/Products";
+
+        vm.FilterActionUrl = routeBasedFilterActionUrl;
+        vm.ClearFilterUrl = routeBasedClearFilterUrl;
+
+        if (!vm.IsComponentListing || IsNonComponentCategorySlug(vm.CategorySlug))
+        {
+            vm.FilterActionUrl = Url.Action(nameof(Index), "Products") ?? "/Products";
+            vm.ClearFilterUrl = Url.Action(nameof(Index), "Products", new { categoryId = vm.CategoryId, categorySlug = vm.CategorySlug }) ?? "/Products";
+        }
+
+        _logger.LogWarning(
+            "DEBUG FILTER ROUTE => isComponentFilterRoute={IsComponentFilterRoute}, routeBasedFilterActionUrl={RouteBasedFilterActionUrl}, finalFilterActionUrl={FinalFilterActionUrl}, finalClearFilterUrl={FinalClearFilterUrl}",
+            isComponentFilterRoute,
+            routeBasedFilterActionUrl,
+            vm.FilterActionUrl,
+            vm.ClearFilterUrl);
     }
 
     private static bool IsComponentFilterRoute(string currentPath) =>
@@ -224,6 +269,14 @@ public class ProductsController : Controller
 
     private static string BuildComponentFilterPath(ProductFilterVm vm) =>
         vm.HasScopedComponentType ? $"/linh-kien/{vm.TypeSlug}" : "/linh-kien";
+
+    private static bool IsNonComponentCategorySlug(string? categorySlug)
+    {
+        if (string.IsNullOrWhiteSpace(categorySlug)) return false;
+
+        var slug = categorySlug.Trim().ToLowerInvariant();
+        return slug is not ("linh-kien" or "linh-kien-may-tinh" or "components" or "component");
+    }
 
     private static string? ResolveComponentType(string? type, string? typeSlug)
     {
@@ -279,10 +332,10 @@ public class ProductsController : Controller
 
     private async Task<bool> IsComponentListingAsync(string? type, string? categorySlug, int? categoryId)
     {
-        if (!string.IsNullOrWhiteSpace(type)) return true;
         var slug = categorySlug?.Trim().ToLowerInvariant();
         if (slug is "linh-kien" or "linh-kien-may-tinh" or "components" or "component") return true;
         if (!string.IsNullOrWhiteSpace(slug)) return false;
+        if (!string.IsNullOrWhiteSpace(type)) return true;
         if (!categoryId.HasValue) return false;
         var categoryName = await _db.Categories
             .Where(category => category.Id == categoryId.Value)
