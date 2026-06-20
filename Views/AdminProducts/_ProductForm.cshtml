@@ -2,6 +2,25 @@
 @{
     var isEdit = Model.Id > 0;
     var orderedImages = Model.ExistingImages.OrderBy(x => x.SortOrder).ToList();
+    var promotionPresetOptions = new[]
+    {
+        "Tặng kèm key Windows 10 bản quyền",
+        "Hỗ trợ cài đặt phần mềm miễn phí",
+        "Tặng kèm bộ vệ sinh máy",
+        "Miễn phí giao hàng nội thành",
+        "Hỗ trợ nâng cấp linh kiện"
+    };
+    var promotionLines = (Model.CustomPromotionText ?? string.Empty)
+        .Split(new[] { "\r\n", "\n" }, StringSplitOptions.None)
+        .Select(x => x.Trim())
+        .Where(x => !string.IsNullOrWhiteSpace(x))
+        .ToList();
+    var selectedPromotionPresets = promotionPresetOptions
+        .Where(option => promotionLines.Any(line => string.Equals(line, option, StringComparison.OrdinalIgnoreCase)))
+        .ToHashSet(StringComparer.OrdinalIgnoreCase);
+    var customPromotionLines = promotionLines
+        .Where(line => !promotionPresetOptions.Any(option => string.Equals(line, option, StringComparison.OrdinalIgnoreCase)))
+        .ToList();
 }
 
 <style>
@@ -55,16 +74,36 @@
         display: flex;
         gap: .65rem;
         align-items: flex-start;
-        padding: .8rem;
+        min-height: 100%;
+        padding: .85rem .95rem;
         border: 1px solid #fed7aa;
-        border-radius: .65rem;
+        border-radius: 999px;
         background: #fff7ed;
+        color: #7c2d12;
         cursor: pointer;
+        transition: border-color .15s ease, background-color .15s ease, box-shadow .15s ease;
     }
 
-    .promotion-preset-option:hover {
+    .promotion-preset-option:hover,
+    .promotion-preset-option:has(.form-check-input:checked) {
         border-color: #fb923c;
         background: #ffedd5;
+        box-shadow: 0 8px 18px rgba(251, 146, 60, .14);
+    }
+
+    .promotion-preset-option .form-check-input {
+        margin-top: .15rem;
+        flex: 0 0 auto;
+    }
+
+    .promotion-preset-option .form-check-label {
+        cursor: pointer;
+        font-weight: 600;
+        line-height: 1.35;
+    }
+
+    .promotion-extra-textarea {
+        min-height: 110px;
     }
 
     @@media (max-width: 767.98px) {
@@ -117,13 +156,27 @@
                 <label asp-for="Description" class="form-label">Mô tả ngắn / chi tiết</label><textarea asp-for="Description" rows="7" class="form-control" placeholder="Nhập mô tả nổi bật, ưu điểm và thông tin cần hiển thị"></textarea><div class="form-text text-muted">Dòng đầu tiên sẽ được dùng làm mô tả ngắn.</div><span asp-validation-for="Description" class="text-danger"></span>
             </div>
 
-            <div class="apf-card admin-form-card mb-4">
+            <div class="apf-card admin-form-card mb-4" id="promotion-gift-card">
                 <h5 class="admin-card-title apf-title"><i class="bi bi-gift me-2"></i>Khuyến mãi / quà tặng</h5>
-                <label asp-for="CustomPromotionText" class="form-label">Nội dung khuyến mãi / quà tặng</label>
-                <textarea asp-for="CustomPromotionText" rows="5" class="form-control" placeholder="VD:
-Tặng kèm key Windows 10 bản quyền
-Hỗ trợ cài đặt phần mềm miễn phí"></textarea>
-                <div class="form-text text-muted">Mỗi dòng là một ưu đãi/quà tặng hiển thị ở trang chi tiết sản phẩm.</div>
+                <div class="mb-3">
+                    <div class="fw-semibold mb-1">Chọn ưu đãi có sẵn</div>
+                    <div class="form-text text-muted mb-3">Có thể chọn nhiều ưu đãi. Nội dung được hiển thị ở trang chi tiết sản phẩm.</div>
+                    <div class="promotion-preset-grid">
+                        @for (var i = 0; i < promotionPresetOptions.Length; i++)
+                        {
+                            var option = promotionPresetOptions[i];
+                            var checkboxId = $"promotion-preset-{i}";
+                            <label class="promotion-preset-option" for="@checkboxId">
+                                <input class="form-check-input js-promotion-preset" type="checkbox" id="@checkboxId" value="@option" checked="@selectedPromotionPresets.Contains(option)" />
+                                <span class="form-check-label">@option</span>
+                            </label>
+                        }
+                    </div>
+                </div>
+                <label for="custom-promotion-extra" class="form-label">Thêm khuyến mãi khác</label>
+                <textarea id="custom-promotion-extra" rows="4" class="form-control promotion-extra-textarea" placeholder="Nhập thêm ưu đãi/quà tặng, mỗi dòng là một nội dung riêng">@string.Join(Environment.NewLine, customPromotionLines)</textarea>
+                <div class="form-text text-muted">Mỗi dòng là một ưu đãi riêng. Các lựa chọn phía trên và nội dung nhập thêm sẽ được gom về trường khuyến mãi hiện tại khi lưu.</div>
+                <textarea asp-for="CustomPromotionText" class="d-none js-promotion-bound-field" aria-hidden="true" tabindex="-1"></textarea>
                 <span asp-validation-for="CustomPromotionText" class="text-danger"></span>
             </div>
 
@@ -174,6 +227,35 @@ Hỗ trợ cài đặt phần mềm miễn phí"></textarea>
 <partial name="_ValidationScriptsPartial" />
 
 <script>
+    (function () {
+        const form = document.querySelector('.admin-product-form');
+        const boundField = document.querySelector('.js-promotion-bound-field');
+        const customPromotion = document.getElementById('custom-promotion-extra');
+        const presets = Array.from(document.querySelectorAll('.js-promotion-preset'));
+        if (!form || !boundField || !customPromotion || presets.length === 0) return;
+
+        function normalizeLines(value) {
+            return (value || '')
+                .split(/\r?\n/)
+                .map(line => line.replace(/\s+/g, ' ').trim())
+                .filter(Boolean);
+        }
+
+        function syncPromotionText() {
+            const selectedPresetLines = presets
+                .filter(checkbox => checkbox.checked)
+                .map(checkbox => checkbox.value.trim())
+                .filter(Boolean);
+            const customLines = normalizeLines(customPromotion.value);
+            boundField.value = selectedPresetLines.concat(customLines).join('\n');
+        }
+
+        presets.forEach(checkbox => checkbox.addEventListener('change', syncPromotionText));
+        customPromotion.addEventListener('input', syncPromotionText);
+        form.addEventListener('submit', syncPromotionText);
+        syncPromotionText();
+    })();
+
     (function () {
         const pasteBox = document.getElementById('component-spec-paste');
         const parseButton = document.getElementById('parse-component-specs');
