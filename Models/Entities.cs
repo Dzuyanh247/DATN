@@ -218,6 +218,15 @@ public class Banner : BaseEntity
     public bool IsActive { get; set; } = true;
 }
 
+public class SearchKeyword : BaseEntity
+{
+    [Required, MaxLength(120)] public string Keyword { get; set; } = string.Empty;
+    public int SearchCount { get; set; }
+    public DateTime LastSearchedAt { get; set; } = DateTime.UtcNow;
+    public bool IsVisible { get; set; } = true;
+    public bool IsPinned { get; set; }
+}
+
 public class Cart : BaseEntity
 {
     public int UserId { get; set; }
