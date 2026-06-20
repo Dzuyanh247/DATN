@@ -2,8 +2,7 @@
 @{
     ViewData["Title"] = "Trang chủ";
     
-var dealSectionBackground = ImageUrlHelper.ResolveImageUrl(Model.SiteSettings?.DealSectionBackgroundUrl, string.Empty);
-    var hotPromotionBackground = ImageUrlHelper.ResolveImageUrl(Model.SiteSettings?.HotPromotionBackgroundUrl, string.Empty);
+    var dealSectionBackground = ImageUrlHelper.ResolveImageUrl(Model.SiteSettings?.DealSectionBackgroundUrl, string.Empty);
     var fallbackBanner = "/images/banners/banner_main1.png";
 }
 
@@ -105,7 +104,6 @@ var dealSectionBackground = ImageUrlHelper.ResolveImageUrl(Model.SiteSettings?.D
 <partial name="_ProductSection" model='Tuple.Create("LAPTOP", Model.LaptopProducts, string.Empty)' />
 <partial name="_ProductSection" model='Tuple.Create("MÀN HÌNH", Model.MonitorProducts, string.Empty)' />
 <partial name="_ProductSection" model='Tuple.Create("LINH KIỆN", Model.ComponentProducts, string.Empty)' />
-<partial name="_ProductSection" model='Tuple.Create("Khuyến mãi hot", Model.PromotionProducts, hotPromotionBackground)' />
 
 </div>
 
