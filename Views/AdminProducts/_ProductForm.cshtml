@@ -71,11 +71,12 @@
     }
 
     .promotion-preset-option {
+        position: relative;
         display: flex;
         gap: .65rem;
         align-items: flex-start;
         min-height: 100%;
-        padding: .85rem .95rem;
+        padding: .85rem 2.25rem .85rem .95rem;
         border: 1px solid #fed7aa;
         border-radius: 999px;
         background: #fff7ed;
@@ -100,6 +101,39 @@
         cursor: pointer;
         font-weight: 600;
         line-height: 1.35;
+    }
+
+    .promotion-remove-option {
+        position: absolute;
+        top: 50%;
+        right: .55rem;
+        width: 1.45rem;
+        height: 1.45rem;
+        transform: translateY(-50%);
+        border: 0;
+        border-radius: 999px;
+        background: rgba(124, 45, 18, .08);
+        color: #9a3412;
+        font-size: 1rem;
+        line-height: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        opacity: .78;
+        transition: background-color .15s ease, color .15s ease, opacity .15s ease;
+    }
+
+    .promotion-remove-option:hover {
+        background: rgba(220, 38, 38, .14);
+        color: #dc2626;
+        opacity: 1;
+    }
+
+    .promotion-quick-add {
+        border: 1px dashed #fdba74;
+        border-radius: .85rem;
+        background: #fffbeb;
+        padding: .85rem;
     }
 
     .promotion-extra-textarea {
@@ -161,7 +195,7 @@
                 <div class="mb-3">
                     <div class="fw-semibold mb-1">Chọn ưu đãi có sẵn</div>
                     <div class="form-text text-muted mb-3">Có thể chọn nhiều ưu đãi. Nội dung được hiển thị ở trang chi tiết sản phẩm.</div>
-                    <div class="promotion-preset-grid">
+                    <div class="promotion-preset-grid js-promotion-preset-grid">
                         @for (var i = 0; i < promotionPresetOptions.Length; i++)
                         {
                             var option = promotionPresetOptions[i];
@@ -169,8 +203,17 @@
                             <label class="promotion-preset-option" for="@checkboxId">
                                 <input class="form-check-input js-promotion-preset" type="checkbox" id="@checkboxId" value="@option" checked="@selectedPromotionPresets.Contains(option)" />
                                 <span class="form-check-label">@option</span>
+                                <button type="button" class="promotion-remove-option js-promotion-remove-option" aria-label="Xóa option @option" title="Xóa option">×</button>
                             </label>
                         }
+                    </div>
+                    <div class="promotion-quick-add mt-3">
+                        <label for="promotion-new-option" class="form-label mb-2">Thêm option khuyến mãi mới</label>
+                        <div class="input-group">
+                            <input id="promotion-new-option" type="text" class="form-control js-promotion-new-option" placeholder="Nhập tên option mới" />
+                            <button type="button" class="btn btn-outline-primary js-promotion-add-option"><i class="bi bi-plus-lg me-1"></i>Thêm option</button>
+                        </div>
+                        <div class="form-text text-muted">Option thêm nhanh chỉ áp dụng trên form hiện tại và sẽ được tick sẵn để gom vào dữ liệu khi lưu.</div>
                     </div>
                 </div>
                 <label for="custom-promotion-extra" class="form-label">Thêm khuyến mãi khác</label>
@@ -231,26 +274,110 @@
         const form = document.querySelector('.admin-product-form');
         const boundField = document.querySelector('.js-promotion-bound-field');
         const customPromotion = document.getElementById('custom-promotion-extra');
-        const presets = Array.from(document.querySelectorAll('.js-promotion-preset'));
-        if (!form || !boundField || !customPromotion || presets.length === 0) return;
+        const presetGrid = document.querySelector('.js-promotion-preset-grid');
+        const newOptionInput = document.querySelector('.js-promotion-new-option');
+        const addOptionButton = document.querySelector('.js-promotion-add-option');
+        if (!form || !boundField || !customPromotion || !presetGrid || !newOptionInput || !addOptionButton) return;
+
+        function normalizeOption(value) {
+            return (value || '').replace(/\s+/g, ' ').trim();
+        }
 
         function normalizeLines(value) {
             return (value || '')
                 .split(/\r?\n/)
-                .map(line => line.replace(/\s+/g, ' ').trim())
+                .map(normalizeOption)
                 .filter(Boolean);
         }
 
+        function getPresetCheckboxes() {
+            return Array.from(presetGrid.querySelectorAll('.js-promotion-preset'));
+        }
+
+        function findPreset(option) {
+            const normalized = normalizeOption(option).toLocaleLowerCase('vi-VN');
+            return getPresetCheckboxes().find(checkbox => normalizeOption(checkbox.value).toLocaleLowerCase('vi-VN') === normalized);
+        }
+
+        function createPromotionOption(option, checked) {
+            const normalizedOption = normalizeOption(option);
+            const checkboxId = `promotion-preset-dynamic-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+            const label = document.createElement('label');
+            label.className = 'promotion-preset-option';
+            label.setAttribute('for', checkboxId);
+
+            const checkbox = document.createElement('input');
+            checkbox.className = 'form-check-input js-promotion-preset';
+            checkbox.type = 'checkbox';
+            checkbox.id = checkboxId;
+            checkbox.value = normalizedOption;
+            checkbox.checked = checked;
+
+            const text = document.createElement('span');
+            text.className = 'form-check-label';
+            text.textContent = normalizedOption;
+
+            const removeButton = document.createElement('button');
+            removeButton.type = 'button';
+            removeButton.className = 'promotion-remove-option js-promotion-remove-option';
+            removeButton.setAttribute('aria-label', `Xóa option ${normalizedOption}`);
+            removeButton.title = 'Xóa option';
+            removeButton.textContent = '×';
+
+            label.append(checkbox, text, removeButton);
+            return label;
+        }
+
         function syncPromotionText() {
-            const selectedPresetLines = presets
+            const selectedPresetLines = getPresetCheckboxes()
                 .filter(checkbox => checkbox.checked)
-                .map(checkbox => checkbox.value.trim())
+                .map(checkbox => normalizeOption(checkbox.value))
                 .filter(Boolean);
             const customLines = normalizeLines(customPromotion.value);
             boundField.value = selectedPresetLines.concat(customLines).join('\n');
         }
 
-        presets.forEach(checkbox => checkbox.addEventListener('change', syncPromotionText));
+        function addPromotionOption() {
+            const option = normalizeOption(newOptionInput.value);
+            if (!option) return;
+
+            const existing = findPreset(option);
+            if (existing) {
+                existing.checked = true;
+                existing.closest('.promotion-preset-option')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            } else {
+                presetGrid.appendChild(createPromotionOption(option, true));
+            }
+
+            newOptionInput.value = '';
+            newOptionInput.focus();
+            syncPromotionText();
+        }
+
+        presetGrid.addEventListener('change', function (event) {
+            if (event.target.matches('.js-promotion-preset')) syncPromotionText();
+        });
+
+        presetGrid.addEventListener('click', function (event) {
+            const removeButton = event.target.closest('.js-promotion-remove-option');
+            if (!removeButton) return;
+
+            event.preventDefault();
+            event.stopPropagation();
+            const optionItem = removeButton.closest('.promotion-preset-option');
+            const optionText = optionItem?.querySelector('.js-promotion-preset')?.value || 'option này';
+            if (!window.confirm(`Xóa option khuyến mãi "${optionText}" khỏi danh sách hiển thị trên form hiện tại?`)) return;
+
+            optionItem?.remove();
+            syncPromotionText();
+        });
+
+        addOptionButton.addEventListener('click', addPromotionOption);
+        newOptionInput.addEventListener('keydown', function (event) {
+            if (event.key !== 'Enter') return;
+            event.preventDefault();
+            addPromotionOption();
+        });
         customPromotion.addEventListener('input', syncPromotionText);
         form.addEventListener('submit', syncPromotionText);
         syncPromotionText();
