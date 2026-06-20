@@ -204,17 +204,21 @@ public class ProductsController : Controller
 
     private void SetFilterRouteUrls(ProductFilterVm vm)
     {
-        var currentPath = Request.Path.Value;
-        var isCurrentComponentRoute = currentPath?.StartsWith("/linh-kien", StringComparison.OrdinalIgnoreCase) == true;
+        vm.CurrentPath = Request.Path.Value ?? string.Empty;
+        var isComponentFilterRoute = vm.IsComponentListing
+            && vm.CurrentPath.StartsWith("/linh-kien", StringComparison.OrdinalIgnoreCase);
 
-        vm.FilterActionUrl = isCurrentComponentRoute
-            ? (vm.HasScopedComponentType ? $"/linh-kien/{vm.TypeSlug}" : "/linh-kien")
+        vm.FilterActionUrl = isComponentFilterRoute
+            ? BuildComponentFilterPath(vm)
             : Url.Action(nameof(Index), "Products") ?? "/Products";
 
-        vm.ClearFilterUrl = isCurrentComponentRoute
-            ? (vm.HasScopedComponentType ? $"/linh-kien/{vm.TypeSlug}" : "/linh-kien")
+        vm.ClearFilterUrl = isComponentFilterRoute
+            ? BuildComponentFilterPath(vm)
             : Url.Action(nameof(Index), "Products", new { categoryId = vm.CategoryId, categorySlug = vm.CategorySlug, keyword = vm.Keyword }) ?? "/Products";
     }
+
+    private static string BuildComponentFilterPath(ProductFilterVm vm) =>
+        vm.HasScopedComponentType ? $"/linh-kien/{vm.TypeSlug}" : "/linh-kien";
 
     private static string? ResolveComponentType(string? type, string? typeSlug)
     {
@@ -286,7 +290,10 @@ public class ProductsController : Controller
     private void LogFilterDebug(ProductFilterVm vm, int baseProductCount, int filteredProductCount)
     {
         _logger.LogDebug(
-            "Products filter: categoryId={CategoryId}, categorySlug={CategorySlug}, isComponentListing={IsComponentListing}, type={Type}, baseProducts={BaseProducts}, selectedFilters={SelectedFilters}, filteredProducts={FilteredProducts}, facets price={PriceFacetCount}, brand={BrandFacetCount}, cpu={CpuFacetCount}, ram={RamFacetCount}, gpu={GpuFacetCount}, storage={StorageFacetCount}, specGroups={SpecGroupCount}",
+            "Products filter: currentPath={CurrentPath}, filterActionUrl={FilterActionUrl}, clearFilterUrl={ClearFilterUrl}, categoryId={CategoryId}, categorySlug={CategorySlug}, isComponentListing={IsComponentListing}, type={Type}, baseProducts={BaseProducts}, selectedFilters={SelectedFilters}, filteredProducts={FilteredProducts}, facets price={PriceFacetCount}, brand={BrandFacetCount}, cpu={CpuFacetCount}, ram={RamFacetCount}, gpu={GpuFacetCount}, storage={StorageFacetCount}, specGroups={SpecGroupCount}",
+            vm.CurrentPath,
+            vm.FilterActionUrl,
+            vm.ClearFilterUrl,
             vm.CategoryId,
             vm.CategorySlug,
             vm.IsComponentListing,
