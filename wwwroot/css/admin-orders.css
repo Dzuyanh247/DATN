@@ -285,3 +285,54 @@
 
 /* Align Admin Orders with static admin background and avoid expensive glass blur */
 .admin-order-header{background:rgba(7,17,35,.70);border:1px solid rgba(255,255,255,.22);box-shadow:0 16px 36px rgba(8,17,31,.16)}.admin-order-result{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.18);backdrop-filter:none;-webkit-backdrop-filter:none}.admin-order-stats .admin-order-stat,.admin-order-panel{background:rgba(255,255,255,.90);border:1px solid rgba(255,255,255,.55);box-shadow:0 14px 36px rgba(15,23,42,.12);backdrop-filter:none;-webkit-backdrop-filter:none}.admin-order-filters{background:rgba(248,250,252,.82);border-bottom:1px solid rgba(148,163,184,.22)}.admin-orders-table thead th{background:rgba(226,232,240,.94)!important;backdrop-filter:none;-webkit-backdrop-filter:none}.admin-orders-table tbody tr{transition:transform .16s ease,background-color .16s ease,box-shadow .16s ease}
+
+/* Fluent compact orders overrides. */
+.admin-order-header { margin-bottom: 14px; }
+.admin-order-stats { gap: 12px; margin-bottom: 14px; }
+.admin-order-stat {
+    min-height: 78px;
+    padding: 12px 14px;
+    border-radius: var(--admin-radius-md, 16px);
+    background: rgba(255,255,255,.86);
+    border-color: var(--admin-card-border, rgba(255,255,255,.54));
+}
+.admin-order-stat strong { font-size: 1.3rem; }
+.admin-order-panel { border-radius: var(--admin-radius-lg, 22px); background: rgba(255,255,255,.87); }
+.admin-order-filters {
+    display: grid;
+    grid-template-columns: minmax(260px, 1.6fr) minmax(150px, .8fr) minmax(160px, .9fr) minmax(128px, .7fr) minmax(128px, .7fr) auto;
+    gap: 10px;
+    padding: 12px 14px;
+    align-items: end;
+}
+.admin-order-filters .form-control,
+.admin-order-filters .form-select,
+.admin-order-filters .input-group-text { min-height: 36px; }
+.admin-order-filter-actions { display: flex; gap: 8px; white-space: nowrap; }
+.admin-orders-table-wrap { padding: 6px 10px 12px; }
+.admin-orders-table { min-width: 1180px; table-layout: fixed; border-collapse: separate; border-spacing: 0 7px; }
+.admin-orders-table thead th { padding: 9px 8px; white-space: nowrap; }
+.admin-orders-table tbody td { padding: 8px; }
+.admin-orders-table th:nth-child(1) { width: 12%; }
+.admin-orders-table th:nth-child(2) { width: 13%; }
+.admin-orders-table th:nth-child(3) { width: 24%; }
+.admin-orders-table th:nth-child(4) { width: 10%; }
+.admin-orders-table th:nth-child(5) { width: 13%; }
+.admin-orders-table th:nth-child(6) { width: 16%; }
+.admin-orders-table th:nth-child(7) { width: 12%; }
+.admin-order-product-mini { height: 42px; min-height: 42px; margin-bottom: 4px; }
+.admin-order-thumb-wrap { width: 40px; height: 40px; flex-basis: 40px; }
+.admin-order-more-products { margin-left: 48px; }
+.admin-order-update-form { align-items: center; gap: 6px; flex-wrap: nowrap; }
+.admin-order-update-form .form-select { max-width: 150px; min-height: 31px; }
+.admin-order-actions { width: auto; min-width: 176px; flex-direction: row; justify-content: flex-end; gap: 6px; }
+.admin-order-action-button { width: auto; min-width: 78px; }
+@media (max-width: 1500px) {
+    .admin-order-filters { grid-template-columns: minmax(260px, 1.5fr) repeat(2, minmax(145px, 1fr)) repeat(2, 128px); }
+    .admin-order-filter-actions { grid-column: 1 / -1; justify-content: flex-end; }
+}
+@media (max-width: 1100px) {
+    .admin-order-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .admin-order-search { grid-column: 1 / -1; }
+    .admin-orders-table { table-layout: auto; }
+}
