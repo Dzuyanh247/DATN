@@ -173,6 +173,13 @@ public class ApplicationDbContext : DbContext
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
+
+        modelBuilder.Entity<Article>(entity =>
+        {
+            entity.Property(x => x.IsPinned).HasDefaultValue(false);
+            entity.HasIndex(x => new { x.IsPublished, x.IsPinned, x.PinnedAt, x.CreatedAt });
+        });
+
         modelBuilder.Entity<SearchKeyword>(entity =>
         {
             entity.Property(x => x.Keyword).HasMaxLength(120).IsRequired();

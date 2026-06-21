@@ -1,24 +1,35 @@
 @model List<Article>
 @{
-    ViewData["Title"] = "Trang tin KKSHOP";
+    ViewData["Title"] = "Tin công nghệ KKSHOP";
     var selectedType = ViewBag.SelectedType as string;
-    var featured = Model.FirstOrDefault(a => a.IsFeatured) ?? Model.FirstOrDefault();
-    var articles = featured == null ? Model : Model.Where(a => a.Id != featured.Id).ToList();
-    var latest = ViewBag.LatestArticles as List<Article> ?? new List<Article>();
+    var pinnedArticles = Model.Where(a => a.IsPinned).OrderByDescending(a => a.PinnedAt ?? a.CreatedAt).ThenByDescending(a => a.CreatedAt).ToList();
+    var hotArticles = Model.Where(a => a.IsFeatured && !pinnedArticles.Any(p => p.Id == a.Id)).OrderByDescending(a => a.CreatedAt).Take(4).ToList();
+    var latestArticles = Model.Where(a => !pinnedArticles.Any(p => p.Id == a.Id) && !hotArticles.Any(h => h.Id == a.Id)).OrderByDescending(a => a.CreatedAt).ToList();
+    var heroArticle = pinnedArticles.FirstOrDefault() ?? hotArticles.FirstOrDefault() ?? Model.OrderByDescending(a => a.CreatedAt).FirstOrDefault();
+    var sidebarLatest = ViewBag.LatestArticles as List<Article> ?? new List<Article>();
     var categories = ViewBag.Categories as List<ArticleCategorySummary> ?? new List<ArticleCategorySummary>();
+    var canCreateArticle = User.IsInRole("Admin") || User.IsInRole("Manager") || User.IsInRole("Employee");
     string Label(string? type) => type != null && ArticleTypes.Labels.TryGetValue(type, out var label) ? label : (type ?? "Tin tức");
-    string Image(Article article) => string.IsNullOrWhiteSpace(article.CoverImageUrl) ? "https://placehold.co/900x520/002b36/14d9ff?text=KKSHOP+News" : article.CoverImageUrl!;
+    string Image(Article article) => string.IsNullOrWhiteSpace(article.CoverImageUrl) ? "https://placehold.co/900x520/061737/36d7ff?text=KKSHOP+TECH" : article.CoverImageUrl!;
+    string Excerpt(Article article, int max = 150)
+    {
+        var text = string.IsNullOrWhiteSpace(article.Excerpt) ? article.Content : article.Excerpt;
+        if (string.IsNullOrWhiteSpace(text)) return "Cập nhật xu hướng phần cứng, kinh nghiệm build PC và kiến thức công nghệ từ KKSHOP.";
+        return text.Length > max ? text[..max] + "..." : text;
+    }
+    bool IsNew(Article article) => article.CreatedAt >= DateTime.UtcNow.AddDays(-7);
 }
-<section class="kk-article-page">
-    <div class="kk-article-hero">
-        <div>
-            <span class="kk-kicker"><i class="bi bi-newspaper"></i> KKSHOP News</span>
-            <h1>Trang tin công nghệ</h1>
-            <p>Cập nhật tin công nghệ, tư vấn build PC, phần mềm hay và khuyến mãi mới nhất từ KKSHOP.</p>
+<section class="kk-article-page kk-tech-news-page">
+    <div class="kk-tech-hero">
+        <div class="kk-tech-hero__content">
+            <span class="kk-kicker"><i class="bi bi-cpu"></i> KKSHOP Tech Hub</span>
+            <h1>TIN CÔNG NGHỆ &amp; KIẾN THỨC PC</h1>
+            <p>Cập nhật tin phần cứng, kinh nghiệm build PC, thủ thuật tối ưu và các xu hướng gaming gear mới nhất theo phong cách KKSHOP.</p>
+            <div class="kk-tech-hero__chips"><span>CPU / GPU</span><span>Build PC</span><span>Gaming Gear</span><span>Khuyến mãi</span></div>
         </div>
-        @if (User.IsInRole("Admin") || User.IsInRole("Staff"))
+        @if (canCreateArticle)
         {
-            <a class="btn btn-light fw-bold" asp-controller="AdminArticles" asp-action="Create"><i class="bi bi-pencil-square"></i> Đăng bài</a>
+            <a class="btn kk-post-btn" asp-controller="AdminArticles" asp-action="Create"><i class="bi bi-pencil-square"></i> Đăng bài</a>
         }
     </div>
 
@@ -32,39 +43,53 @@
     }
     else
     {
-        <div class="row g-4">
-            <div class="col-lg-8">
-                @if (featured != null)
+        <div class="kk-news-layout">
+            <main>
+                @if (pinnedArticles.Any())
                 {
-                    <a class="kk-featured-article" asp-action="Detail" asp-route-slug="@featured.Slug">
-                        <img src="@Image(featured)" alt="@featured.Title" />
-                        <div class="kk-featured-content">
-                            <span class="badge rounded-pill text-bg-info">@Label(featured.Type)</span>
-                            <h2>@featured.Title</h2>
-                            <p>@(string.IsNullOrWhiteSpace(featured.Excerpt) ? (featured.Content.Length > 180 ? featured.Content[..180] + "..." : featured.Content) : featured.Excerpt)</p>
-                            <div class="kk-article-meta"><span><i class="bi bi-calendar3"></i> @featured.CreatedAt.ToString("dd/MM/yyyy")</span><span><i class="bi bi-eye"></i> @featured.ViewCount lượt xem</span></div>
+                    <section class="kk-news-section">
+                        <div class="kk-section-heading"><span><i class="bi bi-pin-angle-fill"></i> Bài ghim nổi bật</span></div>
+                        <div class="kk-pinned-grid">
+                            @foreach (var article in pinnedArticles.Take(3))
+                            {
+                                @await Html.PartialAsync("_ArticleCard", article, new Microsoft.AspNetCore.Mvc.ViewFeatures.ViewDataDictionary(ViewData) { { "CardClass", "kk-article-card--large" }, { "Badge", "Ghim" } })
+                            }
                         </div>
-                    </a>
+                    </section>
                 }
 
-                <h4 class="kk-block-title">Bài viết mới</h4>
-                <div class="kk-article-grid">
-                    @foreach (var a in articles)
-                    {
-                        <article class="kk-article-card">
-                            <img src="@Image(a)" alt="@a.Title" />
-                            <div class="kk-article-card-body">
-                                <span class="kk-chip">@Label(a.Type)</span>
-                                <h3>@a.Title</h3>
-                                <p>@(string.IsNullOrWhiteSpace(a.Excerpt) ? (a.Content.Length > 120 ? a.Content[..120] + "..." : a.Content) : a.Excerpt)</p>
-                                <div class="kk-article-meta"><span><i class="bi bi-calendar3"></i> @a.CreatedAt.ToString("dd/MM/yyyy")</span><span><i class="bi bi-eye"></i> @a.ViewCount</span></div>
-                                <a class="btn btn-sm btn-outline-primary rounded-pill" asp-action="Detail" asp-route-slug="@a.Slug">Xem chi tiết</a>
-                            </div>
-                        </article>
-                    }
-                </div>
-            </div>
-            <aside class="col-lg-4">
+                @if (hotArticles.Any())
+                {
+                    <section class="kk-news-section">
+                        <div class="kk-section-heading"><span><i class="bi bi-fire"></i> Tin nổi bật</span></div>
+                        <div class="kk-hot-grid">
+                            @foreach (var article in hotArticles)
+                            {
+                                @await Html.PartialAsync("_ArticleCard", article, new Microsoft.AspNetCore.Mvc.ViewFeatures.ViewDataDictionary(ViewData) { { "Badge", "Hot" } })
+                            }
+                        </div>
+                    </section>
+                }
+
+                <section class="kk-news-section">
+                    <div class="kk-section-heading"><span><i class="bi bi-clock-history"></i> Bài viết mới nhất</span></div>
+                    <div class="kk-article-grid kk-latest-grid">
+                        @foreach (var article in latestArticles)
+                        {
+                            @await Html.PartialAsync("_ArticleCard", article, new Microsoft.AspNetCore.Mvc.ViewFeatures.ViewDataDictionary(ViewData) { { "Badge", IsNew(article) ? "Mới" : "" } })
+                        }
+                    </div>
+                </section>
+            </main>
+            <aside class="kk-news-sidebar">
+                @if (heroArticle != null)
+                {
+                    <a class="kk-editor-pick" asp-action="Detail" asp-route-slug="@heroArticle.Slug">
+                        <img src="@Image(heroArticle)" alt="@heroArticle.Title" />
+                        <span>@(heroArticle.IsPinned ? "Bài ghim đáng chú ý" : "Đọc nhiều trên KKSHOP")</span>
+                        <strong>@heroArticle.Title</strong>
+                    </a>
+                }
                 <div class="kk-sidebar-box">
                     <h5>Chuyên mục</h5>
                     <a class="kk-side-link @(string.IsNullOrWhiteSpace(selectedType) ? "active" : "")" asp-action="Index">Tất cả bài viết</a>
@@ -73,11 +98,11 @@
                         <a class="kk-side-link @(selectedType == c.Type ? "active" : "")" asp-action="Index" asp-route-type="@c.Type"><span>@Label(c.Type)</span><small>@c.Count</small></a>
                     }
                 </div>
-                <div class="kk-sidebar-box mt-3">
+                <div class="kk-sidebar-box">
                     <h5>Tin mới nhất</h5>
-                    @foreach (var item in latest)
+                    @foreach (var item in sidebarLatest)
                     {
-                        <a class="kk-latest-link" asp-action="Detail" asp-route-slug="@item.Slug"><strong>@item.Title</strong><span><i class="bi bi-eye"></i> @item.ViewCount</span></a>
+                        <a class="kk-latest-link" asp-action="Detail" asp-route-slug="@item.Slug"><strong>@item.Title</strong><span><i class="bi bi-calendar3"></i> @item.CreatedAt.ToString("dd/MM/yyyy") · <i class="bi bi-eye"></i> @item.ViewCount</span></a>
                     }
                 </div>
             </aside>

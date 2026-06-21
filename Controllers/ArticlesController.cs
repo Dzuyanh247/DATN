@@ -39,7 +39,9 @@ public class ArticlesController : Controller
             .ToListAsync();
 
         var articles = await query
-            .OrderByDescending(a => a.IsFeatured)
+            .OrderByDescending(a => a.IsPinned)
+            .ThenByDescending(a => a.PinnedAt ?? a.CreatedAt)
+            .ThenByDescending(a => a.IsFeatured)
             .ThenByDescending(a => a.CreatedAt)
             .ToListAsync();
 

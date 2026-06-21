@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Datn.PcStore.Controllers;
 
-[Authorize(Roles = "Admin,Staff")]
+[Authorize(Roles = "Admin,Manager,Employee")]
 public class AdminArticlesController : Controller
 {
     private const long MaxUploadBytes = 3 * 1024 * 1024;
@@ -64,6 +64,7 @@ public class AdminArticlesController : Controller
         article.CoverImageUrl = model.CoverImageUrl;
         article.IsPublished = model.IsPublished;
         article.IsFeatured = model.IsFeatured;
+        UpdatePinnedState(article, model.IsPinned);
 
         await PrepareArticleAsync(article, coverImageFile, oldImage);
         if (!ModelState.IsValid) return View(article);
@@ -93,6 +94,7 @@ public class AdminArticlesController : Controller
         article.Excerpt = article.Excerpt?.Trim();
         article.Content = article.Content?.Trim() ?? string.Empty;
         article.CoverImageUrl = article.CoverImageUrl?.Trim();
+        UpdatePinnedState(article, article.IsPinned);
 
         if (string.IsNullOrWhiteSpace(article.Title)) ModelState.AddModelError(nameof(article.Title), "Vui lòng nhập tiêu đề bài viết.");
         if (string.IsNullOrWhiteSpace(article.Content)) ModelState.AddModelError(nameof(article.Content), "Vui lòng nhập nội dung bài viết.");
@@ -123,6 +125,24 @@ public class AdminArticlesController : Controller
         {
             article.CoverImageUrl = oldImage;
         }
+    }
+
+    private static void UpdatePinnedState(Article article, bool isPinned)
+    {
+        if (isPinned && !article.IsPinned)
+        {
+            article.PinnedAt = DateTime.UtcNow;
+        }
+        else if (!isPinned)
+        {
+            article.PinnedAt = null;
+        }
+        else if (isPinned && article.PinnedAt == null)
+        {
+            article.PinnedAt = DateTime.UtcNow;
+        }
+
+        article.IsPinned = isPinned;
     }
 
     private static string ToSlug(string value)

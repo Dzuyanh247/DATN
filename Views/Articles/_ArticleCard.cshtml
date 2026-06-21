@@ -1,0 +1,43 @@
+@model Article
+@{
+    var cardClass = ViewData["CardClass"] as string ?? string.Empty;
+    var badge = ViewData["Badge"] as string ?? string.Empty;
+    string Label(string? type) => type != null && ArticleTypes.Labels.TryGetValue(type, out var label) ? label : (type ?? "Tin tức");
+    string Image(Article article) => string.IsNullOrWhiteSpace(article.CoverImageUrl) ? "https://placehold.co/900x520/061737/36d7ff?text=KKSHOP+TECH" : article.CoverImageUrl!;
+    string Excerpt(Article article)
+    {
+        var text = string.IsNullOrWhiteSpace(article.Excerpt) ? article.Content : article.Excerpt;
+        if (string.IsNullOrWhiteSpace(text)) return "Cập nhật xu hướng phần cứng, kinh nghiệm build PC và kiến thức công nghệ từ KKSHOP.";
+        return text.Length > 135 ? text[..135] + "..." : text;
+    }
+    var author = "KKSHOP Team";
+}
+<article class="kk-article-card @cardClass">
+    <a class="kk-article-card__image" asp-action="Detail" asp-route-slug="@Model.Slug">
+        <img src="@Image(Model)" alt="@Model.Title" />
+        @if (Model.IsPinned)
+        {
+            <span class="kk-pin-icon" title="Bài ghim"><i class="bi bi-pin-angle-fill"></i></span>
+        }
+        <span class="kk-chip">@Label(Model.Type)</span>
+    </a>
+    <div class="kk-article-card-body">
+        <div class="kk-card-badges">
+            @if (!string.IsNullOrWhiteSpace(badge))
+            {
+                <span class="kk-status-badge kk-status-badge--@badge.ToLowerInvariant()">@badge</span>
+            }
+            @if (Model.IsPinned && !string.Equals(badge, "Ghim", StringComparison.OrdinalIgnoreCase))
+            {
+                <span class="kk-status-badge kk-status-badge--ghim">Ghim</span>
+            }
+        </div>
+        <h3><a asp-action="Detail" asp-route-slug="@Model.Slug">@Model.Title</a></h3>
+        <p>@Excerpt(Model)</p>
+        <div class="kk-article-meta">
+            <span><i class="bi bi-person-circle"></i> @author</span>
+            <span><i class="bi bi-calendar3"></i> @Model.CreatedAt.ToString("dd/MM/yyyy")</span>
+            <span><i class="bi bi-eye"></i> @Model.ViewCount</span>
+        </div>
+    </div>
+</article>
