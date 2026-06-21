@@ -87,7 +87,7 @@ public class SupportChatController : Controller
         if (!IsQuickActionLabel(request.Message) && !conversation.NeedsStaff)
         {
             var aiResult = await _aiChat.AskAsync(request.Message, conversation.Id.ToString(), HttpContext.Connection.RemoteIpAddress?.ToString());
-            var aiMessage = AddAiMessage(conversation, aiResult.Reply, aiResult.SuggestedProducts);
+            var aiMessage = AddAiMessage(conversation, aiResult.Reply, aiResult.SuggestedProducts, aiResult.AttachProductCards, request.RequestId ?? aiResult.RequestId);
             await _db.SaveChangesAsync();
             await NotifyConversation(conversation.Id, MessagePayload(aiMessage));
         }
@@ -144,7 +144,7 @@ public class SupportChatController : Controller
         if (!conversation.NeedsStaff)
         {
             var aiResult = await _aiChat.AskAsync(request.Message, conversation.Id.ToString(), HttpContext.Connection.RemoteIpAddress?.ToString(), HttpContext.RequestAborted);
-            var aiMessage = AddAiMessage(conversation, aiResult.Reply, aiResult.SuggestedProducts);
+            var aiMessage = AddAiMessage(conversation, aiResult.Reply, aiResult.SuggestedProducts, aiResult.AttachProductCards, request.RequestId ?? aiResult.RequestId);
             await _db.SaveChangesAsync();
             await NotifyConversation(conversation.Id, MessagePayload(aiMessage));
             return Ok(Api(true, "Đã gửi tin nhắn.", new { customerMessage = payload, aiMessage = MessagePayload(aiMessage) }));
@@ -188,16 +188,16 @@ public class SupportChatController : Controller
 
 
     private static bool IsQuickActionLabel(string text) => SupportChatDefaults.QuickQuestions.Any(x => string.Equals((string?)x.GetType().GetProperty("label")?.GetValue(x), text, StringComparison.OrdinalIgnoreCase));
-    private ChatMessage AddAiMessage(ChatConversation conversation, string reply, IReadOnlyList<AiProductContext> products)
+    private ChatMessage AddAiMessage(ChatConversation conversation, string reply, IReadOnlyList<AiProductContext> products, bool attachProductCards, string? requestId)
     {
-        var cards = products.Take(3).Select(p => new
+        var cards = attachProductCards ? products.Take(3).Select(p => (object)new
         {
             type = "product",
             title = p.Name,
             subtitle = $"{p.Price:N0} đ • {p.StockStatus}",
             badge = p.ProductTypeLabel,
             actions = new[] { new { label = "Xem chi tiết", url = p.Link } }
-        }).ToList();
+        }).ToList() : [];
         var actions = Array.Empty<object>();
         var message = new ChatMessage
         {
@@ -208,7 +208,7 @@ public class SupportChatController : Controller
             IsSystem = true,
             IsRead = true,
             ReadAt = DateTime.UtcNow,
-            MetadataJson = JsonSerializer.Serialize(new { type = "ai", cards, messageActions = actions, quickReplies = Array.Empty<object>() })
+            MetadataJson = JsonSerializer.Serialize(new { type = "ai", requestId, cards, messageActions = actions, quickReplies = Array.Empty<object>() })
         };
         _db.ChatMessages.Add(message);
         conversation.LastMessageAt = DateTime.UtcNow;

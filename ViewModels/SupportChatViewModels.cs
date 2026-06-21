@@ -9,12 +9,14 @@ public class CreateChatConversationRequest
     [EmailAddress, MaxLength(120)] public string? Email { get; set; }
     [MaxLength(20)] public string? Phone { get; set; }
     [Required, StringLength(1000, MinimumLength = 1)] public string Message { get; set; } = string.Empty;
+    [StringLength(80)] public string? RequestId { get; set; }
 }
 
 public class SendChatMessageRequest
 {
     [Required, StringLength(64)] public string AccessToken { get; set; } = string.Empty;
     [Required, StringLength(1000, MinimumLength = 1)] public string Message { get; set; } = string.Empty;
+    [StringLength(80)] public string? RequestId { get; set; }
 }
 
 public class AdminSendChatMessageRequest
