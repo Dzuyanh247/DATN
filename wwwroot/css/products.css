@@ -73,6 +73,8 @@
 .quantity-btn:hover{background:#fee2e2;color:var(--detail-red)}
 .stock-note{margin-left:auto;color:#6b7280;font-size:.7rem}
 .detail-action-row{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:8px}
+.detail-action-form{margin:0;min-width:0}
+.detail-action-form .btn{width:100%}
 .detail-action-row .btn{display:flex;min-height:46px;align-items:center;justify-content:center;gap:8px;border-radius:8px;font-size:.8rem;font-weight:900;transition:.18s ease}
 .detail-action-row .btn:hover:not(:disabled){transform:translateY(-1px)}
 .product-buy-now{border:1px solid var(--detail-red);background:linear-gradient(90deg,#e81735,#ef233c);color:#fff;box-shadow:0 4px 10px rgba(239,35,60,.17)}

@@ -55,13 +55,14 @@ public class CartController : Controller
 
     [HttpPost("/Cart/BuyNow")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> BuyNow([FromForm] int productId, [FromForm] int quantity = 1)
+    public async Task<IActionResult> BuyNow([FromForm] BundleCartRequest request)
     {
-        var result = await _cartService.SetBuyNowCartAsync(GetUserId(), productId, quantity);
+        var items = BuildBundleItems(request);
+        var result = await _cartService.SetBuyNowCartAsync(GetUserId(), items);
         if (!result.Ok)
         {
             TempData["ErrorMessage"] = result.Error ?? "Không thể mua sản phẩm này lúc này.";
-            return RedirectToAction("Detail", "Products", new { id = productId });
+            return RedirectToAction("Detail", "Products", new { id = request.ProductId });
         }
 
         return Redirect("/Checkout?mode=buynow");
@@ -72,8 +73,7 @@ public class CartController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AddBundle([FromForm] BundleCartRequest request)
     {
-        var items = new List<(int ProductId, int Quantity)> { (request.ProductId, Math.Max(1, request.Quantity)) };
-        items.AddRange(request.AccessoryProductIds.Where(id => id > 0).Distinct().Select(id => (id, Math.Max(1, request.Quantity))));
+        var items = BuildBundleItems(request);
 
         foreach (var item in items)
         {
@@ -100,8 +100,7 @@ public class CartController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> BuyBundle([FromForm] BundleCartRequest request)
     {
-        var items = new List<(int ProductId, int Quantity)> { (request.ProductId, Math.Max(1, request.Quantity)) };
-        items.AddRange(request.AccessoryProductIds.Where(id => id > 0).Distinct().Select(id => (id, Math.Max(1, request.Quantity))));
+        var items = BuildBundleItems(request);
         var result = await _cartService.SetBuyNowCartAsync(GetUserId(), items);
         if (!result.Ok)
         {
@@ -109,6 +108,14 @@ public class CartController : Controller
             return RedirectToAction("Detail", "Products", new { id = request.ProductId });
         }
         return Redirect("/Checkout?mode=buynow");
+    }
+
+    private static List<(int ProductId, int Quantity)> BuildBundleItems(BundleCartRequest request)
+    {
+        var quantity = Math.Max(1, request.Quantity);
+        var items = new List<(int ProductId, int Quantity)> { (request.ProductId, quantity) };
+        items.AddRange(request.AccessoryProductIds.Where(id => id > 0).Distinct().Select(id => (id, quantity)));
+        return items;
     }
 
     [HttpPost]

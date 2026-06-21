@@ -190,27 +190,35 @@
                         </ul>
                     </div>
 
-                    <form method="post" asp-controller="Cart" asp-action="AddBundle" class="purchase-form" id="purchase-form">
-                        <input type="hidden" name="productId" value="@product.Id" />
+                    <div class="purchase-form" id="purchase-form">
                         <div class="purchase-quantity">
                             <label for="product-quantity">Số lượng</label>
                             <div class="quantity-stepper">
                                 <button type="button" class="quantity-btn" data-quantity-action="decrease" aria-label="Giảm số lượng">−</button>
-                                <input id="product-quantity" type="number" name="quantity" value="1" min="1" max="@(Math.Max(1, product.StockQuantity))" @(inStock ? string.Empty : "disabled") />
+                                <input id="product-quantity" type="number" value="1" min="1" max="@(Math.Max(1, product.StockQuantity))" @(inStock ? string.Empty : "disabled") />
                                 <button type="button" class="quantity-btn" data-quantity-action="increase" aria-label="Tăng số lượng">+</button>
                             </div>
                             <span class="stock-note">@(inStock ? $"Sẵn có {product.StockQuantity} sản phẩm" : "Sản phẩm đang tạm hết hàng")</span>
                         </div>
-                        <div id="selected-accessory-inputs"></div>
                         <div class="detail-action-row">
-                            <button class="btn product-buy-now" type="submit" asp-controller="Cart" asp-action="BuyBundle" formmethod="post" disabled="@(!inStock)">
-                                <i class="bi bi-lightning-charge-fill" aria-hidden="true"></i><span><strong>ĐẶT HÀNG</strong><small>Giao hàng tận nơi</small></span>
-                            </button>
-                            <button class="btn product-add-cart" type="submit" asp-controller="Cart" asp-action="AddBundle" formmethod="post" disabled="@(!inStock)">
-                                <i class="bi bi-cart-plus" aria-hidden="true"></i><span>THÊM VÀO GIỎ</span>
-                            </button>
+                            <form method="post" asp-controller="Cart" asp-action="BuyNow" class="detail-action-form buy-now-form" id="buy-now-form">
+                                <input type="hidden" name="productId" value="@product.Id" />
+                                <input type="hidden" name="quantity" value="1" data-shared-quantity />
+                                <div id="buy-now-accessory-inputs"></div>
+                                <button id="buy-now-btn" class="btn product-buy-now buy-now-btn" type="submit" disabled="@(!inStock)">
+                                    <i class="bi bi-lightning-charge-fill" aria-hidden="true"></i><span><strong>ĐẶT HÀNG</strong><small>Giao hàng tận nơi</small></span>
+                                </button>
+                            </form>
+                            <form method="post" asp-controller="Cart" asp-action="AddBundle" class="detail-action-form add-to-cart-form" id="add-to-cart-form">
+                                <input type="hidden" name="productId" value="@product.Id" />
+                                <input type="hidden" name="quantity" value="1" data-shared-quantity />
+                                <div id="add-to-cart-accessory-inputs"></div>
+                                <button id="add-to-cart-btn" class="btn product-add-cart add-to-cart-btn" type="submit" disabled="@(!inStock)">
+                                    <i class="bi bi-cart-plus" aria-hidden="true"></i><span>THÊM VÀO GIỎ</span>
+                                </button>
+                            </form>
                         </div>
-                    </form>
+                    </div>
 
 
                     <div class="product-compare-action"><partial name="_CompareButton" model="product" /></div>
@@ -329,6 +337,7 @@
                     const change = this.dataset.quantityAction === 'increase' ? 1 : -1;
                     quantity.value = Math.min(max, Math.max(min, (Number(quantity.value) || min) + change));
                     quantity.dispatchEvent(new Event('change', { bubbles: true }));
+                    syncQuantityInputs();
                 });
             });
 
@@ -337,7 +346,8 @@
             const grid = document.getElementById('accessory-grid');
             const loading = document.getElementById('accessory-loading');
             const empty = document.getElementById('accessory-empty');
-            const selectedInputs = document.getElementById('selected-accessory-inputs');
+            const accessoryInputContainers = [document.getElementById('buy-now-accessory-inputs'), document.getElementById('add-to-cart-accessory-inputs')].filter(Boolean);
+            const sharedQuantityInputs = page.querySelectorAll('[data-shared-quantity]');
             const bundleSection = page.querySelector('[data-accessory-picker]');
             const bundleTotal = document.getElementById('bundle-total');
             const pcPrice = Number(bundleSection?.dataset.pcPrice || 0);
@@ -413,10 +423,20 @@
                 activeSlot.querySelector('[data-remove-accessory]').classList.remove('d-none');
                 refreshAccessoryInputs(); updateBundleTotal(); closeAccessory();
             }
+            function syncQuantityInputs() {
+                const value = quantity ? Math.max(Number(quantity.min) || 1, Number(quantity.value) || 1) : 1;
+                sharedQuantityInputs.forEach(input => { input.value = value; });
+            }
             function refreshAccessoryInputs() {
-                selectedInputs.innerHTML = '';
+                accessoryInputContainers.forEach(container => { container.innerHTML = ''; });
                 selected.forEach(product => {
-                    const input = document.createElement('input'); input.type = 'hidden'; input.name = 'AccessoryProductIds'; input.value = product.id; selectedInputs.appendChild(input);
+                    accessoryInputContainers.forEach(container => {
+                        const input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = 'AccessoryProductIds';
+                        input.value = product.id;
+                        container.appendChild(input);
+                    });
                 });
             }
             function updateBundleTotal() {
@@ -424,6 +444,11 @@
                 let total = pcPrice;
                 selected.forEach(product => { total += Number(product.price || 0); });
                 bundleTotal.textContent = currency.format(total) + ' đ';
+            }
+            if (quantity) {
+                quantity.addEventListener('change', syncQuantityInputs);
+                quantity.addEventListener('input', syncQuantityInputs);
+                syncQuantityInputs();
             }
             function escapeHtml(value) { return String(value || '').replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c])); }
             page.querySelectorAll('[data-open-accessory]').forEach(btn => btn.addEventListener('click', () => openAccessory(btn.closest('.accessory-slot'))));
