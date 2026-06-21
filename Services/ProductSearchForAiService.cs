@@ -125,7 +125,7 @@ public partial class ProductSearchForAiService : IProductSearchForAiService
             x.Id,
             string.IsNullOrWhiteSpace(x.Name) ? "Sản phẩm không xác định" : x.Name,
             x.Price,
-            TrimText(string.IsNullOrWhiteSpace(x.Specifications) ? x.ShortDescription ?? string.Empty : x.Specifications!, 450),
+            TrimText(string.IsNullOrWhiteSpace(x.Specifications) ? x.ShortDescription ?? string.Empty : x.Specifications, 450),
             x.StockQuantity > 0 ? $"Còn hàng ({x.StockQuantity})" : "Tạm hết hàng",
             $"/Products/Detail/{x.Id}",
             string.IsNullOrWhiteSpace(x.Category) ? "Chưa phân loại" : x.Category,
@@ -164,7 +164,7 @@ public partial class ProductSearchForAiService : IProductSearchForAiService
 
     private static AiProductContext ToContext(Product x, string scope) => new(
         x.Id, string.IsNullOrWhiteSpace(x.Name) ? "Sản phẩm không xác định" : x.Name, x.DiscountPrice ?? x.SalePrice ?? x.Price,
-        TrimText(string.IsNullOrWhiteSpace(x.Specifications) ? x.ShortDescription ?? string.Empty : x.Specifications!, 450),
+        TrimText(string.IsNullOrWhiteSpace(x.Specifications) ? x.ShortDescription ?? string.Empty : x.Specifications, 450),
         x.StockQuantity > 0 ? $"Còn hàng ({x.StockQuantity})" : "Tạm hết hàng",
         $"/Products/Detail/{x.Id}", x.Category?.Name ?? "Chưa phân loại", x.StockQuantity, scope,
         TrimText(x.Description ?? string.Empty, 300), !string.IsNullOrWhiteSpace(x.WarrantyDuration) ? x.WarrantyDuration : $"{x.WarrantyMonths} tháng", LabelForScope(scope, x));

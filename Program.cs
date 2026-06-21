@@ -362,7 +362,7 @@ BEGIN
         END
     END
 END";
-        await db.Database.ExecuteSqlRawAsync(auditSql, cancellationToken);
+        await db.Database.ExecuteSqlRawAsync(auditSql);
     }
     await db.Database.ExecuteSqlRawAsync(@"IF OBJECT_ID('ShippingConfigs', 'U') IS NULL
 BEGIN
