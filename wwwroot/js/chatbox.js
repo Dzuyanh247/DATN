@@ -436,14 +436,16 @@
             errorElement.textContent = 'Vui lòng nhập tên và ít nhất email hoặc số điện thoại.'; return;
         }
         button.disabled = true;
+        const previousFirstMessage = firstMessageInput.value;
+        firstMessageInput.value = '';
+        firstMessageInput.style.height = '';
+        updateStartButton();
         try {
             const data = await jsonFetch(createUrl, { method: 'POST', body: JSON.stringify(payload) });
             saveSession({ conversationId: data.conversationId, accessToken: data.accessToken });
             messagesElement.replaceChildren();
             (data.messages || []).forEach(addMessage);
             showConversation(data.status);
-            firstMessageInput.value = '';
-            updateStartButton();
             await connectRealtime();
             if (pendingStartAction) {
                 const action = pendingStartAction; pendingStartAction = null;
@@ -452,6 +454,8 @@
         } catch (error) {
             console.error('[SupportChat] Could not start conversation', error);
             errorElement.textContent = error.message;
+            firstMessageInput.value = previousFirstMessage;
+            firstMessageInput.dispatchEvent(new Event('input', { bubbles: true }));
         }
         finally { setBotLoading(false); button.disabled = false; }
     });
@@ -461,7 +465,10 @@
         if (!text || !session) return;
         sendErrorElement.textContent = '';
         const button = messageForm.querySelector('button');
+        if (button.disabled) return;
         button.disabled = true;
+        messageInput.value = '';
+        messageInput.style.height = '';
         const localId = `local-${Date.now()}`;
         addMessage({ id: localId, senderType: 'Customer', senderName: 'Bạn', message: text, createdAt: new Date().toISOString(), forceScroll: true });
         setBotLoading(true);
@@ -474,8 +481,6 @@
             replaceLocalMessage(localId, data.customerMessage || data);
             if (data.automation) renderAutomation(data.automation);
             if (data.aiMessage) { data.aiMessage.forceScroll = true; addMessage(data.aiMessage); }
-            messageInput.value = '';
-            messageInput.style.height = '';
             messageInput.focus();
             scrollToLatest(true);
         } catch (error) {
