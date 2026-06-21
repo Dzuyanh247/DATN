@@ -18,12 +18,19 @@ public class ArticlesController : Controller
         }
 
         ViewBag.SelectedType = type;
-        ViewBag.Categories = await _db.Articles
+        var categoryRaw = await _db.Articles
             .Where(a => a.IsPublished)
             .GroupBy(a => a.Type)
-            .Select(g => new ArticleCategorySummary(g.Key, g.Count()))
+            .Select(g => new
+            {
+                Type = g.Key,
+                Count = g.Count()
+            })
             .OrderBy(x => x.Type)
             .ToListAsync();
+        ViewBag.Categories = categoryRaw
+            .Select(x => new ArticleCategorySummary(x.Type, x.Count))
+            .ToList();
         ViewBag.LatestArticles = await _db.Articles
             .Where(a => a.IsPublished)
             .AsNoTracking()
