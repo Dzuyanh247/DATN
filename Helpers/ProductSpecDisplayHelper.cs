@@ -36,7 +36,7 @@ public static class ProductSpecDisplayHelper
         var specCandidates = TryParseComponentSpecs(product.TechnicalSpecifications)
             .Select(x => x.Description)
             .Where(x => !string.IsNullOrWhiteSpace(x))
-            .Select(x => x.Trim())
+            .Select(x => x?.Trim() ?? string.Empty)
             .ToList();
 
         if (!specCandidates.Any())

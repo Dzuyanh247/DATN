@@ -42,13 +42,13 @@ public class SearchSuggestionService : ISearchSuggestionService
 
         var brandNames = await _db.Products.AsNoTracking()
             .Where(product => product.IsActive && product.Brand != null && product.Brand != string.Empty && product.Brand != "N/A")
-            .Select(product => product.Brand!)
+            .Select(product => product.Brand ?? string.Empty)
             .Distinct()
             .OrderBy(brand => brand)
             .Take(30)
             .ToListAsync(cancellationToken);
 
-        return new SearchSuggestionData(hotKeywords, productNames.Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x.Trim()).ToList(), categoryNames, brandNames);
+        return new SearchSuggestionData(hotKeywords, productNames.Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x?.Trim() ?? string.Empty).ToList(), categoryNames.Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x?.Trim() ?? string.Empty).ToList(), brandNames.Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x.Trim()).ToList());
     }
 
     private async Task<IReadOnlyList<string>> GetHotKeywordsAsync(CancellationToken cancellationToken)

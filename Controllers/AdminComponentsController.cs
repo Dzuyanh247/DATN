@@ -25,12 +25,12 @@ public class AdminComponentsController : Controller
     {
         var query = _db.Products.Include(p => p.Category).Include(p => p.ProductImages)
             .Where(p => p.ProductType == ProductKinds.Component).AsQueryable();
-        if (!string.IsNullOrWhiteSpace(keyword)) query = query.Where(p => p.Name.Contains(keyword.Trim()));
+        if (!string.IsNullOrWhiteSpace(keyword)) query = query.Where(p => (p.Name ?? string.Empty).Contains(keyword.Trim()));
         if (!string.IsNullOrWhiteSpace(componentType))
         {
             var normalizedComponentType = ComponentTypes.Normalize(componentType);
             var componentTypeAliases = ComponentTypes.GetAliases(normalizedComponentType);
-            query = query.Where(p => p.ComponentType != null && componentTypeAliases.Contains(p.ComponentType));
+            query = query.Where(p => p.ComponentType != null && componentTypeAliases.Contains(p.ComponentType ?? string.Empty));
             componentType = normalizedComponentType;
         }
         if (!string.IsNullOrWhiteSpace(brand)) query = query.Where(p => p.Brand == brand);
@@ -85,7 +85,7 @@ public class AdminComponentsController : Controller
             IsActive = vm.IsActive,
             IsInStock = vm.StockQuantity.GetValueOrDefault() > 0,
             Slug = BuildSlug(vm.Name),
-            ThumbnailImage = vm.ThumbnailImageUrl!.Trim()
+            ThumbnailImage = ResolveThumbnailUrl(vm)
         };
         if (!await ValidateUniqueProductFieldsAsync(vm, product.Slug, product.ProductCode, "tạo")) return View(vm);
         AddProductImagesFromUrls(product, vm.ProductImageUrlsText);
@@ -144,17 +144,17 @@ public class AdminComponentsController : Controller
     {
         var vm = new AdminComponentUpsertVm(); await AssignComponentCategoryAsync(vm); vm.BrandOptions = await GetBrandOptionsAsync(vm.ComponentType); if (!id.HasValue) return vm;
         var p = await _db.Products.Include(x => x.ProductImages).FirstOrDefaultAsync(x => x.Id == id.Value && x.ProductType == ProductKinds.Component); if (p == null) return null;
-        vm.Id = p.Id; vm.Name = p.Name; vm.ProductCode = p.ProductCode; vm.Brand = p.Brand; vm.ComponentType = ComponentTypes.Normalize(p.ComponentType); vm.BrandOptions = await GetBrandOptionsAsync(vm.ComponentType, vm.Brand); vm.Price = p.Price; vm.DiscountPrice = p.DiscountPrice ?? p.SalePrice; vm.StockQuantity = p.StockQuantity; vm.WarrantyMonths = p.WarrantyMonths; vm.CategoryId = p.CategoryId; vm.Description = p.Description; vm.Specifications = p.Specifications; vm.SpecificationItems = ProductSpecificationKeyValueHelper.ParseStored(p.Specifications); vm.IsActive = p.IsActive; vm.ThumbnailImageUrl = p.ThumbnailImage;
+        vm.Id = p.Id; vm.Name = p.Name ?? string.Empty; vm.ProductCode = p.ProductCode; vm.Brand = p.Brand; vm.ComponentType = ComponentTypes.Normalize(p.ComponentType); vm.BrandOptions = await GetBrandOptionsAsync(vm.ComponentType, vm.Brand); vm.Price = p.Price; vm.DiscountPrice = p.DiscountPrice ?? p.SalePrice; vm.StockQuantity = p.StockQuantity; vm.WarrantyMonths = p.WarrantyMonths; vm.CategoryId = p.CategoryId; vm.Description = p.Description ?? string.Empty; vm.Specifications = p.Specifications ?? string.Empty; vm.SpecificationItems = ProductSpecificationKeyValueHelper.ParseStored(p.Specifications); vm.IsActive = p.IsActive; vm.ThumbnailImageUrl = p.ThumbnailImage ?? string.Empty;
         var imgs = p.ProductImages.OrderBy(x => x.SortOrder).ToList(); vm.ExistingImageOrder = imgs.Select(x => x.Id).ToList(); vm.ExistingImages = imgs.Select(x => new ProductImageItemVm{Id=x.Id, ImageUrl=x.ImageUrl, IsPrimary=x.IsPrimary, SortOrder=x.SortOrder}).ToList(); return vm;
     }
-    private async Task PopulateCategoriesAsync(AdminProductUpsertVm vm) => vm.Categories = await _db.Categories.OrderBy(x => x.Name).ToListAsync();
+    private async Task PopulateCategoriesAsync(AdminProductUpsertVm vm) => vm.Categories = await _db.Categories.OrderBy(x => x.Name ?? string.Empty).ToListAsync();
     private async Task AssignComponentCategoryAsync(AdminComponentUpsertVm vm)
     {
         await PopulateCategoriesAsync(vm);
         var category = await _db.Categories
-            .OrderByDescending(x => x.Name == "Linh kiện")
-            .ThenBy(x => x.Name)
-            .FirstOrDefaultAsync(x => x.Name == "Linh kiện" || x.Name.Contains("Linh kiện"));
+            .OrderByDescending(x => (x.Name ?? string.Empty) == "Linh kiện")
+            .ThenBy(x => x.Name ?? string.Empty)
+            .FirstOrDefaultAsync(x => (x.Name ?? string.Empty) == "Linh kiện" || (x.Name ?? string.Empty).Contains("Linh kiện"));
         if (category == null)
         {
             ModelState.AddModelError(nameof(vm.CategoryId), "Chưa có danh mục Linh kiện trong hệ thống. Vui lòng tạo danh mục Linh kiện trước khi thêm linh kiện.");
@@ -171,12 +171,12 @@ public class AdminComponentsController : Controller
         var productBrandsQuery = _db.Products.AsNoTracking()
             .Where(p => p.ProductType == ProductKinds.Component && p.Brand != null && p.Brand != "" && p.Brand != "N/A");
         if (!string.IsNullOrWhiteSpace(componentType))
-            productBrandsQuery = productBrandsQuery.Where(p => componentTypeAliases.Contains(p.ComponentType));
+            productBrandsQuery = productBrandsQuery.Where(p => componentTypeAliases.Contains(p.ComponentType ?? string.Empty));
 
-        var productBrands = await productBrandsQuery.Select(p => p.Brand!.Trim()).ToListAsync();
+        var productBrands = await productBrandsQuery.Select(p => (p.Brand ?? string.Empty).Trim()).Where(x => x != string.Empty).ToListAsync();
         var catalogBrands = await _db.ComponentBrands.AsNoTracking()
             .Where(x => componentTypeAliases.Contains(x.ComponentType))
-            .Select(x => x.Name.Trim())
+            .Select(x => (x.Name ?? string.Empty).Trim()).Where(x => x != string.Empty)
             .ToListAsync();
         var brands = productBrands.Concat(catalogBrands).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(x => x).ToList();
         if (!string.IsNullOrWhiteSpace(currentBrand) && !brands.Contains(currentBrand.Trim(), StringComparer.OrdinalIgnoreCase))
@@ -190,7 +190,7 @@ public class AdminComponentsController : Controller
         var name = vm.Name.Trim();
         var duplicate = await _db.Products.AsNoTracking()
             .Where(p => p.Id != vm.Id)
-            .Where(p => p.Name.ToLower() == name.ToLower() || p.Slug.ToLower() == slug.ToLower() || p.ProductCode.ToLower() == productCode.Trim().ToLower())
+            .Where(p => (p.Name ?? string.Empty).ToLower() == name.ToLower() || (p.Slug ?? string.Empty).ToLower() == slug.ToLower() || (p.ProductCode ?? string.Empty).ToLower() == productCode.Trim().ToLower())
             .Select(p => new { p.Name, p.Slug, p.ProductCode })
             .FirstOrDefaultAsync();
         if (duplicate == null) return true;
@@ -305,6 +305,7 @@ public class AdminComponentsController : Controller
         vm.SpecificationItems = ProductSpecificationKeyValueHelper.ParseStored(ProductSpecificationKeyValueHelper.Serialize(vm.SpecificationItems));
         vm.Specifications = ProductSpecificationKeyValueHelper.Serialize(vm.SpecificationItems);
     }
+    private static string ResolveThumbnailUrl(AdminComponentUpsertVm vm) => !string.IsNullOrWhiteSpace(vm.ThumbnailImageUrl) ? vm.ThumbnailImageUrl.Trim() : SplitImageUrls(vm.ProductImageUrlsText).FirstOrDefault() ?? string.Empty;
     private static List<string> SplitImageUrls(string? urlsText) => (urlsText ?? string.Empty).Split(new[] {'\r','\n',',',';'}, StringSplitOptions.RemoveEmptyEntries).Select(x => x.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
     private void AddProductImagesFromUrls(Product product, string? text) { var sort = product.ProductImages.Count == 0 ? 1 : product.ProductImages.Max(x => x.SortOrder) + 1; foreach (var url in SplitImageUrls(text)) product.ProductImages.Add(new ProductImage{ImageUrl=url, SortOrder=sort++}); }
     private static void ApplyExistingImageOrder(Product product, List<int> ids) { var sort=1; foreach(var id in ids){var img=product.ProductImages.FirstOrDefault(x=>x.Id==id); if(img!=null) img.SortOrder=sort++;} }

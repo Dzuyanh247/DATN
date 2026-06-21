@@ -157,5 +157,5 @@ public class CartController : Controller
     }
     private bool IsAjaxRequest()
         => Request.Headers.XRequestedWith == "XMLHttpRequest"
-           || Request.Headers.Accept.Any(x => x.Contains("application/json", StringComparison.OrdinalIgnoreCase));
+           || Request.Headers.Accept.Any(x => x != null && x.Contains("application/json", StringComparison.OrdinalIgnoreCase));
 }

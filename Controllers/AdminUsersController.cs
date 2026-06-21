@@ -27,7 +27,7 @@ public class AdminUsersController : Controller
         var query = _db.Users.Include(x => x.Role).AsQueryable();
         if (!string.IsNullOrWhiteSpace(keyword))
         {
-            query = query.Where(x => x.FullName.Contains(keyword) || x.Email.Contains(keyword) || x.Username.Contains(keyword));
+            query = query.Where(x => (x.FullName ?? string.Empty).Contains(keyword) || (x.Email ?? string.Empty).Contains(keyword) || (x.Username ?? string.Empty).Contains(keyword));
         }
 
         var vm = new AdminUserIndexVm
@@ -37,9 +37,9 @@ public class AdminUsersController : Controller
                 .Select(x => new AdminUserListItemVm
                 {
                     Id = x.Id,
-                    Username = x.Username,
-                    FullName = x.FullName,
-                    Email = x.Email,
+                    Username = x.Username ?? string.Empty,
+                    FullName = x.FullName ?? string.Empty,
+                    Email = x.Email ?? string.Empty,
                     Role = x.Role != null ? x.Role.Name : string.Empty,
                     IsActive = x.IsActive,
                     CreatedAt = x.CreatedAt
@@ -224,11 +224,11 @@ public class AdminUsersController : Controller
         }
 
         vm.Id = user.Id;
-        vm.Username = user.Username;
-        vm.FullName = user.FullName;
-        vm.Email = user.Email;
-        vm.Phone = user.Phone;
-        vm.Address = user.Address;
+        vm.Username = user.Username ?? string.Empty;
+        vm.FullName = user.FullName ?? string.Empty;
+        vm.Email = user.Email ?? string.Empty;
+        vm.Phone = user.Phone ?? string.Empty;
+        vm.Address = user.Address ?? string.Empty;
         vm.RoleId = user.RoleId;
         vm.IsActive = user.IsActive;
 
@@ -241,7 +241,7 @@ public class AdminUsersController : Controller
             .Select(x => new RoleOptionVm
             {
                 Id = x.Id,
-                Name = x.Name
+                Name = x.Name ?? string.Empty
             }).ToListAsync();
     }
 }

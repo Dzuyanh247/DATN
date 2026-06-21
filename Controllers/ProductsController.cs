@@ -564,7 +564,7 @@ public class ProductsController : Controller
         products
             .SelectMany(product => ProductSpecificationKeyValueHelper.ParseStored(product.Specifications)
                 .Where(spec => spec.IsFilterable && !string.IsNullOrWhiteSpace(spec.Name) && !string.IsNullOrWhiteSpace(spec.Value))
-                .Select(spec => new { product.Id, Name = spec.Name.Trim(), Value = spec.Value.Trim() }))
+                .Select(spec => new { product.Id, Name = spec.Name?.Trim() ?? string.Empty, Value = spec.Value?.Trim() ?? string.Empty }))
             .Where(spec => ProductFilterFacetHelper.IsRenderableFilterOption(spec.Name)
                 && ProductFilterFacetHelper.IsRenderableFilterOption(spec.Value)
                 && IsSpecAllowedForComponent(componentType, spec.Name))

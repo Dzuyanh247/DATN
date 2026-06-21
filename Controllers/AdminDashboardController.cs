@@ -68,7 +68,7 @@ public class AdminDashboardController : Controller
             }).ToList(),
             AttentionProducts = attentionProducts.Select(x => new AdminDashboardProductVm
             {
-                Id = x.Id, Name = x.Name, ImageUrl = x.ThumbnailImage, CategoryName = x.Category?.Name ?? "Chưa phân loại",
+                Id = x.Id, Name = x.Name ?? "Sản phẩm không xác định", ImageUrl = x.ThumbnailImage ?? "/images/no-image.png", CategoryName = x.Category?.Name ?? "Chưa phân loại",
                 Price = x.DiscountPrice ?? x.SalePrice ?? x.Price, StockQuantity = x.StockQuantity, IsActive = x.IsActive, UpdatedAt = x.UpdatedAt
             }).ToList(),
             RevenueLastSevenDays = Enumerable.Range(0, 7).Select(offset =>

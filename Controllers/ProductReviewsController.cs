@@ -31,10 +31,10 @@ public class ProductReviewsController : Controller
         {
             OrderId = orderId,
             ProductId = productId,
-            ProductName = detail.ProductName,
-            ProductImage = detail.ProductImage,
+            ProductName = detail.ProductName ?? "Sản phẩm không xác định",
+            ProductImage = detail.ProductImage ?? "/images/no-image.png",
             OrderCode = $"DH{detail.OrderId:D6}",
-            PurchaseDate = detail.Order!.CreatedAt
+            PurchaseDate = detail.Order?.CreatedAt ?? detail.CreatedAt
         });
     }
 

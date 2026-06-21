@@ -18,13 +18,13 @@ public class AdminReviewsController : Controller
     public async Task<IActionResult> Index(string? keyword, int? rating, ReviewStatus? status, int? productId, DateTime? fromDate, DateTime? toDate)
     {
         var query = _db.ProductReviews.Include(x => x.Product).Include(x => x.User).Include(x => x.Order).AsNoTracking().AsQueryable();
-        if (!string.IsNullOrWhiteSpace(keyword)) { keyword = keyword.Trim(); query = query.Where(x => x.Product!.Name.Contains(keyword) || x.User!.FullName.Contains(keyword) || x.Comment.Contains(keyword)); }
+        if (!string.IsNullOrWhiteSpace(keyword)) { keyword = keyword.Trim(); query = query.Where(x => (x.Product != null && (x.Product.Name ?? string.Empty).Contains(keyword)) || (x.User != null && (x.User.FullName ?? string.Empty).Contains(keyword)) || (x.Comment ?? string.Empty).Contains(keyword)); }
         if (rating.HasValue) query = query.Where(x => x.Rating == rating);
         if (status.HasValue) query = query.Where(x => x.Status == status);
         if (productId.HasValue) query = query.Where(x => x.ProductId == productId);
         if (fromDate.HasValue) query = query.Where(x => x.CreatedAt >= fromDate.Value);
         if (toDate.HasValue) query = query.Where(x => x.CreatedAt < toDate.Value.AddDays(1));
-        return View(new AdminReviewIndexVm { Reviews = await query.OrderByDescending(x => x.CreatedAt).ToListAsync(), Products = await _db.Products.OrderBy(x => x.Name).ToListAsync(), Keyword = keyword, Rating = rating, Status = status, ProductId = productId, FromDate = fromDate, ToDate = toDate });
+        return View(new AdminReviewIndexVm { Reviews = await query.OrderByDescending(x => x.CreatedAt).ToListAsync(), Products = await _db.Products.OrderBy(x => x.Name ?? string.Empty).ToListAsync(), Keyword = keyword, Rating = rating, Status = status, ProductId = productId, FromDate = fromDate, ToDate = toDate });
     }
 
     public async Task<IActionResult> Detail(int id)

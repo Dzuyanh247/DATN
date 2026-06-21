@@ -53,7 +53,7 @@ public class BuildPcController : Controller
         var normalizedBuildType = NormalizeType(type);
         var normalizedType = NormalizeBuildTypeToComponentType(normalizedBuildType);
         var products = await QueryProductsByType(normalizedType);
-        if (!string.IsNullOrWhiteSpace(keyword)) products = products.Where(x => x.Name.Contains(keyword)).ToList();
+        if (!string.IsNullOrWhiteSpace(keyword)) products = products.Where(x => (x.Name ?? string.Empty).Contains(keyword)).ToList();
         products = sort == "price_desc" ? products.OrderByDescending(x => x.Price).ToList() : products.OrderBy(x => x.Price).ToList();
 
         _logger.LogInformation("Build PC products for type {Type}: {Count} item(s)", normalizedType, products.Count);
@@ -61,8 +61,8 @@ public class BuildPcController : Controller
         var result = products.Select(p => new BuildProductOptionViewModel
         {
             Id = p.Id,
-            Name = p.Name,
-            ImageUrl = p.ThumbnailImage,
+            Name = p.Name ?? "Sản phẩm không xác định",
+            ImageUrl = p.ThumbnailImage ?? "/images/no-image.png",
             Price = p.DiscountPrice ?? p.SalePrice ?? p.Price,
             CategoryName = p.Category?.Name ?? string.Empty,
             StockQuantity = p.StockQuantity,
@@ -83,8 +83,8 @@ public class BuildPcController : Controller
         {
             ProductId = product.Id,
             Type = normalizedBuildType,
-            ProductName = product.Name,
-            ImageUrl = product.ThumbnailImage,
+            ProductName = product.Name ?? "Sản phẩm không xác định",
+            ImageUrl = product.ThumbnailImage ?? "/images/no-image.png",
             Price = product.DiscountPrice ?? product.SalePrice ?? product.Price,
             Quantity = 1
         };
@@ -148,7 +148,7 @@ public class BuildPcController : Controller
     {
         var products = await _db.Products
             .Include(x => x.Category)
-            .Where(x => x.IsActive && x.IsInStock && (x.ProductType == ProductKinds.Component || x.ProductType.Contains("Linh")))
+            .Where(x => x.IsActive && x.IsInStock && (x.ProductType == ProductKinds.Component || (x.ProductType ?? string.Empty).Contains("Linh")))
             .ToListAsync();
 
         return products
