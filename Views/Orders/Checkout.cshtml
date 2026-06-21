@@ -5,17 +5,19 @@
     var cart = ViewBag.Cart as CartViewVm;
     var hasCart = cart?.Items?.Any() == true;
     decimal subtotal = cart?.TotalAmount ?? 0;
+    var checkoutMode = ViewBag.CheckoutMode as string ?? string.Empty;
+    var isBuyNow = string.Equals(checkoutMode, "buynow", StringComparison.OrdinalIgnoreCase);
 }
 <link rel="stylesheet" href="~/css/cart.css" />
 
 <div class="checkout-page">
     <div class="checkout-container">
-        <div class="checkout-breadcrumb">Trang chủ &gt; <strong>Thông tin giỏ hàng</strong></div>
+        <div class="checkout-breadcrumb">Trang chủ &gt; <strong>@(isBuyNow ? "Thông tin mua ngay" : "Thông tin giỏ hàng")</strong></div>
 
         <section class="panel mb-3">
             <div class="panel-header d-flex justify-content-between align-items-center">
-                <h1 class="m-0">Giỏ hàng</h1>
-                @if (hasCart)
+                <h1 class="m-0">@(isBuyNow ? "Sản phẩm mua ngay" : "Giỏ hàng")</h1>
+                @if (hasCart && !isBuyNow)
                 {
                     <form method="post" asp-controller="Cart" asp-action="Clear">
                         @Html.AntiForgeryToken()
@@ -26,7 +28,7 @@
 
             @if (!hasCart)
             {
-                <div class="p-3">Giỏ hàng của bạn đang trống. <a asp-controller="Products" asp-action="Index">Quay lại mua hàng</a></div>
+                <div class="p-3">@(isBuyNow ? "Chưa có sản phẩm mua ngay." : "Giỏ hàng của bạn đang trống.") <a asp-controller="Products" asp-action="Index">Quay lại mua hàng</a></div>
             }
             else
             {
@@ -43,24 +45,34 @@
                         </div>
                         <div class="price-col">@i.UnitPrice.ToString("N0") VNĐ</div>
                         <div class="qty-col">
-                            <form method="post" asp-controller="Cart" asp-action="Update" class="qty-form">
-                                @Html.AntiForgeryToken()
-                                <input type="hidden" name="cartItemId" value="@i.CartItemId" />
-                                <div class="qty-box">
-                                    <button type="button" onclick="stepQty(this,-1)">-</button>
-                                    <input name="quantity" value="@i.Quantity" min="1" max="@i.StockQuantity" />
-                                    <button type="button" onclick="stepQty(this,1)">+</button>
-                                </div>
-                                <button class="btn-update">Cập nhật</button>
-                            </form>
+                            @if (isBuyNow)
+                            {
+                                <span>@i.Quantity</span>
+                            }
+                            else
+                            {
+                                <form method="post" asp-controller="Cart" asp-action="Update" class="qty-form">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="cartItemId" value="@i.CartItemId" />
+                                    <div class="qty-box">
+                                        <button type="button" onclick="stepQty(this,-1)">-</button>
+                                        <input name="quantity" value="@i.Quantity" min="1" max="@i.StockQuantity" />
+                                        <button type="button" onclick="stepQty(this,1)">+</button>
+                                    </div>
+                                    <button class="btn-update">Cập nhật</button>
+                                </form>
+                            }
                         </div>
                         <div class="line-col">@i.LineTotal.ToString("N0") VNĐ</div>
                         <div class="remove-col">
-                            <form method="post" asp-controller="Cart" asp-action="Remove">
-                                @Html.AntiForgeryToken()
-                                <input type="hidden" name="cartItemId" value="@i.CartItemId" />
-                                <button class="btn-remove" type="submit">✕</button>
-                            </form>
+                            @if (!isBuyNow)
+                            {
+                                <form method="post" asp-controller="Cart" asp-action="Remove">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="cartItemId" value="@i.CartItemId" />
+                                    <button class="btn-remove" type="submit">✕</button>
+                                </form>
+                            }
                         </div>
                     </div>
                 }
@@ -70,7 +82,7 @@
 
         @if (hasCart)
         {
-            <form method="post" action="/Checkout" id="checkoutForm">
+            <form method="post" action="/Checkout@(isBuyNow ? "?mode=buynow" : string.Empty)" id="checkoutForm">
                 @Html.AntiForgeryToken()
                 <div asp-validation-summary="All" class="text-danger"></div>
 
@@ -125,6 +137,7 @@
                 <input type="hidden" name="ShippingFormulaSnapshot" id="shippingFormulaSnapshot" />
                 <input type="hidden" name="ManualProvince" value="@Model.ManualProvince" />
                 <input type="hidden" name="ManualWard" value="@Model.ManualWard" />
+                <input type="hidden" id="checkoutMode" value="@checkoutMode" />
             </form>
         }
 

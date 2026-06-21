@@ -42,7 +42,9 @@ public class ShippingController : ControllerBase
         try
         {
             var userId = User.Identity?.IsAuthenticated == true ? int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!) : (int?)null;
-            var cart = await _cartService.GetCartAsync(userId);
+            var cart = string.Equals(request.Mode, "buynow", StringComparison.OrdinalIgnoreCase)
+                ? await _cartService.GetBuyNowCartAsync()
+                : await _cartService.GetCartAsync(userId);
             var quantity = Math.Max(1, cart.Items.Sum(x => x.Quantity));
             var weight = Math.Max(1000, quantity * 500);
             var length = 20; var width = 20; var height = Math.Max(10, quantity * 2);
@@ -77,4 +79,5 @@ public class ShippingCalculateRequest
     public string? WardCode { get; set; }
     public string? WardName { get; set; }
     public string? AddressDetail { get; set; }
+    public string? Mode { get; set; }
 }
