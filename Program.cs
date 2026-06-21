@@ -183,6 +183,16 @@ app.MapControllerRoute(
     defaults: new { controller = "Products", action = "Index", categorySlug = "linh-kien" });
 
 app.MapControllerRoute(
+    name: "article-detail",
+    pattern: "Articles/Detail/{slug}",
+    defaults: new { controller = "Articles", action = "Detail" });
+
+app.MapControllerRoute(
+    name: "article-slug",
+    pattern: "Articles/{slug}",
+    defaults: new { controller = "Articles", action = "Detail" });
+
+app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
@@ -248,6 +258,15 @@ END");
     await db.Database.ExecuteSqlRawAsync(@"IF COL_LENGTH('Orders', 'PaymentExpireAt') IS NULL
 BEGIN
     ALTER TABLE Orders ADD PaymentExpireAt datetime2 NULL;
+END");
+
+    await db.Database.ExecuteSqlRawAsync(@"IF OBJECT_ID('Articles', 'U') IS NOT NULL
+BEGIN
+    IF COL_LENGTH('Articles', 'Excerpt') IS NULL ALTER TABLE Articles ADD Excerpt NVARCHAR(500) NULL;
+    IF COL_LENGTH('Articles', 'CoverImageUrl') IS NULL ALTER TABLE Articles ADD CoverImageUrl NVARCHAR(1000) NULL;
+    IF COL_LENGTH('Articles', 'IsPublished') IS NULL ALTER TABLE Articles ADD IsPublished BIT NOT NULL CONSTRAINT DF_Articles_IsPublished DEFAULT 1;
+    IF COL_LENGTH('Articles', 'IsFeatured') IS NULL ALTER TABLE Articles ADD IsFeatured BIT NOT NULL CONSTRAINT DF_Articles_IsFeatured DEFAULT 0;
+    IF COL_LENGTH('Articles', 'ViewCount') IS NULL ALTER TABLE Articles ADD ViewCount INT NOT NULL CONSTRAINT DF_Articles_ViewCount DEFAULT 0;
 END");
 
 

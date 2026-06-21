@@ -1,6 +1,4 @@
 using Datn.PcStore.Data;
-using Datn.PcStore.Models;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -11,59 +9,70 @@ public class ArticlesController : Controller
     private readonly ApplicationDbContext _db;
     public ArticlesController(ApplicationDbContext db) => _db = db;
 
-    public async Task<IActionResult> Index() => View(await _db.Articles.OrderByDescending(a => a.CreatedAt).ToListAsync());
+    public async Task<IActionResult> Index(string? type)
+    {
+        var query = _db.Articles.Where(a => a.IsPublished).AsNoTracking();
+        if (!string.IsNullOrWhiteSpace(type))
+        {
+            query = query.Where(a => a.Type == type);
+        }
+
+        ViewBag.SelectedType = type;
+        ViewBag.Categories = await _db.Articles
+            .Where(a => a.IsPublished)
+            .GroupBy(a => a.Type)
+            .Select(g => new ArticleCategorySummary(g.Key, g.Count()))
+            .OrderBy(x => x.Type)
+            .ToListAsync();
+        ViewBag.LatestArticles = await _db.Articles
+            .Where(a => a.IsPublished)
+            .AsNoTracking()
+            .OrderByDescending(a => a.CreatedAt)
+            .Take(5)
+            .ToListAsync();
+
+        var articles = await query
+            .OrderByDescending(a => a.IsFeatured)
+            .ThenByDescending(a => a.CreatedAt)
+            .ToListAsync();
+
+        return View(articles);
+    }
 
     public async Task<IActionResult> Detail(string slug)
     {
-        var article = await _db.Articles.FirstOrDefaultAsync(a => a.Slug == slug);
-        if (article == null) return NotFound();
-        return View(article);
-    }
+        if (string.IsNullOrWhiteSpace(slug)) return NotFound();
 
-    [Authorize(Roles = "Admin,Staff")]
-    [HttpGet]
-    public IActionResult Create() => View(new Article());
-
-    [Authorize(Roles = "Admin,Staff")]
-    [HttpPost]
-    public async Task<IActionResult> Create(Article model)
-    {
-        if (!ModelState.IsValid) return View(model);
-        _db.Articles.Add(model);
-        await _db.SaveChangesAsync();
-        return RedirectToAction(nameof(Index));
-    }
-
-    [Authorize(Roles = "Admin,Staff")]
-    [HttpGet]
-    public async Task<IActionResult> Edit(int id)
-    {
-        var article = await _db.Articles.FindAsync(id);
-        if (article == null) return NotFound();
-        return View(article);
-    }
-
-    [Authorize(Roles = "Admin,Staff")]
-    [HttpPost]
-    public async Task<IActionResult> Edit(Article model)
-    {
-        if (!ModelState.IsValid) return View(model);
-        _db.Articles.Update(model);
-        await _db.SaveChangesAsync();
-        return RedirectToAction(nameof(Index));
-    }
-
-    [Authorize(Roles = "Admin")]
-    [HttpPost]
-    public async Task<IActionResult> Delete(int id)
-    {
-        var article = await _db.Articles.FindAsync(id);
-        if (article != null)
+        var article = await _db.Articles.FirstOrDefaultAsync(a => a.Slug == slug && a.IsPublished);
+        if (article == null && int.TryParse(slug, out var id))
         {
-            _db.Articles.Remove(article);
-            await _db.SaveChangesAsync();
+            article = await _db.Articles.FirstOrDefaultAsync(a => a.Id == id && a.IsPublished);
         }
+        if (article == null) return NotFound();
 
-        return RedirectToAction(nameof(Index));
+        article.ViewCount++;
+        await _db.SaveChangesAsync();
+
+        ViewBag.RelatedArticles = await _db.Articles
+            .Where(a => a.IsPublished && a.Id != article.Id && a.Type == article.Type)
+            .AsNoTracking()
+            .OrderByDescending(a => a.CreatedAt)
+            .Take(3)
+            .ToListAsync();
+
+        ViewBag.PreviousArticle = await _db.Articles
+            .Where(a => a.IsPublished && a.CreatedAt < article.CreatedAt)
+            .AsNoTracking()
+            .OrderByDescending(a => a.CreatedAt)
+            .FirstOrDefaultAsync();
+        ViewBag.NextArticle = await _db.Articles
+            .Where(a => a.IsPublished && a.CreatedAt > article.CreatedAt)
+            .AsNoTracking()
+            .OrderBy(a => a.CreatedAt)
+            .FirstOrDefaultAsync();
+
+        return View(article);
     }
 }
+
+public record ArticleCategorySummary(string Type, int Count);

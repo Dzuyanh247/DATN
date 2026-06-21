@@ -1,34 +1,86 @@
 @model List<Article>
-<div class="d-flex justify-content-between mb-3">
-    <h3>Tin tức / khuyến mãi</h3>
-    @if (User.IsInRole("Admin") || User.IsInRole("Staff"))
+@{
+    ViewData["Title"] = "Trang tin KKSHOP";
+    var selectedType = ViewBag.SelectedType as string;
+    var featured = Model.FirstOrDefault(a => a.IsFeatured) ?? Model.FirstOrDefault();
+    var articles = featured == null ? Model : Model.Where(a => a.Id != featured.Id).ToList();
+    var latest = ViewBag.LatestArticles as List<Article> ?? new List<Article>();
+    var categories = ViewBag.Categories as List<ArticleCategorySummary> ?? new List<ArticleCategorySummary>();
+    string Label(string? type) => type != null && ArticleTypes.Labels.TryGetValue(type, out var label) ? label : (type ?? "Tin tức");
+    string Image(Article article) => string.IsNullOrWhiteSpace(article.CoverImageUrl) ? "https://placehold.co/900x520/002b36/14d9ff?text=KKSHOP+News" : article.CoverImageUrl!;
+}
+<section class="kk-article-page">
+    <div class="kk-article-hero">
+        <div>
+            <span class="kk-kicker"><i class="bi bi-newspaper"></i> KKSHOP News</span>
+            <h1>Trang tin công nghệ</h1>
+            <p>Cập nhật tin công nghệ, tư vấn build PC, phần mềm hay và khuyến mãi mới nhất từ KKSHOP.</p>
+        </div>
+        @if (User.IsInRole("Admin") || User.IsInRole("Staff"))
+        {
+            <a class="btn btn-light fw-bold" asp-controller="AdminArticles" asp-action="Create"><i class="bi bi-pencil-square"></i> Đăng bài</a>
+        }
+    </div>
+
+    @if (!Model.Any())
     {
-        <a class="btn btn-primary" asp-action="Create">Đăng bài</a>
+        <div class="kk-article-empty">
+            <i class="bi bi-journal-richtext"></i>
+            <h3>Chưa có bài viết phù hợp</h3>
+            <p>KKSHOP đang chuẩn bị nội dung mới. Vui lòng quay lại sau hoặc chọn chuyên mục khác.</p>
+        </div>
     }
-</div>
-<div class="row g-3">
-    @foreach (var a in Model)
+    else
     {
-        <div class="col-md-6">
-            <div class="card h-100">
-                <div class="card-body">
-                    <span class="badge bg-info mb-2">@a.Type</span>
-                    <h5>@a.Title</h5>
-                    <p>@(a.Content.Length > 140 ? a.Content[..140] + "..." : a.Content)</p>
-                    <a class="btn btn-sm btn-outline-primary" asp-action="Detail" asp-route-slug="@a.Slug">Xem chi tiết</a>
-                    @if (User.IsInRole("Admin") || User.IsInRole("Staff"))
+        <div class="row g-4">
+            <div class="col-lg-8">
+                @if (featured != null)
+                {
+                    <a class="kk-featured-article" asp-action="Detail" asp-route-slug="@featured.Slug">
+                        <img src="@Image(featured)" alt="@featured.Title" />
+                        <div class="kk-featured-content">
+                            <span class="badge rounded-pill text-bg-info">@Label(featured.Type)</span>
+                            <h2>@featured.Title</h2>
+                            <p>@(string.IsNullOrWhiteSpace(featured.Excerpt) ? (featured.Content.Length > 180 ? featured.Content[..180] + "..." : featured.Content) : featured.Excerpt)</p>
+                            <div class="kk-article-meta"><span><i class="bi bi-calendar3"></i> @featured.CreatedAt.ToString("dd/MM/yyyy")</span><span><i class="bi bi-eye"></i> @featured.ViewCount lượt xem</span></div>
+                        </div>
+                    </a>
+                }
+
+                <h4 class="kk-block-title">Bài viết mới</h4>
+                <div class="kk-article-grid">
+                    @foreach (var a in articles)
                     {
-                        <a class="btn btn-sm btn-outline-secondary" asp-action="Edit" asp-route-id="@a.Id">Sửa</a>
-                    }
-                    @if (User.IsInRole("Admin"))
-                    {
-                        <form method="post" asp-action="Delete" class="d-inline">
-                            <input type="hidden" name="id" value="@a.Id" />
-                            <button class="btn btn-sm btn-outline-danger">Xóa</button>
-                        </form>
+                        <article class="kk-article-card">
+                            <img src="@Image(a)" alt="@a.Title" />
+                            <div class="kk-article-card-body">
+                                <span class="kk-chip">@Label(a.Type)</span>
+                                <h3>@a.Title</h3>
+                                <p>@(string.IsNullOrWhiteSpace(a.Excerpt) ? (a.Content.Length > 120 ? a.Content[..120] + "..." : a.Content) : a.Excerpt)</p>
+                                <div class="kk-article-meta"><span><i class="bi bi-calendar3"></i> @a.CreatedAt.ToString("dd/MM/yyyy")</span><span><i class="bi bi-eye"></i> @a.ViewCount</span></div>
+                                <a class="btn btn-sm btn-outline-primary rounded-pill" asp-action="Detail" asp-route-slug="@a.Slug">Xem chi tiết</a>
+                            </div>
+                        </article>
                     }
                 </div>
             </div>
+            <aside class="col-lg-4">
+                <div class="kk-sidebar-box">
+                    <h5>Chuyên mục</h5>
+                    <a class="kk-side-link @(string.IsNullOrWhiteSpace(selectedType) ? "active" : "")" asp-action="Index">Tất cả bài viết</a>
+                    @foreach (var c in categories)
+                    {
+                        <a class="kk-side-link @(selectedType == c.Type ? "active" : "")" asp-action="Index" asp-route-type="@c.Type"><span>@Label(c.Type)</span><small>@c.Count</small></a>
+                    }
+                </div>
+                <div class="kk-sidebar-box mt-3">
+                    <h5>Tin mới nhất</h5>
+                    @foreach (var item in latest)
+                    {
+                        <a class="kk-latest-link" asp-action="Detail" asp-route-slug="@item.Slug"><strong>@item.Title</strong><span><i class="bi bi-eye"></i> @item.ViewCount</span></a>
+                    }
+                </div>
+            </aside>
         </div>
     }
-</div>
+</section>
