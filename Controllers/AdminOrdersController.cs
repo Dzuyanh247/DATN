@@ -214,7 +214,7 @@ public class AdminOrdersController : Controller
 
         _orderExpirationService.MarkPaidByAdmin(order);
 
-        if (order.UserId.HasValue)
+        if (order.UserId.HasValue && !string.Equals(order.CheckoutMode, "buynow", StringComparison.OrdinalIgnoreCase))
         {
             var cart = await _db.Carts.Include(x => x.Items).FirstOrDefaultAsync(x => x.UserId == order.UserId.Value);
             if (cart != null && cart.Items.Any())

@@ -283,6 +283,7 @@ public class Order : BaseEntity
     public DateTime? PaymentExpireAt { get; set; }
     [MaxLength(500)] public string? PaymentUrl { get; set; }
     [MaxLength(100)] public string? PaymentTransactionId { get; set; }
+    [MaxLength(30)] public string CheckoutMode { get; set; } = "cart";
     public ICollection<OrderDetail> Details { get; set; } = new List<OrderDetail>();
 }
 

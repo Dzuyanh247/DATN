@@ -42,6 +42,8 @@ public class OrdersController : Controller
 
     private static string ToOrderCode(int orderId) => $"DH{orderId:D6}";
 
+    private static bool IsBuyNowMode(string? mode) => string.Equals(mode, "buynow", StringComparison.OrdinalIgnoreCase);
+
     private static string ExcelCell(string? value) => WebUtility.HtmlEncode(value ?? string.Empty);
 
     private bool CanAccessOrderTracking(Order order, string? phone = null)
@@ -73,8 +75,9 @@ public class OrdersController : Controller
 
 
     [HttpGet("/Checkout")]
-    public async Task<IActionResult> Checkout()
+    public async Task<IActionResult> Checkout([FromQuery] string? mode = null)
     {
+        var isBuyNow = IsBuyNowMode(mode);
         var vm = new CheckoutRequestVm();
         if (User.Identity?.IsAuthenticated == true)
         {
@@ -89,14 +92,17 @@ public class OrdersController : Controller
         }
 
         var userId = User.Identity?.IsAuthenticated == true ? int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!) : (int?)null;
-        ViewBag.Cart = await _cartService.GetCartAsync(userId);
+        ViewBag.IsBuyNow = isBuyNow;
+        ViewBag.CheckoutMode = isBuyNow ? "buynow" : string.Empty;
+        ViewBag.Cart = isBuyNow ? await _cartService.GetBuyNowCartAsync() : await _cartService.GetCartAsync(userId);
         return View(vm);
     }
 
     [HttpPost("/Checkout")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Checkout(CheckoutRequestVm vm)
+    public async Task<IActionResult> Checkout(CheckoutRequestVm vm, [FromQuery] string? mode = null)
     {
+        var isBuyNow = IsBuyNowMode(mode);
         if (string.IsNullOrWhiteSpace(vm.CustomerName)) ModelState.AddModelError(nameof(vm.CustomerName), "Họ tên là bắt buộc.");
         if (string.IsNullOrWhiteSpace(vm.CustomerPhone) || !System.Text.RegularExpressions.Regex.IsMatch(vm.CustomerPhone, "^(0|\\+84)[0-9]{9,10}$")) ModelState.AddModelError(nameof(vm.CustomerPhone), "Số điện thoại không hợp lệ.");
         if (!string.IsNullOrWhiteSpace(vm.CustomerEmail) && !new System.ComponentModel.DataAnnotations.EmailAddressAttribute().IsValid(vm.CustomerEmail)) ModelState.AddModelError(nameof(vm.CustomerEmail), "Email không hợp lệ.");
@@ -128,14 +134,16 @@ public class OrdersController : Controller
         vm.CustomerAddress = vm.FullAddress; // Keep old flow/database field compatible
 
         var userId = User.Identity?.IsAuthenticated == true ? int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!) : (int?)null;
-        var cart = await _cartService.GetCartAsync(userId);
-        if (!cart.Items.Any()) ModelState.AddModelError(string.Empty, "Không thể đặt hàng khi giỏ hàng trống.");
+        var cart = isBuyNow ? await _cartService.GetBuyNowCartAsync() : await _cartService.GetCartAsync(userId);
+        if (!cart.Items.Any()) ModelState.AddModelError(string.Empty, isBuyNow ? "Không thể đặt hàng khi chưa chọn sản phẩm mua ngay." : "Không thể đặt hàng khi giỏ hàng trống.");
         if (vm.PaymentMethod != PaymentMethods.Cod && vm.PaymentMethod != PaymentMethods.BankTransfer)
             ModelState.AddModelError(nameof(vm.PaymentMethod), "Phương thức thanh toán không hợp lệ.");
 
 
         if (!ModelState.IsValid)
         {
+            ViewBag.IsBuyNow = isBuyNow;
+            ViewBag.CheckoutMode = isBuyNow ? "buynow" : string.Empty;
             ViewBag.Cart = cart;
             return View(vm);
         }
@@ -165,6 +173,8 @@ public class OrdersController : Controller
         {
             _logger.LogWarning(ex, "Checkout shipping recalculation failed");
             ModelState.AddModelError(string.Empty, "Chưa tính được phí vận chuyển. Vui lòng kiểm tra lại địa chỉ và thử đặt hàng sau.");
+            ViewBag.IsBuyNow = isBuyNow;
+            ViewBag.CheckoutMode = isBuyNow ? "buynow" : string.Empty;
             ViewBag.Cart = cart;
             return View(vm);
         }
@@ -172,6 +182,8 @@ public class OrdersController : Controller
         if (vm.ShippingFee < 0 || string.IsNullOrWhiteSpace(vm.ShippingProvider))
         {
             ModelState.AddModelError(string.Empty, "Vui lòng tính phí giao hàng hợp lệ trước khi đặt hàng.");
+            ViewBag.IsBuyNow = isBuyNow;
+            ViewBag.CheckoutMode = isBuyNow ? "buynow" : string.Empty;
             ViewBag.Cart = cart;
             return View(vm);
         }
@@ -237,6 +249,8 @@ public class OrdersController : Controller
                 if (!voucherResult.Success)
                 {
                     ModelState.AddModelError(nameof(vm.VoucherCode), voucherResult.Message);
+                    ViewBag.IsBuyNow = isBuyNow;
+                    ViewBag.CheckoutMode = isBuyNow ? "buynow" : string.Empty;
                     ViewBag.Cart = cart;
                     return View(vm);
                 }
@@ -279,6 +293,7 @@ public class OrdersController : Controller
                 PaymentStatus = vm.PaymentMethod == PaymentMethods.BankTransfer ? PaymentStatuses.Pending : PaymentStatuses.Unpaid,
                 Status = vm.PaymentMethod == PaymentMethods.BankTransfer ? OrderStatus.PendingPayment : OrderStatus.PendingConfirmation,
                 PaymentExpireAt = paymentExpireAt,
+                CheckoutMode = isBuyNow ? "buynow" : "cart",
                 Details = detailRows
             };
 
@@ -315,7 +330,11 @@ public class OrdersController : Controller
                 HttpContext.Session.SetInt32("LastPendingPaymentOrderId", order.Id);
             }
             HttpContext.Session.SetInt32("LastOrderId", order.Id);
-            if (order.PaymentMethod != PaymentMethods.BankTransfer)
+            if (isBuyNow)
+            {
+                await _cartService.ClearBuyNowCartAsync();
+            }
+            else if (order.PaymentMethod != PaymentMethods.BankTransfer)
             {
                 await _cartService.ClearCartAsync(userId);
             }
@@ -333,6 +352,8 @@ public class OrdersController : Controller
             _logger.LogError(ex, "Checkout failed for user {UserId}", userId);
             ModelState.AddModelError(string.Empty, "Không thể đặt hàng lúc này. Vui lòng kiểm tra tồn kho hoặc thử lại sau.");
             TempData["ErrorMessage"] = "Không thể đặt hàng, vui lòng kiểm tra thông tin và thử lại.";
+            ViewBag.IsBuyNow = isBuyNow;
+            ViewBag.CheckoutMode = isBuyNow ? "buynow" : string.Empty;
             ViewBag.Cart = cart;
             return View(vm);
         }

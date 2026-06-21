@@ -64,7 +64,7 @@ public class CartController : Controller
             return RedirectToAction("Detail", "Products", new { id = productId });
         }
 
-        return Redirect("/Checkout");
+        return Redirect("/Checkout?mode=buynow");
     }
 
 
@@ -108,7 +108,7 @@ public class CartController : Controller
             TempData["ErrorMessage"] = result.Error ?? "Không thể đặt bộ sản phẩm này lúc này.";
             return RedirectToAction("Detail", "Products", new { id = request.ProductId });
         }
-        return Redirect("/Checkout");
+        return Redirect("/Checkout?mode=buynow");
     }
 
     [HttpPost]

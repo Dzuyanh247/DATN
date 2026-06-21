@@ -9,13 +9,19 @@ namespace Datn.PcStore.Services;
 public class CartService : ICartService
 {
     private const string SessionCartKey = "guest_cart";
+    private const string BuyNowCartKey = "buynow_cart";
     private readonly ApplicationDbContext _db;
     private readonly IHttpContextAccessor _http;
     public CartService(ApplicationDbContext db, IHttpContextAccessor http) { _db = db; _http = http; }
 
     public async Task<CartViewVm> GetCartAsync(int? userId)
     {
-        return userId.HasValue ? await BuildDbCartAsync(userId.Value) : await BuildSessionCartAsync();
+        return userId.HasValue ? await BuildDbCartAsync(userId.Value) : await BuildSessionCartAsync(SessionCartKey);
+    }
+
+    public Task<CartViewVm> GetBuyNowCartAsync()
+    {
+        return BuildSessionCartAsync(BuyNowCartKey);
     }
 
     public async Task<(bool Ok, string? Error)> AddToCartAsync(int? userId, int productId, int quantity = 1)
@@ -34,57 +40,19 @@ public class CartService : ICartService
             return (true, null);
         }
 
-        var items = GetSessionItems();
+        var items = GetSessionItems(SessionCartKey);
         var key = -productId;
         var line = items.FirstOrDefault(x => x.CartItemId == key);
         if (line == null) items.Add(new CartLineVm { CartItemId = key, ProductId = productId, Quantity = Math.Min(quantity, p.StockQuantity) });
         else line.Quantity = Math.Min(line.Quantity + quantity, p.StockQuantity);
-        SaveSessionItems(items);
+        SaveSessionItems(SessionCartKey, items);
         return (true, null);
     }
 
     public async Task<(bool Ok, string? Error)> SetBuyNowCartAsync(int? userId, int productId, int quantity = 1)
     {
-        quantity = Math.Max(quantity, 1);
-        var product = await _db.Products.FirstOrDefaultAsync(x => x.Id == productId && x.IsActive);
-        if (product == null) return (false, "Sản phẩm không tồn tại.");
-        if (product.StockQuantity < quantity) return (false, "Sản phẩm không đủ tồn kho.");
-
-        if (userId.HasValue)
-        {
-            var cart = await GetOrCreateCartAsync(userId.Value);
-            var existingItems = await _db.CartItems.Where(x => x.CartId == cart.Id).ToListAsync();
-            var buyNowItem = existingItems.FirstOrDefault(x => x.ProductId == productId);
-            _db.CartItems.RemoveRange(existingItems.Where(x => x.ProductId != productId));
-            if (buyNowItem == null)
-            {
-                _db.CartItems.Add(new CartItem
-                {
-                    CartId = cart.Id,
-                    ProductId = productId,
-                    Quantity = quantity
-                });
-            }
-            else
-            {
-                buyNowItem.Quantity = quantity;
-            }
-            await _db.SaveChangesAsync();
-            return (true, null);
-        }
-
-        SaveSessionItems(new List<CartLineVm>
-        {
-            new()
-            {
-                CartItemId = -productId,
-                ProductId = productId,
-                Quantity = quantity
-            }
-        });
-        return (true, null);
+        return await SetBuyNowCartAsync(userId, new[] { (productId, quantity) });
     }
-
 
     public async Task<(bool Ok, string? Error)> SetBuyNowCartAsync(int? userId, IReadOnlyCollection<(int ProductId, int Quantity)> items)
     {
@@ -103,18 +71,12 @@ public class CartService : ICartService
             if (product.StockQuantity < item.Quantity) return (false, $"{product.Name} không đủ tồn kho.");
         }
 
-        if (userId.HasValue)
+        SaveSessionItems(BuyNowCartKey, normalized.Select(x => new CartLineVm
         {
-            var cart = await GetOrCreateCartAsync(userId.Value);
-            var existingItems = await _db.CartItems.Where(x => x.CartId == cart.Id).ToListAsync();
-            _db.CartItems.RemoveRange(existingItems);
-            foreach (var item in normalized)
-                _db.CartItems.Add(new CartItem { CartId = cart.Id, ProductId = item.ProductId, Quantity = item.Quantity });
-            await _db.SaveChangesAsync();
-            return (true, null);
-        }
-
-        SaveSessionItems(normalized.Select(x => new CartLineVm { CartItemId = -x.ProductId, ProductId = x.ProductId, Quantity = x.Quantity }).ToList());
+            CartItemId = -x.ProductId,
+            ProductId = x.ProductId,
+            Quantity = x.Quantity
+        }).ToList());
         return (true, null);
     }
 
@@ -132,14 +94,14 @@ public class CartService : ICartService
             return (true, null);
         }
 
-        var items = GetSessionItems();
+        var items = GetSessionItems(SessionCartKey);
         var line = items.FirstOrDefault(x => x.CartItemId == cartItemId);
         if (line == null) return (false, "Không tìm thấy sản phẩm trong giỏ.");
         var p = await _db.Products.FirstOrDefaultAsync(x => x.Id == line.ProductId);
         if (p == null) return (false, "Sản phẩm không tồn tại.");
         if (quantity > p.StockQuantity) return (false, "Vượt quá tồn kho.");
         line.Quantity = quantity;
-        SaveSessionItems(items);
+        SaveSessionItems(SessionCartKey, items);
         return (true, null);
     }
 
@@ -152,7 +114,7 @@ public class CartService : ICartService
             if (item != null) { _db.CartItems.Remove(item); await _db.SaveChangesAsync(); }
             return;
         }
-        var items = GetSessionItems().Where(x => x.CartItemId != cartItemId).ToList(); SaveSessionItems(items);
+        var items = GetSessionItems(SessionCartKey).Where(x => x.CartItemId != cartItemId).ToList(); SaveSessionItems(SessionCartKey, items);
     }
 
     public async Task ClearCartAsync(int? userId)
@@ -163,14 +125,14 @@ public class CartService : ICartService
             var items = await _db.CartItems.Where(x => x.CartId == cart.Id).ToListAsync();
             _db.CartItems.RemoveRange(items); await _db.SaveChangesAsync(); return;
         }
-        SaveSessionItems(new());
+        SaveSessionItems(SessionCartKey, new());
     }
 
     public async Task MergeGuestCartAsync(int userId)
     {
-        var guest = GetSessionItems();
+        var guest = GetSessionItems(SessionCartKey);
         foreach (var i in guest) await AddToCartAsync(userId, i.ProductId, i.Quantity);
-        SaveSessionItems(new());
+        SaveSessionItems(SessionCartKey, new());
     }
 
     private async Task<Cart> GetOrCreateCartAsync(int userId)
@@ -180,12 +142,18 @@ public class CartService : ICartService
         cart = new Cart { UserId = userId }; _db.Carts.Add(cart); await _db.SaveChangesAsync(); return cart;
     }
 
-    private List<CartLineVm> GetSessionItems()
+    private List<CartLineVm> GetSessionItems(string sessionKey)
     {
-        var s = _http.HttpContext?.Session.GetString(SessionCartKey);
+        var s = _http.HttpContext?.Session.GetString(sessionKey);
         return string.IsNullOrWhiteSpace(s) ? new() : JsonSerializer.Deserialize<List<CartLineVm>>(s) ?? new();
     }
-    private void SaveSessionItems(List<CartLineVm> items) => _http.HttpContext?.Session.SetString(SessionCartKey, JsonSerializer.Serialize(items));
+    private void SaveSessionItems(string sessionKey, List<CartLineVm> items) => _http.HttpContext?.Session.SetString(sessionKey, JsonSerializer.Serialize(items));
+
+    public Task ClearBuyNowCartAsync()
+    {
+        SaveSessionItems(BuyNowCartKey, new());
+        return Task.CompletedTask;
+    }
 
     private async Task<CartViewVm> BuildDbCartAsync(int userId)
     {
@@ -201,9 +169,9 @@ public class CartService : ICartService
         return vm;
     }
 
-    private async Task<CartViewVm> BuildSessionCartAsync()
+    private async Task<CartViewVm> BuildSessionCartAsync(string sessionKey)
     {
-        var raw = GetSessionItems();
+        var raw = GetSessionItems(sessionKey);
         var ids = raw.Select(x => x.ProductId).Distinct().ToList();
         var products = await _db.Products.Where(x => ids.Contains(x.Id)).ToDictionaryAsync(x => x.Id);
         var vm = new CartViewVm();
@@ -217,7 +185,7 @@ public class CartService : ICartService
                 Quantity = Math.Min(Math.Max(i.Quantity, 1), p.StockQuantity), StockQuantity = p.StockQuantity
             });
         }
-        SaveSessionItems(vm.Items.Select(x => new CartLineVm { CartItemId = x.CartItemId, ProductId = x.ProductId, Quantity = x.Quantity }).ToList());
+        SaveSessionItems(sessionKey, vm.Items.Select(x => new CartLineVm { CartItemId = x.CartItemId, ProductId = x.ProductId, Quantity = x.Quantity }).ToList());
         return vm;
     }
 }
