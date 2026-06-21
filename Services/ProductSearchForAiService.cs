@@ -18,7 +18,8 @@ public record AiProductContext(
     int StockQuantity,
     string CategoryScope = "COMPONENT",
     string Description = "",
-    string Warranty = "");
+    string Warranty = "",
+    string ProductTypeLabel = "Linh kiện");
 
 public interface IProductSearchForAiService
 {
@@ -66,6 +67,7 @@ public partial class ProductSearchForAiService : IProductSearchForAiService
             var sample = await baseQuery.OrderBy(x => x.DiscountPrice ?? x.SalePrice ?? x.Price).Take(120).ToListAsync(cancellationToken);
             var minScore = analysis.HasSpecificProductName && tokens.Count > 1 ? 2 : 1;
             products = sample
+                .Where(x => ProductAllowedForIntent(x, analysis))
                 .Select(x => new { Product = x, Score = ScoreProduct(x, tokens, analysis) })
                 .Where(x => x.Score >= minScore || (!analysis.HasSpecificProductName && analysis.CategoryScope == "PC"))
                 .OrderByDescending(x => x.Score)
@@ -76,7 +78,12 @@ public partial class ProductSearchForAiService : IProductSearchForAiService
         }
         else
         {
-            products = await Project(baseQuery.OrderBy(x => x.DiscountPrice ?? x.SalePrice ?? x.Price).Take(max), analysis.CategoryScope, cancellationToken);
+            var sample = await baseQuery.OrderBy(x => x.DiscountPrice ?? x.SalePrice ?? x.Price).Take(120).ToListAsync(cancellationToken);
+            products = sample
+                .Where(x => ProductAllowedForIntent(x, analysis))
+                .Take(max)
+                .Select(x => ToContext(x, analysis.CategoryScope))
+                .ToList();
         }
 
         var fallbackReason = "none";
@@ -92,6 +99,7 @@ public partial class ProductSearchForAiService : IProductSearchForAiService
             products = await BuildComponentFallbackAsync(inStockActiveQuery, analysis, max, cancellationToken);
         }
 
+        products = products.Where(p => ContextAllowedForIntent(p, analysis)).ToList();
         LogSearch(message, analysis, products, activeCount, scopedCount, budgetCount, fallbackReason);
         return products;
     }
@@ -112,7 +120,7 @@ public partial class ProductSearchForAiService : IProductSearchForAiService
             $"/Products/Detail/{x.Id}",
             x.Category,
             x.StockQuantity,
-            scope, TrimText(x.Description ?? string.Empty, 300), !string.IsNullOrWhiteSpace(x.WarrantyDuration) ? x.WarrantyDuration : $"{x.WarrantyMonths} tháng")).ToList();
+            scope, TrimText(x.Description ?? string.Empty, 300), !string.IsNullOrWhiteSpace(x.WarrantyDuration) ? x.WarrantyDuration : $"{x.WarrantyMonths} tháng", LabelForScope(scope))).ToList();
     }
 
 
@@ -123,7 +131,7 @@ public partial class ProductSearchForAiService : IProductSearchForAiService
 
     private static IQueryable<Product> ApplyComponentScope(IQueryable<Product> query, string? componentType)
     {
-        query = query.Where(x => x.ProductType == ProductKinds.Component || x.ProductType != ProductKinds.PC || x.Category!.Name == "Linh kiện" || x.Category.Name == "Màn hình");
+        query = query.Where(x => x.ProductType == ProductKinds.Component || (x.Category != null && (x.Category.Name == "Linh kiện" || x.Category.Name == "Màn hình")));
         if (string.IsNullOrWhiteSpace(componentType)) return query;
         var normalized = ComponentTypes.Normalize(componentType);
         return normalized switch
@@ -145,12 +153,12 @@ public partial class ProductSearchForAiService : IProductSearchForAiService
         TrimText(string.IsNullOrWhiteSpace(x.Specifications) ? x.ShortDescription ?? string.Empty : x.Specifications!, 450),
         x.StockQuantity > 0 ? $"Còn hàng ({x.StockQuantity})" : "Tạm hết hàng",
         $"/Products/Detail/{x.Id}", x.Category?.Name ?? "Chưa phân loại", x.StockQuantity, scope,
-        TrimText(x.Description ?? string.Empty, 300), !string.IsNullOrWhiteSpace(x.WarrantyDuration) ? x.WarrantyDuration : $"{x.WarrantyMonths} tháng");
+        TrimText(x.Description ?? string.Empty, 300), !string.IsNullOrWhiteSpace(x.WarrantyDuration) ? x.WarrantyDuration : $"{x.WarrantyMonths} tháng", LabelForScope(scope, x));
 
     private void LogSearch(string message, AiSearchAnalysis analysis, IReadOnlyList<AiProductContext> products, int activeCount, int scopedCount, int budgetCount, string fallbackReason)
     {
-        _logger.LogInformation("[AI_PRODUCT_SEARCH] message={Message}; intent={Intent}; budgetMin={BudgetMin}; budgetMax={BudgetMax}; keywordGame={TargetGame}; componentType={ComponentType}; categoryScope={Scope}; activeStockProducts={ActiveCount}; scopedProducts={ScopedCount}; budgetProducts={BudgetCount}; finalProducts={Products}; fallbackReason={FallbackReason}; topProducts={TopProducts}",
-            TrimText(message, 180), analysis.Intent, analysis.BudgetMin, analysis.BudgetMax, analysis.TargetGame ?? "none", analysis.ComponentType ?? "none", analysis.CategoryScope, activeCount, scopedCount, budgetCount, products.Count, fallbackReason, string.Join(" | ", products.Take(5).Select(p => $"{p.Id}:{p.Name}:{p.Price:N0}:{p.Category}")));
+        _logger.LogInformation("[AI_PRODUCT_SEARCH] message={Message}; intent={Intent}; budgetMin={BudgetMin}; budgetMax={BudgetMax}; keywordGame={TargetGame}; componentType={ComponentType}; requestedProductType={RequestedProductType}; excludedTypes={ExcludedTypes}; categoryScope={Scope}; activeStockProducts={ActiveCount}; scopedProducts={ScopedCount}; budgetProducts={BudgetCount}; finalProducts={Products}; fallbackReason={FallbackReason}; topProducts={TopProducts}",
+            TrimText(message, 180), analysis.Intent, analysis.BudgetMin, analysis.BudgetMax, analysis.TargetGame ?? "none", analysis.ComponentType ?? "none", analysis.CategoryScope == "PC" ? "PC/build" : analysis.ComponentType ?? "product", analysis.CategoryScope == "PC" ? string.Join(",", AccessoryTypes) : "none", analysis.CategoryScope, activeCount, scopedCount, budgetCount, products.Count, fallbackReason, string.Join(" | ", products.Take(5).Select(p => $"{p.Id}:{p.Name}:{p.Price:N0}:{p.Category}:{p.CategoryScope}:{p.ProductTypeLabel}")));
     }
 
     private static int ScoreProduct(Product product, IReadOnlyList<string> tokens, AiSearchAnalysis analysis)
@@ -167,8 +175,10 @@ public partial class ProductSearchForAiService : IProductSearchForAiService
         var normalized = NormalizeText(text);
         var componentType = DetectComponentType(normalized);
         var game = GameWords.FirstOrDefault(g => normalized.Contains(g.Key)).Value;
+        var accessory = DetectAccessoryType(normalized);
+        if (accessory != null) componentType = accessory;
         var isCompare = ContainsAny(normalized, "so sanh", "compare", "khac nhau");
-        var isPcAdvice = (PcIntentWords.Any(normalized.Contains) || !string.IsNullOrWhiteSpace(game)) && componentType == null;
+        var isPcAdvice = (PcIntentWords.Any(normalized.Contains) || !string.IsNullOrWhiteSpace(game)) && accessory == null;
         var isPolicy = ContainsAny(normalized, "tra gop", "freeship", "doi tra", "bao hanh tan noi", "hoa toc", "chinh sach");
         var isOrder = ContainsAny(normalized, "don hang", "ma don", "dh0");
         var isWarranty = ContainsAny(normalized, "bao hanh", "warranty");
@@ -290,12 +300,100 @@ public partial class ProductSearchForAiService : IProductSearchForAiService
         [ComponentTypes.Cooler] = ["tan nhiet", "cooler"]
     };
 
+
+    private static readonly HashSet<string> AccessoryTypes = new(StringComparer.OrdinalIgnoreCase) { ComponentTypes.Mouse, ComponentTypes.Keyboard, ComponentTypes.Headphone, ComponentTypes.Monitor, ComponentTypes.MonitorArm };
+    private static readonly string[] AccessoryWords = ["chuot", "mouse", "ban phim", "keyboard", "tai nghe", "headset", "headphone", "man hinh", "monitor", "phu kien"];
+    private static readonly Dictionary<string, string[]> AccessoryIntentWords = new(StringComparer.OrdinalIgnoreCase)
+    {
+        [ComponentTypes.Headphone] = ["tai nghe", "headphone", "headset"],
+        [ComponentTypes.Keyboard] = ["ban phim", "keyboard"],
+        [ComponentTypes.Mouse] = ["chuot", "mouse"],
+        [ComponentTypes.Monitor] = ["man hinh", "monitor"]
+    };
+
     private static bool IsPcProduct(Product product) => product.ProductType == ProductKinds.PC || product.ComponentType == "PC" || PcCategoryNames.Contains(product.Category?.Name ?? string.Empty) || ContainsAny(product.Category?.Name ?? string.Empty, "PC", "Cấu hình", "Máy bộ", "Máy tính");
+
+
+    private static string? DetectAccessoryType(string normalized)
+    {
+        foreach (var item in AccessoryIntentWords)
+            if (item.Value.Any(normalized.Contains)) return item.Key;
+        return null;
+    }
+
+    private static bool ProductAllowedForIntent(Product product, AiSearchAnalysis analysis)
+    {
+        if (analysis.CategoryScope == "PC") return IsPcProduct(product) && !IsAccessoryProduct(product);
+        if (!string.IsNullOrWhiteSpace(analysis.ComponentType)) return ComponentTypes.Normalize(product.ComponentType) == ComponentTypes.Normalize(analysis.ComponentType) || MatchesComponentByText(product, analysis.ComponentType);
+        return !IsAccessoryProduct(product);
+    }
+
+    private static bool ContextAllowedForIntent(AiProductContext product, AiSearchAnalysis analysis)
+    {
+        if (analysis.CategoryScope == "PC") return product.CategoryScope == "PC" || product.CategoryScope.StartsWith("BUILD_", StringComparison.OrdinalIgnoreCase);
+        return string.IsNullOrWhiteSpace(analysis.ComponentType) || string.Equals(product.CategoryScope, analysis.ComponentType, StringComparison.OrdinalIgnoreCase) || string.Equals(product.ProductTypeLabel, LabelForComponent(analysis.ComponentType), StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsAccessoryProduct(Product product)
+    {
+        var type = ComponentTypes.Normalize(product.ComponentType);
+        if (AccessoryTypes.Contains(type)) return true;
+        var text = NormalizeText($"{product.Name} {product.Category?.Name} {product.ProductType}");
+        return AccessoryWords.Any(text.Contains);
+    }
+
+    private static bool MatchesComponentByText(Product product, string componentType)
+    {
+        var normalized = ComponentTypes.Normalize(componentType);
+        var text = NormalizeText($"{product.Name} {product.Category?.Name} {product.ComponentType}");
+        return normalized switch
+        {
+            ComponentTypes.CPU => ContainsAny(text, "cpu", "ryzen", "intel", "core i"),
+            ComponentTypes.Mainboard => ContainsAny(text, "mainboard", "main", "bo mach chu"),
+            ComponentTypes.RAM => ContainsAny(text, "ram", "bo nho"),
+            ComponentTypes.VGA => ContainsAny(text, "vga", "gpu", "card man hinh", "rtx", "gtx", "rx "),
+            ComponentTypes.Storage => ContainsAny(text, "ssd", "hdd", "o cung"),
+            ComponentTypes.PSU => ContainsAny(text, "psu", "nguon"),
+            ComponentTypes.Case => ContainsAny(text, "case", "vo case"),
+            ComponentTypes.Cooler => ContainsAny(text, "tan nhiet", "cooler"),
+            ComponentTypes.Monitor => ContainsAny(text, "monitor", "man hinh"),
+            ComponentTypes.Keyboard => ContainsAny(text, "keyboard", "ban phim"),
+            ComponentTypes.Mouse => ContainsAny(text, "mouse", "chuot"),
+            ComponentTypes.Headphone => ContainsAny(text, "headphone", "headset", "tai nghe"),
+            _ => false
+        };
+    }
+
+    private static string LabelForScope(string scope, Product? product = null)
+    {
+        if (string.Equals(scope, "PC", StringComparison.OrdinalIgnoreCase)) return "PC đề xuất";
+        if (scope.StartsWith("BUILD_", StringComparison.OrdinalIgnoreCase)) return LabelForComponent(scope[6..]);
+        return LabelForComponent(product?.ComponentType ?? scope);
+    }
+
+    private static string LabelForComponent(string? componentType) => ComponentTypes.Normalize(componentType) switch
+    {
+        ComponentTypes.CPU => "CPU",
+        ComponentTypes.VGA => "VGA",
+        ComponentTypes.Mainboard => "Mainboard",
+        ComponentTypes.RAM => "RAM",
+        ComponentTypes.Storage => "Ổ cứng",
+        ComponentTypes.PSU => "Nguồn",
+        ComponentTypes.Case => "Vỏ case",
+        ComponentTypes.Cooler => "Tản nhiệt",
+        ComponentTypes.Mouse => "Chuột",
+        ComponentTypes.Keyboard => "Bàn phím",
+        ComponentTypes.Headphone => "Tai nghe",
+        ComponentTypes.Monitor => "Màn hình",
+        _ => "Linh kiện"
+    };
 
     private async Task<List<AiProductContext>> FindNearestPcAsync(IQueryable<Product> inStockActiveQuery, AiSearchAnalysis analysis, int max, CancellationToken ct)
     {
         var target = analysis.BudgetMax ?? analysis.BudgetMin;
-        var candidates = await ApplyPcScope(inStockActiveQuery).Take(200).ToListAsync(ct);
+        var candidates = (await ApplyPcScope(inStockActiveQuery).Take(200).ToListAsync(ct))
+            .Where(x => !IsAccessoryProduct(x))
+            .ToList();
         var ordered = target.HasValue
             ? candidates.OrderBy(x => Math.Abs((x.DiscountPrice ?? x.SalePrice ?? x.Price) - target.Value))
             : candidates.OrderBy(x => x.DiscountPrice ?? x.SalePrice ?? x.Price);
@@ -314,12 +412,20 @@ public partial class ProductSearchForAiService : IProductSearchForAiService
         foreach (var type in budgetShare.Keys)
         {
             var componentQuery = ApplyComponentScope(inStockActiveQuery, type);
-            var candidates = await componentQuery.Take(100).ToListAsync(ct);
+            var candidates = (await componentQuery.Take(100).ToListAsync(ct))
+                .Where(x => !IsAccessoryProduct(x))
+                .ToList();
             var item = candidates
                 .OrderByDescending(x => x.StockQuantity > 0)
                 .ThenBy(x => Math.Abs((x.DiscountPrice ?? x.SalePrice ?? x.Price) - target * budgetShare[type]))
                 .FirstOrDefault();
             if (item != null) selected.Add(ToContext(item, $"BUILD_{type}"));
+        }
+        var missing = budgetShare.Keys.Where(type => selected.All(item => !string.Equals(item.CategoryScope, $"BUILD_{type}", StringComparison.OrdinalIgnoreCase))).ToList();
+        if (missing.Count > 0)
+        {
+            _logger.LogWarning("[AI_PRODUCT_SEARCH] build fallback missing components: {MissingComponents}", string.Join(",", missing));
+            return [];
         }
         return selected.Take(max).ToList();
     }

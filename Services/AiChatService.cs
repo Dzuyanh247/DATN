@@ -71,7 +71,13 @@ public class GeminiChatService : IAiChatService
         var shouldSearchProducts = intent is AiChatIntent.ProductSearch or AiChatIntent.ProductAdvice;
         IReadOnlyList<AiProductContext> products = shouldSearchProducts ? await _productSearch.SearchAsync(message, cancellationToken) : [];
         if (shouldSearchProducts && products.Count == 0)
+        {
+            var normalizedMessage = RemoveDiacritics(message.ToLowerInvariant());
+            if (ContainsAny(normalizedMessage, "pc", "cau hinh", "build", "choi game", "gaming", "valorant", "gta", "ngan sach"))
+                return new(true, "Mình chưa tìm thấy PC bộ/cấu hình phù hợp trong dữ liệu hiện tại, nhưng có thể tư vấn build từ linh kiện nếu shop đã có đủ CPU, main, RAM, VGA, SSD, nguồn và case.", []);
+
             return new(true, "Mình chưa tìm thấy sản phẩm phù hợp với từ khóa này trong dữ liệu KKSHOP. Bạn thử gửi tên đầy đủ hơn, loại linh kiện hoặc ngân sách để mình kiểm tra chính xác hơn nhé.", []);
+        }
 
         var cacheKey = $"ai-chat:{intent}:{NormalizeCacheKey(message)}";
         if (_cache.TryGetValue<AiChatResponse>(cacheKey, out var cached) && cached != null) return cached;
@@ -157,11 +163,11 @@ public class GeminiChatService : IAiChatService
     {
         var productLines = products.Count == 0
             ? "Hiện KKSHOP chưa tìm thấy cấu hình phù hợp trong dữ liệu hiện có."
-            : string.Join("\n", products.Select((p, i) => $"{i + 1}. Tên: {p.Name}; Giá: {p.Price:N0} đ; Mô tả: {p.Description}; Cấu hình/thông số: {p.Specifications}; Bảo hành: {p.Warranty}; Tồn kho: {p.StockStatus}; Link: {p.Link}; Danh mục: {p.Category}"));
+            : string.Join("\n", products.Select((p, i) => $"{i + 1}. Tên: {p.Name}; Giá: {p.Price:N0} đ; Mô tả: {p.Description}; Cấu hình/thông số: {p.Specifications}; Bảo hành: {p.Warranty}; Tồn kho: {p.StockStatus}; Link: {p.Link}; Danh mục: {p.Category}; Loại card bắt buộc: {p.ProductTypeLabel}; Phạm vi: {p.CategoryScope}"));
         var productRule = intent == AiChatIntent.ProductAdvice
             ? "- Nếu khách hỏi lợi ích/ưu điểm/phân tích/có nên mua, hãy tư vấn chuyên nghiệp: ưu điểm, nhược điểm/lưu ý, phù hợp với ai. Chỉ nhắc sản phẩm trong danh sách nếu thật sự khớp câu hỏi."
             : "- Nếu có sản phẩm, chọn tối đa 2-3 sản phẩm phù hợp nhất, nêu giá và lý do phù hợp.";
-        return $"Câu hỏi khách hàng: {message}\n\nQuy tắc bắt buộc khi trả lời:\n- Không tự gợi ý hoặc liệt kê sản phẩm nếu câu hỏi không có intent mua/tìm/giá/còn hàng/cấu hình/ngân sách/tên sản phẩm rõ ràng.\n- Chỉ tư vấn dựa trên danh sách sản phẩm backend cung cấp bên dưới. Không bịa sản phẩm ngoài danh sách.\n- Nếu thiếu dữ liệu chi tiết, nói tự nhiên: Mình chưa có đủ dữ liệu chi tiết về sản phẩm này trong hệ thống. Bạn có thể gửi thêm tên đầy đủ hoặc link sản phẩm để mình kiểm tra kỹ hơn nhé.\n{productRule}\n- Với FPS/game, không cam kết tuyệt đối; dùng các cụm như \"dự kiến\", \"phù hợp ở mức tham khảo\" vì FPS phụ thuộc setting và bản cập nhật game.\n- Nếu khách hỏi PC/cấu hình/gaming, ưu tiên PC bộ/cấu hình có sẵn trong danh sách; nếu danh sách là linh kiện fallback thì trình bày như một cấu hình build từ linh kiện shop đang có.\n- Với GTA V: 10-15 triệu chơi ổn Full HD thiết lập vừa/cao tùy linh kiện; 15-30 triệu rất ổn Full HD/2K tùy VGA; 50 triệu dư sức GTA V và có thể hướng tới game nặng hơn/2K/4K.\n- Không nói \"không tìm thấy\" nếu backend đã cung cấp bất kỳ sản phẩm hoặc linh kiện fallback nào.\n- Nếu khách hỏi chính sách, chỉ dùng nguồn sự thật chính sách bên dưới.\n\nNguồn sự thật chính sách KKSHOP:\n{policyKnowledge}\n\nDữ liệu sản phẩm KKSHOP được phép dùng:\n{productLines}";
+        return $"Câu hỏi khách hàng: {message}\n\nQuy tắc bắt buộc khi trả lời:\n- Không tự gợi ý hoặc liệt kê sản phẩm nếu câu hỏi không có intent mua/tìm/giá/còn hàng/cấu hình/ngân sách/tên sản phẩm rõ ràng.\n- Chỉ tư vấn dựa trên danh sách sản phẩm backend cung cấp bên dưới. Không bịa sản phẩm ngoài danh sách.\n- Nếu thiếu dữ liệu chi tiết, nói tự nhiên: Mình chưa có đủ dữ liệu chi tiết về sản phẩm này trong hệ thống. Bạn có thể gửi thêm tên đầy đủ hoặc link sản phẩm để mình kiểm tra kỹ hơn nhé.\n{productRule}\n- Với FPS/game, không cam kết tuyệt đối; dùng các cụm như \"dự kiến\", \"phù hợp ở mức tham khảo\" vì FPS phụ thuộc setting và bản cập nhật game.\n- Nếu khách hỏi PC/cấu hình/gaming, chỉ dùng PC bộ/cấu hình có sẵn hoặc linh kiện build PC trong danh sách; tuyệt đối không biến chuột/bàn phím/tai nghe/màn hình thành PC đề xuất.\n- Với GTA V: 10-15 triệu chơi ổn Full HD thiết lập vừa/cao tùy linh kiện; 15-30 triệu rất ổn Full HD/2K tùy VGA; 50 triệu dư sức GTA V và có thể hướng tới game nặng hơn/2K/4K.\n- Không nói \"không tìm thấy\" nếu backend đã cung cấp bất kỳ sản phẩm hoặc linh kiện fallback nào.\n- Nếu khách hỏi chính sách, chỉ dùng nguồn sự thật chính sách bên dưới.\n\nNguồn sự thật chính sách KKSHOP:\n{policyKnowledge}\n\nDữ liệu sản phẩm KKSHOP được phép dùng:\n{productLines}";
     }
 
     private static string ExtractReply(JsonElement root)

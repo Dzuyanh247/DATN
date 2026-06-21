@@ -195,7 +195,7 @@ public class SupportChatController : Controller
             type = "product",
             title = p.Name,
             subtitle = $"{p.Price:N0} đ • {p.StockStatus}",
-            badge = p.CategoryScope == "PC" ? "PC đề xuất" : null,
+            badge = p.ProductTypeLabel,
             actions = new[] { new { label = "Xem chi tiết", url = p.Link } }
         }).ToList();
         var actions = Array.Empty<object>();
