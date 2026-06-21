@@ -55,7 +55,7 @@ public class GeminiChatService : IAiChatService
         if (intent == AiChatIntent.Greeting)
             return new(true, "Chào bạn! KKSHOP AI có thể hỗ trợ tư vấn PC, linh kiện, cấu hình, đơn hàng, bảo hành và thanh toán. Bạn cần mình hỗ trợ phần nào ạ?", []);
         if (intent == AiChatIntent.OutOfScope)
-            return new(true, "KKSHOP AI hiện hỗ trợ các vấn đề về sản phẩm PC, linh kiện, cấu hình, đơn hàng, bảo hành và thanh toán. Bạn cần mình hỗ trợ phần nào ạ?", []);
+            return new(true, "Mình là KKSHOP AI nên lúc nào cũng sẵn sàng hỗ trợ bạn ạ 😄 Bạn muốn mình tư vấn PC, linh kiện, đơn hàng hay bảo hành không?", []);
         if (intent == AiChatIntent.ClarifyProductAdvice)
             return new(true, "Bạn muốn mình phân tích sản phẩm hoặc dòng sản phẩm nào ạ? Hãy gửi tên đầy đủ, nhu cầu sử dụng hoặc link sản phẩm để mình tư vấn ưu/nhược điểm kỹ hơn nhé.", []);
 
@@ -128,12 +128,16 @@ public class GeminiChatService : IAiChatService
         var normalized = RemoveDiacritics(lower);
         var compact = normalized.Trim(' ', '.', '!', '?');
         if (GreetingWords.Contains(compact) || (GreetingWords.Any(g => compact.StartsWith(g + " ")) && compact.Length <= 28)) return AiChatIntent.Greeting;
-        if (ContainsAny(normalized, "thoi tiet", "bong da", "chung khoan", "nau an", "xem phim", "du lich", "lich su")) return AiChatIntent.OutOfScope;
+        if (ContainsAny(normalized, "thoi tiet", "bong da", "chung khoan", "nau an", "an com", "xem phim", "du lich", "lich su")) return AiChatIntent.OutOfScope;
         if (ContainsAny(normalized, "bao hanh", "don hang", "thanh toan", "tra gop", "van chuyen", "ship", "nhan vien", "shop con hoat dong", "mo cua")) return AiChatIntent.PolicyOrSupport;
 
         var hasProductTerm = ProductTerms.Any(normalized.Contains) || Regex.IsMatch(normalized, @"\b(?:rtx|gtx|rx|i[3579]|ryzen|logitech|razer|akko|asus|msi|gigabyte|corsair|g304)\b", RegexOptions.IgnoreCase);
+        var hasBudget = Regex.IsMatch(normalized, @"\b\d+(?:[\.,]\d+)?\s*(?:-|den|toi)?\s*\d*\s*(?:tr|trieu|m|million)\b", RegexOptions.IgnoreCase);
+        var hasGame = ContainsAny(normalized, "gta", "gta5", "valorant", "black myth", "choi game", "gaming");
+        var hasConfigIntent = ContainsAny(normalized, "cau hinh", "pc gaming", "may choi game", "may tinh", "build", "shop co san");
         var hasSearchIntent = SearchIntentWords.Any(normalized.Contains);
         var hasAdviceIntent = AdviceIntentWords.Any(normalized.Contains);
+        if ((hasConfigIntent || hasGame || hasBudget) && !ContainsAny(normalized, "don hang", "bao hanh", "thanh toan", "tra gop")) return AiChatIntent.ProductAdvice;
         if (hasSearchIntent || (hasProductTerm && ContainsAny(normalized, "gia", "con hang", "mua", "ban", "tim", "goi y", "ngan sach", "duoi", "tam"))) return AiChatIntent.ProductSearch;
         if (hasAdviceIntent && hasProductTerm) return AiChatIntent.ProductAdvice;
         if (hasAdviceIntent) return AiChatIntent.ClarifyProductAdvice;
@@ -157,7 +161,7 @@ public class GeminiChatService : IAiChatService
         var productRule = intent == AiChatIntent.ProductAdvice
             ? "- Nếu khách hỏi lợi ích/ưu điểm/phân tích/có nên mua, hãy tư vấn chuyên nghiệp: ưu điểm, nhược điểm/lưu ý, phù hợp với ai. Chỉ nhắc sản phẩm trong danh sách nếu thật sự khớp câu hỏi."
             : "- Nếu có sản phẩm, chọn tối đa 2-3 sản phẩm phù hợp nhất, nêu giá và lý do phù hợp.";
-        return $"Câu hỏi khách hàng: {message}\n\nQuy tắc bắt buộc khi trả lời:\n- Không tự gợi ý hoặc liệt kê sản phẩm nếu câu hỏi không có intent mua/tìm/giá/còn hàng/cấu hình/ngân sách/tên sản phẩm rõ ràng.\n- Chỉ tư vấn dựa trên danh sách sản phẩm backend cung cấp bên dưới. Không bịa sản phẩm ngoài danh sách.\n- Nếu thiếu dữ liệu chi tiết, nói tự nhiên: Mình chưa có đủ dữ liệu chi tiết về sản phẩm này trong hệ thống. Bạn có thể gửi thêm tên đầy đủ hoặc link sản phẩm để mình kiểm tra kỹ hơn nhé.\n{productRule}\n- Với FPS/game, không cam kết tuyệt đối; dùng các cụm như \"dự kiến\", \"phù hợp ở mức tham khảo\" vì FPS phụ thuộc setting và bản cập nhật game.\n- Nếu khách hỏi PC/cấu hình/gaming, chỉ tư vấn PC bộ/cấu hình PC có trong danh sách.\n- Nếu khách hỏi chính sách, chỉ dùng nguồn sự thật chính sách bên dưới.\n\nNguồn sự thật chính sách KKSHOP:\n{policyKnowledge}\n\nDữ liệu sản phẩm KKSHOP được phép dùng:\n{productLines}";
+        return $"Câu hỏi khách hàng: {message}\n\nQuy tắc bắt buộc khi trả lời:\n- Không tự gợi ý hoặc liệt kê sản phẩm nếu câu hỏi không có intent mua/tìm/giá/còn hàng/cấu hình/ngân sách/tên sản phẩm rõ ràng.\n- Chỉ tư vấn dựa trên danh sách sản phẩm backend cung cấp bên dưới. Không bịa sản phẩm ngoài danh sách.\n- Nếu thiếu dữ liệu chi tiết, nói tự nhiên: Mình chưa có đủ dữ liệu chi tiết về sản phẩm này trong hệ thống. Bạn có thể gửi thêm tên đầy đủ hoặc link sản phẩm để mình kiểm tra kỹ hơn nhé.\n{productRule}\n- Với FPS/game, không cam kết tuyệt đối; dùng các cụm như \"dự kiến\", \"phù hợp ở mức tham khảo\" vì FPS phụ thuộc setting và bản cập nhật game.\n- Nếu khách hỏi PC/cấu hình/gaming, ưu tiên PC bộ/cấu hình có sẵn trong danh sách; nếu danh sách là linh kiện fallback thì trình bày như một cấu hình build từ linh kiện shop đang có.\n- Với GTA V: 10-15 triệu chơi ổn Full HD thiết lập vừa/cao tùy linh kiện; 15-30 triệu rất ổn Full HD/2K tùy VGA; 50 triệu dư sức GTA V và có thể hướng tới game nặng hơn/2K/4K.\n- Không nói \"không tìm thấy\" nếu backend đã cung cấp bất kỳ sản phẩm hoặc linh kiện fallback nào.\n- Nếu khách hỏi chính sách, chỉ dùng nguồn sự thật chính sách bên dưới.\n\nNguồn sự thật chính sách KKSHOP:\n{policyKnowledge}\n\nDữ liệu sản phẩm KKSHOP được phép dùng:\n{productLines}";
     }
 
     private static string ExtractReply(JsonElement root)
@@ -171,9 +175,9 @@ public class GeminiChatService : IAiChatService
     private static string NormalizeCacheKey(string text) => text.Trim().ToLowerInvariant()[..Math.Min(text.Trim().Length, 160)];
 
     private static readonly string[] GreetingWords = ["chao", "chao ban", "hello", "hi", "alo", "shop oi", "ad oi"];
-    private static readonly string[] SearchIntentWords = ["mua", "tim", "can", "gia", "bao nhieu", "con hang", "co hang", "goi y", "tu van cau hinh", "build", "ngan sach", "duoi", "tam", "khoang"];
-    private static readonly string[] AdviceIntentWords = ["loi ich", "uu diem", "nhuoc diem", "phan tich", "co nen mua", "danh gia", "tot khong", "phu hop", "nen chon"];
-    private static readonly string[] ProductTerms = ["pc", "may tinh", "linh kien", "chuot", "ban phim", "tai nghe", "man hinh", "cpu", "vga", "gpu", "ram", "ssd", "hdd", "nguon", "psu", "case", "tan nhiet", "main", "mainboard", "laptop"];
+    private static readonly string[] SearchIntentWords = ["mua", "tim", "can", "gia", "bao nhieu", "con hang", "co hang", "goi y", "tu van cau hinh", "build", "ngan sach", "duoi", "tam", "khoang", "shop co san"];
+    private static readonly string[] AdviceIntentWords = ["loi ich", "uu diem", "nhuoc diem", "phan tich", "co nen mua", "danh gia", "tot khong", "phu hop", "nen chon", "choi duoc", "choi duoc khong"];
+    private static readonly string[] ProductTerms = ["pc", "may tinh", "may bo", "cau hinh", "linh kien", "chuot", "ban phim", "tai nghe", "man hinh", "cpu", "vga", "gpu", "ram", "ssd", "hdd", "nguon", "psu", "case", "tan nhiet", "main", "mainboard", "laptop", "gta", "gaming"];
 
-    private const string SystemPrompt = "Bạn là KKSHOP AI, trợ lý tư vấn bán PC và linh kiện của KKSHOP. Chỉ trả lời trong phạm vi sản phẩm PC, linh kiện, cấu hình, đơn hàng, bảo hành và thanh toán. Không tự liệt kê sản phẩm khi khách chỉ chào hỏi hoặc chưa có ý định sản phẩm rõ ràng. Chỉ tư vấn dựa trên dữ liệu sản phẩm và nguồn chính sách backend cung cấp; không bịa sản phẩm, giá, thông số, bảo hành, tồn kho, khuyến mãi hoặc chính sách. Nếu thiếu dữ liệu sản phẩm, nói tự nhiên rằng mình chưa có đủ dữ liệu chi tiết và đề nghị khách gửi tên đầy đủ hoặc link sản phẩm. Khi tư vấn gaming/FPS chỉ nói dự kiến/phù hợp ở mức tham khảo, không cam kết FPS tuyệt đối. Trả lời tiếng Việt ngắn gọn, dễ hiểu.";
+    private const string SystemPrompt = "Bạn là KKSHOP AI, nhân viên tư vấn PC và linh kiện chuyên nghiệp của KKSHOP. Trả lời thân thiện, không từ chối máy móc. Chỉ liệt kê sản phẩm khi khách có intent mua/tìm/giá/cấu hình/ngân sách/tên sản phẩm rõ ràng. Chỉ dùng dữ liệu sản phẩm và chính sách backend cung cấp; không bịa sản phẩm, giá, thông số, bảo hành, tồn kho, khuyến mãi hoặc chính sách. Nếu thiếu dữ liệu, hỏi lại hoặc fallback hợp lý; không nói không tìm thấy khi backend đã cung cấp sản phẩm/linh kiện. Khi tư vấn gaming/FPS chỉ nói dự kiến/phù hợp ở mức tham khảo, không cam kết FPS tuyệt đối. Trả lời tiếng Việt ngắn gọn, dễ hiểu.";
 }
