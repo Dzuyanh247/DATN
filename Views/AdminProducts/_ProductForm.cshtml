@@ -448,7 +448,6 @@
             const existing = findPreset(option);
             if (existing) {
                 existing.checked = true;
-                existing.closest('.promotion-preset-option')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
             } else {
                 presetGrid.appendChild(createPromotionOption(option, true));
                 savePromotionOptions();
