@@ -609,7 +609,6 @@ public class OrdersController : Controller
         var orders = await _db.Orders
             .AsSplitQuery()
             .Include(o => o.Details)
-                .ThenInclude(d => d.Product)
             .Where(o => o.UserId == userId)
             .OrderByDescending(o => o.CreatedAt)
             .ToListAsync();
@@ -656,7 +655,23 @@ public class OrdersController : Controller
                             || order.Id.ToString().Contains(keyword, StringComparison.OrdinalIgnoreCase))
             .Select(order => new MyOrderRowViewModel
             {
-                Order = order,
+                Order = new MyOrderSummaryViewModel
+                {
+                    Id = order.Id,
+                    CreatedAt = order.CreatedAt,
+                    Status = order.Status,
+                    PaymentMethod = order.PaymentMethod ?? string.Empty,
+                    PaymentStatus = order.PaymentStatus ?? string.Empty,
+                    TotalAmount = order.TotalAmount,
+                    PaymentExpireAt = order.PaymentExpireAt,
+                    Details = order.Details.Select(detail => new MyOrderDetailViewModel
+                    {
+                        ProductId = detail.ProductId,
+                        Quantity = detail.Quantity,
+                        ProductName = string.IsNullOrWhiteSpace(detail.ProductName) ? "Sản phẩm không xác định" : detail.ProductName,
+                        ProductImage = string.IsNullOrWhiteSpace(detail.ProductImage) ? "/images/placeholders/product.svg" : detail.ProductImage
+                    }).ToList()
+                },
                 ReviewedProductCount = order.Details
                     .Select(detail => detail.ProductId)
                     .Distinct()

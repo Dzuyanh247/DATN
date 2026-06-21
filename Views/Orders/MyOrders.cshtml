@@ -55,7 +55,11 @@
                 @foreach (var item in Model.Orders)
                 {
                     var order = item.Order;
-                    var canPay = OrderStatusHelper.CanPayNow(order, nowUtc);
+                    var canPay = order.Status == OrderStatus.PendingPayment
+                        && !PaymentMethods.IsCod(order.PaymentMethod)
+                        && OrderStatusHelper.IsPendingPaymentStatus(order.PaymentStatus)
+                        && order.PaymentExpireAt.HasValue
+                        && order.PaymentExpireAt.Value > nowUtc;
                     var showTracking = order.Status is OrderStatus.Processing or OrderStatus.Delivering;
                     var canPrint = order.Status is not OrderStatus.Cancelled and not OrderStatus.Expired;
                     var visibleProducts = order.Details.Take(2).ToList();
@@ -84,10 +88,10 @@
                             <div class="my-order-products">
                                 @foreach (var detail in visibleProducts)
                                 {
-                                    var image = ImageUrlHelper.ResolveImageUrl(detail.ProductImage, "/images/placeholders/product.svg");
+                                    var image = ImageUrlHelper.ResolveImageUrl(detail.ProductImage ?? "/images/placeholders/product.svg", "/images/placeholders/product.svg");
                                     <div class="my-order-product">
                                         <img src="@image" alt="" loading="lazy" onerror="this.onerror=null;this.src='/images/placeholders/product.svg';" />
-                                        <div><strong>@detail.ProductName</strong><span>Số lượng: @detail.Quantity</span></div>
+                                        <div><strong>@(string.IsNullOrWhiteSpace(detail.ProductName) ? "Sản phẩm không xác định" : detail.ProductName)</strong><span>Số lượng: @detail.Quantity</span></div>
                                     </div>
                                 }
                                 @if (hiddenProductCount > 0)
