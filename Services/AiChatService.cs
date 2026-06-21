@@ -1,4 +1,6 @@
+using System.Globalization;
 using System.Net.Http.Json;
+using System.Text.RegularExpressions;
 using System.Text.Json;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
@@ -6,6 +8,17 @@ using Microsoft.Extensions.Options;
 namespace Datn.PcStore.Services;
 
 public record AiChatResponse(bool Success, string Reply, IReadOnlyList<AiProductContext> SuggestedProducts);
+
+internal enum AiChatIntent
+{
+    Greeting,
+    OutOfScope,
+    PolicyOrSupport,
+    ProductSearch,
+    ProductAdvice,
+    ClarifyProductAdvice,
+    GeneralShop
+}
 
 public interface IAiChatService
 {
@@ -38,6 +51,14 @@ public class GeminiChatService : IAiChatService
         if (message.Length == 0) return new(false, "Bạn vui lòng nhập câu hỏi cần tư vấn.", []);
         if (message.Length > 500) return new(false, "Câu hỏi quá dài, bạn vui lòng rút gọn dưới 500 ký tự.", []);
         if (!IsAllowed(sessionId, ipAddress)) return new(false, "Bạn đang gửi quá nhanh, vui lòng thử lại sau vài giây.", []);
+        var intent = DetectIntent(message);
+        if (intent == AiChatIntent.Greeting)
+            return new(true, "Chào bạn! KKSHOP AI có thể hỗ trợ tư vấn PC, linh kiện, cấu hình, đơn hàng, bảo hành và thanh toán. Bạn cần mình hỗ trợ phần nào ạ?", []);
+        if (intent == AiChatIntent.OutOfScope)
+            return new(true, "KKSHOP AI hiện hỗ trợ các vấn đề về sản phẩm PC, linh kiện, cấu hình, đơn hàng, bảo hành và thanh toán. Bạn cần mình hỗ trợ phần nào ạ?", []);
+        if (intent == AiChatIntent.ClarifyProductAdvice)
+            return new(true, "Bạn muốn mình phân tích sản phẩm hoặc dòng sản phẩm nào ạ? Hãy gửi tên đầy đủ, nhu cầu sử dụng hoặc link sản phẩm để mình tư vấn ưu/nhược điểm kỹ hơn nhé.", []);
+
         var policyAnswer = _shopPolicy.Answer(message);
         if (policyAnswer.IsPolicyQuestion)
         {
@@ -47,21 +68,20 @@ public class GeminiChatService : IAiChatService
 
         if (!_options.Enabled || string.IsNullOrWhiteSpace(_options.ApiKey)) return new(false, BusyMessage, []);
 
-        var cacheKey = $"ai-chat:{NormalizeCacheKey(message)}";
-        if (_cache.TryGetValue<AiChatResponse>(cacheKey, out var cached) && cached != null) return cached;
+        var shouldSearchProducts = intent is AiChatIntent.ProductSearch or AiChatIntent.ProductAdvice;
+        IReadOnlyList<AiProductContext> products = shouldSearchProducts ? await _productSearch.SearchAsync(message, cancellationToken) : [];
+        if (shouldSearchProducts && products.Count == 0)
+            return new(true, "Mình chưa tìm thấy sản phẩm phù hợp với từ khóa này trong dữ liệu KKSHOP. Bạn thử gửi tên đầy đủ hơn, loại linh kiện hoặc ngân sách để mình kiểm tra chính xác hơn nhé.", []);
 
-        var products = await _productSearch.SearchAsync(message, cancellationToken);
-        if (IsOutOfScope(message))
-        {
-            return new(true, "KKSHOP AI chỉ hỗ trợ tư vấn PC, linh kiện, đơn hàng, bảo hành và thanh toán. Bạn cần mình tư vấn cấu hình hoặc sản phẩm nào không?", products);
-        }
+        var cacheKey = $"ai-chat:{intent}:{NormalizeCacheKey(message)}";
+        if (_cache.TryGetValue<AiChatResponse>(cacheKey, out var cached) && cached != null) return cached;
 
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeout.CancelAfter(TimeSpan.FromSeconds(Math.Clamp(_options.TimeoutSeconds, 10, 15)));
 
         try
         {
-            var prompt = BuildPrompt(message, products, _shopPolicy.BuildKnowledgePrompt());
+            var prompt = BuildPrompt(message, products, _shopPolicy.BuildKnowledgePrompt(), intent);
             var request = new
             {
                 systemInstruction = new { parts = new[] { new { text = SystemPrompt } } },
@@ -102,18 +122,42 @@ public class GeminiChatService : IAiChatService
         return true;
     }
 
-    private static bool IsOutOfScope(string message)
+    private static AiChatIntent DetectIntent(string message)
     {
         var lower = message.ToLowerInvariant();
-        return lower.Contains("thời tiết") || lower.Contains("bóng đá") || lower.Contains("chứng khoán") || lower.Contains("nấu ăn");
+        var normalized = RemoveDiacritics(lower);
+        var compact = normalized.Trim(' ', '.', '!', '?');
+        if (GreetingWords.Contains(compact) || (GreetingWords.Any(g => compact.StartsWith(g + " ")) && compact.Length <= 28)) return AiChatIntent.Greeting;
+        if (ContainsAny(normalized, "thoi tiet", "bong da", "chung khoan", "nau an", "xem phim", "du lich", "lich su")) return AiChatIntent.OutOfScope;
+        if (ContainsAny(normalized, "bao hanh", "don hang", "thanh toan", "tra gop", "van chuyen", "ship", "nhan vien", "shop con hoat dong", "mo cua")) return AiChatIntent.PolicyOrSupport;
+
+        var hasProductTerm = ProductTerms.Any(normalized.Contains) || Regex.IsMatch(normalized, @"\b(?:rtx|gtx|rx|i[3579]|ryzen|logitech|razer|akko|asus|msi|gigabyte|corsair|g304)\b", RegexOptions.IgnoreCase);
+        var hasSearchIntent = SearchIntentWords.Any(normalized.Contains);
+        var hasAdviceIntent = AdviceIntentWords.Any(normalized.Contains);
+        if (hasSearchIntent || (hasProductTerm && ContainsAny(normalized, "gia", "con hang", "mua", "ban", "tim", "goi y", "ngan sach", "duoi", "tam"))) return AiChatIntent.ProductSearch;
+        if (hasAdviceIntent && hasProductTerm) return AiChatIntent.ProductAdvice;
+        if (hasAdviceIntent) return AiChatIntent.ClarifyProductAdvice;
+        if (hasProductTerm) return AiChatIntent.ProductAdvice;
+        return AiChatIntent.GeneralShop;
     }
 
-    private static string BuildPrompt(string message, IReadOnlyList<AiProductContext> products, string policyKnowledge)
+    private static bool ContainsAny(string source, params string[] values) => values.Any(source.Contains);
+
+    private static string RemoveDiacritics(string value)
+    {
+        var normalized = value.Replace('đ', 'd').Replace('Đ', 'D').Normalize(System.Text.NormalizationForm.FormD);
+        return new string(normalized.Where(c => CharUnicodeInfo.GetUnicodeCategory(c) != UnicodeCategory.NonSpacingMark).ToArray()).Normalize(System.Text.NormalizationForm.FormC);
+    }
+
+    private static string BuildPrompt(string message, IReadOnlyList<AiProductContext> products, string policyKnowledge, AiChatIntent intent)
     {
         var productLines = products.Count == 0
             ? "Hiện KKSHOP chưa tìm thấy cấu hình phù hợp trong dữ liệu hiện có."
             : string.Join("\n", products.Select((p, i) => $"{i + 1}. Tên: {p.Name}; Giá: {p.Price:N0} đ; Mô tả: {p.Description}; Cấu hình/thông số: {p.Specifications}; Bảo hành: {p.Warranty}; Tồn kho: {p.StockStatus}; Link: {p.Link}; Danh mục: {p.Category}"));
-        return $"Câu hỏi khách hàng: {message}\n\nQuy tắc bắt buộc khi trả lời:\n- Chỉ tư vấn dựa trên danh sách sản phẩm backend cung cấp bên dưới. Không bịa sản phẩm ngoài danh sách.\n- Nếu danh sách sản phẩm trống, nói đúng: \"Hiện KKSHOP chưa tìm thấy cấu hình phù hợp trong dữ liệu hiện có\" và gợi ý khách nhập ngân sách hoặc bấm Gặp nhân viên.\n- Nếu có sản phẩm, chọn 2-3 sản phẩm phù hợp nhất, nêu giá và lý do phù hợp.\n- Với FPS/game, không cam kết tuyệt đối; dùng các cụm như \"dự kiến\", \"phù hợp ở mức tham khảo\" vì FPS phụ thuộc setting và bản cập nhật game.\n- Nếu khách hỏi PC/cấu hình/gaming, chỉ tư vấn PC bộ/cấu hình PC có trong danh sách.\n- Nếu khách hỏi chính sách, chỉ dùng nguồn sự thật chính sách bên dưới.\n\nNguồn sự thật chính sách KKSHOP:\n{policyKnowledge}\n\nDữ liệu sản phẩm KKSHOP được phép dùng:\n{productLines}";
+        var productRule = intent == AiChatIntent.ProductAdvice
+            ? "- Nếu khách hỏi lợi ích/ưu điểm/phân tích/có nên mua, hãy tư vấn chuyên nghiệp: ưu điểm, nhược điểm/lưu ý, phù hợp với ai. Chỉ nhắc sản phẩm trong danh sách nếu thật sự khớp câu hỏi."
+            : "- Nếu có sản phẩm, chọn tối đa 2-3 sản phẩm phù hợp nhất, nêu giá và lý do phù hợp.";
+        return $"Câu hỏi khách hàng: {message}\n\nQuy tắc bắt buộc khi trả lời:\n- Không tự gợi ý hoặc liệt kê sản phẩm nếu câu hỏi không có intent mua/tìm/giá/còn hàng/cấu hình/ngân sách/tên sản phẩm rõ ràng.\n- Chỉ tư vấn dựa trên danh sách sản phẩm backend cung cấp bên dưới. Không bịa sản phẩm ngoài danh sách.\n- Nếu thiếu dữ liệu chi tiết, nói tự nhiên: Mình chưa có đủ dữ liệu chi tiết về sản phẩm này trong hệ thống. Bạn có thể gửi thêm tên đầy đủ hoặc link sản phẩm để mình kiểm tra kỹ hơn nhé.\n{productRule}\n- Với FPS/game, không cam kết tuyệt đối; dùng các cụm như \"dự kiến\", \"phù hợp ở mức tham khảo\" vì FPS phụ thuộc setting và bản cập nhật game.\n- Nếu khách hỏi PC/cấu hình/gaming, chỉ tư vấn PC bộ/cấu hình PC có trong danh sách.\n- Nếu khách hỏi chính sách, chỉ dùng nguồn sự thật chính sách bên dưới.\n\nNguồn sự thật chính sách KKSHOP:\n{policyKnowledge}\n\nDữ liệu sản phẩm KKSHOP được phép dùng:\n{productLines}";
     }
 
     private static string ExtractReply(JsonElement root)
@@ -126,5 +170,10 @@ public class GeminiChatService : IAiChatService
 
     private static string NormalizeCacheKey(string text) => text.Trim().ToLowerInvariant()[..Math.Min(text.Trim().Length, 160)];
 
-    private const string SystemPrompt = "Bạn là KKSHOP AI, trợ lý tư vấn bán PC và linh kiện của KKSHOP. Chỉ tư vấn dựa trên dữ liệu sản phẩm và nguồn sự thật chính sách được backend cung cấp. Không bịa sản phẩm, giá, thông số, bảo hành, tồn kho, khuyến mãi hoặc chính sách. Nếu thiếu dữ liệu sản phẩm, nói: Hiện tại hệ thống chưa có đủ thông tin xác nhận. Nếu thiếu dữ liệu chính sách, nói: Hiện tại KKSHOP chưa hỗ trợ hoặc chưa có thông tin xác nhận về nội dung này. Khi tư vấn gaming/FPS chỉ nói dự kiến/phù hợp ở mức tham khảo, không cam kết FPS tuyệt đối. Trả lời tiếng Việt ngắn gọn, dễ hiểu.";
+    private static readonly string[] GreetingWords = ["chao", "chao ban", "hello", "hi", "alo", "shop oi", "ad oi"];
+    private static readonly string[] SearchIntentWords = ["mua", "tim", "can", "gia", "bao nhieu", "con hang", "co hang", "goi y", "tu van cau hinh", "build", "ngan sach", "duoi", "tam", "khoang"];
+    private static readonly string[] AdviceIntentWords = ["loi ich", "uu diem", "nhuoc diem", "phan tich", "co nen mua", "danh gia", "tot khong", "phu hop", "nen chon"];
+    private static readonly string[] ProductTerms = ["pc", "may tinh", "linh kien", "chuot", "ban phim", "tai nghe", "man hinh", "cpu", "vga", "gpu", "ram", "ssd", "hdd", "nguon", "psu", "case", "tan nhiet", "main", "mainboard", "laptop"];
+
+    private const string SystemPrompt = "Bạn là KKSHOP AI, trợ lý tư vấn bán PC và linh kiện của KKSHOP. Chỉ trả lời trong phạm vi sản phẩm PC, linh kiện, cấu hình, đơn hàng, bảo hành và thanh toán. Không tự liệt kê sản phẩm khi khách chỉ chào hỏi hoặc chưa có ý định sản phẩm rõ ràng. Chỉ tư vấn dựa trên dữ liệu sản phẩm và nguồn chính sách backend cung cấp; không bịa sản phẩm, giá, thông số, bảo hành, tồn kho, khuyến mãi hoặc chính sách. Nếu thiếu dữ liệu sản phẩm, nói tự nhiên rằng mình chưa có đủ dữ liệu chi tiết và đề nghị khách gửi tên đầy đủ hoặc link sản phẩm. Khi tư vấn gaming/FPS chỉ nói dự kiến/phù hợp ở mức tham khảo, không cam kết FPS tuyệt đối. Trả lời tiếng Việt ngắn gọn, dễ hiểu.";
 }
