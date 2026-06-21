@@ -40,7 +40,7 @@ public class AccessoriesApiController : ControllerBase
         if (!string.IsNullOrWhiteSpace(keyword))
         {
             var kw = keyword.Trim();
-            query = query.Where(p => p.Name.Contains(kw) || (p.Brand != null && p.Brand.Contains(kw)) || p.ShortDescription.Contains(kw));
+            query = query.Where(p => p.Name.Contains(kw) || (p.Brand != null && p.Brand.Contains(kw)) || (p.ShortDescription != null && p.ShortDescription.Contains(kw)));
         }
         if (minPrice.HasValue) query = query.Where(p => ((p.DiscountPrice ?? p.SalePrice) ?? p.Price) >= minPrice.Value);
         if (maxPrice.HasValue) query = query.Where(p => ((p.DiscountPrice ?? p.SalePrice) ?? p.Price) <= maxPrice.Value);

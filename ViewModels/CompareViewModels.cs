@@ -17,7 +17,7 @@ public class CompareProductVm
         return new CompareProductVm
         {
             Id = product.Id,
-            Name = product.Name,
+            Name = string.IsNullOrWhiteSpace(product.Name) ? "Sản phẩm không xác định" : product.Name,
             Price = finalPrice,
             OriginalPrice = product.Price,
             ImageUrl = imageUrl,

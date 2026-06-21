@@ -27,8 +27,8 @@ public class AdminWarrantyController : Controller
             var term = search.Trim();
             var digits = new string(term.Where(char.IsDigit).ToArray());
             int.TryParse(digits, out var orderId);
-            query = query.Where(x => x.CustomerName.Contains(term) || x.Phone.Contains(term) ||
-                                     x.WarrantyCode.Contains(term) || x.RequestCode.Contains(term) || x.ProductName.Contains(term) ||
+            query = query.Where(x => (x.CustomerName != null && x.CustomerName.Contains(term)) || (x.Phone != null && x.Phone.Contains(term)) ||
+                                     (x.WarrantyCode != null && x.WarrantyCode.Contains(term)) || (x.RequestCode != null && x.RequestCode.Contains(term)) || (x.ProductName != null && x.ProductName.Contains(term)) ||
                                      (orderId > 0 && x.OrderId == orderId));
         }
         return View(new AdminWarrantyIndexVm

@@ -286,7 +286,7 @@ END");
 
     foreach (var tableName in auditTables)
     {
-        await db.Database.ExecuteSqlRawAsync($@"IF OBJECT_ID('{tableName}', 'U') IS NOT NULL
+        var auditSql = $@"IF OBJECT_ID('{tableName}', 'U') IS NOT NULL
 BEGIN
     IF COL_LENGTH('{tableName}', 'CreatedAt') IS NOT NULL
     BEGIN
@@ -361,7 +361,8 @@ BEGIN
             ALTER TABLE [{tableName}] ADD CONSTRAINT [DF_{tableName}_UpdatedAt] DEFAULT GETUTCDATE() FOR [UpdatedAt];
         END
     END
-END");
+END";
+        await db.Database.ExecuteSqlRawAsync(auditSql, cancellationToken);
     }
     await db.Database.ExecuteSqlRawAsync(@"IF OBJECT_ID('ShippingConfigs', 'U') IS NULL
 BEGIN

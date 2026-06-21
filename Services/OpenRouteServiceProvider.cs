@@ -98,7 +98,8 @@ public class OpenRouteServiceProvider : IMapProvider
             query["focus.point.lat"] = "21.0278";
             query["focus.point.lon"] = "105.8342";
         }
-        return new Uri(QueryHelpers.AddQueryString("https://api.openrouteservice.org/geocode/search", query.Where(x => !string.IsNullOrWhiteSpace(x.Value)).ToDictionary(x => x.Key, x => x.Value!)));
+        var queryString = query.Where(x => !string.IsNullOrWhiteSpace(x.Value)).ToDictionary(x => x.Key, x => (string?)x.Value);
+        return new Uri(QueryHelpers.AddQueryString("https://api.openrouteservice.org/geocode/search", queryString));
     }
 
     private IEnumerable<RankedFeature> RankFeatures(string query, string? provinceName, string? wardName, IEnumerable<FeatureData> features)

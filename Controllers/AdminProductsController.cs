@@ -117,13 +117,15 @@ public class AdminProductsController : Controller
         if (product == null) return NotFound();
 
         var slug = BuildSlug(vm.Name);
-        if (!await ValidateUniqueProductFieldsAsync(vm, slug, product.ProductCode, "cập nhật"))
+        var productCode = string.IsNullOrWhiteSpace(product.ProductCode) ? $"SP-{Guid.NewGuid():N}"[..16] : product.ProductCode.Trim();
+        if (!await ValidateUniqueProductFieldsAsync(vm, slug, productCode, "cập nhật"))
         {
             await PopulateExistingImagesAsync(vm);
             return View(vm);
         }
 
         product.Name = vm.Name.Trim();
+        product.ProductCode = productCode;
         product.Brand = null;
         product.ProductType = ProductKinds.PC;
         product.ComponentType = ProductKinds.PC;

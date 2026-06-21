@@ -162,8 +162,8 @@ public class CartService : ICartService
         if (cart == null) return vm;
         vm.Items = cart.Items.Where(i => i.Product != null).Select(i => new CartLineVm
         {
-            CartItemId = i.Id, ProductId = i.ProductId, ProductName = i.Product!.Name, ProductImage = i.Product.ThumbnailImage,
-            Warranty = i.Product.WarrantyDuration, UnitPrice = i.Product.DiscountPrice ?? i.Product.SalePrice ?? i.Product.Price,
+            CartItemId = i.Id, ProductId = i.ProductId, ProductName = string.IsNullOrWhiteSpace(i.Product!.Name) ? "Sản phẩm không xác định" : i.Product.Name, ProductImage = i.Product.ThumbnailImage ?? string.Empty,
+            Warranty = i.Product.WarrantyDuration ?? string.Empty, UnitPrice = i.Product.DiscountPrice ?? i.Product.SalePrice ?? i.Product.Price,
             Quantity = i.Quantity, StockQuantity = i.Product.StockQuantity
         }).ToList();
         return vm;
@@ -180,8 +180,8 @@ public class CartService : ICartService
             if (!products.TryGetValue(i.ProductId, out var p)) continue;
             vm.Items.Add(new CartLineVm
             {
-                CartItemId = i.CartItemId, ProductId = i.ProductId, ProductName = p.Name, ProductImage = p.ThumbnailImage,
-                Warranty = p.WarrantyDuration, UnitPrice = p.DiscountPrice ?? p.SalePrice ?? p.Price,
+                CartItemId = i.CartItemId, ProductId = i.ProductId, ProductName = string.IsNullOrWhiteSpace(p.Name) ? "Sản phẩm không xác định" : p.Name, ProductImage = p.ThumbnailImage ?? string.Empty,
+                Warranty = p.WarrantyDuration ?? string.Empty, UnitPrice = p.DiscountPrice ?? p.SalePrice ?? p.Price,
                 Quantity = Math.Min(Math.Max(i.Quantity, 1), p.StockQuantity), StockQuantity = p.StockQuantity
             });
         }
