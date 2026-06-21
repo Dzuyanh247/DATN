@@ -24,6 +24,7 @@ public record AiProductContext(
 public interface IProductSearchForAiService
 {
     Task<IReadOnlyList<AiProductContext>> SearchAsync(string message, CancellationToken cancellationToken = default);
+    Task<AiProductContext?> GetByIdAsync(int productId, CancellationToken cancellationToken = default);
 }
 
 public partial class ProductSearchForAiService : IProductSearchForAiService
@@ -37,6 +38,15 @@ public partial class ProductSearchForAiService : IProductSearchForAiService
         _db = db;
         _options = options.Value;
         _logger = logger;
+    }
+
+    public async Task<AiProductContext?> GetByIdAsync(int productId, CancellationToken cancellationToken = default)
+    {
+        var product = await _db.Products.AsNoTracking().Include(x => x.Category)
+            .FirstOrDefaultAsync(x => x.Id == productId && x.IsActive, cancellationToken);
+        if (product == null) return null;
+        var scope = IsPcProduct(product) ? "PC" : ComponentTypes.Normalize(product.ComponentType);
+        return ToContext(product, scope);
     }
 
     public async Task<IReadOnlyList<AiProductContext>> SearchAsync(string message, CancellationToken cancellationToken = default)
@@ -131,7 +141,7 @@ public partial class ProductSearchForAiService : IProductSearchForAiService
 
     private static IQueryable<Product> ApplyComponentScope(IQueryable<Product> query, string? componentType)
     {
-        query = query.Where(x => x.ProductType == ProductKinds.Component || (x.Category != null && (x.Category.Name == "Linh kiện" || x.Category.Name == "Màn hình")));
+        query = query.Where(x => x.ProductType == ProductKinds.Component || x.ProductType == ProductKinds.PC || (x.Category != null && (x.Category.Name == "Linh kiện" || x.Category.Name == "Màn hình" || x.Category.Name.Contains("Phụ kiện") || x.Category.Name.Contains("Bàn phím") || x.Category.Name.Contains("Chuột") || x.Category.Name.Contains("Tai nghe"))));
         if (string.IsNullOrWhiteSpace(componentType)) return query;
         var normalized = ComponentTypes.Normalize(componentType);
         return normalized switch
@@ -144,6 +154,10 @@ public partial class ProductSearchForAiService : IProductSearchForAiService
             ComponentTypes.PSU => query.Where(x => x.ComponentType == ComponentTypes.PSU || x.Category!.Name.Contains("Nguồn") || x.Category.Name.Contains("PSU") || x.Name.Contains("Nguồn") || x.Name.Contains("PSU")),
             ComponentTypes.Case => query.Where(x => x.ComponentType == ComponentTypes.Case || x.Category!.Name.Contains("Case") || x.Category.Name.Contains("Vỏ") || x.Name.Contains("Case") || x.Name.Contains("Vỏ case")),
             ComponentTypes.Cooler => query.Where(x => x.ComponentType == ComponentTypes.Cooler || x.Category!.Name.Contains("Tản") || x.Category.Name.Contains("Cooler") || x.Name.Contains("Tản") || x.Name.Contains("Cooler")),
+            ComponentTypes.Keyboard => query.Where(x => x.ComponentType == ComponentTypes.Keyboard || x.Category!.Name.Contains("Bàn phím") || x.Name.Contains("Bàn phím") || x.Name.Contains("Keyboard") || x.Name.Contains("Keycap")),
+            ComponentTypes.Mouse => query.Where(x => x.ComponentType == ComponentTypes.Mouse || x.Category!.Name.Contains("Chuột") || x.Name.Contains("Chuột") || x.Name.Contains("Mouse")),
+            ComponentTypes.Headphone => query.Where(x => x.ComponentType == ComponentTypes.Headphone || x.Category!.Name.Contains("Tai nghe") || x.Name.Contains("Tai nghe") || x.Name.Contains("Headset") || x.Name.Contains("Headphone")),
+            ComponentTypes.Monitor => query.Where(x => x.ComponentType == ComponentTypes.Monitor || x.Category!.Name.Contains("Màn hình") || x.Category.Name.Contains("Monitor") || x.Name.Contains("Màn hình") || x.Name.Contains("Monitor")),
             _ => query.Where(x => x.ComponentType == normalized)
         };
     }
@@ -287,12 +301,12 @@ public partial class ProductSearchForAiService : IProductSearchForAiService
     private static readonly Dictionary<string, string[]> ComponentIntentWords = new(StringComparer.OrdinalIgnoreCase)
     {
         [ComponentTypes.Headphone] = ["tai nghe", "headphone", "headset"],
-        [ComponentTypes.Keyboard] = ["ban phim", "keyboard"],
+        [ComponentTypes.Keyboard] = ["ban phim", "keyboard", "keycap", "ban phim co"],
         [ComponentTypes.Mouse] = ["chuot", "mouse"],
         [ComponentTypes.Monitor] = ["man hinh", "monitor"],
         [ComponentTypes.RAM] = [" ram", "bo nho"],
         [ComponentTypes.Storage] = ["ssd", "hdd", "o cung"],
-        [ComponentTypes.VGA] = ["vga", "gpu", "card man hinh"],
+        [ComponentTypes.VGA] = ["vga", "gpu", "card", "card man hinh"],
         [ComponentTypes.CPU] = ["cpu", "bo vi xu ly"],
         [ComponentTypes.Mainboard] = ["mainboard", "main", "bo mach chu"],
         [ComponentTypes.PSU] = ["psu", "nguon"],
@@ -306,7 +320,7 @@ public partial class ProductSearchForAiService : IProductSearchForAiService
     private static readonly Dictionary<string, string[]> AccessoryIntentWords = new(StringComparer.OrdinalIgnoreCase)
     {
         [ComponentTypes.Headphone] = ["tai nghe", "headphone", "headset"],
-        [ComponentTypes.Keyboard] = ["ban phim", "keyboard"],
+        [ComponentTypes.Keyboard] = ["ban phim", "keyboard", "keycap", "ban phim co"],
         [ComponentTypes.Mouse] = ["chuot", "mouse"],
         [ComponentTypes.Monitor] = ["man hinh", "monitor"]
     };
@@ -357,7 +371,7 @@ public partial class ProductSearchForAiService : IProductSearchForAiService
             ComponentTypes.Case => ContainsAny(text, "case", "vo case"),
             ComponentTypes.Cooler => ContainsAny(text, "tan nhiet", "cooler"),
             ComponentTypes.Monitor => ContainsAny(text, "monitor", "man hinh"),
-            ComponentTypes.Keyboard => ContainsAny(text, "keyboard", "ban phim"),
+            ComponentTypes.Keyboard => ContainsAny(text, "keyboard", "keycap", "ban phim"),
             ComponentTypes.Mouse => ContainsAny(text, "mouse", "chuot"),
             ComponentTypes.Headphone => ContainsAny(text, "headphone", "headset", "tai nghe"),
             _ => false
