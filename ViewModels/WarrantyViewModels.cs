@@ -19,16 +19,51 @@ public class WarrantyProductVm
 {
     public int OrderId { get; set; }
     public int OrderDetailId { get; set; }
+    public string OrderCode => $"DH{OrderId:D6}";
+    public string? CustomerName { get; set; }
+    public string? OrderStatus { get; set; }
     public string ProductName { get; set; } = string.Empty;
     public string? ProductImage { get; set; }
     public string WarrantyCode { get; set; } = string.Empty;
     public string? LookupPhone { get; set; }
     public DateTime PurchaseDate { get; set; }
-    public int WarrantyMonths { get; set; }
-    public DateTime ExpiresAt { get; set; }
+    public int? WarrantyMonths { get; set; }
+    public DateTime? ExpiresAt { get; set; }
     public bool IsEligibleOrder { get; set; }
-    public bool IsInWarranty { get; set; }
+    public WarrantyState WarrantyState { get; set; } = WarrantyState.Contact;
+    public bool IsInWarranty => WarrantyState is WarrantyState.Active or WarrantyState.ExpiringSoon;
     public bool HasActiveRequest { get; set; }
+    public int WarrantyProgressPercent { get; set; }
+    public int WarrantyRemainingPercent => WarrantyMonths.HasValue ? Math.Max(0, 100 - WarrantyProgressPercent) : 0;
+    public List<WarrantyComponentVm> Components { get; set; } = [];
+    public bool HasComponentWarranty => Components.Count > 0;
+    public int TotalComponents => Components.Sum(x => Math.Max(1, x.Quantity));
+    public int ComponentsInWarranty => Components.Where(x => x.IsInWarranty).Sum(x => Math.Max(1, x.Quantity));
+    public int ComponentsExpired => Components.Where(x => x.State == WarrantyState.Expired).Sum(x => Math.Max(1, x.Quantity));
+    public int ComponentsContact => Components.Where(x => x.State == WarrantyState.Contact).Sum(x => Math.Max(1, x.Quantity));
+}
+
+public class WarrantyComponentVm
+{
+    public int Stt { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public int Quantity { get; set; } = 1;
+    public string? RawWarranty { get; set; }
+    public int? WarrantyMonths { get; set; }
+    public DateTime PurchaseDate { get; set; }
+    public DateTime? ExpiresAt { get; set; }
+    public WarrantyState State { get; set; } = WarrantyState.Contact;
+    public int ProgressPercent { get; set; }
+    public int RemainingPercent => WarrantyMonths.HasValue ? Math.Max(0, 100 - ProgressPercent) : 0;
+    public bool IsInWarranty => State is WarrantyState.Active or WarrantyState.ExpiringSoon;
+}
+
+public enum WarrantyState
+{
+    Active,
+    ExpiringSoon,
+    Expired,
+    Contact
 }
 
 public class WarrantyCreateVm

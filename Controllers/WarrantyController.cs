@@ -1,5 +1,6 @@
 using System.Data;
 using System.Security.Claims;
+using System.Text.RegularExpressions;
 using Datn.PcStore.Data;
 using Datn.PcStore.Helpers;
 using Datn.PcStore.Models;
@@ -51,7 +52,7 @@ public class WarrantyController : Controller
 
         var details = await _db.OrderDetails
             .AsNoTracking()
-            .Include(x => x.Order)
+            .Include(x => x.Order).ThenInclude(x => x!.User)
             .Include(x => x.Product)
             .Where(x => x.Order != null &&
                 (x.Order.ReceiverPhone == normalized ||
@@ -85,26 +86,7 @@ public class WarrantyController : Controller
             .ToHashSet();
 
         var now = DateTimeHelper.UtcNow();
-        vm.Products = details.Select(detail =>
-        {
-            var months = GetWarrantyMonths(detail);
-            var purchaseDate = detail.Order!.CreatedAt;
-            return new WarrantyProductVm
-            {
-                OrderId = detail.OrderId,
-                OrderDetailId = detail.Id,
-                ProductName = detail.ProductName ?? string.Empty,
-                ProductImage = detail.ProductImage,
-                WarrantyCode = WarrantyCodeHelper.BuildWarrantyCode(detail.OrderId, detail.Id),
-                LookupPhone = detail.Order.ReceiverPhone,
-                PurchaseDate = purchaseDate,
-                WarrantyMonths = months,
-                ExpiresAt = WarrantyPolicy.ExpiresAt(purchaseDate, months),
-                IsEligibleOrder = WarrantyPolicy.IsOrderEligible(detail.Order),
-                IsInWarranty = WarrantyPolicy.IsInWarranty(purchaseDate, months, now),
-                HasActiveRequest = activeDetailIds.Contains(detail.Id)
-            };
-        }).ToList();
+        vm.Products = details.Select(detail => BuildWarrantyProductVm(detail, activeDetailIds.Contains(detail.Id), now)).ToList();
 
         return View(vm);
     }
@@ -337,6 +319,85 @@ public class WarrantyController : Controller
     private int? CurrentUserId() => User.Identity?.IsAuthenticated == true &&
         int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : null;
 
-    private static int GetWarrantyMonths(OrderDetail detail) =>
-        detail.WarrantyMonths > 0 ? detail.WarrantyMonths : detail.Product?.WarrantyMonths > 0 ? detail.Product.WarrantyMonths : 12;
+    private static WarrantyProductVm BuildWarrantyProductVm(OrderDetail detail, bool hasActiveRequest, DateTime now)
+    {
+        var purchaseDate = detail.Order!.CreatedAt;
+        var months = GetWarrantyMonthsOrNull(detail);
+        var state = GetWarrantyState(purchaseDate, months, now);
+
+        return new WarrantyProductVm
+        {
+            OrderId = detail.OrderId,
+            OrderDetailId = detail.Id,
+            CustomerName = detail.Order.User?.FullName ?? detail.Order.ReceiverName,
+            OrderStatus = detail.Order.Status.ToString(),
+            ProductName = detail.ProductName ?? string.Empty,
+            ProductImage = detail.ProductImage,
+            WarrantyCode = WarrantyCodeHelper.BuildWarrantyCode(detail.OrderId, detail.Id),
+            LookupPhone = detail.Order.ReceiverPhone,
+            PurchaseDate = purchaseDate,
+            WarrantyMonths = months,
+            ExpiresAt = months.HasValue ? WarrantyPolicy.ExpiresAt(purchaseDate, months.Value) : null,
+            IsEligibleOrder = WarrantyPolicy.IsOrderEligible(detail.Order),
+            WarrantyState = state,
+            WarrantyProgressPercent = CalculateProgressPercent(purchaseDate, months, now),
+            HasActiveRequest = hasActiveRequest,
+            Components = BuildComponentWarrantyRows(detail, purchaseDate, now)
+        };
+    }
+
+    private static List<WarrantyComponentVm> BuildComponentWarrantyRows(OrderDetail detail, DateTime purchaseDate, DateTime now)
+    {
+        var componentSpecs = ProductSpecDisplayHelper.TryParseComponentSpecs(detail.Product?.TechnicalSpecifications);
+        if (componentSpecs.Count == 0) return [];
+
+        return componentSpecs.Select((component, index) =>
+        {
+            var months = ParseWarrantyMonths(component.Warranty) ??
+                         (detail.Product?.WarrantyMonths > 0 ? detail.Product.WarrantyMonths : null);
+            return new WarrantyComponentVm
+            {
+                Stt = component.Stt.GetValueOrDefault(index + 1),
+                Name = component.Description,
+                Quantity = component.Quantity.GetValueOrDefault(1),
+                RawWarranty = component.Warranty,
+                WarrantyMonths = months,
+                PurchaseDate = purchaseDate,
+                ExpiresAt = months.HasValue ? WarrantyPolicy.ExpiresAt(purchaseDate, months.Value) : null,
+                State = GetWarrantyState(purchaseDate, months, now),
+                ProgressPercent = CalculateProgressPercent(purchaseDate, months, now)
+            };
+        }).Where(x => !string.IsNullOrWhiteSpace(x.Name)).ToList();
+    }
+
+    private static WarrantyState GetWarrantyState(DateTime purchaseDate, int? warrantyMonths, DateTime now)
+    {
+        if (!warrantyMonths.HasValue || warrantyMonths.Value <= 0) return WarrantyState.Contact;
+        var expiresAt = WarrantyPolicy.ExpiresAt(purchaseDate, warrantyMonths.Value);
+        if (now > expiresAt) return WarrantyState.Expired;
+        return expiresAt <= now.AddDays(30) ? WarrantyState.ExpiringSoon : WarrantyState.Active;
+    }
+
+    private static int CalculateProgressPercent(DateTime purchaseDate, int? warrantyMonths, DateTime now)
+    {
+        if (!warrantyMonths.HasValue || warrantyMonths.Value <= 0) return 0;
+        var expiresAt = WarrantyPolicy.ExpiresAt(purchaseDate, warrantyMonths.Value);
+        var totalDays = Math.Max(1, (expiresAt - purchaseDate).TotalDays);
+        var usedDays = Math.Clamp((now - purchaseDate).TotalDays, 0, totalDays);
+        return (int)Math.Round(usedDays / totalDays * 100, MidpointRounding.AwayFromZero);
+    }
+
+    private static int GetWarrantyMonths(OrderDetail detail) => GetWarrantyMonthsOrNull(detail) ?? 12;
+
+    private static int? GetWarrantyMonthsOrNull(OrderDetail detail) =>
+        ParseWarrantyMonths(detail.Warranty) ??
+        (detail.WarrantyMonths > 0 ? detail.WarrantyMonths : null) ??
+        (detail.Product?.WarrantyMonths > 0 ? detail.Product.WarrantyMonths : null);
+
+    private static int? ParseWarrantyMonths(string? warranty)
+    {
+        if (string.IsNullOrWhiteSpace(warranty)) return null;
+        var match = Regex.Match(warranty, @"(?<months>\d+)\s*(th|tháng|thang|month|months)?", RegexOptions.IgnoreCase);
+        return match.Success && int.TryParse(match.Groups["months"].Value, out var months) && months > 0 ? months : null;
+    }
 }

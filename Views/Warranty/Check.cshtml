@@ -1,40 +1,63 @@
 @model WarrantyCheckVm
+@using Datn.PcStore.ViewModels
 @{
     ViewData["Title"] = "Kiểm tra bảo hành";
 }
+@functions {
+    private static string StateClass(WarrantyState state) => state switch
+    {
+        WarrantyState.Active => "is-active",
+        WarrantyState.ExpiringSoon => "is-warning",
+        WarrantyState.Expired => "is-expired",
+        _ => "is-contact"
+    };
+
+    private static string StateIcon(WarrantyState state) => state switch
+    {
+        WarrantyState.Active => "bi-check-circle-fill",
+        WarrantyState.ExpiringSoon => "bi-clock-fill",
+        WarrantyState.Expired => "bi-x-circle-fill",
+        _ => "bi-headset"
+    };
+
+    private static string StateText(WarrantyState state) => state switch
+    {
+        WarrantyState.Active => "Còn bảo hành",
+        WarrantyState.ExpiringSoon => "Sắp hết hạn",
+        WarrantyState.Expired => "Hết bảo hành",
+        _ => "Liên hệ"
+    };
+
+    private static string MonthsText(int? months) => months.HasValue ? $"{months.Value} tháng" : "Liên hệ";
+    private static string DateText(DateTime? date) => date.HasValue ? DateTimeHelper.FormatVietnam(date.Value, "dd/MM/yyyy") : "Liên hệ";
+}
 <link rel="stylesheet" href="~/css/warranty.css" asp-append-version="true" />
 
-<div class="warranty-page">
-    <section class="warranty-hero">
+<div class="warranty-page warranty-page--modern">
+    <section class="warranty-hero warranty-hero--lookup">
         <div class="warranty-hero__icon"><i class="bi bi-shield-check"></i></div>
         <div>
-            <span class="warranty-eyebrow">Dịch vụ sau bán hàng</span>
-            <h1>Kiểm tra & yêu cầu bảo hành</h1>
-            <p>Tra cứu nhanh thời hạn và theo dõi hỗ trợ cho sản phẩm đã mua tại KKSHOP.</p>
+            <span class="warranty-eyebrow">Trung tâm bảo hành KKSHOP</span>
+            <h1>Tra cứu bảo hành chính xác theo từng linh kiện</h1>
+            <p>Kiểm tra mã đơn hàng, số điện thoại hoặc mã bảo hành để xem thời hạn tổng thể và chi tiết từng linh kiện trong PC Build/Combo PC.</p>
         </div>
     </section>
 
-    <section class="warranty-steps" aria-label="Quy trình bảo hành">
-        <div><span>1</span><i class="bi bi-search"></i><strong>Tra cứu sản phẩm</strong></div>
-        <div><span>2</span><i class="bi bi-tools"></i><strong>Gửi yêu cầu</strong></div>
-        <div><span>3</span><i class="bi bi-clock-history"></i><strong>Theo dõi xử lý</strong></div>
-    </section>
-
-    <section class="warranty-search-card">
+    <section class="warranty-search-card warranty-search-card--glass">
         <form method="get" asp-action="Check" class="warranty-search-form">
             <div class="warranty-search-field">
                 <label asp-for="Query" class="form-label fw-semibold"></label>
                 <div class="input-group input-group-lg">
-                    <span class="input-group-text"><i class="bi bi-search"></i></span>
-                    <input asp-for="Query" class="form-control" placeholder="Ví dụ: DH000123, BH-DH000123-CT000456 hoặc 0912345678" required />
+                    <span class="input-group-text"><i class="bi bi-upc-scan"></i></span>
+                    <input asp-for="Query" class="form-control" placeholder="DH000123, BH-DH000123-CT000456 hoặc 0912345678" required />
                 </div>
-                <div class="form-text">Dùng mã đơn hàng, mã bảo hành, mã yêu cầu hoặc số điện thoại mua hàng.</div>
+                <div class="form-text">Dữ liệu được đối chiếu từ đơn hàng thực tế và cấu hình sản phẩm trong hệ thống.</div>
             </div>
-            <button class="btn btn-danger btn-lg warranty-search-button" type="submit"><i class="bi bi-shield-check me-2"></i>Kiểm tra ngay</button>
+            <button class="btn btn-danger btn-lg warranty-search-button" type="submit"><i class="bi bi-search me-2"></i>Tra cứu</button>
         </form>
         <div class="warranty-quick-links">
             <a asp-action="MyRequests"><i class="bi bi-clock-history"></i> Theo dõi yêu cầu đã gửi</a>
-            <span><i class="bi bi-headset"></i> Cần hỗ trợ? Liên hệ shop qua khung chat</span>
+            <span><i class="bi bi-shield-lock"></i> Không hiển thị JSON thô, chỉ hiển thị thời hạn dễ hiểu.</span>
         </div>
     </section>
 
@@ -50,42 +73,93 @@
             }
             else
             {
-                <div class="warranty-product-list">
+                <div class="warranty-product-list warranty-product-list--modern">
                     @foreach (var item in Model.Products)
                     {
                         var image = ImageUrlHelper.ResolveImageUrl(item.ProductImage, "/images/placeholders/product-placeholder.png");
                         var canRequest = item.IsEligibleOrder && item.IsInWarranty && !item.HasActiveRequest;
-                        <article class="warranty-product-card">
-                            <img src="@image" alt="@item.ProductName" onerror="this.onerror=null;this.src='/images/placeholders/product-placeholder.png';" />
-                            <div class="warranty-product-card__body">
-                                <div class="warranty-card-heading">
-                                    <div><div class="warranty-code">@item.WarrantyCode</div><h3>@item.ProductName</h3><span class="text-muted">Đơn hàng DH@(item.OrderId.ToString("D6"))</span></div>
-                                    <span class="warranty-availability @(item.IsInWarranty ? "is-active" : "is-expired")"><i class="bi @(item.IsInWarranty ? "bi-check-circle" : "bi-exclamation-circle")"></i> @(item.IsInWarranty ? "Còn bảo hành" : "Hết bảo hành")</span>
-                                </div>
-                                <div class="warranty-meta-grid">
-                                    <div><span>Ngày mua</span><strong>@DateTimeHelper.FormatVietnam(item.PurchaseDate, "dd/MM/yyyy")</strong></div>
-                                    <div><span>Thời hạn</span><strong>@item.WarrantyMonths tháng</strong></div>
-                                    <div><span>Ngày hết hạn</span><strong>@DateTimeHelper.FormatVietnam(item.ExpiresAt, "dd/MM/yyyy")</strong></div>
-                                </div>
-                                <div class="warranty-card-action">
-                                    @if (canRequest)
+                        <article class="warranty-product-card warranty-product-card--modern">
+                            <div class="warranty-order-panel">
+                                <div class="warranty-panel-title"><i class="bi bi-receipt"></i><span>Thông tin đơn hàng</span></div>
+                                <dl>
+                                    <div><dt>Mã đơn</dt><dd>@item.OrderCode</dd></div>
+                                    <div><dt>Khách hàng</dt><dd>@(string.IsNullOrWhiteSpace(item.CustomerName) ? "Khách hàng" : item.CustomerName)</dd></div>
+                                    <div><dt>Ngày mua</dt><dd>@DateTimeHelper.FormatVietnam(item.PurchaseDate, "dd/MM/yyyy")</dd></div>
+                                    <div><dt>Trạng thái đơn</dt><dd>@item.OrderStatus</dd></div>
+                                    <div><dt>Bảo hành chung</dt><dd>@MonthsText(item.WarrantyMonths)</dd></div>
+                                </dl>
+                            </div>
+
+                            <div class="warranty-product-main">
+                                <div class="warranty-product-visual"><img src="@image" alt="@item.ProductName" onerror="this.onerror=null;this.src='/images/placeholders/product-placeholder.png';" /></div>
+                                <div class="warranty-product-card__body">
+                                    <div class="warranty-card-heading">
+                                        <div><div class="warranty-code">@item.WarrantyCode</div><h3>@item.ProductName</h3></div>
+                                        <span class="warranty-availability @StateClass(item.WarrantyState)"><i class="bi @StateIcon(item.WarrantyState)"></i> @StateText(item.WarrantyState)</span>
+                                    </div>
+                                    <div class="warranty-meta-grid warranty-meta-grid--modern">
+                                        <div><span>Ngày mua</span><strong>@DateTimeHelper.FormatVietnam(item.PurchaseDate, "dd/MM/yyyy")</strong></div>
+                                        <div><span>Thời hạn tổng thể</span><strong>@MonthsText(item.WarrantyMonths)</strong></div>
+                                        <div><span>Hết hạn tổng thể</span><strong>@DateText(item.ExpiresAt)</strong></div>
+                                    </div>
+                                    @if (item.WarrantyMonths.HasValue)
                                     {
-                                        <a class="btn btn-danger" asp-action="Create" asp-route-orderDetailId="@item.OrderDetailId" asp-route-phone="@item.LookupPhone"><i class="bi bi-tools me-2"></i>Yêu cầu bảo hành</a>
+                                        <div class="warranty-progress-block">
+                                            <div class="warranty-progress-label"><span>Tiến độ bảo hành</span><strong>Đã dùng @item.WarrantyProgressPercent% · Còn @item.WarrantyRemainingPercent%</strong></div>
+                                            <div class="warranty-progress"><span style="width:@item.WarrantyProgressPercent%"></span></div>
+                                        </div>
                                     }
-                                    else if (item.HasActiveRequest)
-                                    {
-                                        <div class="warranty-active-message"><i class="bi bi-info-circle-fill"></i><span>Sản phẩm này đang có yêu cầu bảo hành được xử lý. Vui lòng theo dõi trạng thái bên dưới.</span></div>
-                                    }
-                                    else if (!item.IsInWarranty)
-                                    {
-                                        <p class="warranty-note mb-0"><i class="bi bi-headset"></i> Sản phẩm đã hết thời hạn bảo hành. Vui lòng liên hệ shop để được hướng dẫn hỗ trợ.</p>
-                                    }
-                                    else
-                                    {
-                                        <p class="warranty-note mb-0"><i class="bi bi-info-circle"></i> Đơn hàng cần được thanh toán/giao hàng hoặc hoàn tất trước khi yêu cầu bảo hành.</p>
-                                    }
+                                    <div class="warranty-card-action">
+                                        @if (canRequest)
+                                        {
+                                            <a class="btn btn-danger" asp-action="Create" asp-route-orderDetailId="@item.OrderDetailId" asp-route-phone="@item.LookupPhone"><i class="bi bi-tools me-2"></i>Yêu cầu bảo hành</a>
+                                        }
+                                        else if (item.HasActiveRequest)
+                                        {
+                                            <div class="warranty-active-message"><i class="bi bi-info-circle-fill"></i><span>Sản phẩm này đang có yêu cầu bảo hành được xử lý. Vui lòng theo dõi trạng thái bên dưới.</span></div>
+                                        }
+                                        else if (!item.IsInWarranty)
+                                        {
+                                            <p class="warranty-note mb-0"><i class="bi bi-headset"></i> Sản phẩm đã hết hạn hoặc cần xác minh chính sách. Vui lòng liên hệ shop để được hỗ trợ.</p>
+                                        }
+                                        else
+                                        {
+                                            <p class="warranty-note mb-0"><i class="bi bi-info-circle"></i> Đơn hàng cần được thanh toán/giao hàng hoặc hoàn tất trước khi yêu cầu bảo hành.</p>
+                                        }
+                                    </div>
                                 </div>
                             </div>
+
+                            @if (item.HasComponentWarranty)
+                            {
+                                <div class="warranty-component-section">
+                                    <div class="warranty-component-summary">
+                                        <div><span>Tổng linh kiện</span><strong>@item.TotalComponents</strong></div>
+                                        <div><span>Còn bảo hành</span><strong class="text-success">@item.ComponentsInWarranty</strong></div>
+                                        <div><span>Hết bảo hành</span><strong class="text-danger">@item.ComponentsExpired</strong></div>
+                                        @if (item.ComponentsContact > 0)
+                                        {<div><span>Cần liên hệ</span><strong>@item.ComponentsContact</strong></div>}
+                                    </div>
+                                    @if (item.ComponentsExpired > 0)
+                                    {
+                                        <div class="warranty-component-warning"><i class="bi bi-exclamation-triangle-fill"></i> Một số linh kiện trong bộ máy đã hết hạn bảo hành.</div>
+                                    }
+                                    <div class="warranty-component-table" role="table" aria-label="Bảo hành linh kiện">
+                                        <div class="warranty-component-row warranty-component-row--head" role="row"><span>STT</span><span>Linh kiện</span><span>SL</span><span>Bảo hành</span><span>Hết hạn</span><span>Trạng thái</span></div>
+                                        @foreach (var component in item.Components)
+                                        {
+                                            <div class="warranty-component-row" role="row">
+                                                <span data-label="STT">@component.Stt</span>
+                                                <span data-label="Linh kiện" class="warranty-component-name">@component.Name</span>
+                                                <span data-label="SL">@component.Quantity</span>
+                                                <span data-label="Bảo hành">@MonthsText(component.WarrantyMonths)</span>
+                                                <span data-label="Hết hạn">@DateText(component.ExpiresAt)</span>
+                                                <span data-label="Trạng thái"><span class="warranty-availability @StateClass(component.State)"><i class="bi @StateIcon(component.State)"></i> @StateText(component.State)</span></span>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            }
                         </article>
                     }
                 </div>
@@ -93,17 +167,9 @@
         </section>
 
         <section class="warranty-related-section">
-            <div class="warranty-section-title">
-                <div><span>Lịch sử tiếp nhận</span><h2>Yêu cầu bảo hành liên quan</h2></div>
-                @if (User.Identity?.IsAuthenticated == true)
-                {
-                    <a asp-action="MyRequests" class="warranty-title-link">Xem tất cả <i class="bi bi-arrow-right"></i></a>
-                }
-            </div>
+            <div class="warranty-section-title"><div><span>Lịch sử tiếp nhận</span><h2>Yêu cầu bảo hành liên quan</h2></div></div>
             @if (!Model.Requests.Any())
-            {
-                <p class="warranty-no-requests"><i class="bi bi-inbox"></i> Chưa có yêu cầu bảo hành nào cho sản phẩm/đơn hàng này.</p>
-            }
+            {<p class="warranty-no-requests"><i class="bi bi-inbox"></i> Chưa có yêu cầu bảo hành nào cho sản phẩm/đơn hàng này.</p>}
             else
             {
                 <div class="warranty-request-list">
@@ -116,10 +182,6 @@
                                 <div class="warranty-request-codes"><strong>@(string.IsNullOrWhiteSpace(request.RequestCode) ? $"YCBH{request.Id:D6}" : request.RequestCode)</strong><span>@request.WarrantyCode</span></div>
                                 <h3>@request.ProductName</h3>
                                 <p>@(string.IsNullOrWhiteSpace(request.IssueTitle) ? "Yêu cầu kiểm tra sản phẩm" : request.IssueTitle)</p>
-                                @if (!string.IsNullOrWhiteSpace(request.AdminNote))
-                                {
-                                    <small class="warranty-row-note"><i class="bi bi-chat-left-text"></i> @request.AdminNote</small>
-                                }
                             </div>
                             <div class="warranty-request-side">
                                 <span class="warranty-status @WarrantyStatuses.BadgeClass(request.Status)">@request.Status</span>
@@ -133,12 +195,5 @@
         </section>
     }
 
-    <section class="warranty-conditions">
-        <div><i class="bi bi-clipboard2-check"></i><h2>Điều kiện bảo hành</h2></div>
-        <ul>
-            <li>Sản phẩm còn thời hạn bảo hành.</li>
-            <li>Không hư hỏng do va đập, cháy nổ hoặc vào nước.</li>
-            <li>Cung cấp thông tin đơn hàng hoặc mã bảo hành.</li>
-        </ul>
-    </section>
+    <section class="warranty-conditions"><div><i class="bi bi-clipboard2-check"></i><h2>Điều kiện bảo hành</h2></div><ul><li>Sản phẩm còn thời hạn bảo hành.</li><li>Không hư hỏng do va đập, cháy nổ hoặc vào nước.</li><li>Cung cấp thông tin đơn hàng hoặc mã bảo hành.</li></ul></section>
 </div>
