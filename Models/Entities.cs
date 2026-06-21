@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Datn.PcStore.Helpers;
 
 namespace Datn.PcStore.Models;
 
@@ -116,18 +117,18 @@ public static class ComponentTypes
 
 public class Role : BaseEntity
 {
-    [MaxLength(50)] public string Name { get; set; } = string.Empty;
+    [MaxLength(50)] public string? Name { get; set; }
     public ICollection<User> Users { get; set; } = new List<User>();
 }
 
 public class User : BaseEntity
 {
-    [MaxLength(60)] public string Username { get; set; } = string.Empty;
-    [MaxLength(100)] public string FullName { get; set; } = string.Empty;
-    [MaxLength(120)] public string Email { get; set; } = string.Empty;
+    [MaxLength(60)] public string? Username { get; set; }
+    [MaxLength(100)] public string? FullName { get; set; }
+    [MaxLength(120)] public string? Email { get; set; }
     [MaxLength(500)] public string PasswordHash { get; set; } = string.Empty;
-    [MaxLength(20)] public string Phone { get; set; } = string.Empty;
-    [MaxLength(250)] public string Address { get; set; } = string.Empty;
+    [MaxLength(20)] public string? Phone { get; set; }
+    [MaxLength(250)] public string? Address { get; set; }
     public bool IsActive { get; set; } = true;
     public int RoleId { get; set; }
     public Role? Role { get; set; }
@@ -139,7 +140,7 @@ public class PasswordResetOtp
     public int Id { get; set; }
     public int UserId { get; set; }
     public User? User { get; set; }
-    [MaxLength(120)] public string Email { get; set; } = string.Empty;
+    [MaxLength(120)] public string? Email { get; set; }
     [MaxLength(128)] public string CodeHash { get; set; } = string.Empty;
     public DateTime ExpiresAt { get; set; }
     public bool IsUsed { get; set; }
@@ -164,9 +165,9 @@ public class ComponentBrand : BaseEntity
 
 public class Product : BaseEntity
 {
-    [MaxLength(200)] public string Name { get; set; } = string.Empty;
-    [MaxLength(220)] public string Slug { get; set; } = string.Empty;
-    [MaxLength(50)] public string ProductCode { get; set; } = string.Empty;
+    [MaxLength(200)] public string? Name { get; set; }
+    [MaxLength(220)] public string? Slug { get; set; }
+    [MaxLength(50)] public string? ProductCode { get; set; }
     [MaxLength(80)] public string? Brand { get; set; }
     [MaxLength(20)] public string? ProductType { get; set; } = ProductKinds.PC;
     public decimal Price { get; set; }
@@ -180,7 +181,7 @@ public class Product : BaseEntity
     [MaxLength(2000)] public string? PromotionText { get; set; }
     public int StockQuantity { get; set; }
     [MaxLength(1000)] public string? ThumbnailImage { get; set; } = string.Empty;
-    [MaxLength(1000)] public string SourceUrl { get; set; } = string.Empty;
+    [MaxLength(1000)] public string? SourceUrl { get; set; }
     [MaxLength(500)] public string? ShortDescription { get; set; } = string.Empty;
     public string? Description { get; set; } = string.Empty;
     public string? DetailDescription { get; set; } = string.Empty;
@@ -192,7 +193,7 @@ public class Product : BaseEntity
         set => Specifications = value ?? string.Empty;
     }
     public int WarrantyMonths { get; set; } = 12;
-    [MaxLength(50)] public string WarrantyDuration { get; set; } = "12 tháng";
+    [MaxLength(50)] public string? WarrantyDuration { get; set; } = "12 tháng";
     public bool IsActive { get; set; } = true;
     public bool IsInStock { get; set; } = true;
     public bool HasSoftwareLicense { get; set; }
@@ -251,11 +252,11 @@ public class Order : BaseEntity
 {
     public int? UserId { get; set; }
     public User? User { get; set; }
-    [MaxLength(120)] public string ReceiverName { get; set; } = string.Empty;
-    [MaxLength(20)] public string ReceiverPhone { get; set; } = string.Empty;
-    [MaxLength(250)] public string ShippingAddress { get; set; } = string.Empty;
-    [MaxLength(30)] public string PaymentMethod { get; set; } = "COD";
-    [MaxLength(30)] public string PaymentStatus { get; set; } = "UNPAID";
+    [MaxLength(120)] public string? ReceiverName { get; set; }
+    [MaxLength(20)] public string? ReceiverPhone { get; set; }
+    [MaxLength(250)] public string? ShippingAddress { get; set; }
+    [MaxLength(30)] public string? PaymentMethod { get; set; } = PaymentMethods.Cod;
+    [MaxLength(30)] public string? PaymentStatus { get; set; } = PaymentStatuses.Unpaid;
     [MaxLength(50)] public string? TransferContent { get; set; }
     public DateTime? PaidAt { get; set; }
     public OrderStatus Status { get; set; } = OrderStatus.Pending;
@@ -283,14 +284,14 @@ public class Order : BaseEntity
     public DateTime? PaymentExpireAt { get; set; }
     [MaxLength(500)] public string? PaymentUrl { get; set; }
     [MaxLength(100)] public string? PaymentTransactionId { get; set; }
-    [MaxLength(30)] public string CheckoutMode { get; set; } = "cart";
+    [MaxLength(30)] public string? CheckoutMode { get; set; } = "cart";
     public ICollection<OrderDetail> Details { get; set; } = new List<OrderDetail>();
 }
 
 public class Voucher : BaseEntity
 {
     [Required, MaxLength(50)] public string Code { get; set; } = string.Empty;
-    [MaxLength(200)] public string Name { get; set; } = string.Empty;
+    [MaxLength(200)] public string? Name { get; set; }
     public VoucherDiscountType DiscountType { get; set; } = VoucherDiscountType.FixedAmount;
     public decimal DiscountValue { get; set; }
     public decimal? MaxDiscountAmount { get; set; }
@@ -324,8 +325,8 @@ public class OrderDetail : BaseEntity
     public Product? Product { get; set; }
     public int Quantity { get; set; }
     public decimal UnitPrice { get; set; }
-    [MaxLength(200)] public string ProductName { get; set; } = string.Empty;
-    [MaxLength(250)] public string ProductImage { get; set; } = string.Empty;
+    [MaxLength(200)] public string? ProductName { get; set; }
+    [MaxLength(250)] public string? ProductImage { get; set; }
     [MaxLength(50)] public string? Warranty { get; set; }
     public int WarrantyMonths { get; set; } = 12;
     public decimal TotalPrice { get; set; }
@@ -358,9 +359,9 @@ public class WarrantyRequest : BaseEntity
     public int? UserId { get; set; }
     public User? User { get; set; }
     [MaxLength(120)] public string CustomerName { get; set; } = string.Empty;
-    [MaxLength(20)] public string Phone { get; set; } = string.Empty;
+    [MaxLength(20)] public string? Phone { get; set; }
     [MaxLength(120)] public string? Email { get; set; }
-    [MaxLength(200)] public string ProductName { get; set; } = string.Empty;
+    [MaxLength(200)] public string? ProductName { get; set; }
     [MaxLength(40)] public string RequestCode { get; set; } = string.Empty;
     [MaxLength(80)] public string WarrantyCode { get; set; } = string.Empty;
     [MaxLength(100)] public string? SerialNumber { get; set; }
@@ -436,7 +437,7 @@ public class ShippingConfig : BaseEntity
 public class ShopLocation : BaseEntity
 {
     [MaxLength(120)] public string ShopName { get; set; } = string.Empty;
-    [MaxLength(250)] public string Address { get; set; } = string.Empty;
+    [MaxLength(250)] public string? Address { get; set; }
     public double Latitude { get; set; }
     public double Longitude { get; set; }
     public bool IsDefault { get; set; } = true;
@@ -453,7 +454,7 @@ public class SiteSetting : BaseEntity
 public class Feedback : BaseEntity
 {
     [MaxLength(100)] public string Name { get; set; } = string.Empty;
-    [MaxLength(120)] public string Email { get; set; } = string.Empty;
+    [MaxLength(120)] public string? Email { get; set; }
     [MaxLength(300)] public string Message { get; set; } = string.Empty;
     public bool IsProcessed { get; set; }
 }
