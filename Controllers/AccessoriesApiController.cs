@@ -34,13 +34,13 @@ public class AccessoriesApiController : ControllerBase
         var normalizedType = string.Equals(type, "Headset", StringComparison.OrdinalIgnoreCase) ? ComponentTypes.Headphone : ComponentTypes.Normalize(type);
         var typeAliases = ComponentTypes.GetAliases(normalizedType);
         var baseQuery = _db.Products.Include(p => p.Category).Include(p => p.ProductImages)
-            .Where(p => p.IsActive && p.IsInStock && p.StockQuantity > 0 && p.ProductType == ProductKinds.Component && typeAliases.Contains(p.ComponentType));
+            .Where(p => p.IsActive && p.IsInStock && p.StockQuantity > 0 && p.ProductType == ProductKinds.Component && typeAliases.Contains(p.ComponentType ?? string.Empty));
         var query = baseQuery;
 
         if (!string.IsNullOrWhiteSpace(keyword))
         {
             var kw = keyword.Trim();
-            query = query.Where(p => p.Name.Contains(kw) || (p.Brand != null && p.Brand.Contains(kw)) || (p.ShortDescription != null && p.ShortDescription.Contains(kw)));
+            query = query.Where(p => (p.Name ?? string.Empty).Contains(kw) || (p.Brand != null && p.Brand.Contains(kw)) || (p.ShortDescription != null && p.ShortDescription.Contains(kw)));
         }
         if (minPrice.HasValue) query = query.Where(p => ((p.DiscountPrice ?? p.SalePrice) ?? p.Price) >= minPrice.Value);
         if (maxPrice.HasValue) query = query.Where(p => ((p.DiscountPrice ?? p.SalePrice) ?? p.Price) <= maxPrice.Value);
@@ -61,7 +61,7 @@ public class AccessoriesApiController : ControllerBase
             return new
             {
                 id = p.Id,
-                name = p.Name,
+                name = p.Name ?? "Sản phẩm không xác định",
                 brand = p.Brand ?? string.Empty,
                 categoryId = p.CategoryId,
                 categoryName = p.Category?.Name ?? string.Empty,
@@ -74,7 +74,7 @@ public class AccessoriesApiController : ControllerBase
             };
         }).ToList();
 
-        var facetRows = await baseQuery.Select(p => new { p.Brand, p.CategoryId, CategoryName = p.Category != null ? p.Category.Name : string.Empty }).ToListAsync();
+        var facetRows = await baseQuery.Select(p => new { p.Brand, p.CategoryId, CategoryName = p.Category != null ? (p.Category.Name ?? string.Empty) : string.Empty }).ToListAsync();
         var facets = new
         {
             brands = facetRows.Where(p => !string.IsNullOrWhiteSpace(p.Brand) && p.Brand != "N/A").Select(p => p.Brand).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(x => x).ToList(),

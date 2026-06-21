@@ -358,7 +358,7 @@ public class WarrantyController : Controller
             return new WarrantyComponentVm
             {
                 Stt = component.Stt.GetValueOrDefault(index + 1),
-                Name = component.Description,
+                Name = component.Description ?? string.Empty,
                 Quantity = component.Quantity.GetValueOrDefault(1),
                 RawWarranty = component.Warranty,
                 WarrantyMonths = months,

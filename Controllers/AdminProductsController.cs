@@ -25,11 +25,11 @@ public class AdminProductsController : Controller
     public async Task<IActionResult> Index(string? keyword, int? categoryId)
     {
         var query = _db.Products.Include(p => p.Category).Include(p => p.ProductImages).Where(p => p.ProductType == ProductKinds.PC).AsQueryable();
-        if (!string.IsNullOrWhiteSpace(keyword)) query = query.Where(x => x.Name.Contains(keyword));
+        if (!string.IsNullOrWhiteSpace(keyword)) query = query.Where(x => (x.Name ?? string.Empty).Contains(keyword));
         if (categoryId.HasValue) query = query.Where(x => x.CategoryId == categoryId);
         ViewBag.Keyword = keyword;
         ViewBag.CategoryId = categoryId;
-        ViewBag.Categories = await _db.Categories.OrderBy(x => x.Name).ToListAsync();
+        ViewBag.Categories = await _db.Categories.OrderBy(x => x.Name ?? string.Empty).ToListAsync();
         return View(await query.OrderByDescending(p => p.CreatedAt).ToListAsync());
     }
 
@@ -185,14 +185,14 @@ public class AdminProductsController : Controller
     private async Task<AdminProductUpsertVm?> BuildUpsertVmAsync(int? productId = null) { /* omitted for brevity */
         var vm = new AdminProductUpsertVm(); await PopulateCategoriesAsync(vm); if (!productId.HasValue) return vm;
         var product = await _db.Products.Include(p => p.ProductImages).FirstOrDefaultAsync(x => x.Id == productId.Value && x.ProductType == ProductKinds.PC); if (product == null) return null;
-        vm.Id = product.Id; vm.Name = product.Name; vm.Brand = product.Brand; vm.ProductType = product.ProductType; vm.ComponentType = ProductKinds.PC; vm.Price = product.Price; vm.PriceInput = FormatMoneyForInput(product.Price); vm.DiscountPrice = product.DiscountPrice ?? product.SalePrice; vm.DiscountPriceInput = FormatMoneyForInput(vm.DiscountPrice);
+        vm.Id = product.Id; vm.Name = product.Name ?? string.Empty; vm.Brand = product.Brand; vm.ProductType = product.ProductType ?? ProductKinds.PC; vm.ComponentType = ProductKinds.PC; vm.Price = product.Price; vm.PriceInput = FormatMoneyForInput(product.Price); vm.DiscountPrice = product.DiscountPrice ?? product.SalePrice; vm.DiscountPriceInput = FormatMoneyForInput(vm.DiscountPrice);
         vm.IsHotSale = product.IsHotSale; vm.IsDailyDeal = product.IsDailyDeal; vm.IsPromotion = product.IsPromotion;
         vm.PromotionStartDate = product.PromotionStartDate; vm.PromotionEndDate = product.PromotionEndDate;
         vm.SelectedPromotionTexts = new List<string>(); vm.CustomPromotionText = product.PromotionText;
         vm.StockQuantity = product.StockQuantity; vm.WarrantyMonths = product.WarrantyMonths > 0 ? product.WarrantyMonths : 12; vm.CategoryId = product.CategoryId;
         vm.Description = ResolveDescriptionForEditing(product); vm.Specifications = product.TechnicalSpecifications; vm.ComponentSpecs = ProductComponentSpecHelper.ParseStored(product.TechnicalSpecifications); vm.IsActive = product.IsActive;
         var orderedImages = product.ProductImages.OrderBy(x => x.SortOrder).ToList();
-        vm.ThumbnailImageUrl = orderedImages.FirstOrDefault(x => x.IsPrimary)?.ImageUrl ?? orderedImages.FirstOrDefault()?.ImageUrl ?? product.ThumbnailImage;
+        vm.ThumbnailImageUrl = orderedImages.FirstOrDefault(x => x.IsPrimary)?.ImageUrl ?? orderedImages.FirstOrDefault()?.ImageUrl ?? product.ThumbnailImage ?? string.Empty;
         vm.ProductImageUrlsText = string.Join(Environment.NewLine, orderedImages.Select(x => x.ImageUrl));
         vm.ExistingImageOrder = orderedImages.Select(x => x.Id).ToList();
         vm.ExistingImages = orderedImages.Select(x => new ProductImageItemVm { Id = x.Id, ImageUrl = x.ImageUrl, IsPrimary = x.IsPrimary, SortOrder = x.SortOrder }).ToList(); return vm; }
@@ -231,7 +231,7 @@ public class AdminProductsController : Controller
         return NormalizeNullableText(promotionText);
     }
 
-    private async Task PopulateCategoriesAsync(AdminProductUpsertVm vm) => vm.Categories = await _db.Categories.OrderBy(x => x.Name).ToListAsync();
+    private async Task PopulateCategoriesAsync(AdminProductUpsertVm vm) => vm.Categories = await _db.Categories.OrderBy(x => x.Name ?? string.Empty).ToListAsync();
 
     private async Task<bool> ValidateUniqueProductFieldsAsync(AdminProductUpsertVm vm, string slug, string productCode, string operation)
     {
@@ -243,9 +243,9 @@ public class AdminProductsController : Controller
         var duplicate = await _db.Products.AsNoTracking()
             .Where(p => p.Id != vm.Id)
             .Where(p =>
-                p.Name.ToLower() == normalizedName ||
-                p.Slug.ToLower() == normalizedSlug ||
-                p.ProductCode.ToLower() == normalizedProductCode)
+                (p.Name ?? string.Empty).ToLower() == normalizedName ||
+                (p.Slug ?? string.Empty).ToLower() == normalizedSlug ||
+                (p.ProductCode ?? string.Empty).ToLower() == normalizedProductCode)
             .Select(p => new { p.Name, p.Slug, p.ProductCode })
             .FirstOrDefaultAsync();
 
@@ -409,7 +409,7 @@ public class AdminProductsController : Controller
     {
         if (!string.IsNullOrWhiteSpace(product.Description)) return product.Description;
         if (!string.IsNullOrWhiteSpace(product.DetailDescription)) return product.DetailDescription;
-        return product.ShortDescription;
+        return product.ShortDescription ?? string.Empty;
     }
 
     private static string BuildShortDescription(string? description) => string.IsNullOrWhiteSpace(description) ? string.Empty : description.Trim().Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault()?.Trim() ?? string.Empty;

@@ -30,12 +30,12 @@
         : new List<Datn.PcStore.ViewModels.ProductSpecificationItemVm>();
     var componentSpecs = ProductSpecDisplayHelper.TryParseComponentSpecs(product.TechnicalSpecifications)
         .Where(spec => !string.IsNullOrWhiteSpace(spec.Description))
-        .GroupBy(spec => spec.Description.Trim(), StringComparer.OrdinalIgnoreCase)
+        .GroupBy(spec => spec.Description?.Trim() ?? string.Empty, StringComparer.OrdinalIgnoreCase)
         .Select(group => group.First())
         .ToList();
     var fullDescription = ProductSpecDisplayHelper.GetFullDescriptionText(product);
     var descriptionLines = componentSpecs
-        .Select(spec => spec.Description.Trim())
+        .Select(spec => spec.Description?.Trim() ?? string.Empty)
         .Concat((fullDescription ?? string.Empty)
             .Replace("\r\n", "\n")
             .Replace('\r', '\n')

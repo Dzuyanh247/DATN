@@ -121,7 +121,7 @@
         <div class="account-card-footer account-card-footer--links">
             <form id="resendResetCodeForm" asp-controller="Account" asp-action="ResendResetCode" method="post" class="account-resend-form">
                 @Html.AntiForgeryToken()
-                <input type="hidden" name="email" value="@Model.Email" />
+                <input type="hidden" name="email" value="@(Model?.Email ?? string.Empty)" />
                 <button type="submit"
                         id="resendResetCodeButton"
                         class="account-link account-resend-button"

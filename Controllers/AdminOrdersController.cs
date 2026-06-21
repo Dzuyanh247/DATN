@@ -249,7 +249,7 @@ public class AdminOrdersController : Controller
         CustomerEmail = FirstNonEmpty(order.CustomerEmail, order.User?.Email),
         ShippingAddress = FirstNonEmpty(order.FullAddress, order.ShippingAddress, "Chưa cập nhật"),
         Note = order.Note,
-        PaymentMethod = order.PaymentMethod,
+        PaymentMethod = order.PaymentMethod ?? string.Empty,
         PaymentStatus = OrderStatusHelper.NormalizePaymentStatus(order.Status, order.PaymentStatus),
         PaidAt = order.PaidAt,
         PaymentDeadline = order.Status == OrderStatus.PendingPayment ? order.PaymentExpireAt : null,
