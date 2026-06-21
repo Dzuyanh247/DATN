@@ -198,9 +198,7 @@ public class SupportChatController : Controller
             badge = p.CategoryScope == "PC" ? "PC đề xuất" : null,
             actions = new[] { new { label = "Xem chi tiết", url = p.Link } }
         }).ToList();
-        var actions = products.Count > 3
-            ? new object[] { new { label = "Xem thêm sản phẩm phù hợp", style = "secondary", url = "/Products" } }
-            : Array.Empty<object>();
+        var actions = Array.Empty<object>();
         var message = new ChatMessage
         {
             Conversation = conversation,

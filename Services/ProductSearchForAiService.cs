@@ -58,10 +58,11 @@ public partial class ProductSearchForAiService : IProductSearchForAiService
         List<AiProductContext> products;
         if (tokens.Count > 0)
         {
-            var sample = await baseQuery.OrderBy(x => x.DiscountPrice ?? x.SalePrice ?? x.Price).Take(80).ToListAsync(cancellationToken);
+            var sample = await baseQuery.OrderBy(x => x.DiscountPrice ?? x.SalePrice ?? x.Price).Take(120).ToListAsync(cancellationToken);
+            var minScore = analysis.HasSpecificProductName && tokens.Count > 1 ? 2 : 1;
             products = sample
                 .Select(x => new { Product = x, Score = ScoreProduct(x, tokens, analysis) })
-                .Where(x => x.Score > 0 || analysis.CategoryScope == "PC")
+                .Where(x => x.Score >= minScore || (!analysis.HasSpecificProductName && analysis.CategoryScope == "PC"))
                 .OrderByDescending(x => x.Score)
                 .ThenBy(x => x.Product.DiscountPrice ?? x.Product.SalePrice ?? x.Product.Price)
                 .Take(max)
@@ -144,7 +145,8 @@ public partial class ProductSearchForAiService : IProductSearchForAiService
         var isPayment = ContainsAny(normalized, "thanh toan", "chuyen khoan", "cod");
         var isHuman = ContainsAny(normalized, "nhan vien", "tu van vien", "nguoi that");
         var intent = isHuman ? "HUMAN_SUPPORT" : isOrder ? "ORDER_QA" : isPayment ? "PAYMENT_QA" : isWarranty ? "WARRANTY_QA" : isPolicy ? "POLICY_QA" : isPcAdvice ? "PC_ADVICE" : isCompare ? "PRODUCT_COMPARE" : "PRODUCT_QA";
-        return new AiSearchAnalysis(intent, isPcAdvice ? "PC" : "COMPONENT", ParseBudget(text), game, ParseFps(normalized), componentType);
+        var hasSpecificProductName = DetectSpecificProductName(normalized, componentType);
+        return new AiSearchAnalysis(intent, isPcAdvice ? "PC" : "COMPONENT", ParseBudget(text), game, ParseFps(normalized), componentType, hasSpecificProductName);
     }
 
     private static string? DetectComponentType(string normalized)
@@ -173,10 +175,22 @@ public partial class ProductSearchForAiService : IProductSearchForAiService
         var lower = text.ToLowerInvariant();
         var tokens = new List<string>();
         foreach (Match match in HardwareRegex().Matches(text)) tokens.Add(match.Value);
-        foreach (var word in new[] { "valorant", "gaming", "game", "văn phòng", "do hoa", "đồ họa", "livestream", "stream", "rtx", "rx", "ryzen", "intel" })
+        foreach (var word in new[] { "valorant", "gaming", "game", "văn phòng", "do hoa", "đồ họa", "livestream", "stream", "rtx", "rx", "ryzen", "intel", "logitech", "razer", "akko", "asus", "msi", "gigabyte", "corsair", "g304", "g502" })
             if (lower.Contains(word)) tokens.Add(word);
+        foreach (Match match in ProductTokenRegex().Matches(NormalizeText(text)))
+        {
+            var value = match.Value;
+            if (!IgnoredSearchTokens.Contains(value)) tokens.Add(value);
+        }
         if (!string.IsNullOrWhiteSpace(analysis.TargetGame)) tokens.Add(analysis.TargetGame);
         return tokens.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+    }
+
+    private static bool DetectSpecificProductName(string normalized, string? componentType)
+    {
+        if (Regex.IsMatch(normalized, @"\b(?:rtx|gtx|rx|i[3579]|ryzen)\s*\d{3,5}[a-z]*\b", RegexOptions.IgnoreCase)) return true;
+        if (Regex.IsMatch(normalized, @"\b[a-z]{2,}\s*[a-z]*\s*\d{3,5}[a-z]*\b", RegexOptions.IgnoreCase)) return true;
+        return !string.IsNullOrWhiteSpace(componentType) && BrandWords.Any(normalized.Contains);
     }
 
     private static bool ContainsAny(string source, params string[] values) => values.Any(source.Contains);
@@ -201,9 +215,17 @@ public partial class ProductSearchForAiService : IProductSearchForAiService
     [GeneratedRegex(@"(\d{2,3})\s*fps", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex FpsRegex();
 
+    [GeneratedRegex(@"\b[a-z0-9]{3,}\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    private static partial Regex ProductTokenRegex();
+
     private static readonly string[] PcCategoryNames = ["PC Gaming", "Workstation", "AMD Gaming", "PC Mini", "PC Văn Phòng"];
     private static readonly string[] PcIntentWords = ["cau hinh", "pc", "may tinh", "choi game", "gaming", "fps", "setting", "build", "stream", "do hoa", "valorant", "gta", "black myth"];
     private static readonly Dictionary<string, string> GameWords = new(StringComparer.OrdinalIgnoreCase) { ["valorant"] = "Valorant", ["gta"] = "GTA", ["black myth"] = "Black Myth" };
+    private static readonly string[] BrandWords = ["logitech", "razer", "akko", "asus", "msi", "gigabyte", "corsair", "cooler master", "kingston", "samsung"];
+    private static readonly HashSet<string> IgnoredSearchTokens = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "toi", "minh", "ban", "shop", "can", "tim", "mua", "gia", "bao", "nhieu", "con", "hang", "cho", "voi", "mot", "cai", "chiec", "san", "pham", "chuot", "mouse", "ban", "phim", "keyboard", "tai", "nghe", "headset", "man", "hinh", "monitor", "linh", "kien", "may", "tinh", "duoi", "tam", "khoang", "trieu"
+    };
     private static readonly Dictionary<string, string[]> ComponentIntentWords = new(StringComparer.OrdinalIgnoreCase)
     {
         [ComponentTypes.Headphone] = ["tai nghe", "headphone", "headset"],
@@ -216,5 +238,5 @@ public partial class ProductSearchForAiService : IProductSearchForAiService
         [ComponentTypes.CPU] = ["cpu", "bo vi xu ly"]
     };
 
-    private sealed record AiSearchAnalysis(string Intent, string CategoryScope, decimal? Budget, string? TargetGame, int? TargetFps, string? ComponentType);
+    private sealed record AiSearchAnalysis(string Intent, string CategoryScope, decimal? Budget, string? TargetGame, int? TargetFps, string? ComponentType, bool HasSpecificProductName);
 }

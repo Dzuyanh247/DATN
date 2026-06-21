@@ -117,7 +117,7 @@ public partial class SupportChatAutomationService : ISupportChatAutomationServic
     {
         SetContext(c, "Order", false, 1);
         if (!userId.HasValue)
-            return Result(AddSystem(c, "Bạn vui lòng đăng nhập tài khoản đã đặt hàng để KKSHOP kiểm tra đơn nhanh hơn. Bạn cũng có thể nhập mã đơn hàng, ví dụ DH000016."),
+            return Result(AddSystem(c, "Bạn vui lòng gửi mã đơn hàng, số điện thoại hoặc email đã đặt hàng để KKSHOP kiểm tra tình trạng đơn. Nếu đã có tài khoản, bạn cũng có thể đăng nhập để xem nhanh hơn."),
             [new("login", "Đăng nhập", null, "/Account/Login"), Reply("enter_order_code", "Tôi có mã đơn hàng"), StaffReply("Gặp nhân viên")]);
         var orders = await OwnedOrders(userId.Value)
             .Include(x => x.Details)
@@ -152,7 +152,7 @@ public partial class SupportChatAutomationService : ISupportChatAutomationServic
     private async Task<SupportAutomationResult> WarrantyAsync(ChatConversation c, int? userId, CancellationToken ct)
     {
         SetContext(c, "Warranty", false, 1);
-        if (!userId.HasValue) return Result(AddSystem(c, "Bạn vui lòng đăng nhập hoặc nhập mã đơn hàng/mã sản phẩm đã mua để kiểm tra bảo hành."), [new("login", "Đăng nhập", null, "/Account/Login"), StaffReply()]);
+        if (!userId.HasValue) return Result(AddSystem(c, "Bạn vui lòng gửi mã đơn hàng, số điện thoại hoặc email mua hàng để KKSHOP kiểm tra bảo hành. Nếu có mã sản phẩm/serial, bạn có thể gửi kèm để shop kiểm tra nhanh hơn."), [new("login", "Đăng nhập", null, "/Account/Login"), StaffReply()]);
         var details = await _db.OrderDetails.AsNoTracking().Include(x => x.Order).Include(x => x.Product)
             .Where(x => x.Order!.UserId == userId && x.Order.Status != OrderStatus.Cancelled && x.Order.Status != OrderStatus.Expired)
             .OrderByDescending(x => x.Order!.CreatedAt).Take(5).ToListAsync(ct);
@@ -217,7 +217,7 @@ public partial class SupportChatAutomationService : ISupportChatAutomationServic
     private async Task<SupportAutomationResult> PaymentAsync(ChatConversation c, int? userId, CancellationToken ct)
     {
         SetContext(c, "Payment", false, 1);
-        if (!userId.HasValue) return Result(AddSystem(c, "Bạn vui lòng đăng nhập để KKSHOP kiểm tra các đơn hàng cần thanh toán."), [new("login", "Đăng nhập", null, "/Account/Login"), StaffReply("Gặp nhân viên thanh toán")]);
+        if (!userId.HasValue) return Result(AddSystem(c, "KKSHOP hỗ trợ thanh toán COD, chuyển khoản và các cổng thanh toán online đang hiển thị ở bước đặt hàng. Nếu bạn cần kiểm tra một đơn cụ thể, vui lòng gửi mã đơn hàng, số điện thoại hoặc email đặt hàng để shop hỗ trợ tiếp."), [StaffReply("Gặp nhân viên thanh toán")]);
         var orders = await OwnedOrders(userId.Value).Include(x => x.Details).Where(x => x.Status == OrderStatus.PendingPayment || x.Status == OrderStatus.PendingConfirmation || x.Status == OrderStatus.Pending)
             .OrderByDescending(x => x.CreatedAt).Take(5).ToListAsync(ct);
         if (orders.Count == 0) return Result(AddSystem(c, "Hiện tài khoản của bạn chưa có đơn hàng cần thanh toán."), [StaffReply("Gặp nhân viên thanh toán")]);
