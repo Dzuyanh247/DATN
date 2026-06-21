@@ -5,8 +5,18 @@
     var hasAlerts = Model.PendingOrderCount + Model.BankTransferConfirmationCount + Model.NewWarrantyCount + Model.UnreadSupportCount + Model.LowStockCount > 0;
 }
 <header class="dashboard-hero">
-    <div><span class="admin-eyebrow">Tổng quan vận hành</span><h2>Dashboard quản trị</h2><p>Theo dõi tổng quan hoạt động bán hàng và vận hành KKSHOP.</p></div>
+    <div>
+        <span class="admin-eyebrow">Microsoft Fluent Control Center</span>
+        <h2>KKSHOP CONTROL CENTER</h2>
+        <p>Không gian vận hành tập trung cho doanh thu, đơn hàng, người dùng và hậu mãi với trải nghiệm quản trị hiện đại.</p>
+    </div>
     <div class="dashboard-welcome"><i class="bi bi-calendar3"></i><div><small>Xin chào, @Model.AdminDisplayName</small><strong>@DateTimeHelper.FormatVietnam(DateTime.UtcNow, "dddd, dd/MM/yyyy")</strong></div></div>
+    <div class="dashboard-hero-metrics">
+        <div class="dashboard-hero-metric"><strong>@Model.MonthRevenue.ToString("N0") đ</strong><small>Doanh thu tháng</small></div>
+        <div class="dashboard-hero-metric"><strong>@Model.OrderCount.ToString("N0")</strong><small>Đơn hàng</small></div>
+        <div class="dashboard-hero-metric"><strong>@Model.UserCount.ToString("N0")</strong><small>Người dùng</small></div>
+        <div class="dashboard-hero-metric"><strong>@Model.WarrantyRequestCount.ToString("N0")</strong><small>Bảo hành</small></div>
+    </div>
 </header>
 
 <div class="dashboard-stat-grid">

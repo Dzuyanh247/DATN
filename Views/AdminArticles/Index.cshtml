@@ -3,29 +3,48 @@
     ViewData["Title"] = "Quản lý bài viết";
     string Label(string? type) => type != null && ArticleTypes.Labels.TryGetValue(type, out var label) ? label : (type ?? "Tin tức");
 }
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h3>Quản lý bài viết</h3>
-    <a class="btn btn-primary" asp-action="Create"><i class="bi bi-plus-circle"></i> Đăng bài</a>
-</div>
-<div class="card border-0 shadow-sm">
+@{
+    var featuredArticle = Model.FirstOrDefault(x => x.IsFeatured) ?? Model.FirstOrDefault();
+}
+<section class="admin-article-hero">
+    <span class="admin-eyebrow">Technology Content Portal</span>
+    <h2>Trung tâm bài viết KKSHOP</h2>
+    <p>Quản lý tin công nghệ, bài ghim, trạng thái xuất bản và hiệu quả nội dung trong một giao diện Fluent hiện đại.</p>
+    <div class="admin-article-hero-actions">
+        <a class="btn btn-primary" asp-action="Create"><i class="bi bi-plus-circle"></i> Đăng bài</a>
+        <span class="admin-article-badge"><i class="bi bi-newspaper"></i> @Model.Count bài viết</span>
+    </div>
+</section>
+@if (featuredArticle != null)
+{
+    <section class="admin-article-featured">
+        <div>
+            <span class="admin-article-badge"><i class="bi bi-pin-angle"></i> Bài ghim / nổi bật</span>
+            <div class="mt-2"><strong>@featuredArticle.Title</strong></div>
+            <small class="text-muted">@Label(featuredArticle.Type) · @featuredArticle.ViewCount lượt xem · cập nhật @featuredArticle.UpdatedAt.ToString("dd/MM/yyyy HH:mm")</small>
+        </div>
+        <a class="btn btn-outline-primary" asp-action="Edit" asp-route-id="@featuredArticle.Id"><i class="bi bi-pencil-square"></i> Biên tập</a>
+    </section>
+}
+<div class="card border-0 shadow-sm admin-data-panel">
     <div class="table-responsive">
-        <table class="table align-middle mb-0">
+        <table class="table align-middle mb-0 admin-article-table">
             <thead><tr><th>Tiêu đề</th><th>Chuyên mục</th><th>Trạng thái</th><th>Nổi bật</th><th>Lượt xem</th><th>Cập nhật</th><th></th></tr></thead>
             <tbody>
             @foreach (var a in Model)
             {
                 <tr>
-                    <td><strong>@a.Title</strong><br /><small class="text-muted">@a.Slug</small></td>
-                    <td>@Label(a.Type)</td>
+                    <td><span class="admin-article-title"><strong>@a.Title</strong><small>@a.Slug</small></span></td>
+                    <td><span class="admin-article-badge"><i class="bi bi-tag"></i> @Label(a.Type)</span></td>
                     <td><span class="badge @(a.IsPublished ? "bg-success" : "bg-secondary")">@(a.IsPublished ? "Hiển thị" : "Ẩn/Nháp")</span></td>
-                    <td>@(a.IsFeatured ? "Có" : "Không")</td>
+                    <td>@if (a.IsFeatured) { <span class="admin-article-badge"><i class="bi bi-pin-angle-fill"></i> Bài ghim</span> } else { <span class="text-muted">Không</span> }</td>
                     <td>@a.ViewCount</td>
                     <td>@a.UpdatedAt.ToString("dd/MM/yyyy HH:mm")</td>
                     <td class="text-end">
-                        <a class="btn btn-sm btn-outline-primary" asp-action="Edit" asp-route-id="@a.Id">Sửa</a>
+                        <a class="btn btn-sm btn-outline-primary" asp-action="Edit" asp-route-id="@a.Id"><i class="bi bi-pencil-square"></i> Sửa</a>
                         @if (User.IsInRole("Admin"))
                         {
-                            <form method="post" asp-action="Delete" asp-route-id="@a.Id" class="d-inline" onsubmit="return confirm('Xóa bài viết này?')"><button class="btn btn-sm btn-outline-danger">Xóa</button></form>
+                            <form method="post" asp-action="Delete" asp-route-id="@a.Id" class="d-inline" onsubmit="return confirm('Xóa bài viết này?')"><button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash3"></i> Xóa</button></form>
                         }
                     </td>
                 </tr>
