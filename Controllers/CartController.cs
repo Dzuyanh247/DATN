@@ -53,9 +53,9 @@ public class CartController : Controller
         return RedirectToAction("Index", "Products");
     }
 
-    [HttpPost]
+    [HttpPost("/Cart/BuyNow")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> BuyNow(int productId, int quantity = 1)
+    public async Task<IActionResult> BuyNow([FromForm] int productId, [FromForm] int quantity = 1)
     {
         var result = await _cartService.SetBuyNowCartAsync(GetUserId(), productId, quantity);
         if (!result.Ok)
@@ -68,7 +68,7 @@ public class CartController : Controller
     }
 
 
-    [HttpPost]
+    [HttpPost("/Cart/AddBundle")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AddBundle([FromForm] BundleCartRequest request)
     {
@@ -96,9 +96,9 @@ public class CartController : Controller
         return Redirect(Request.Headers.Referer.ToString() ?? "/Cart");
     }
 
-    [HttpPost]
+    [HttpPost("/Cart/BuyBundle")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> BuyBundle(BundleCartRequest request)
+    public async Task<IActionResult> BuyBundle([FromForm] BundleCartRequest request)
     {
         var items = new List<(int ProductId, int Quantity)> { (request.ProductId, Math.Max(1, request.Quantity)) };
         items.AddRange(request.AccessoryProductIds.Where(id => id > 0).Distinct().Select(id => (id, Math.Max(1, request.Quantity))));
