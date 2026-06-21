@@ -25,7 +25,9 @@ public class AiChatController : ControllerBase
         {
             success = result.Success,
             reply = result.Reply,
-            suggestedProducts = result.SuggestedProducts.Select(AiChatProductDto.From)
+            requestId = result.RequestId,
+            shouldAttachProductCards = result.AttachProductCards,
+            suggestedProducts = result.AttachProductCards ? result.SuggestedProducts.Select(AiChatProductDto.From) : Array.Empty<AiChatProductDto>()
         });
     }
 }

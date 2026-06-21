@@ -37,6 +37,8 @@
     let unread = 0;
     let pendingStartAction = null;
     let quickActionPending = false;
+    let sendPending = false;
+    let activeRequestId = null;
 
     function readSession() {
         try { return JSON.parse(localStorage.getItem(storageKey) || 'null'); } catch { return null; }
@@ -75,7 +77,16 @@
         const date = new Date(value);
         return Number.isNaN(date.getTime()) ? '' : date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
     }
+    function isStaleAiMessage(message) {
+        const metadata = normalizeMetadataValue(message?.metadata);
+        const responseRequestId = metadata?.requestId || metadata?.RequestId;
+        return Boolean(activeRequestId && responseRequestId && responseRequestId !== activeRequestId);
+    }
     function addMessage(message) {
+        if (isStaleAiMessage(message)) {
+            console.warn('[SupportChat] Ignored stale realtime AI message', { activeRequestId, message });
+            return;
+        }
         const existing = message.id && messagesElement.querySelector(`[data-chat-message-id="${message.id}"]`);
         if (existing) return existing;
         const cluster = document.createElement('div');
@@ -465,29 +476,41 @@
         if (!text || !session) return;
         sendErrorElement.textContent = '';
         const button = messageForm.querySelector('button');
-        if (button.disabled) return;
+        if (sendPending || button.disabled) return;
+        sendPending = true;
         button.disabled = true;
+        messageInput.disabled = true;
         messageInput.value = '';
         messageInput.style.height = '';
+        const requestId = window.crypto?.randomUUID?.() || `req-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+        activeRequestId = requestId;
         const localId = `local-${Date.now()}`;
         addMessage({ id: localId, senderType: 'Customer', senderName: 'Bạn', message: text, createdAt: new Date().toISOString(), forceScroll: true });
         setBotLoading(true);
         try {
             const data = await jsonFetch(conversationUrl(sendUrlTemplate, session.conversationId), {
-                method: 'POST', body: JSON.stringify({ accessToken: session.accessToken, message: text })
+                method: 'POST', body: JSON.stringify({ accessToken: session.accessToken, message: text, requestId })
             });
             setBotLoading(false);
             if (data.customerMessage) data.customerMessage.forceScroll = true;
             replaceLocalMessage(localId, data.customerMessage || data);
             if (data.automation) renderAutomation(data.automation);
-            if (data.aiMessage) { data.aiMessage.forceScroll = true; addMessage(data.aiMessage); }
+            if (data.aiMessage) {
+                const responseRequestId = data.aiMessage.metadata?.requestId || data.aiMessage.metadata?.RequestId;
+                if (!responseRequestId || responseRequestId === requestId) {
+                    data.aiMessage.forceScroll = true;
+                    addMessage(data.aiMessage);
+                } else {
+                    console.warn('[SupportChat] Ignored stale AI response', { requestId, responseRequestId });
+                }
+            }
             messageInput.focus();
             scrollToLatest(true);
         } catch (error) {
             console.error('[SupportChat] Could not send message', error);
             sendErrorElement.textContent = error.message;
         }
-        finally { setBotLoading(false); button.disabled = false; }
+        finally { setBotLoading(false); button.disabled = false; messageInput.disabled = false; sendPending = false; if (activeRequestId === requestId) activeRequestId = null; }
     });
     messageInput.addEventListener('input', () => {
         messageInput.style.height = 'auto';
