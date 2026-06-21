@@ -198,7 +198,7 @@ public partial class SupportChatAutomationService : ISupportChatAutomationServic
         var actions = new List<SupportMessageAction>();
         if (inWarranty)
         {
-            var phone = detail.Order.ReceiverPhone;
+            var phone = detail.Order?.ReceiverPhone;
             if (string.IsNullOrWhiteSpace(phone))
                 phone = await _db.Users.AsNoTracking().Where(x => x.Id == userId.Value).Select(x => x.Phone).FirstOrDefaultAsync(ct);
             var warrantyUrl = $"/Warranty/Create?orderDetailId={detail.Id}";
