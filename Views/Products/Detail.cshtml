@@ -203,10 +203,10 @@
                         </div>
                         <div id="selected-accessory-inputs"></div>
                         <div class="detail-action-row">
-                            <button class="btn product-buy-now" type="submit" asp-controller="Cart" asp-action="BuyBundle" formmethod="post" @(inStock ? string.Empty : "disabled")>
+                            <button class="btn product-buy-now" type="submit" asp-controller="Cart" asp-action="BuyBundle" formmethod="post" disabled="@(!inStock)">
                                 <i class="bi bi-lightning-charge-fill" aria-hidden="true"></i><span><strong>ĐẶT HÀNG</strong><small>Giao hàng tận nơi</small></span>
                             </button>
-                            <button class="btn product-add-cart" type="submit" asp-controller="Cart" asp-action="AddBundle" formmethod="post" @(inStock ? string.Empty : "disabled")>
+                            <button class="btn product-add-cart" type="submit" asp-controller="Cart" asp-action="AddBundle" formmethod="post" disabled="@(!inStock)">
                                 <i class="bi bi-cart-plus" aria-hidden="true"></i><span>THÊM VÀO GIỎ</span>
                             </button>
                         </div>
