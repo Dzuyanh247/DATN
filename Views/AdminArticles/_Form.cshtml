@@ -1,0 +1,39 @@
+@model Article
+@{
+    var isEdit = Model.Id > 0;
+}
+<form method="post" enctype="multipart/form-data" class="row g-3 article-admin-form">
+    @if (isEdit) { <input type="hidden" asp-for="Id" /> }
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+    <div class="col-lg-8"><label class="form-label">Tiêu đề bài viết</label><input asp-for="Title" class="form-control" data-slug-source="#Slug" /></div>
+    <div class="col-lg-4"><label class="form-label">Slug</label><input asp-for="Slug" class="form-control" /></div>
+    <div class="col-md-4"><label class="form-label">Chuyên mục</label><select asp-for="Type" class="form-select">@foreach (var t in ArticleTypes.Labels) { <option value="@t.Key">@t.Value</option> }</select></div>
+    <div class="col-md-4"><label class="form-label">Trạng thái</label><select asp-for="IsPublished" class="form-select"><option value="true">Hiển thị</option><option value="false">Nháp / Ẩn</option></select></div>
+    <div class="col-md-4 d-flex align-items-end"><div class="form-check"><input asp-for="IsFeatured" class="form-check-input" /><label asp-for="IsFeatured" class="form-check-label">Bài nổi bật</label></div></div>
+    <div class="col-md-6"><label class="form-label">Link ảnh đại diện</label><input asp-for="CoverImageUrl" class="form-control" id="CoverImageUrl" /></div>
+    <div class="col-md-6"><label class="form-label">Upload ảnh</label><input name="coverImageFile" type="file" accept="image/jpeg,image/png,image/webp" class="form-control" id="coverImageFile" /><small class="text-muted">Ưu tiên file upload. Tối đa 3MB.</small></div>
+    <div class="col-md-4"><img id="coverPreview" src="@(string.IsNullOrWhiteSpace(Model.CoverImageUrl) ? "https://placehold.co/600x360/002b36/14d9ff?text=Preview" : Model.CoverImageUrl)" class="img-fluid rounded border" alt="Preview" /></div>
+    <div class="col-md-8"><label class="form-label">Mô tả ngắn / excerpt</label><textarea asp-for="Excerpt" rows="5" maxlength="500" class="form-control"></textarea></div>
+    <div class="col-12"><label class="form-label">Nội dung bài viết</label><textarea asp-for="Content" rows="14" class="form-control"></textarea></div>
+    @if (isEdit)
+    {
+        <div class="col-md-4"><label class="form-label">Ngày tạo</label><input value="@Model.CreatedAt.ToString("dd/MM/yyyy HH:mm")" class="form-control" readonly /></div>
+        <div class="col-md-4"><label class="form-label">Ngày cập nhật</label><input value="@Model.UpdatedAt.ToString("dd/MM/yyyy HH:mm")" class="form-control" readonly /></div>
+        <div class="col-md-4"><label class="form-label">Lượt xem</label><input value="@Model.ViewCount" class="form-control" readonly /></div>
+    }
+    <div class="col-12 d-flex gap-2"><button class="btn btn-primary">Lưu bài viết</button><a class="btn btn-outline-secondary" asp-action="Index">Quay lại</a></div>
+</form>
+<script>
+(() => {
+  const title = document.querySelector('[name="Title"]');
+  const slug = document.querySelector('[name="Slug"]');
+  const imgUrl = document.getElementById('CoverImageUrl');
+  const file = document.getElementById('coverImageFile');
+  const preview = document.getElementById('coverPreview');
+  const toSlug = value => value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+  title?.addEventListener('input', () => { if (!slug.dataset.touched) slug.value = toSlug(title.value); });
+  slug?.addEventListener('input', () => slug.dataset.touched = '1');
+  imgUrl?.addEventListener('input', () => { if (imgUrl.value) preview.src = imgUrl.value; });
+  file?.addEventListener('change', () => { const f = file.files?.[0]; if (f) preview.src = URL.createObjectURL(f); });
+})();
+</script>

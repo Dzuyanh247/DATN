@@ -1,9 +1,33 @@
 @model Article
-<article class="card border-0 shadow-sm">
-    <div class="card-body p-4">
-        <span class="badge bg-info mb-2">@Model.Type</span>
-        <h2>@Model.Title</h2>
-        <p class="text-muted">@Model.CreatedAt.ToString("dd/MM/yyyy HH:mm")</p>
-        <div style="white-space: pre-line">@Model.Content</div>
+@{
+    ViewData["Title"] = Model.Title;
+    var related = ViewBag.RelatedArticles as List<Article> ?? new List<Article>();
+    var previous = ViewBag.PreviousArticle as Article;
+    var next = ViewBag.NextArticle as Article;
+    string Label(string? type) => type != null && ArticleTypes.Labels.TryGetValue(type, out var label) ? label : (type ?? "Tin tức");
+    var image = string.IsNullOrWhiteSpace(Model.CoverImageUrl) ? "https://placehold.co/1200x620/002b36/14d9ff?text=KKSHOP+News" : Model.CoverImageUrl;
+}
+<article class="kk-detail-page">
+    <div class="kk-detail-header">
+        <span class="kk-chip">@Label(Model.Type)</span>
+        <h1>@Model.Title</h1>
+        <div class="kk-article-meta justify-content-center"><span><i class="bi bi-calendar3"></i> @Model.CreatedAt.ToString("dd/MM/yyyy HH:mm")</span><span><i class="bi bi-eye"></i> @Model.ViewCount lượt xem</span></div>
+        @if (!string.IsNullOrWhiteSpace(Model.Excerpt)) { <p>@Model.Excerpt</p> }
     </div>
+    <img class="kk-detail-cover" src="@image" alt="@Model.Title" />
+    <div class="kk-detail-content">@Html.Raw(System.Net.WebUtility.HtmlEncode(Model.Content).Replace("\n", "<br />"))</div>
+    <div class="kk-prev-next">
+        @if (previous != null) { <a asp-action="Detail" asp-route-slug="@previous.Slug"><i class="bi bi-arrow-left"></i> @previous.Title</a> }
+        @if (next != null) { <a asp-action="Detail" asp-route-slug="@next.Slug">@next.Title <i class="bi bi-arrow-right"></i></a> }
+    </div>
+    @if (related.Any())
+    {
+        <h4 class="kk-block-title">Bài viết liên quan</h4>
+        <div class="kk-related-grid">
+            @foreach (var item in related)
+            {
+                <a class="kk-related-card" asp-action="Detail" asp-route-slug="@item.Slug"><strong>@item.Title</strong><span><i class="bi bi-eye"></i> @item.ViewCount lượt xem</span></a>
+            }
+        </div>
+    }
 </article>

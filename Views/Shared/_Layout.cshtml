@@ -18,7 +18,8 @@
         ? menuCategories.FirstOrDefault(c => c.Id == parsedHeaderCategoryId)
         : null;
     var isAdminPage = controllerName.StartsWith("Admin") ||
-                      controllerName == "Articles" && (actionName == "Create" || actionName == "Edit");
+                      controllerName == "AdminArticles" ||
+                      (controllerName == "Articles" && (actionName == "Create" || actionName == "Edit"));
     var isComparePage = controllerName == "Compare";
 }
 <!DOCTYPE html>
@@ -86,6 +87,7 @@
                     <a class="@(controllerName == "AdminReviews" ? "active" : "")" asp-controller="AdminReviews" asp-action="Index"><i class="bi bi-star"></i><span>Đánh giá</span></a>
                     <a class="@(controllerName == "AdminSearchKeywords" ? "active" : "")" asp-controller="AdminSearchKeywords" asp-action="Index"><i class="bi bi-search-heart"></i><span>Từ khóa tìm kiếm</span></a>
                     <a class="@(controllerName == "AdminBanners" ? "active" : "")" asp-controller="AdminBanners" asp-action="Index"><i class="bi bi-images"></i><span>Banner</span></a>
+                    <a class="@(controllerName == "AdminArticles" ? "active" : "")" asp-controller="AdminArticles" asp-action="Index"><i class="bi bi-newspaper"></i><span>Bài viết</span></a>
                     <span class="admin-nav-label">Khách hàng</span>
                     <a class="@(controllerName == "AdminUsers" ? "active" : "")" asp-controller="AdminUsers" asp-action="Index"><i class="bi bi-people"></i><span>Người dùng</span></a>
                 }
@@ -119,11 +121,11 @@ else
 <div class="ttg-topbar text-light py-2 small">
     <div class="container ttg-shell ttg-topbar-inner">
         <div class="ttg-topbar-left">
-            <a href="#" class="ttg-pill"><i class="bi bi-geo-alt"></i> Hệ thống showroom</a>
-            <a href="#" class="ttg-pill"><i class="bi bi-telephone"></i> Bán hàng trực tuyến</a>
-            <a asp-controller="Articles" asp-action="Index" class="ttg-pill">Trang tin công nghệ</a>
-            <a asp-controller="BuildPc" asp-action="Index" class="ttg-pill"><i class="bi bi-cpu"></i> Tư vấn build PC</a>
-            <a href="#" class="ttg-pill">Phần mềm hay</a>
+            <a asp-controller="Contact" asp-action="Index" class="ttg-pill"><i class="bi bi-geo-alt"></i> Hệ thống showroom</a>
+            <a asp-controller="Contact" asp-action="Index" class="ttg-pill"><i class="bi bi-telephone"></i> Bán hàng trực tuyến</a>
+            <a asp-controller="Articles" asp-action="Index" asp-route-type="TinCongNghe" class="ttg-pill"><i class="bi bi-newspaper"></i> Trang tin công nghệ</a>
+            <a asp-controller="BuildPc" asp-action="Index" class="ttg-pill ttg-pill-cta"><i class="bi bi-cpu"></i> Tư vấn build PC</a>
+            <a asp-controller="Articles" asp-action="Index" asp-route-type="PhanMemHay" class="ttg-pill"><i class="bi bi-stars"></i> Phần mềm hay</a>
         </div>
         <div class="ttg-topbar-right">
             @if (User.Identity?.IsAuthenticated == true)

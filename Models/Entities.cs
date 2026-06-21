@@ -389,12 +389,35 @@ public class BuildPcItem : BaseEntity
     public Product? Product { get; set; }
 }
 
+public static class ArticleTypes
+{
+    public const string TechNews = "TinCongNghe";
+    public const string BuildPc = "TuVanBuildPC";
+    public const string Software = "PhanMemHay";
+    public const string Promotion = "KhuyenMai";
+    public const string Guide = "HuongDan";
+
+    public static readonly IReadOnlyDictionary<string, string> Labels = new Dictionary<string, string>
+    {
+        [TechNews] = "Tin công nghệ",
+        [BuildPc] = "Tư vấn build PC",
+        [Software] = "Phần mềm hay",
+        [Promotion] = "Khuyến mãi",
+        [Guide] = "Hướng dẫn"
+    };
+}
+
 public class Article : BaseEntity
 {
     [MaxLength(200)] public string Title { get; set; } = string.Empty;
     [MaxLength(200)] public string Slug { get; set; } = string.Empty;
-    [MaxLength(50)] public string Type { get; set; } = "Tin công nghệ";
+    [MaxLength(50)] public string Type { get; set; } = ArticleTypes.TechNews;
+    [MaxLength(500)] public string? Excerpt { get; set; }
     public string Content { get; set; } = string.Empty;
+    [MaxLength(1000)] public string? CoverImageUrl { get; set; }
+    public bool IsPublished { get; set; } = true;
+    public bool IsFeatured { get; set; }
+    public int ViewCount { get; set; }
 }
 
 
