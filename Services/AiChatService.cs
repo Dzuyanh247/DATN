@@ -9,6 +9,14 @@ namespace Datn.PcStore.Services;
 
 public record AiChatResponse(bool Success, string Reply, IReadOnlyList<AiProductContext> SuggestedProducts);
 
+internal sealed class AiConversationContext
+{
+    public List<string> RecentMessages { get; } = [];
+    public AiProductContext? CurrentProductContext { get; set; }
+    public AiProductContext? LastReferencedProduct { get; set; }
+}
+
+
 internal enum AiChatIntent
 {
     Greeting,
@@ -16,6 +24,10 @@ internal enum AiChatIntent
     PolicyOrSupport,
     ProductSearch,
     ProductAdvice,
+    ProductAnalysis,
+    ProductBenefits,
+    ProductProsCons,
+    ProductRecommendation,
     ClarifyProductAdvice,
     GeneralShop
 }
@@ -25,7 +37,7 @@ public interface IAiChatService
     Task<AiChatResponse> AskAsync(string message, string? sessionId, string? ipAddress, CancellationToken cancellationToken = default);
 }
 
-public class GeminiChatService : IAiChatService
+public partial class GeminiChatService : IAiChatService
 {
     private const string BusyMessage = "AI đang bận, bạn vui lòng thử lại sau hoặc chọn Gặp nhân viên.";
     private readonly HttpClient _httpClient;
@@ -51,12 +63,22 @@ public class GeminiChatService : IAiChatService
         if (message.Length == 0) return new(false, "Bạn vui lòng nhập câu hỏi cần tư vấn.", []);
         if (message.Length > 500) return new(false, "Câu hỏi quá dài, bạn vui lòng rút gọn dưới 500 ký tự.", []);
         if (!IsAllowed(sessionId, ipAddress)) return new(false, "Bạn đang gửi quá nhanh, vui lòng thử lại sau vài giây.", []);
+        var conversation = GetConversationContext(sessionId, ipAddress);
+        conversation.RecentMessages.Add($"User: {message}");
+        if (conversation.RecentMessages.Count > 10) conversation.RecentMessages.RemoveRange(0, conversation.RecentMessages.Count - 10);
+
         var intent = DetectIntent(message);
+        var productFromUrl = await TryResolveProductUrlAsync(message, cancellationToken);
+        if (productFromUrl != null)
+        {
+            conversation.CurrentProductContext = productFromUrl;
+            conversation.LastReferencedProduct = productFromUrl;
+        }
         if (intent == AiChatIntent.Greeting)
             return new(true, "Chào bạn! KKSHOP AI có thể hỗ trợ tư vấn PC, linh kiện, cấu hình, đơn hàng, bảo hành và thanh toán. Bạn cần mình hỗ trợ phần nào ạ?", []);
         if (intent == AiChatIntent.OutOfScope)
             return new(true, "Mình là KKSHOP AI nên lúc nào cũng sẵn sàng hỗ trợ bạn ạ 😄 Bạn muốn mình tư vấn PC, linh kiện, đơn hàng hay bảo hành không?", []);
-        if (intent == AiChatIntent.ClarifyProductAdvice)
+        if (intent == AiChatIntent.ClarifyProductAdvice && !HasContextReference(message, conversation))
             return new(true, "Bạn muốn mình phân tích sản phẩm hoặc dòng sản phẩm nào ạ? Hãy gửi tên đầy đủ, nhu cầu sử dụng hoặc link sản phẩm để mình tư vấn ưu/nhược điểm kỹ hơn nhé.", []);
 
         var policyAnswer = _shopPolicy.Answer(message);
@@ -68,8 +90,16 @@ public class GeminiChatService : IAiChatService
 
         if (!_options.Enabled || string.IsNullOrWhiteSpace(_options.ApiKey)) return new(false, BusyMessage, []);
 
-        var shouldSearchProducts = intent is AiChatIntent.ProductSearch or AiChatIntent.ProductAdvice;
-        IReadOnlyList<AiProductContext> products = shouldSearchProducts ? await _productSearch.SearchAsync(message, cancellationToken) : [];
+        var contextProduct = ResolveContextProduct(message, conversation);
+        var isAnalysisIntent = intent is AiChatIntent.ProductAnalysis or AiChatIntent.ProductBenefits or AiChatIntent.ProductProsCons or AiChatIntent.ProductRecommendation or AiChatIntent.ProductAdvice;
+        var shouldSearchProducts = intent is AiChatIntent.ProductSearch or AiChatIntent.ProductAdvice or AiChatIntent.ProductAnalysis or AiChatIntent.ProductBenefits or AiChatIntent.ProductProsCons or AiChatIntent.ProductRecommendation || productFromUrl != null;
+        IReadOnlyList<AiProductContext> products = productFromUrl != null ? [productFromUrl] : contextProduct != null && isAnalysisIntent ? [contextProduct] : shouldSearchProducts ? await _productSearch.SearchAsync(message, cancellationToken) : [];
+        if (products.Count > 0)
+        {
+            conversation.CurrentProductContext = products[0];
+            conversation.LastReferencedProduct = products[0];
+        }
+        LogDebugState(message, intent, conversation, products);
         if (shouldSearchProducts && products.Count == 0)
         {
             var normalizedMessage = RemoveDiacritics(message.ToLowerInvariant());
@@ -79,7 +109,7 @@ public class GeminiChatService : IAiChatService
             return new(true, "Mình chưa tìm thấy sản phẩm phù hợp với từ khóa này trong dữ liệu KKSHOP. Bạn thử gửi tên đầy đủ hơn, loại linh kiện hoặc ngân sách để mình kiểm tra chính xác hơn nhé.", []);
         }
 
-        var cacheKey = $"ai-chat:{intent}:{NormalizeCacheKey(message)}";
+        var cacheKey = $"ai-chat:{sessionId ?? ipAddress}:{intent}:{conversation.LastReferencedProduct?.Id}:{NormalizeCacheKey(message)}";
         if (_cache.TryGetValue<AiChatResponse>(cacheKey, out var cached) && cached != null) return cached;
 
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -87,7 +117,7 @@ public class GeminiChatService : IAiChatService
 
         try
         {
-            var prompt = BuildPrompt(message, products, _shopPolicy.BuildKnowledgePrompt(), intent);
+            var prompt = BuildPrompt(message, products, _shopPolicy.BuildKnowledgePrompt(), intent, conversation);
             var request = new
             {
                 systemInstruction = new { parts = new[] { new { text = SystemPrompt } } },
@@ -119,6 +149,49 @@ public class GeminiChatService : IAiChatService
         }
     }
 
+    private AiConversationContext GetConversationContext(string? sessionId, string? ipAddress)
+    {
+        var key = $"ai-context:{sessionId ?? ipAddress ?? "unknown"}";
+        return _cache.GetOrCreate(key, entry =>
+        {
+            entry.SlidingExpiration = TimeSpan.FromHours(2);
+            return new AiConversationContext();
+        })!;
+    }
+
+    private async Task<AiProductContext?> TryResolveProductUrlAsync(string message, CancellationToken cancellationToken)
+    {
+        var match = ProductUrlRegex().Match(message);
+        return match.Success && int.TryParse(match.Groups[1].Value, out var id)
+            ? await _productSearch.GetByIdAsync(id, cancellationToken)
+            : null;
+    }
+
+    private static AiProductContext? ResolveContextProduct(string message, AiConversationContext conversation)
+        => HasContextReference(message, conversation) ? conversation.LastReferencedProduct ?? conversation.CurrentProductContext : conversation.CurrentProductContext;
+
+    private static bool HasContextReference(string message, AiConversationContext conversation)
+    {
+        if (conversation.LastReferencedProduct == null && conversation.CurrentProductContext == null) return false;
+        var normalized = RemoveDiacritics(message.ToLowerInvariant());
+        return ContextReferenceWords.Any(normalized.Contains) || ProductUrlRegex().IsMatch(message);
+    }
+
+    private void LogDebugState(string message, AiChatIntent intent, AiConversationContext conversation, IReadOnlyList<AiProductContext> products)
+    {
+        var normalized = RemoveDiacritics(message.ToLowerInvariant());
+        var budget = BudgetDebugRegex().Match(normalized).Value;
+        var category = ProductTerms.FirstOrDefault(normalized.Contains) ?? "none";
+        _logger.LogInformation("[KKSHOP_AI_DEBUG] Intent={Intent}; CurrentProductContext={CurrentProduct}; LastReferencedProduct={LastProduct}; Budget={Budget}; Category={Category}; SearchKeyword={SearchKeyword}; MatchedProducts={MatchedProducts}",
+            intent,
+            conversation.CurrentProductContext is null ? "none" : $"{conversation.CurrentProductContext.Id}:{conversation.CurrentProductContext.Name}",
+            conversation.LastReferencedProduct is null ? "none" : $"{conversation.LastReferencedProduct.Id}:{conversation.LastReferencedProduct.Name}",
+            string.IsNullOrWhiteSpace(budget) ? "none" : budget,
+            category,
+            TrimForLog(message),
+            products.Count == 0 ? "none" : string.Join(" | ", products.Take(5).Select(p => $"{p.Id}:{p.Name}:{p.Price:N0}")));
+    }
+
     private bool IsAllowed(string? sessionId, string? ipAddress)
     {
         var key = $"ai-rate:{sessionId ?? ipAddress ?? "unknown"}";
@@ -143,6 +216,10 @@ public class GeminiChatService : IAiChatService
         var hasConfigIntent = ContainsAny(normalized, "cau hinh", "pc gaming", "may choi game", "may tinh", "build", "shop co san");
         var hasSearchIntent = SearchIntentWords.Any(normalized.Contains);
         var hasAdviceIntent = AdviceIntentWords.Any(normalized.Contains);
+        if (ContainsAny(normalized, "loi ich")) return AiChatIntent.ProductBenefits;
+        if (ContainsAny(normalized, "uu diem", "nhuoc diem")) return AiChatIntent.ProductProsCons;
+        if (ContainsAny(normalized, "co nen mua", "phu hop voi ai", "choi game duoc khong", "choi duoc khong")) return AiChatIntent.ProductRecommendation;
+        if (ContainsAny(normalized, "phan tich", "danh gia san pham", "danh gia", "phu hop", "choi game duoc")) return AiChatIntent.ProductAnalysis;
         if ((hasConfigIntent || hasGame || hasBudget) && !ContainsAny(normalized, "don hang", "bao hanh", "thanh toan", "tra gop")) return AiChatIntent.ProductAdvice;
         if (hasSearchIntent || (hasProductTerm && ContainsAny(normalized, "gia", "con hang", "mua", "ban", "tim", "goi y", "ngan sach", "duoi", "tam"))) return AiChatIntent.ProductSearch;
         if (hasAdviceIntent && hasProductTerm) return AiChatIntent.ProductAdvice;
@@ -159,7 +236,7 @@ public class GeminiChatService : IAiChatService
         return new string(normalized.Where(c => CharUnicodeInfo.GetUnicodeCategory(c) != UnicodeCategory.NonSpacingMark).ToArray()).Normalize(System.Text.NormalizationForm.FormC);
     }
 
-    private static string BuildPrompt(string message, IReadOnlyList<AiProductContext> products, string policyKnowledge, AiChatIntent intent)
+    private static string BuildPrompt(string message, IReadOnlyList<AiProductContext> products, string policyKnowledge, AiChatIntent intent, AiConversationContext conversation)
     {
         var productLines = products.Count == 0
             ? "Hiện KKSHOP chưa tìm thấy cấu hình phù hợp trong dữ liệu hiện có."
@@ -167,7 +244,9 @@ public class GeminiChatService : IAiChatService
         var productRule = intent == AiChatIntent.ProductAdvice
             ? "- Nếu khách hỏi lợi ích/ưu điểm/phân tích/có nên mua, hãy tư vấn chuyên nghiệp: ưu điểm, nhược điểm/lưu ý, phù hợp với ai. Chỉ nhắc sản phẩm trong danh sách nếu thật sự khớp câu hỏi."
             : "- Nếu có sản phẩm, chọn tối đa 2-3 sản phẩm phù hợp nhất, nêu giá và lý do phù hợp.";
-        return $"Câu hỏi khách hàng: {message}\n\nQuy tắc bắt buộc khi trả lời:\n- Không tự gợi ý hoặc liệt kê sản phẩm nếu câu hỏi không có intent mua/tìm/giá/còn hàng/cấu hình/ngân sách/tên sản phẩm rõ ràng.\n- Chỉ tư vấn dựa trên danh sách sản phẩm backend cung cấp bên dưới. Không bịa sản phẩm ngoài danh sách.\n- Nếu thiếu dữ liệu chi tiết, nói tự nhiên: Mình chưa có đủ dữ liệu chi tiết về sản phẩm này trong hệ thống. Bạn có thể gửi thêm tên đầy đủ hoặc link sản phẩm để mình kiểm tra kỹ hơn nhé.\n{productRule}\n- Với FPS/game, không cam kết tuyệt đối; dùng các cụm như \"dự kiến\", \"phù hợp ở mức tham khảo\" vì FPS phụ thuộc setting và bản cập nhật game.\n- Nếu khách hỏi PC/cấu hình/gaming, chỉ dùng PC bộ/cấu hình có sẵn hoặc linh kiện build PC trong danh sách; tuyệt đối không biến chuột/bàn phím/tai nghe/màn hình thành PC đề xuất.\n- Với GTA V: 10-15 triệu chơi ổn Full HD thiết lập vừa/cao tùy linh kiện; 15-30 triệu rất ổn Full HD/2K tùy VGA; 50 triệu dư sức GTA V và có thể hướng tới game nặng hơn/2K/4K.\n- Không nói \"không tìm thấy\" nếu backend đã cung cấp bất kỳ sản phẩm hoặc linh kiện fallback nào.\n- Nếu khách hỏi chính sách, chỉ dùng nguồn sự thật chính sách bên dưới.\n\nNguồn sự thật chính sách KKSHOP:\n{policyKnowledge}\n\nDữ liệu sản phẩm KKSHOP được phép dùng:\n{productLines}";
+        var history = conversation.RecentMessages.Count == 0 ? "Không có." : string.Join("\n", conversation.RecentMessages.TakeLast(10));
+        var currentProductLine = conversation.LastReferencedProduct == null ? "Chưa có" : $"{conversation.LastReferencedProduct.Name} (ID {conversation.LastReferencedProduct.Id})";
+        return $"Ngữ cảnh 10 tin gần nhất:\n{history}\n\nSản phẩm đang được nhắc tới gần nhất: {currentProductLine}\n\nCâu hỏi khách hàng: {message}\n\nQuy tắc bắt buộc khi trả lời:\n- Không tự gợi ý hoặc liệt kê sản phẩm nếu câu hỏi không có intent mua/tìm/giá/còn hàng/cấu hình/ngân sách/tên sản phẩm rõ ràng.\n- Chỉ tư vấn dựa trên danh sách sản phẩm backend cung cấp bên dưới. Không bịa sản phẩm ngoài danh sách.\n- Nếu có sản phẩm trong ngữ cảnh và khách dùng nó/máy này/con này/bộ này/sản phẩm này/em này thì hiểu là sản phẩm đang được nhắc tới gần nhất, không hỏi lại.\n- Khi phân tích sản phẩm, bắt buộc cố gắng suy luận từ tên, CPU, GPU, RAM, SSD, Mainboard, PSU, Case. Ví dụ Ryzen 7 5700X + RTX 3050 phù hợp eSports, GTA V, Valorant, CS2, học tập/làm việc và stream cơ bản ở mức tham khảo. Chỉ nói chưa đủ dữ liệu khi không đọc được cấu hình nào.\n{productRule}\n- Với FPS/game, không cam kết tuyệt đối; dùng các cụm như \"dự kiến\", \"phù hợp ở mức tham khảo\" vì FPS phụ thuộc setting và bản cập nhật game.\n- Nếu khách hỏi PC/cấu hình/gaming, chỉ dùng PC bộ/cấu hình có sẵn hoặc linh kiện build PC trong danh sách; tuyệt đối không biến chuột/bàn phím/tai nghe/màn hình thành PC đề xuất.\n- Với GTA V: 10-15 triệu chơi ổn Full HD thiết lập vừa/cao tùy linh kiện; 15-30 triệu rất ổn Full HD/2K tùy VGA; 50 triệu dư sức GTA V và có thể hướng tới game nặng hơn/2K/4K.\n- Không nói \"không tìm thấy\" nếu backend đã cung cấp bất kỳ sản phẩm hoặc linh kiện fallback nào.\n- Nếu khách hỏi chính sách, chỉ dùng nguồn sự thật chính sách bên dưới.\n\nNguồn sự thật chính sách KKSHOP:\n{policyKnowledge}\n\nDữ liệu sản phẩm KKSHOP được phép dùng:\n{productLines}";
     }
 
     private static string ExtractReply(JsonElement root)
@@ -178,9 +257,18 @@ public class GeminiChatService : IAiChatService
         return string.Join("\n", parts.EnumerateArray().Select(p => p.TryGetProperty("text", out var text) ? text.GetString() : null).Where(x => !string.IsNullOrWhiteSpace(x)));
     }
 
+    private static string TrimForLog(string text) => text.Length <= 180 ? text : text[..180] + "...";
+
+    [GeneratedRegex(@"/Products/Detail/(\d+)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    private static partial Regex ProductUrlRegex();
+
+    [GeneratedRegex(@"(?:duoi|khoang|tam|tren|>=|>|<=|<)?\s*\d+(?:[\.,]\d+)?\s*(?:trieu|tr|m|million|k)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    private static partial Regex BudgetDebugRegex();
+
     private static string NormalizeCacheKey(string text) => text.Trim().ToLowerInvariant()[..Math.Min(text.Trim().Length, 160)];
 
     private static readonly string[] GreetingWords = ["chao", "chao ban", "hello", "hi", "alo", "shop oi", "ad oi"];
+    private static readonly string[] ContextReferenceWords = ["no", "may nay", "con nay", "bo nay", "san pham nay", "em nay"];
     private static readonly string[] SearchIntentWords = ["mua", "tim", "can", "gia", "bao nhieu", "con hang", "co hang", "goi y", "tu van cau hinh", "build", "ngan sach", "duoi", "tam", "khoang", "shop co san"];
     private static readonly string[] AdviceIntentWords = ["loi ich", "uu diem", "nhuoc diem", "phan tich", "co nen mua", "danh gia", "tot khong", "phu hop", "nen chon", "choi duoc", "choi duoc khong"];
     private static readonly string[] ProductTerms = ["pc", "may tinh", "may bo", "cau hinh", "linh kien", "chuot", "ban phim", "tai nghe", "man hinh", "cpu", "vga", "gpu", "ram", "ssd", "hdd", "nguon", "psu", "case", "tan nhiet", "main", "mainboard", "laptop", "gta", "gaming"];
