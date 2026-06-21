@@ -28,7 +28,9 @@ internal enum AiChatIntent
     ProductBenefits,
     ProductProsCons,
     ProductRecommendation,
+    ProductCompare,
     ClarifyProductAdvice,
+    FriendlySmallTalk,
     GeneralShop
 }
 
@@ -76,8 +78,12 @@ public partial class GeminiChatService : IAiChatService
         }
         if (intent == AiChatIntent.Greeting)
             return new(true, "Chào bạn! KKSHOP AI có thể hỗ trợ tư vấn PC, linh kiện, cấu hình, đơn hàng, bảo hành và thanh toán. Bạn cần mình hỗ trợ phần nào ạ?", []);
+        if (intent == AiChatIntent.FriendlySmallTalk)
+            return new(true, "Mình vẫn ổn và luôn sẵn sàng hỗ trợ bạn đây ạ 😄 Bạn cần KKSHOP tư vấn PC, linh kiện hay kiểm tra thông tin sản phẩm nào không?", []);
         if (intent == AiChatIntent.OutOfScope)
-            return new(true, "Mình là KKSHOP AI nên lúc nào cũng sẵn sàng hỗ trợ bạn ạ 😄 Bạn muốn mình tư vấn PC, linh kiện, đơn hàng hay bảo hành không?", []);
+            return new(true, "Nội dung này hơi ngoài phạm vi hỗ trợ của KKSHOP AI rồi ạ. Mình có thể hỗ trợ bạn về PC, linh kiện, cấu hình, đơn hàng, bảo hành hoặc thanh toán nhé.", []);
+        if (intent == AiChatIntent.ProductCompare && !HasContextReference(message, conversation) && !HasConcreteProductSignal(message))
+            return new(true, "Bạn gửi giúp mình tên hoặc link 2 sản phẩm cần so sánh nhé. Có đủ thông tin, KKSHOP sẽ so sánh giá, cấu hình/thông số, điểm mạnh và nên chọn mẫu nào theo nhu cầu của bạn ạ.", []);
         if (intent == AiChatIntent.ClarifyProductAdvice && !HasContextReference(message, conversation))
             return new(true, "Bạn muốn mình phân tích sản phẩm hoặc dòng sản phẩm nào ạ? Hãy gửi tên đầy đủ, nhu cầu sử dụng hoặc link sản phẩm để mình tư vấn ưu/nhược điểm kỹ hơn nhé.", []);
 
@@ -91,8 +97,8 @@ public partial class GeminiChatService : IAiChatService
         if (!_options.Enabled || string.IsNullOrWhiteSpace(_options.ApiKey)) return new(false, BusyMessage, []);
 
         var contextProduct = ResolveContextProduct(message, conversation);
-        var isAnalysisIntent = intent is AiChatIntent.ProductAnalysis or AiChatIntent.ProductBenefits or AiChatIntent.ProductProsCons or AiChatIntent.ProductRecommendation or AiChatIntent.ProductAdvice;
-        var shouldSearchProducts = intent is AiChatIntent.ProductSearch or AiChatIntent.ProductAdvice or AiChatIntent.ProductAnalysis or AiChatIntent.ProductBenefits or AiChatIntent.ProductProsCons or AiChatIntent.ProductRecommendation || productFromUrl != null;
+        var isAnalysisIntent = intent is AiChatIntent.ProductAnalysis or AiChatIntent.ProductBenefits or AiChatIntent.ProductProsCons or AiChatIntent.ProductRecommendation or AiChatIntent.ProductAdvice or AiChatIntent.ProductCompare;
+        var shouldSearchProducts = intent is AiChatIntent.ProductSearch or AiChatIntent.ProductAdvice or AiChatIntent.ProductAnalysis or AiChatIntent.ProductBenefits or AiChatIntent.ProductProsCons or AiChatIntent.ProductRecommendation or AiChatIntent.ProductCompare || productFromUrl != null;
         IReadOnlyList<AiProductContext> products = productFromUrl != null ? [productFromUrl] : contextProduct != null && isAnalysisIntent ? [contextProduct] : shouldSearchProducts ? await _productSearch.SearchAsync(message, cancellationToken) : [];
         if (products.Count > 0)
         {
@@ -207,7 +213,8 @@ public partial class GeminiChatService : IAiChatService
         var normalized = RemoveDiacritics(lower);
         var compact = normalized.Trim(' ', '.', '!', '?');
         if (GreetingWords.Contains(compact) || (GreetingWords.Any(g => compact.StartsWith(g + " ")) && compact.Length <= 28)) return AiChatIntent.Greeting;
-        if (ContainsAny(normalized, "thoi tiet", "bong da", "chung khoan", "nau an", "an com", "xem phim", "du lich", "lich su")) return AiChatIntent.OutOfScope;
+        if (IsFriendlySmallTalk(normalized)) return AiChatIntent.FriendlySmallTalk;
+        if (ContainsAny(normalized, "thoi tiet", "bong da", "chung khoan", "nau an", "xem phim", "du lich", "lich su", "spam", "hack", "ma tuy", "bao luc")) return AiChatIntent.OutOfScope;
         if (ContainsAny(normalized, "bao hanh", "don hang", "thanh toan", "tra gop", "van chuyen", "ship", "nhan vien", "shop con hoat dong", "mo cua")) return AiChatIntent.PolicyOrSupport;
 
         var hasProductTerm = ProductTerms.Any(normalized.Contains) || Regex.IsMatch(normalized, @"\b(?:rtx|gtx|rx|i[3579]|ryzen|logitech|razer|akko|asus|msi|gigabyte|corsair|g304)\b", RegexOptions.IgnoreCase);
@@ -216,6 +223,7 @@ public partial class GeminiChatService : IAiChatService
         var hasConfigIntent = ContainsAny(normalized, "cau hinh", "pc gaming", "may choi game", "may tinh", "build", "shop co san");
         var hasSearchIntent = SearchIntentWords.Any(normalized.Contains);
         var hasAdviceIntent = AdviceIntentWords.Any(normalized.Contains);
+        if (ContainsAny(normalized, "so sanh", "compare", "khac nhau", "hon kem")) return AiChatIntent.ProductCompare;
         if (ContainsAny(normalized, "loi ich")) return AiChatIntent.ProductBenefits;
         if (ContainsAny(normalized, "uu diem", "nhuoc diem")) return AiChatIntent.ProductProsCons;
         if (ContainsAny(normalized, "co nen mua", "phu hop voi ai", "choi game duoc khong", "choi duoc khong")) return AiChatIntent.ProductRecommendation;
@@ -230,6 +238,25 @@ public partial class GeminiChatService : IAiChatService
 
     private static bool ContainsAny(string source, params string[] values) => values.Any(source.Contains);
 
+    private static bool HasConcreteProductSignal(string message)
+    {
+        var normalized = RemoveDiacritics(message.ToLowerInvariant());
+        return ProductUrlRegex().IsMatch(message)
+            || Regex.IsMatch(normalized, @"\b(?:rtx|gtx|rx|i[3579]|ryzen|logitech|razer|akko|asus|msi|gigabyte|corsair|g304|g502)\b", RegexOptions.IgnoreCase)
+            || ProductTerms.Any(term => normalized.Contains(term) && term != "san pham");
+    }
+
+    private static bool IsFriendlySmallTalk(string normalized)
+    {
+        var compact = normalized.Trim(' ', '.', '!', '?');
+        return ContainsAny(compact,
+            "ban an com chua", "shop an com chua", "ai an com chua", "an com chua",
+            "shop khoe khong", "ban khoe khong", "ai khoe khong", "khoe khong",
+            "ai co met khong", "ban co met khong", "shop co met khong", "co met khong",
+            "cam on", "thanks", "thank you")
+            && compact.Length <= 80;
+    }
+
     private static string RemoveDiacritics(string value)
     {
         var normalized = value.Replace('đ', 'd').Replace('Đ', 'D').Normalize(System.Text.NormalizationForm.FormD);
@@ -243,10 +270,12 @@ public partial class GeminiChatService : IAiChatService
             : string.Join("\n", products.Select((p, i) => $"{i + 1}. Tên: {p.Name}; Giá: {p.Price:N0} đ; Mô tả: {p.Description}; Cấu hình/thông số: {p.Specifications}; Bảo hành: {p.Warranty}; Tồn kho: {p.StockStatus}; Link: {p.Link}; Danh mục: {p.Category}; Loại card bắt buộc: {p.ProductTypeLabel}; Phạm vi: {p.CategoryScope}"));
         var productRule = intent == AiChatIntent.ProductAdvice
             ? "- Nếu khách hỏi lợi ích/ưu điểm/phân tích/có nên mua, hãy tư vấn chuyên nghiệp: ưu điểm, nhược điểm/lưu ý, phù hợp với ai. Chỉ nhắc sản phẩm trong danh sách nếu thật sự khớp câu hỏi."
-            : "- Nếu có sản phẩm, chọn tối đa 2-3 sản phẩm phù hợp nhất, nêu giá và lý do phù hợp.";
+            : intent == AiChatIntent.ProductCompare
+                ? "- Nếu khách yêu cầu so sánh, lập bảng hoặc bullet so sánh theo giá, CPU/GPU/RAM/thông số đọc được, ưu/nhược điểm và nên chọn mẫu nào theo nhu cầu; nếu chỉ có 1 sản phẩm thì hỏi khách gửi thêm sản phẩm còn lại."
+                : "- Nếu có sản phẩm, chọn tối đa 2-3 sản phẩm phù hợp nhất, nêu giá và lý do phù hợp.";
         var history = conversation.RecentMessages.Count == 0 ? "Không có." : string.Join("\n", conversation.RecentMessages.TakeLast(10));
         var currentProductLine = conversation.LastReferencedProduct == null ? "Chưa có" : $"{conversation.LastReferencedProduct.Name} (ID {conversation.LastReferencedProduct.Id})";
-        return $"Ngữ cảnh 10 tin gần nhất:\n{history}\n\nSản phẩm đang được nhắc tới gần nhất: {currentProductLine}\n\nCâu hỏi khách hàng: {message}\n\nQuy tắc bắt buộc khi trả lời:\n- Không tự gợi ý hoặc liệt kê sản phẩm nếu câu hỏi không có intent mua/tìm/giá/còn hàng/cấu hình/ngân sách/tên sản phẩm rõ ràng.\n- Chỉ tư vấn dựa trên danh sách sản phẩm backend cung cấp bên dưới. Không bịa sản phẩm ngoài danh sách.\n- Nếu có sản phẩm trong ngữ cảnh và khách dùng nó/máy này/con này/bộ này/sản phẩm này/em này thì hiểu là sản phẩm đang được nhắc tới gần nhất, không hỏi lại.\n- Khi phân tích sản phẩm, bắt buộc cố gắng suy luận từ tên, CPU, GPU, RAM, SSD, Mainboard, PSU, Case. Ví dụ Ryzen 7 5700X + RTX 3050 phù hợp eSports, GTA V, Valorant, CS2, học tập/làm việc và stream cơ bản ở mức tham khảo. Chỉ nói chưa đủ dữ liệu khi không đọc được cấu hình nào.\n{productRule}\n- Với FPS/game, không cam kết tuyệt đối; dùng các cụm như \"dự kiến\", \"phù hợp ở mức tham khảo\" vì FPS phụ thuộc setting và bản cập nhật game.\n- Nếu khách hỏi PC/cấu hình/gaming, chỉ dùng PC bộ/cấu hình có sẵn hoặc linh kiện build PC trong danh sách; tuyệt đối không biến chuột/bàn phím/tai nghe/màn hình thành PC đề xuất.\n- Với GTA V: 10-15 triệu chơi ổn Full HD thiết lập vừa/cao tùy linh kiện; 15-30 triệu rất ổn Full HD/2K tùy VGA; 50 triệu dư sức GTA V và có thể hướng tới game nặng hơn/2K/4K.\n- Không nói \"không tìm thấy\" nếu backend đã cung cấp bất kỳ sản phẩm hoặc linh kiện fallback nào.\n- Nếu khách hỏi chính sách, chỉ dùng nguồn sự thật chính sách bên dưới.\n\nNguồn sự thật chính sách KKSHOP:\n{policyKnowledge}\n\nDữ liệu sản phẩm KKSHOP được phép dùng:\n{productLines}";
+        return $"Ngữ cảnh 10 tin gần nhất:\n{history}\n\nSản phẩm đang được nhắc tới gần nhất: {currentProductLine}\n\nCâu hỏi khách hàng: {message}\n\nQuy tắc bắt buộc khi trả lời:\n- Không tự gợi ý hoặc liệt kê sản phẩm nếu câu hỏi không có intent mua/tìm/giá/còn hàng/cấu hình/ngân sách/tên sản phẩm rõ ràng.\n- Chỉ dùng danh sách sản phẩm backend để nêu tên sản phẩm, giá, tồn kho, link, bảo hành và thông số cụ thể; không bịa sản phẩm ngoài danh sách.\n- Được phân tích tự nhiên dựa trên kiến thức phổ thông về PC khi đã có CPU/GPU/RAM/SSD/giá/tồn kho hoặc tên linh kiện trong dữ liệu; diễn đạt như nhân viên tư vấn, không trả lời quá cứng theo từng field.\n- Nếu có sản phẩm trong ngữ cảnh và khách dùng nó/máy này/con này/bộ này/sản phẩm này/em này thì hiểu là sản phẩm đang được nhắc tới gần nhất, không hỏi lại.\n- Các câu hỏi tự nhiên như lợi ích gì, có nên mua không, chơi Valorant/GTA V ổn không, ngân sách build PC, bàn phím giá rẻ, so sánh sản phẩm đều là câu hỏi hợp lệ cần tư vấn.\n- Khi phân tích sản phẩm, bắt buộc cố gắng suy luận từ tên, CPU, GPU, RAM, SSD, Mainboard, PSU, Case. Ví dụ Ryzen 7 5700X + RTX 3050 phù hợp eSports, GTA V, Valorant, CS2, học tập/làm việc và stream cơ bản ở mức tham khảo. Chỉ nói chưa đủ dữ liệu khi không đọc được cấu hình nào.\n{productRule}\n- Với FPS/game, không cam kết tuyệt đối; dùng các cụm như \"dự kiến\", \"phù hợp ở mức tham khảo\" vì FPS phụ thuộc setting và bản cập nhật game.\n- Nếu khách hỏi PC/cấu hình/gaming, chỉ dùng PC bộ/cấu hình có sẵn hoặc linh kiện build PC trong danh sách; tuyệt đối không biến chuột/bàn phím/tai nghe/màn hình thành PC đề xuất.\n- Với GTA V: 10-15 triệu chơi ổn Full HD thiết lập vừa/cao tùy linh kiện; 15-30 triệu rất ổn Full HD/2K tùy VGA; 50 triệu dư sức GTA V và có thể hướng tới game nặng hơn/2K/4K.\n- Không nói \"không tìm thấy\" nếu backend đã cung cấp bất kỳ sản phẩm hoặc linh kiện fallback nào.\n- Nếu khách hỏi chính sách, chỉ dùng nguồn sự thật chính sách bên dưới.\n\nNguồn sự thật chính sách KKSHOP:\n{policyKnowledge}\n\nDữ liệu sản phẩm KKSHOP được phép dùng:\n{productLines}";
     }
 
     private static string ExtractReply(JsonElement root)
@@ -268,10 +297,10 @@ public partial class GeminiChatService : IAiChatService
     private static string NormalizeCacheKey(string text) => text.Trim().ToLowerInvariant()[..Math.Min(text.Trim().Length, 160)];
 
     private static readonly string[] GreetingWords = ["chao", "chao ban", "hello", "hi", "alo", "shop oi", "ad oi"];
-    private static readonly string[] ContextReferenceWords = ["no", "may nay", "con nay", "bo nay", "san pham nay", "em nay"];
+    private static readonly string[] ContextReferenceWords = ["no", "may nay", "con nay", "bo nay", "san pham nay", "em nay", "cai nay", "mau nay", "chiec nay"];
     private static readonly string[] SearchIntentWords = ["mua", "tim", "can", "gia", "bao nhieu", "con hang", "co hang", "goi y", "tu van cau hinh", "build", "ngan sach", "duoi", "tam", "khoang", "shop co san"];
     private static readonly string[] AdviceIntentWords = ["loi ich", "uu diem", "nhuoc diem", "phan tich", "co nen mua", "danh gia", "tot khong", "phu hop", "nen chon", "choi duoc", "choi duoc khong"];
     private static readonly string[] ProductTerms = ["pc", "may tinh", "may bo", "cau hinh", "linh kien", "chuot", "ban phim", "tai nghe", "man hinh", "cpu", "vga", "gpu", "ram", "ssd", "hdd", "nguon", "psu", "case", "tan nhiet", "main", "mainboard", "laptop", "gta", "gaming"];
 
-    private const string SystemPrompt = "Bạn là KKSHOP AI, nhân viên tư vấn PC và linh kiện chuyên nghiệp của KKSHOP. Trả lời thân thiện, không từ chối máy móc. Chỉ liệt kê sản phẩm khi khách có intent mua/tìm/giá/cấu hình/ngân sách/tên sản phẩm rõ ràng. Chỉ dùng dữ liệu sản phẩm và chính sách backend cung cấp; không bịa sản phẩm, giá, thông số, bảo hành, tồn kho, khuyến mãi hoặc chính sách. Nếu thiếu dữ liệu, hỏi lại hoặc fallback hợp lý; không nói không tìm thấy khi backend đã cung cấp sản phẩm/linh kiện. Khi tư vấn gaming/FPS chỉ nói dự kiến/phù hợp ở mức tham khảo, không cam kết FPS tuyệt đối. Trả lời tiếng Việt ngắn gọn, dễ hiểu.";
+    private const string SystemPrompt = "Bạn là KKSHOP AI, nhân viên tư vấn PC và linh kiện chuyên nghiệp của KKSHOP. Tone thân thiện, chuyên nghiệp như nhân viên shop: tư vấn tự nhiên, không cứng nhắc, không từ chối vô lý. Các câu hỏi về lợi ích sản phẩm, có nên mua, chơi Valorant/GTA V, build PC theo ngân sách, bàn phím giá rẻ, so sánh sản phẩm đều phải được hỗ trợ. Chỉ liệt kê/gửi sản phẩm khi khách có intent mua/tìm/tư vấn/giá/cấu hình/ngân sách/tên sản phẩm rõ ràng. Dùng dữ liệu backend cho sản phẩm, giá, tồn kho, link, bảo hành, chính sách; không bịa các dữ liệu này. Khi có CPU/GPU/RAM/giá/tồn kho hoặc tên linh kiện, được phân tích bằng kiến thức phổ thông PC ở mức tham khảo. Với hỏi ngoài lề nhẹ thì trả lời vui vẻ ngắn rồi kéo về hỗ trợ shop; chỉ giới hạn khi hoàn toàn không liên quan, nhạy cảm, spam hoặc không phù hợp. Khi tư vấn gaming/FPS chỉ nói dự kiến/phù hợp ở mức tham khảo, không cam kết FPS tuyệt đối. Trả lời tiếng Việt ngắn gọn, dễ hiểu.";
 }
