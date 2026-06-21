@@ -114,7 +114,9 @@ public class AdminComponentsController : Controller
         if (!ModelState.IsValid) { await PopulateExistingImagesAsync(vm); return InvalidForm(vm, "cập nhật"); }
         var product = await _db.Products.Include(p => p.ProductImages).FirstOrDefaultAsync(p => p.Id == vm.Id && p.ProductType == ProductKinds.Component);
         if (product == null) return NotFound();
-        var productCode = string.IsNullOrWhiteSpace(vm.ProductCode) ? product.ProductCode : vm.ProductCode.Trim();
+        var productCode = string.IsNullOrWhiteSpace(vm.ProductCode)
+            ? (string.IsNullOrWhiteSpace(product.ProductCode) ? $"LK-{Guid.NewGuid():N}"[..16] : product.ProductCode.Trim())
+            : vm.ProductCode.Trim();
         var slug = BuildSlug(vm.Name);
         if (!await ValidateUniqueProductFieldsAsync(vm, slug, productCode, "cập nhật")) { await PopulateExistingImagesAsync(vm); return View(vm); }
         product.Name = vm.Name.Trim(); product.ProductCode = productCode; product.Brand = vm.Brand; product.ProductType = ProductKinds.Component; product.ComponentType = vm.ComponentType;

@@ -85,9 +85,9 @@ public class OrdersController : Controller
             var user = await _db.Users.FirstOrDefaultAsync(x => x.Id == loggedInUserId);
             if (user != null)
             {
-                vm.CustomerName = user.FullName;
-                vm.CustomerEmail = user.Email;
-                vm.CustomerPhone = user.Phone;
+                vm.CustomerName = user.FullName ?? string.Empty;
+                vm.CustomerEmail = user.Email ?? string.Empty;
+                vm.CustomerPhone = user.Phone ?? string.Empty;
             }
         }
 
@@ -491,12 +491,12 @@ public class OrdersController : Controller
             OrderDate = order.CreatedAt,
             ShopName = string.IsNullOrWhiteSpace(siteSettings?.SiteName) ? "KKSHOP" : siteSettings.SiteName,
             ShopAddress = string.IsNullOrWhiteSpace(shopLocation?.Address) ? configuredAddress : shopLocation.Address,
-            ShopPhone = _configuration["ShopContact:Phone"],
-            ShopEmail = _configuration["EmailSettings:SenderEmail"],
-            CustomerName = order.ReceiverName,
-            CustomerAddress = string.IsNullOrWhiteSpace(order.FullAddress) ? order.ShippingAddress : order.FullAddress,
-            CustomerPhone = order.ReceiverPhone,
-            CustomerEmail = order.CustomerEmail,
+            ShopPhone = _configuration["ShopContact:Phone"] ?? string.Empty,
+            ShopEmail = _configuration["EmailSettings:SenderEmail"] ?? string.Empty,
+            CustomerName = string.IsNullOrWhiteSpace(order.ReceiverName) ? "Khách hàng" : order.ReceiverName,
+            CustomerAddress = string.IsNullOrWhiteSpace(order.FullAddress) ? order.ShippingAddress ?? string.Empty : order.FullAddress,
+            CustomerPhone = order.ReceiverPhone ?? string.Empty,
+            CustomerEmail = order.CustomerEmail ?? string.Empty,
             PaymentMethod = PaymentMethods.Label(order.PaymentMethod),
             PaymentStatus = OrderStatusHelper.PaymentLabel(order.PaymentStatus, order.Status),
             OrderStatus = OrderStatusHelper.Label(order.Status),
@@ -511,11 +511,11 @@ public class OrdersController : Controller
             {
                 ProductId = x.ProductId,
                 ProductCode = string.IsNullOrWhiteSpace(x.Product?.ProductCode) ? $"SP{x.ProductId:D6}" : x.Product.ProductCode,
-                ProductName = x.ProductName,
-                ProductImage = x.ProductImage,
+                ProductName = string.IsNullOrWhiteSpace(x.ProductName) ? "Sản phẩm không xác định" : x.ProductName,
+                ProductImage = x.ProductImage ?? string.Empty,
                 Quantity = x.Quantity,
                 UnitPrice = x.UnitPrice,
-                Warranty = x.Warranty,
+                Warranty = x.Warranty ?? string.Empty,
                 LineTotal = x.TotalPrice
             }).ToList()
         };

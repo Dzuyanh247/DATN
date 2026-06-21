@@ -24,8 +24,8 @@ public class AdminInvoicesController : Controller
         {
             var digits = new string(search.Where(char.IsDigit).ToArray());
             var hasId = int.TryParse(digits, out var id);
-            query = query.Where(x => (hasId && x.Id == id) || x.ReceiverName.Contains(search)
-                || x.ReceiverPhone.Contains(search) || (x.User != null && x.User.FullName.Contains(search)));
+            query = query.Where(x => (hasId && x.Id == id) || (x.ReceiverName != null && x.ReceiverName.Contains(search))
+                || (x.ReceiverPhone != null && x.ReceiverPhone.Contains(search)) || (x.User != null && x.User.FullName != null && x.User.FullName.Contains(search)));
         }
         var orders = await query.OrderByDescending(x => x.CreatedAt).ToListAsync(cancellationToken);
         var rows = orders.Select(x => new AdminInvoiceRowVm

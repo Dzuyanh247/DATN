@@ -48,7 +48,7 @@ public class SearchSuggestionService : ISearchSuggestionService
             .Take(30)
             .ToListAsync(cancellationToken);
 
-        return new SearchSuggestionData(hotKeywords, productNames, categoryNames, brandNames);
+        return new SearchSuggestionData(hotKeywords, productNames.Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x.Trim()).ToList(), categoryNames, brandNames);
     }
 
     private async Task<IReadOnlyList<string>> GetHotKeywordsAsync(CancellationToken cancellationToken)

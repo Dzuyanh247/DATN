@@ -48,9 +48,9 @@ public class AdminOrdersController : Controller
                 : search;
             var hasOrderId = int.TryParse(orderIdSearch, out var orderId);
             query = query.Where(o => (hasOrderId && o.Id == orderId)
-                || o.ReceiverName.Contains(search)
-                || o.ReceiverPhone.Contains(search)
-                || (o.User != null && (o.User.FullName.Contains(search) || o.User.Phone.Contains(search))));
+                || (o.ReceiverName != null && o.ReceiverName.Contains(search))
+                || (o.ReceiverPhone != null && o.ReceiverPhone.Contains(search))
+                || (o.User != null && ((o.User.FullName != null && o.User.FullName.Contains(search)) || (o.User.Phone != null && o.User.Phone.Contains(search)))));
         }
 
         if (status.HasValue)

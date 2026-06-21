@@ -357,9 +357,9 @@ public class AccountController : Controller
         var claims = new List<Claim>
         {
             new(ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new(ClaimTypes.Name, user.FullName),
-            new(ClaimTypes.Email, user.Email),
-            new("username", user.Username),
+            new(ClaimTypes.Name, string.IsNullOrWhiteSpace(user.FullName) ? "Khách hàng" : user.FullName),
+            new(ClaimTypes.Email, user.Email ?? string.Empty),
+            new("username", user.Username ?? string.Empty),
             new(ClaimTypes.Role, user.Role?.Name ?? "Customer")
         };
 
@@ -393,12 +393,12 @@ public class AccountController : Controller
         {
             Profile = new AccountProfileViewModel
             {
-                FullName = user.FullName,
-                Email = user.Email,
+                FullName = user.FullName ?? string.Empty,
+                Email = user.Email ?? string.Empty,
                 PhoneNumber = user.Phone ?? string.Empty,
                 Address = user.Address ?? string.Empty
             },
-            Username = user.Username,
+            Username = user.Username ?? string.Empty,
             Address = string.IsNullOrWhiteSpace(user.Address) ? null : user.Address,
             IsActive = user.IsActive,
             CreatedAt = user.CreatedAt
@@ -489,12 +489,12 @@ public class AccountController : Controller
         {
             Profile = profileVm ?? new AccountProfileViewModel
             {
-                FullName = user.FullName,
-                Email = user.Email,
+                FullName = user.FullName ?? string.Empty,
+                Email = user.Email ?? string.Empty,
                 PhoneNumber = user.Phone ?? string.Empty,
                 Address = user.Address ?? string.Empty
             },
-            Username = user.Username,
+            Username = user.Username ?? string.Empty,
             Address = string.IsNullOrWhiteSpace(user.Address) ? null : user.Address,
             IsActive = user.IsActive,
             CreatedAt = user.CreatedAt,
@@ -507,9 +507,9 @@ public class AccountController : Controller
         var claims = new List<Claim>
         {
             new(ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new(ClaimTypes.Name, user.FullName),
-            new(ClaimTypes.Email, user.Email),
-            new("username", user.Username),
+            new(ClaimTypes.Name, string.IsNullOrWhiteSpace(user.FullName) ? "Khách hàng" : user.FullName),
+            new(ClaimTypes.Email, user.Email ?? string.Empty),
+            new("username", user.Username ?? string.Empty),
             new(ClaimTypes.Role, user.Role?.Name ?? "Customer")
         };
         var identity = new ClaimsIdentity(claims, AuthSchemes.PcStoreCookie);

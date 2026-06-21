@@ -123,12 +123,12 @@ public partial class ProductSearchForAiService : IProductSearchForAiService
         }).ToListAsync(ct);
         return rows.Select(x => new AiProductContext(
             x.Id,
-            x.Name,
+            string.IsNullOrWhiteSpace(x.Name) ? "Sản phẩm không xác định" : x.Name,
             x.Price,
             TrimText(string.IsNullOrWhiteSpace(x.Specifications) ? x.ShortDescription ?? string.Empty : x.Specifications!, 450),
             x.StockQuantity > 0 ? $"Còn hàng ({x.StockQuantity})" : "Tạm hết hàng",
             $"/Products/Detail/{x.Id}",
-            x.Category,
+            string.IsNullOrWhiteSpace(x.Category) ? "Chưa phân loại" : x.Category,
             x.StockQuantity,
             scope, TrimText(x.Description ?? string.Empty, 300), !string.IsNullOrWhiteSpace(x.WarrantyDuration) ? x.WarrantyDuration : $"{x.WarrantyMonths} tháng", LabelForScope(scope))).ToList();
     }
@@ -146,24 +146,24 @@ public partial class ProductSearchForAiService : IProductSearchForAiService
         var normalized = ComponentTypes.Normalize(componentType);
         return normalized switch
         {
-            ComponentTypes.CPU => query.Where(x => x.ComponentType == ComponentTypes.CPU || x.Category!.Name.Contains("CPU") || x.Name.Contains("CPU") || x.Name.Contains("Intel") || x.Name.Contains("Ryzen")),
-            ComponentTypes.Mainboard => query.Where(x => x.ComponentType == ComponentTypes.Mainboard || x.Category!.Name.Contains("Main") || x.Name.Contains("Main") || x.Name.Contains("Bo mạch")),
-            ComponentTypes.RAM => query.Where(x => x.ComponentType == ComponentTypes.RAM || x.Category!.Name.Contains("RAM") || x.Name.Contains("RAM")),
-            ComponentTypes.VGA => query.Where(x => x.ComponentType == ComponentTypes.VGA || x.Category!.Name.Contains("VGA") || x.Category.Name.Contains("Card") || x.Name.Contains("RTX") || x.Name.Contains("GTX") || x.Name.Contains("RX ") || x.Name.Contains("VGA")),
-            ComponentTypes.Storage => query.Where(x => x.ComponentType == ComponentTypes.Storage || x.Category!.Name.Contains("SSD") || x.Category.Name.Contains("HDD") || x.Category.Name.Contains("Ổ cứng") || x.Name.Contains("SSD") || x.Name.Contains("HDD")),
-            ComponentTypes.PSU => query.Where(x => x.ComponentType == ComponentTypes.PSU || x.Category!.Name.Contains("Nguồn") || x.Category.Name.Contains("PSU") || x.Name.Contains("Nguồn") || x.Name.Contains("PSU")),
-            ComponentTypes.Case => query.Where(x => x.ComponentType == ComponentTypes.Case || x.Category!.Name.Contains("Case") || x.Category.Name.Contains("Vỏ") || x.Name.Contains("Case") || x.Name.Contains("Vỏ case")),
-            ComponentTypes.Cooler => query.Where(x => x.ComponentType == ComponentTypes.Cooler || x.Category!.Name.Contains("Tản") || x.Category.Name.Contains("Cooler") || x.Name.Contains("Tản") || x.Name.Contains("Cooler")),
-            ComponentTypes.Keyboard => query.Where(x => x.ComponentType == ComponentTypes.Keyboard || x.Category!.Name.Contains("Bàn phím") || x.Name.Contains("Bàn phím") || x.Name.Contains("Keyboard") || x.Name.Contains("Keycap")),
-            ComponentTypes.Mouse => query.Where(x => x.ComponentType == ComponentTypes.Mouse || x.Category!.Name.Contains("Chuột") || x.Name.Contains("Chuột") || x.Name.Contains("Mouse")),
-            ComponentTypes.Headphone => query.Where(x => x.ComponentType == ComponentTypes.Headphone || x.Category!.Name.Contains("Tai nghe") || x.Name.Contains("Tai nghe") || x.Name.Contains("Headset") || x.Name.Contains("Headphone")),
-            ComponentTypes.Monitor => query.Where(x => x.ComponentType == ComponentTypes.Monitor || x.Category!.Name.Contains("Màn hình") || x.Category.Name.Contains("Monitor") || x.Name.Contains("Màn hình") || x.Name.Contains("Monitor")),
+            ComponentTypes.CPU => query.Where(x => x.ComponentType == ComponentTypes.CPU || (x.Category != null && x.Category.Name.Contains("CPU")) || x.Name.Contains("CPU") || x.Name.Contains("Intel") || x.Name.Contains("Ryzen")),
+            ComponentTypes.Mainboard => query.Where(x => x.ComponentType == ComponentTypes.Mainboard || (x.Category != null && x.Category.Name.Contains("Main")) || x.Name.Contains("Main") || x.Name.Contains("Bo mạch")),
+            ComponentTypes.RAM => query.Where(x => x.ComponentType == ComponentTypes.RAM || (x.Category != null && x.Category.Name.Contains("RAM")) || x.Name.Contains("RAM")),
+            ComponentTypes.VGA => query.Where(x => x.ComponentType == ComponentTypes.VGA || (x.Category != null && (x.Category.Name.Contains("VGA") || x.Category.Name.Contains("Card"))) || x.Name.Contains("RTX") || x.Name.Contains("GTX") || x.Name.Contains("RX ") || x.Name.Contains("VGA")),
+            ComponentTypes.Storage => query.Where(x => x.ComponentType == ComponentTypes.Storage || (x.Category != null && (x.Category.Name.Contains("SSD") || x.Category.Name.Contains("HDD") || x.Category.Name.Contains("Ổ cứng"))) || x.Name.Contains("SSD") || x.Name.Contains("HDD")),
+            ComponentTypes.PSU => query.Where(x => x.ComponentType == ComponentTypes.PSU || (x.Category != null && (x.Category.Name.Contains("Nguồn") || x.Category.Name.Contains("PSU"))) || x.Name.Contains("Nguồn") || x.Name.Contains("PSU")),
+            ComponentTypes.Case => query.Where(x => x.ComponentType == ComponentTypes.Case || (x.Category != null && (x.Category.Name.Contains("Case") || x.Category.Name.Contains("Vỏ"))) || x.Name.Contains("Case") || x.Name.Contains("Vỏ case")),
+            ComponentTypes.Cooler => query.Where(x => x.ComponentType == ComponentTypes.Cooler || (x.Category != null && (x.Category.Name.Contains("Tản") || x.Category.Name.Contains("Cooler"))) || x.Name.Contains("Tản") || x.Name.Contains("Cooler")),
+            ComponentTypes.Keyboard => query.Where(x => x.ComponentType == ComponentTypes.Keyboard || (x.Category != null && x.Category.Name.Contains("Bàn phím")) || x.Name.Contains("Bàn phím") || x.Name.Contains("Keyboard") || x.Name.Contains("Keycap")),
+            ComponentTypes.Mouse => query.Where(x => x.ComponentType == ComponentTypes.Mouse || (x.Category != null && x.Category.Name.Contains("Chuột")) || x.Name.Contains("Chuột") || x.Name.Contains("Mouse")),
+            ComponentTypes.Headphone => query.Where(x => x.ComponentType == ComponentTypes.Headphone || (x.Category != null && x.Category.Name.Contains("Tai nghe")) || x.Name.Contains("Tai nghe") || x.Name.Contains("Headset") || x.Name.Contains("Headphone")),
+            ComponentTypes.Monitor => query.Where(x => x.ComponentType == ComponentTypes.Monitor || (x.Category != null && (x.Category.Name.Contains("Màn hình") || x.Category.Name.Contains("Monitor"))) || x.Name.Contains("Màn hình") || x.Name.Contains("Monitor")),
             _ => query.Where(x => x.ComponentType == normalized)
         };
     }
 
     private static AiProductContext ToContext(Product x, string scope) => new(
-        x.Id, x.Name, x.DiscountPrice ?? x.SalePrice ?? x.Price,
+        x.Id, string.IsNullOrWhiteSpace(x.Name) ? "Sản phẩm không xác định" : x.Name, x.DiscountPrice ?? x.SalePrice ?? x.Price,
         TrimText(string.IsNullOrWhiteSpace(x.Specifications) ? x.ShortDescription ?? string.Empty : x.Specifications!, 450),
         x.StockQuantity > 0 ? $"Còn hàng ({x.StockQuantity})" : "Tạm hết hàng",
         $"/Products/Detail/{x.Id}", x.Category?.Name ?? "Chưa phân loại", x.StockQuantity, scope,

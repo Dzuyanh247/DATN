@@ -177,9 +177,9 @@ public partial class SupportChatAutomationService : ISupportChatAutomationServic
                 cards: [WarrantyCard(detail, "Chưa xác định thời hạn bảo hành")],
                 messageActions: [StaffAction()]);
         }
-        var expires = WarrantyPolicy.ExpiresAt(detail.Order!.CreatedAt, months);
+        var expires = WarrantyPolicy.ExpiresAt((detail.Order?.CreatedAt ?? DateTime.UtcNow), months);
         var inWarranty = DateTime.UtcNow <= expires;
-        var purchaseDate = detail.Order.CreatedAt.ToLocalTime();
+        var purchaseDate = (detail.Order?.CreatedAt ?? DateTime.UtcNow).ToLocalTime();
         var expiryDate = expires.ToLocalTime();
         var warrantyStatus = inWarranty
             ? $"Còn bảo hành đến {expiryDate:dd/MM/yyyy}"
@@ -349,7 +349,7 @@ public partial class SupportChatAutomationService : ISupportChatAutomationServic
         OrderStatus: OrderStatusHelper.Label(x.Status), OrderedAt: x.CreatedAt);
     private static SupportCard WarrantyCard(OrderDetail detail, string status, DateTime? expires = null) => new(
         "product",
-        detail.ProductName,
+        string.IsNullOrWhiteSpace(detail.ProductName) ? "Sản phẩm không xác định" : detail.ProductName,
         $"{Code(detail.OrderId)} • {status}",
         detail.ProductImage,
         ProductId: detail.ProductId, OrderDetailId: detail.Id, OrderCode: Code(detail.OrderId),
@@ -357,16 +357,16 @@ public partial class SupportChatAutomationService : ISupportChatAutomationServic
     private static SupportCard WarrantySelectionCard(OrderDetail detail)
     {
         var months = detail.WarrantyMonths > 0 ? detail.WarrantyMonths : detail.Product?.WarrantyMonths ?? 0;
-        var expires = months > 0 ? WarrantyPolicy.ExpiresAt(detail.Order!.CreatedAt, months) : (DateTime?)null;
+        var expires = months > 0 ? WarrantyPolicy.ExpiresAt((detail.Order?.CreatedAt ?? DateTime.UtcNow), months) : (DateTime?)null;
         var status = !expires.HasValue ? "Chưa rõ thời hạn"
             : DateTime.UtcNow <= expires ? $"Còn hạn đến {expires.Value.ToLocalTime():dd/MM/yyyy}"
             : $"Hết hạn từ {expires.Value.ToLocalTime():dd/MM/yyyy}";
         return new(
-            "product", detail.ProductName,
-            $"Mua ngày {detail.Order!.CreatedAt.ToLocalTime():dd/MM/yyyy} • {months switch { > 0 => $"{months} tháng", _ => "Chưa rõ thời hạn" }}",
+            "product", string.IsNullOrWhiteSpace(detail.ProductName) ? "Sản phẩm không xác định" : detail.ProductName,
+            $"Mua ngày {(detail.Order?.CreatedAt ?? DateTime.UtcNow).ToLocalTime():dd/MM/yyyy} • {months switch { > 0 => $"{months} tháng", _ => "Chưa rõ thời hạn" }}",
             detail.ProductImage, [new("select_warranty_product", "Kiểm tra", new { orderDetailId = detail.Id, productId = detail.ProductId, orderId = detail.OrderId })],
             ProductId: detail.ProductId, OrderDetailId: detail.Id, OrderCode: Code(detail.OrderId),
-            OrderedAt: detail.Order.CreatedAt, WarrantyUntil: expires, WarrantyStatus: status);
+            OrderedAt: (detail.Order?.CreatedAt ?? DateTime.UtcNow), WarrantyUntil: expires, WarrantyStatus: status);
     }
     private static List<SupportMessageAction> OrderActions(Order order, ISet<(int OrderId, int ProductId)> reviewed)
     {
