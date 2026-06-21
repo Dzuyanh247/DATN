@@ -354,7 +354,7 @@ public class WarrantyController : Controller
         return componentSpecs.Select((component, index) =>
         {
             var months = ParseWarrantyMonths(component.Warranty) ??
-                         (detail.Product?.WarrantyMonths > 0 ? detail.Product.WarrantyMonths : null);
+                         (detail.Product?.WarrantyMonths > 0 ? detail.Product.WarrantyMonths : (int?)null);
             return new WarrantyComponentVm
             {
                 Stt = component.Stt.GetValueOrDefault(index + 1),
@@ -391,13 +391,13 @@ public class WarrantyController : Controller
 
     private static int? GetWarrantyMonthsOrNull(OrderDetail detail) =>
         ParseWarrantyMonths(detail.Warranty) ??
-        (detail.WarrantyMonths > 0 ? detail.WarrantyMonths : null) ??
-        (detail.Product?.WarrantyMonths > 0 ? detail.Product.WarrantyMonths : null);
+        (detail.WarrantyMonths > 0 ? detail.WarrantyMonths : (int?)null) ??
+        (detail.Product?.WarrantyMonths > 0 ? detail.Product.WarrantyMonths : (int?)null);
 
     private static int? ParseWarrantyMonths(string? warranty)
     {
         if (string.IsNullOrWhiteSpace(warranty)) return null;
         var match = Regex.Match(warranty, @"(?<months>\d+)\s*(th|tháng|thang|month|months)?", RegexOptions.IgnoreCase);
-        return match.Success && int.TryParse(match.Groups["months"].Value, out var months) && months > 0 ? months : null;
+        return match.Success && int.TryParse(match.Groups["months"].Value, out var months) && months > 0 ? months : (int?)null;
     }
 }
