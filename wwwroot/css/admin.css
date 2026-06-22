@@ -374,3 +374,116 @@ body:has(.admin-shell) { min-height: 100vh; }
     .admin-two-column-form { grid-template-columns: 1fr; }
     .admin-product-form .apf-sticky-side { position: static !important; }
 }
+
+/* Admin product form UI fixes: keep Bootstrap checks/switches visible inside glass admin forms. */
+.admin-product-form .form-check-input,
+.admin-product-form input[type="checkbox"].form-check-input {
+    appearance: auto !important;
+    -webkit-appearance: auto !important;
+    background-color: #fff !important;
+    border: 1px solid #94a3b8 !important;
+    box-shadow: none !important;
+    opacity: 1 !important;
+}
+
+.admin-product-form .form-switch .form-check-input,
+.admin-product-form .apf-switch .form-check-input {
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    width: 3rem !important;
+    height: 1.55rem !important;
+    margin-left: -2.9rem;
+    border-radius: 999px !important;
+    border: 1px solid #94a3b8 !important;
+    background-color: #cbd5e1 !important;
+    background-image: none !important;
+    position: relative;
+    cursor: pointer;
+    transition: background-color .18s ease, border-color .18s ease, box-shadow .18s ease;
+}
+
+.admin-product-form .form-switch .form-check-input::before,
+.admin-product-form .apf-switch .form-check-input::before {
+    content: "";
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: calc(1.55rem - 6px);
+    height: calc(1.55rem - 6px);
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 2px 5px rgba(15, 23, 42, .28);
+    transition: transform .18s ease;
+}
+
+.admin-product-form .form-switch .form-check-input:checked,
+.admin-product-form .apf-switch .form-check-input:checked {
+    background-color: #0ea5e9 !important;
+    border-color: #0284c7 !important;
+}
+
+.admin-product-form .form-switch .form-check-input:checked::before,
+.admin-product-form .apf-switch .form-check-input:checked::before {
+    transform: translateX(1.45rem);
+}
+
+.admin-product-form .form-switch .form-check-input:focus,
+.admin-product-form .apf-switch .form-check-input:focus,
+.admin-product-form .promotion-preset-option .form-check-input:focus {
+    box-shadow: 0 0 0 .2rem rgba(14, 165, 233, .22) !important;
+}
+
+.admin-product-form .apf-switch {
+    display: flex;
+    align-items: center;
+    min-height: 58px;
+    padding-left: 3.65rem !important;
+}
+
+.admin-product-form .promotion-preset-option {
+    border-color: #dbe4ef !important;
+}
+
+.admin-product-form .promotion-preset-option:has(.form-check-input:checked) {
+    border-color: #60a5fa !important;
+    background: #eff6ff !important;
+    color: #1e3a8a;
+    box-shadow: 0 8px 18px rgba(37, 99, 235, .12) !important;
+}
+
+.admin-product-form .promotion-preset-option .form-check-input {
+    appearance: auto !important;
+    -webkit-appearance: auto !important;
+    width: 1.15rem;
+    height: 1.15rem;
+    min-width: 1.15rem;
+    margin: 0;
+    accent-color: #2563eb;
+    cursor: pointer;
+}
+
+.admin-product-form .promotion-preset-option .form-check-input:checked {
+    background-color: #2563eb !important;
+    border-color: #2563eb !important;
+}
+
+@media (min-width: 993px) {
+    .admin-shell {
+        min-height: 100vh;
+        align-items: stretch;
+    }
+
+    .admin-sidebar {
+        position: sticky !important;
+        top: 0 !important;
+        height: 100vh !important;
+        min-height: 100vh !important;
+        align-self: flex-start !important;
+        overflow-y: auto !important;
+        background: linear-gradient(180deg, rgba(4, 12, 28, .96), rgba(8, 22, 48, .94)) !important;
+    }
+
+    .admin-main {
+        min-height: 100vh;
+    }
+}
