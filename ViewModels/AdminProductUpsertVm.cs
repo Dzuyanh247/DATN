@@ -64,6 +64,9 @@ public class AdminProductUpsertVm
     [MaxLength(1000)]
     public string? ThumbnailImageUrl { get; set; }
 
+    [MaxLength(1000)]
+    public string? SourceUrl { get; set; }
+
     public string? ProductImageUrlsText { get; set; }
 
     public List<int> RemoveImageIds { get; set; } = new();
