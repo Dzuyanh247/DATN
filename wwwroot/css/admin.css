@@ -670,3 +670,119 @@ body:has(.admin-shell) {
         max-height: 45vh !important;
     }
 }
+
+/* Admin independent scroll layout fix */
+html,
+body:has(.admin-shell) {
+    height: 100%;
+}
+
+body:has(.admin-shell) {
+    min-height: 100%;
+    overflow: hidden;
+    background: #07111f;
+}
+
+@media (min-width: 993px) {
+    .admin-shell,
+    .admin-layout {
+        display: flex !important;
+        align-items: stretch !important;
+        width: 100%;
+        min-height: 100vh !important;
+        height: 100vh !important;
+        overflow: hidden !important;
+    }
+
+    .admin-shell {
+        background-attachment: fixed;
+    }
+
+    .admin-shell::before {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        bottom: 0 !important;
+        height: 100vh !important;
+    }
+
+    .admin-sidebar {
+        display: flex !important;
+        flex-direction: column !important;
+        width: var(--admin-sidebar-width) !important;
+        flex: 0 0 var(--admin-sidebar-width) !important;
+        height: 100vh !important;
+        min-height: 100vh !important;
+        max-height: 100vh !important;
+        position: sticky !important;
+        top: 0 !important;
+        align-self: stretch !important;
+        overflow: hidden !important;
+        background: linear-gradient(180deg, rgba(4, 12, 28, .98), rgba(8, 22, 48, .96)) !important;
+        background-clip: border-box !important;
+    }
+
+    .admin-sidebar-scroll {
+        flex: 1 1 auto;
+        min-height: 0;
+        height: 100%;
+        overflow-y: auto;
+        overflow-x: hidden;
+        overscroll-behavior: contain;
+        padding-bottom: 16px;
+        scrollbar-color: rgba(148, 163, 184, .46) transparent;
+    }
+
+    .admin-main {
+        flex: 1 1 auto !important;
+        min-width: 0 !important;
+        width: calc(100vw - var(--admin-sidebar-width));
+        height: 100vh !important;
+        min-height: 0 !important;
+        max-width: none !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        overscroll-behavior: contain;
+        background: transparent;
+    }
+}
+
+@media (max-width: 992px) {
+    html,
+    body:has(.admin-shell) {
+        height: auto;
+    }
+
+    body:has(.admin-shell) {
+        overflow: auto;
+    }
+
+    .admin-sidebar-scroll {
+        max-height: inherit;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+}
+
+/* Admin body class fallback for browsers without reliable :has() support. */
+html,
+body.admin-page {
+    height: 100%;
+}
+
+body.admin-page {
+    min-height: 100%;
+    overflow: hidden;
+    background: #07111f;
+}
+
+@media (max-width: 992px) {
+    html,
+    body.admin-page {
+        height: auto;
+    }
+
+    body.admin-page {
+        overflow: auto;
+    }
+}
