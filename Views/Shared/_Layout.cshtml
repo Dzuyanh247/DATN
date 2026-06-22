@@ -63,7 +63,7 @@
         <link rel="stylesheet" href="~/css/admin-chat.css" asp-append-version="true" />
     }
 </head>
-<body class="@(!isComparePage && compareCount > 0 ? "has-compare-tray" : string.Empty)">
+<body class="@(isAdminPage ? "admin-page" : (!isComparePage && compareCount > 0 ? "has-compare-tray" : string.Empty))">
 @if (isAdminPage)
 {
     <div class="admin-shell">
@@ -71,7 +71,8 @@
             <a class="admin-brand" asp-controller="@(User.IsInRole("Admin") ? "AdminDashboard" : "AdminChat")" asp-action="Index">
                 <i class="bi bi-grid-1x2-fill"></i><span>KKSHOP Admin</span>
             </a>
-            <nav class="admin-nav">
+            <div class="admin-sidebar-scroll">
+                <nav class="admin-nav">
                 @if (User.IsInRole("Admin"))
                 {
                     <span class="admin-nav-label">Tổng quan</span>
@@ -99,7 +100,8 @@
                     <span class="admin-nav-label">Hệ thống</span>
                     <a class="@(controllerName == "AdminSettings" ? "active" : "")" asp-controller="AdminSettings" asp-action="Index"><i class="bi bi-gear"></i><span>Cài đặt</span></a>
                 }
-            </nav>
+                </nav>
+            </div>
         </aside>
 
         <div class="admin-main">
