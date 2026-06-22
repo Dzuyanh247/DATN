@@ -487,3 +487,186 @@ body:has(.admin-shell) { min-height: 100vh; }
         min-height: 100vh;
     }
 }
+
+/* Admin controls/layout root fix: keep checkbox, switch and sidebar styles isolated to Admin. */
+body:has(.admin-shell) {
+    min-height: 100vh;
+    background: #07111f;
+}
+
+.admin-shell {
+    position: relative;
+    align-items: stretch;
+    min-height: 100vh;
+}
+
+.admin-shell::before {
+    content: "" !important;
+    display: block !important;
+    position: absolute !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    z-index: 0 !important;
+    width: var(--admin-sidebar-width) !important;
+    height: auto !important;
+    border-radius: 0 !important;
+    background: linear-gradient(180deg, rgba(4, 12, 28, .98), rgba(8, 22, 48, .96)) !important;
+    box-shadow: 10px 0 28px rgba(0, 0, 0, .18) !important;
+    filter: none !important;
+    opacity: 1 !important;
+    pointer-events: none !important;
+}
+
+.admin-sidebar,
+.admin-main {
+    position: relative;
+    z-index: 1;
+}
+
+.admin-sidebar {
+    min-height: 100vh !important;
+    height: 100vh !important;
+    overflow-y: auto !important;
+    background: linear-gradient(180deg, rgba(4, 12, 28, .98), rgba(8, 22, 48, .96)) !important;
+    background-clip: padding-box;
+}
+
+.admin-main {
+    min-height: 100vh;
+    overflow: visible;
+}
+
+.admin-content .form-check {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 28px;
+    padding-left: 0;
+}
+
+.admin-content .form-check-label {
+    margin: 0;
+    line-height: 1.35;
+    white-space: normal;
+    cursor: pointer;
+}
+
+.admin-content input.form-check-input,
+.admin-content input[type="checkbox"].form-check-input {
+    flex: 0 0 18px;
+    width: 18px !important;
+    height: 18px !important;
+    min-width: 18px;
+    margin: 0 !important;
+    float: none !important;
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    border: 1.5px solid #94a3b8 !important;
+    border-radius: 5px !important;
+    background-color: #fff !important;
+    background-image: none !important;
+    background-repeat: no-repeat !important;
+    background-position: center !important;
+    background-size: 12px 12px !important;
+    box-shadow: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    cursor: pointer;
+    transition: background-color .16s ease, border-color .16s ease, box-shadow .16s ease;
+}
+
+.admin-content input.form-check-input:checked,
+.admin-content input[type="checkbox"].form-check-input:checked {
+    border-color: #2563eb !important;
+    background-color: #2563eb !important;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23fff' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='M3.2 8.2l3 3.1 6.6-6.8'/%3e%3c/svg%3e") !important;
+}
+
+.admin-content input.form-check-input:focus,
+.admin-content input[type="checkbox"].form-check-input:focus {
+    border-color: #38bdf8 !important;
+    box-shadow: 0 0 0 .2rem rgba(14, 165, 233, .18) !important;
+}
+
+.admin-content input.form-check-input:disabled,
+.admin-content input[type="checkbox"].form-check-input:disabled {
+    cursor: not-allowed;
+    opacity: .62 !important;
+}
+
+.admin-content .form-switch {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 34px;
+    padding-left: 0 !important;
+}
+
+.admin-content .form-switch .form-check-input,
+.admin-content .apf-switch .form-check-input {
+    flex: 0 0 44px;
+    width: 44px !important;
+    height: 24px !important;
+    min-width: 44px;
+    margin: 0 !important;
+    border: 1px solid #94a3b8 !important;
+    border-radius: 999px !important;
+    background-color: #cbd5e1 !important;
+    background-image: radial-gradient(circle at center, #fff 0 8px, transparent 8.5px) !important;
+    background-size: 20px 20px !important;
+    background-position: 2px center !important;
+    background-repeat: no-repeat !important;
+    box-shadow: inset 0 1px 2px rgba(15, 23, 42, .12) !important;
+}
+
+.admin-content .form-switch .form-check-input::before,
+.admin-content .apf-switch .form-check-input::before {
+    content: none !important;
+    display: none !important;
+}
+
+.admin-content .form-switch .form-check-input:checked,
+.admin-content .apf-switch .form-check-input:checked {
+    border-color: #0284c7 !important;
+    background-color: #0ea5e9 !important;
+    background-position: 22px center !important;
+}
+
+.admin-content .form-switch .form-check-label,
+.admin-content .apf-switch .form-check-label {
+    margin-left: 0 !important;
+    padding-left: 0 !important;
+}
+
+.admin-product-form .apf-check-grid .form-check,
+.admin-product-form .apf-switch {
+    padding: .75rem .9rem !important;
+}
+
+.admin-product-form .promotion-preset-option {
+    gap: 12px;
+    border-color: #dbe4ef !important;
+    background: #fff !important;
+}
+
+.admin-product-form .promotion-preset-option:has(.form-check-input:checked) {
+    border-color: #60a5fa !important;
+    background: #eff6ff !important;
+    color: #1e3a8a;
+    box-shadow: 0 8px 18px rgba(37, 99, 235, .12) !important;
+}
+
+.admin-product-form .promotion-preset-option .form-check-input {
+    flex-basis: 18px;
+}
+
+@media (max-width: 992px) {
+    .admin-shell::before { display: none !important; }
+    .admin-sidebar {
+        width: 100% !important;
+        min-height: auto !important;
+        height: auto !important;
+        max-height: 45vh !important;
+    }
+}
