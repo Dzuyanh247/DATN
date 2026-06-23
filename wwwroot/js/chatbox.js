@@ -246,7 +246,10 @@
                 }
                 body.append(details);
             } else if (card.type === 'product') {
-                const details = document.createElement('div'); details.className = 'kk-chat-order-details';
+                const details = document.createElement('div'); details.className = 'kk-chat-order-details kk-chat-product-details';
+                if (card.price != null) details.append(detailLine('Giá', formatMoney(card.price)));
+                if (card.stockStatus) details.append(detailLine('Tồn kho', card.stockStatus));
+                if (card.warranty) details.append(detailLine('Bảo hành', card.warranty));
                 if (card.orderCode) details.append(detailLine('Đơn hàng', card.orderCode));
                 if (card.orderedAt) details.append(detailLine('Ngày mua', formatDate(card.orderedAt)));
                 if (card.warrantyStatus) details.append(detailLine('Bảo hành', card.warrantyStatus));
@@ -255,12 +258,34 @@
             const buttons = document.createElement('div'); buttons.className = 'kk-chat-card-actions';
             (card.actions || []).forEach(action => {
                 const button = document.createElement('button'); button.type = 'button'; button.textContent = action.label;
-                button.onclick = () => action.url ? (window.location.href = action.url) : runQuickAction(action.actionType, action.payload);
+                button.onclick = () => {
+                    if (String(action.method || '').toLowerCase() === 'post' && action.url) {
+                        postActionForm(action.url, action.payload || {});
+                        return;
+                    }
+                    action.url ? (window.location.href = action.url) : runQuickAction(action.actionType, action.payload);
+                };
                 buttons.append(button);
             });
             if (buttons.childElementCount) body.append(buttons);
             wrapper.append(body); parent.append(wrapper);
         });
+    }
+    function postActionForm(url, payload) {
+        const form = document.createElement('form');
+        form.method = 'post';
+        form.action = url;
+        const token = csrf;
+        if (token) {
+            const input = document.createElement('input');
+            input.type = 'hidden'; input.name = '__RequestVerificationToken'; input.value = token; form.append(input);
+        }
+        Object.entries(payload || {}).forEach(([key, value]) => {
+            const input = document.createElement('input');
+            input.type = 'hidden'; input.name = key; input.value = value; form.append(input);
+        });
+        document.body.append(form);
+        form.submit();
     }
     function detailLine(label, value) {
         const line = document.createElement('span');

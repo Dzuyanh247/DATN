@@ -190,15 +190,23 @@ public class SupportChatController : Controller
     private static bool IsQuickActionLabel(string text) => SupportChatDefaults.QuickQuestions.Any(x => string.Equals((string?)x.GetType().GetProperty("label")?.GetValue(x), text, StringComparison.OrdinalIgnoreCase));
     private ChatMessage AddAiMessage(ChatConversation conversation, string reply, IReadOnlyList<AiProductContext> products, bool attachProductCards, string? requestId)
     {
-        var cards = attachProductCards ? products.Take(3).Select(p => (object)new
+        var cards = attachProductCards ? products.Take(8).Select(p => (object)new
         {
             type = "product",
             title = p.Name,
-            subtitle = $"{p.Price:N0} đ • {p.StockStatus}",
+            subtitle = $"{p.Price:N0} đ",
+            imageUrl = p.ImageUrl,
             badge = p.ProductTypeLabel,
-            actions = new[] { new { label = "Xem chi tiết", url = p.Link } }
+            price = p.Price,
+            stockStatus = p.StockStatus,
+            warranty = p.Warranty,
+            canAddToBuild = p.CanAddToBuild,
+            actions = ProductCardActions(p).ToArray()
         }).ToList() : [];
-        var actions = Array.Empty<object>();
+        var buildIds = products.Where(p => p.CanAddToBuild).Select(p => p.Id).Distinct().ToList();
+        var actions = buildIds.Count >= 7
+            ? new object[] { new { label = "Thêm toàn bộ vào Build PC", url = $"/buildpc?aiBuild={string.Join(',', buildIds)}", style = "primary" } }
+            : Array.Empty<object>();
         var message = new ChatMessage
         {
             Conversation = conversation,
@@ -213,6 +221,14 @@ public class SupportChatController : Controller
         _db.ChatMessages.Add(message);
         conversation.LastMessageAt = DateTime.UtcNow;
         return message;
+    }
+
+
+    private static IEnumerable<object> ProductCardActions(AiProductContext p)
+    {
+        yield return new { label = "Xem chi tiết", url = p.Link };
+        yield return new { label = "Mua ngay", url = "/Cart/BuyNow", method = "post", payload = new { productId = p.Id, quantity = 1 } };
+        if (p.CanAddToBuild) yield return new { label = "Thêm vào Build PC", url = $"/buildpc?aiBuild={p.Id}" };
     }
 
     private async Task<ChatConversation?> FindOpenConversation(int? userId, string? guestId, string? email, string? phone)

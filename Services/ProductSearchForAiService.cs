@@ -19,7 +19,9 @@ public record AiProductContext(
     string CategoryScope = "COMPONENT",
     string Description = "",
     string Warranty = "",
-    string ProductTypeLabel = "Linh kiện");
+    string ProductTypeLabel = "Linh kiện",
+    string ImageUrl = "",
+    bool CanAddToBuild = false);
 
 public interface IProductSearchForAiService
 {
@@ -118,7 +120,7 @@ public partial class ProductSearchForAiService : IProductSearchForAiService
     {
         var rows = await query.Select(x => new
         {
-            x.Id, x.Name, Price = x.DiscountPrice ?? x.SalePrice ?? x.Price, x.Specifications, x.ShortDescription, x.Description, x.WarrantyDuration, x.WarrantyMonths, x.StockQuantity, x.Slug,
+            x.Id, x.Name, Price = x.DiscountPrice ?? x.SalePrice ?? x.Price, x.Specifications, x.ShortDescription, x.Description, x.WarrantyDuration, x.WarrantyMonths, x.StockQuantity, x.Slug, x.ThumbnailImage,
             Category = x.Category != null ? (x.Category.Name ?? "Chưa phân loại") : "Chưa phân loại"
         }).ToListAsync(ct);
         return rows.Select(x => new AiProductContext(
@@ -130,7 +132,7 @@ public partial class ProductSearchForAiService : IProductSearchForAiService
             $"/Products/Detail/{x.Id}",
             string.IsNullOrWhiteSpace(x.Category) ? "Chưa phân loại" : x.Category,
             x.StockQuantity,
-            scope, TrimText(x.Description ?? string.Empty, 300), !string.IsNullOrWhiteSpace(x.WarrantyDuration) ? x.WarrantyDuration : $"{x.WarrantyMonths} tháng", LabelForScope(scope))).ToList();
+            scope, TrimText(x.Description ?? string.Empty, 300), !string.IsNullOrWhiteSpace(x.WarrantyDuration) ? x.WarrantyDuration : $"{x.WarrantyMonths} tháng", LabelForScope(scope), string.IsNullOrWhiteSpace(x.ThumbnailImage) ? "/images/no-image.png" : x.ThumbnailImage, scope.StartsWith("BUILD_", StringComparison.OrdinalIgnoreCase))).ToList();
     }
 
 
@@ -167,7 +169,7 @@ public partial class ProductSearchForAiService : IProductSearchForAiService
         TrimText(string.IsNullOrWhiteSpace(x.Specifications) ? x.ShortDescription ?? string.Empty : x.Specifications, 450),
         x.StockQuantity > 0 ? $"Còn hàng ({x.StockQuantity})" : "Tạm hết hàng",
         $"/Products/Detail/{x.Id}", x.Category?.Name ?? "Chưa phân loại", x.StockQuantity, scope,
-        TrimText(x.Description ?? string.Empty, 300), !string.IsNullOrWhiteSpace(x.WarrantyDuration) ? x.WarrantyDuration : $"{x.WarrantyMonths} tháng", LabelForScope(scope, x));
+        TrimText(x.Description ?? string.Empty, 300), !string.IsNullOrWhiteSpace(x.WarrantyDuration) ? x.WarrantyDuration : $"{x.WarrantyMonths} tháng", LabelForScope(scope, x), string.IsNullOrWhiteSpace(x.ThumbnailImage) ? "/images/no-image.png" : x.ThumbnailImage, scope.StartsWith("BUILD_", StringComparison.OrdinalIgnoreCase));
 
     private void LogSearch(string message, AiSearchAnalysis analysis, IReadOnlyList<AiProductContext> products, int activeCount, int scopedCount, int budgetCount, string fallbackReason)
     {
@@ -291,8 +293,8 @@ public partial class ProductSearchForAiService : IProductSearchForAiService
     private static partial Regex ProductTokenRegex();
 
     private static readonly string[] PcCategoryNames = ["PC Gaming", "Workstation", "AMD Gaming", "PC Mini", "PC Văn Phòng", "PC", "Máy bộ", "Cấu hình", "Máy tính"];
-    private static readonly string[] PcIntentWords = ["cau hinh", "pc", "may tinh", "may bo", "may choi game", "choi game", "gaming", "fps", "setting", "build", "stream", "do hoa", "valorant", "gta", "gta5", "gta v", "black myth", "shop co san"];
-    private static readonly Dictionary<string, string> GameWords = new(StringComparer.OrdinalIgnoreCase) { ["valorant"] = "Valorant", ["gta5"] = "GTA V", ["gta v"] = "GTA V", ["gta"] = "GTA V", ["black myth"] = "Black Myth" };
+    private static readonly string[] PcIntentWords = ["cau hinh", "pc", "may tinh", "may bo", "may choi game", "choi game", "gaming", "fps", "setting", "build", "stream", "render", "do hoa", "valorant", "cs2", "lol", "pubg", "gta", "gta5", "gta v", "black myth", "ngan sach", "trieu", "shop co san"];
+    private static readonly Dictionary<string, string> GameWords = new(StringComparer.OrdinalIgnoreCase) { ["valorant"] = "Valorant", ["cs2"] = "CS2", ["lol"] = "LOL", ["pubg"] = "PUBG", ["gta5"] = "GTA V", ["gta v"] = "GTA V", ["gta"] = "GTA V", ["black myth"] = "Black Myth" };
     private static readonly string[] BrandWords = ["logitech", "razer", "akko", "asus", "msi", "gigabyte", "corsair", "cooler master", "kingston", "samsung"];
     private static readonly HashSet<string> IgnoredSearchTokens = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -409,8 +411,10 @@ public partial class ProductSearchForAiService : IProductSearchForAiService
             .Where(x => !IsAccessoryProduct(x))
             .ToList();
         var ordered = target.HasValue
-            ? candidates.OrderBy(x => Math.Abs((x.DiscountPrice ?? x.SalePrice ?? x.Price) - target.Value))
-            : candidates.OrderBy(x => x.DiscountPrice ?? x.SalePrice ?? x.Price);
+            ? candidates.Where(x => (x.DiscountPrice ?? x.SalePrice ?? x.Price) >= target.Value * 0.7m && (x.DiscountPrice ?? x.SalePrice ?? x.Price) <= target.Value * 1.15m)
+                .OrderByDescending(x => x.StockQuantity > 0)
+                .ThenBy(x => Math.Abs((x.DiscountPrice ?? x.SalePrice ?? x.Price) - target.Value))
+            : candidates.OrderByDescending(x => x.StockQuantity > 0).ThenBy(x => x.DiscountPrice ?? x.SalePrice ?? x.Price);
         return ordered.Take(max).Select(x => ToContext(x, "PC")).ToList();
     }
 

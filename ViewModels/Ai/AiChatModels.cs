@@ -19,6 +19,9 @@ public class AiChatProductDto
     public string Link { get; set; } = string.Empty;
     public string Category { get; set; } = string.Empty;
     public string ProductTypeLabel { get; set; } = string.Empty;
+    public string ImageUrl { get; set; } = string.Empty;
+    public string Warranty { get; set; } = string.Empty;
+    public bool CanAddToBuild { get; set; }
 
     public static AiChatProductDto From(AiProductContext product) => new()
     {
@@ -29,6 +32,9 @@ public class AiChatProductDto
         StockStatus = product.StockStatus,
         Link = product.Link,
         Category = product.Category,
-        ProductTypeLabel = product.ProductTypeLabel
+        ProductTypeLabel = product.ProductTypeLabel,
+        ImageUrl = product.ImageUrl,
+        Warranty = product.Warranty,
+        CanAddToBuild = product.CanAddToBuild
     };
 }
