@@ -144,3 +144,14 @@
     .kk-chat-contact-row { grid-template-columns: 1fr; gap: 9px; }
     .kk-chat-bubble, .kk-chat-message.shop .kk-chat-bubble, .kk-chat-card, .chat-message-actions { max-width: 90%; width: min(90%, 292px); }
 }
+
+/* AI sales assistant upgrade */
+.kk-chat-card--product { width: min(94%, 326px); padding: 10px; border-color: #cfe1f5; box-shadow: 0 8px 22px rgba(15,23,42,.08); }
+.kk-chat-card--product>img { width: 74px; height: 74px; border: 1px solid #eef2f7; }
+.kk-chat-card--product .kk-chat-card-body strong { font-size: .82rem; -webkit-line-clamp: 3; }
+.kk-chat-card--product .kk-chat-product-badge { background: #ecfeff; color: #0e7490; }
+.kk-chat-product-details>span { font-size: .68rem; }
+.kk-chat-product-details b { color: #0f315e; }
+.kk-chat-card--product .kk-chat-card-actions button:first-child { background: #1764aa; }
+.kk-chat-card--product .kk-chat-card-actions button:nth-child(2) { background: #f97316; }
+.kk-chat-card--product .kk-chat-card-actions button:nth-child(3) { background: #0f766e; flex-basis: 100%; }

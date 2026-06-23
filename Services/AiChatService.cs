@@ -98,6 +98,19 @@ public partial class GeminiChatService : IAiChatService
             return new(true, policyAnswer.Reply, [], false, requestId);
         }
 
+        if (IsConfigurationConsultation(message))
+        {
+            var productsForConfig = await _productSearch.SearchAsync(message, cancellationToken);
+            var reply = BuildConfigurationConsultationReply(message, productsForConfig);
+            if (productsForConfig.Count > 0)
+            {
+                SaveRecentSuggestedProducts(conversation, productsForConfig);
+            }
+            conversation.RecentMessages.Add($"AI: {reply}");
+            LogDebugState(requestId, sessionId, message, intent, conversation, productsForConfig, productsForConfig.Count > 0, "config-rule-based", reply.Length, productsForConfig.Count, null);
+            return new(true, reply, productsForConfig, productsForConfig.Count > 0, requestId);
+        }
+
         if (!_options.Enabled || string.IsNullOrWhiteSpace(_options.ApiKey)) return new(false, FriendlyErrorMessage, [], false, requestId);
 
         var contextProduct = ResolveContextProduct(message, conversation);
@@ -193,6 +206,39 @@ public partial class GeminiChatService : IAiChatService
         }
     }
 
+
+
+    private static bool IsConfigurationConsultation(string message)
+    {
+        var normalized = RemoveDiacritics((message ?? string.Empty).ToLowerInvariant());
+        return ContainsAny(normalized, "build pc", "cau hinh", "gaming", "valorant", "cs2", " lol", "pubg", "gta v", "gta5", "stream", "render", "do hoa", "ngan sach")
+            || Regex.IsMatch(normalized, @"\b\d+(?:[\.,]\d+)?\s*(?:trieu|tr|m)\b", RegexOptions.IgnoreCase);
+    }
+
+    private static string BuildConfigurationConsultationReply(string message, IReadOnlyList<AiProductContext> products)
+    {
+        var normalized = RemoveDiacritics((message ?? string.Empty).ToLowerInvariant());
+        var budget = BudgetDebugRegex().Match(normalized).Value;
+        var game = ContainsAny(normalized, "valorant") ? "Valorant"
+            : ContainsAny(normalized, "cs2") ? "CS2"
+            : ContainsAny(normalized, " lol") || normalized == "lol" ? "LOL"
+            : ContainsAny(normalized, "pubg") ? "PUBG"
+            : ContainsAny(normalized, "gta") ? "GTA V"
+            : "Chưa nêu rõ";
+        var purpose = ContainsAny(normalized, "render", "do hoa") ? "Đồ họa / render"
+            : ContainsAny(normalized, "stream") ? "Stream / gaming"
+            : ContainsAny(normalized, "gaming", "choi", "valorant", "cs2", "lol", "pubg", "gta") ? "Gaming"
+            : "Tư vấn cấu hình";
+        if (products.Count == 0)
+        {
+            return $"✓ Đã nhận nhu cầu\n\nNgân sách: {(string.IsNullOrWhiteSpace(budget) ? "Chưa nêu rõ" : budget)}\nMục đích: {purpose}\nGame: {game}\n\nHiện tại KKSHOP chưa có sản phẩm phù hợp với yêu cầu này.";
+        }
+
+        var pcCount = products.Count(p => string.Equals(p.CategoryScope, "PC", StringComparison.OrdinalIgnoreCase));
+        var buildCount = products.Count(p => p.CategoryScope.StartsWith("BUILD_", StringComparison.OrdinalIgnoreCase));
+        var source = pcCount > 0 ? "Ưu tiên PC Gaming có sẵn" : buildCount >= 7 ? "Tạo cấu hình từ linh kiện đang có" : "Sản phẩm phù hợp đang có";
+        return $"✓ Đã nhận nhu cầu\n\nNgân sách: {(string.IsNullOrWhiteSpace(budget) ? "Chưa nêu rõ" : budget)}\nMục đích: {purpose}\nGame: {game}\n\nĐang tìm cấu hình phù hợp...\n\n{source}. Mình chỉ hiển thị sản phẩm có trong dữ liệu KKSHOP.";
+    }
 
     private static bool ShouldAttachProductCards(AiChatIntent intent)
         => intent is AiChatIntent.ProductSearch or AiChatIntent.ProductAdvice;
@@ -324,8 +370,8 @@ public partial class GeminiChatService : IAiChatService
 
         var hasProductTerm = ProductTerms.Any(normalized.Contains) || Regex.IsMatch(normalized, @"\b(?:rtx|gtx|rx|i[3579]|ryzen|logitech|razer|akko|asus|msi|gigabyte|corsair|g304)\b", RegexOptions.IgnoreCase);
         var hasBudget = Regex.IsMatch(normalized, @"\b\d+(?:[\.,]\d+)?\s*(?:-|den|toi)?\s*\d*\s*(?:tr|trieu|m|million)\b", RegexOptions.IgnoreCase);
-        var hasGame = ContainsAny(normalized, "gta", "gta5", "valorant", "black myth", "choi game", "gaming");
-        var hasConfigIntent = ContainsAny(normalized, "cau hinh", "pc gaming", "may choi game", "may tinh", "build", "shop co san");
+        var hasGame = ContainsAny(normalized, "gta", "gta5", "valorant", "cs2", "lol", "pubg", "black myth", "choi game", "gaming");
+        var hasConfigIntent = ContainsAny(normalized, "cau hinh", "pc gaming", "may choi game", "may tinh", "build", "stream", "render", "do hoa", "ngan sach", "shop co san");
         var hasSearchIntent = SearchIntentWords.Any(normalized.Contains);
         var hasAdviceIntent = AdviceIntentWords.Any(normalized.Contains);
         if (ContainsAny(normalized, "so sanh", "compare", "khac nhau", "hon kem")) return AiChatIntent.ProductCompare;

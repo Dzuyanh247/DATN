@@ -41,8 +41,13 @@ public class BuildPcController : Controller
     }
 
     [HttpGet("")]
-    public IActionResult Index()
+    public async Task<IActionResult> Index([FromQuery] string? aiBuild)
     {
+        if (!string.IsNullOrWhiteSpace(aiBuild))
+        {
+            await ApplyAiBuildSelection(aiBuild);
+            TempData["SuccessMessage"] = "Đã chọn sẵn cấu hình AI đề xuất. Bạn có thể kiểm tra tương thích và điều chỉnh linh kiện trước khi mua.";
+        }
         var vm = BuildViewModel();
         return View(vm);
     }
@@ -130,6 +135,37 @@ public class BuildPcController : Controller
         foreach (var item in selected.Values)
             sb.AppendLine($"{item.Type},{item.ProductName},{item.Price},{item.Quantity},{item.Price * item.Quantity}");
         return File(Encoding.UTF8.GetBytes(sb.ToString()), "text/csv", "buildpc-config.csv");
+    }
+
+
+    private async Task ApplyAiBuildSelection(string aiBuild)
+    {
+        var ids = aiBuild.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(x => int.TryParse(x, out var id) ? id : 0)
+            .Where(x => x > 0)
+            .Distinct()
+            .Take(12)
+            .ToList();
+        if (ids.Count == 0) return;
+
+        var products = await _db.Products.AsNoTracking().Where(x => ids.Contains(x.Id) && x.IsActive).ToListAsync();
+        var selected = GetSelectedFromSession();
+        foreach (var product in products)
+        {
+            var type = NormalizeBuildTypeToComponentType(ComponentTypes.Normalize(product.ComponentType));
+            if (string.IsNullOrWhiteSpace(type) || type == ComponentTypes.Other) continue;
+            var buildType = type == ComponentTypes.Mainboard ? "MAINBOARD" : type;
+            selected[buildType] = new SelectedComponentViewModel
+            {
+                ProductId = product.Id,
+                Type = buildType,
+                ProductName = product.Name ?? "Sản phẩm không xác định",
+                ImageUrl = product.ThumbnailImage ?? "/images/no-image.png",
+                Price = product.DiscountPrice ?? product.SalePrice ?? product.Price,
+                Quantity = 1
+            };
+        }
+        SaveSelectedToSession(selected);
     }
 
     private BuildPcViewModel BuildViewModel()
