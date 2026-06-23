@@ -136,21 +136,24 @@ else
                     <i class="bi bi-geo-alt"></i> Hệ thống showroom
                 </a>
                 <div class="ttg-showroom-dropdown" role="menu" aria-label="Danh sách showroom KKSHOP">
-                    <div class="ttg-showroom-dropdown__header">
-                        <span>Hệ thống showroom KKSHOP</span>
-                        <small>Ghé thăm cửa hàng gần bạn</small>
-                    </div>
                     <div class="ttg-showroom-grid">
-                        @foreach (var showroom in headerShowrooms)
+                        @for (var i = 0; i < headerShowrooms.Count; i++)
                         {
+                            var showroom = headerShowrooms[i];
                             <article class="ttg-showroom-card" role="menuitem">
-                                <h3>@showroom.Name</h3>
-                                <p><i class="bi bi-geo-alt-fill"></i><span>@showroom.Address</span></p>
-                                <p><i class="bi bi-telephone-fill"></i><span>@showroom.Hotline</span></p>
-                                <p><i class="bi bi-clock-fill"></i><span>@showroom.OpeningHours</span></p>
-                                <a class="ttg-showroom-map" href="@showroom.GoogleMapsUrl" target="_blank" rel="noopener noreferrer">
-                                    Xem bản đồ đường đi <i class="bi bi-box-arrow-up-right"></i>
-                                </a>
+                                <div class="ttg-showroom-card__title">
+                                    <span class="ttg-showroom-card__number">@((i + 1).ToString("00"))</span>
+                                    <h3>@showroom.Name</h3>
+                                </div>
+                                <div class="ttg-showroom-card__body">
+                                    <p><i class="bi bi-geo-alt-fill"></i><span>@showroom.Address</span></p>
+                                    <p>
+                                        <i class="bi bi-map-fill"></i>
+                                        <a class="ttg-showroom-map" href="@showroom.GoogleMapsUrl" target="_blank" rel="noopener">Xem bản đồ đường đi</a>
+                                    </p>
+                                    <p><i class="bi bi-telephone-fill"></i><span>@showroom.Hotline</span></p>
+                                    <p><i class="bi bi-clock-fill"></i><span>@showroom.OpeningHours</span></p>
+                                </div>
                             </article>
                         }
                     </div>
