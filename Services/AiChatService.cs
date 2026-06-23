@@ -16,6 +16,14 @@ internal sealed class AiConversationContext
     public AiProductContext? CurrentProductContext { get; set; }
     public AiProductContext? LastReferencedProduct { get; set; }
     public List<AiProductContext> RecentSuggestedProducts { get; } = [];
+    public AiChatIntent? LastIntent { get; set; }
+    public string LastUserMessage { get; set; } = string.Empty;
+    public decimal? LastBudgetTarget { get; set; }
+    public string? LastPurpose { get; set; }
+    public string? LastGame { get; set; }
+    public string? LastProductType { get; set; }
+    public List<AiProductContext> LastRenderedCards { get; } = [];
+    public AiProductContext? LastSelectedProduct { get; set; }
 }
 
 
@@ -31,6 +39,10 @@ internal enum AiChatIntent
     ProductProsCons,
     ProductRecommendation,
     ProductCompare,
+    PcBuildAdvice,
+    ComponentAdvice,
+    CompareRecommendation,
+    ProductExtremeQuery,
     ClarifyProductAdvice,
     FriendlySmallTalk,
     GeneralShop
@@ -73,7 +85,16 @@ public partial class GeminiChatService : IAiChatService
         conversation.RecentMessages.Add($"User: {message}");
         if (conversation.RecentMessages.Count > 10) conversation.RecentMessages.RemoveRange(0, conversation.RecentMessages.Count - 10);
 
-        var intent = DetectIntent(message);
+        var lastIntentBefore = conversation.LastIntent;
+        var analysis = AnalyzeChatTurn(message);
+        var intent = analysis.Intent;
+        if (lastIntentBefore == AiChatIntent.PcBuildAdvice && intent == AiChatIntent.ComponentAdvice)
+        {
+            conversation.LastRenderedCards.Clear();
+            conversation.RecentSuggestedProducts.Clear();
+            conversation.CurrentProductContext = null;
+            conversation.LastReferencedProduct = null;
+        }
         var productFromUrl = await TryResolveProductUrlAsync(message, cancellationToken);
         if (productFromUrl != null)
         {
@@ -91,6 +112,31 @@ public partial class GeminiChatService : IAiChatService
         if (intent == AiChatIntent.ClarifyProductAdvice && !HasContextReference(message, conversation))
             return new(true, "Bạn muốn mình phân tích sản phẩm hoặc dòng sản phẩm nào ạ? Hãy gửi tên đầy đủ, nhu cầu sử dụng hoặc link sản phẩm để mình tư vấn ưu/nhược điểm kỹ hơn nhé.", [], false, requestId);
 
+        if (intent == AiChatIntent.CompareRecommendation)
+        {
+            var selected = PickBestProduct(conversation.RecentSuggestedProducts, conversation.LastBudgetTarget);
+            if (selected != null)
+            {
+                conversation.LastSelectedProduct = selected;
+                SaveRecentSuggestedProducts(conversation, [selected]);
+                var reply = BuildCompareRecommendationReply(selected, analysis.Game ?? conversation.LastGame, conversation.LastPurpose);
+                UpdateConversationAfterRule(conversation, message, analysis, [selected]);
+                LogPipelineDebug(requestId, sessionId, message, analysis, conversation, [selected], true, false, "COMPARE_RECOMMENDATION", lastIntentBefore, null);
+                return new(true, reply, [selected], true, requestId);
+            }
+            return new(true, "Mình chưa có danh sách sản phẩm vừa đề xuất trong phiên này. Bạn cho mình biết nhu cầu/ngân sách để mình gợi ý rồi chọn mẫu đáng mua nhất nhé.", [], false, requestId);
+        }
+
+        if (intent == AiChatIntent.ProductExtremeQuery || intent == AiChatIntent.PcBuildAdvice || intent == AiChatIntent.ComponentAdvice)
+        {
+            var productsByRule = await _productSearch.QueryByIntentAsync(IntentName(intent), analysis.ProductType, analysis.PriceMode, analysis.BudgetTarget, cancellationToken);
+            var reply = BuildRulePipelineReply(analysis, productsByRule);
+            if (productsByRule.Count > 0) SaveRecentSuggestedProducts(conversation, productsByRule);
+            UpdateConversationAfterRule(conversation, message, analysis, productsByRule);
+            LogPipelineDebug(requestId, sessionId, message, analysis, conversation, productsByRule, true, false, IntentName(intent), lastIntentBefore, null);
+            return new(true, reply, productsByRule, productsByRule.Count > 0, requestId);
+        }
+
         var policyAnswer = _shopPolicy.Answer(message);
         if (policyAnswer.IsPolicyQuestion)
         {
@@ -98,7 +144,7 @@ public partial class GeminiChatService : IAiChatService
             return new(true, policyAnswer.Reply, [], false, requestId);
         }
 
-        if (IsConfigurationConsultation(message))
+        if (IsConfigurationConsultation(message) && analysis.ProductType == null)
         {
             var productsForConfig = await _productSearch.SearchAsync(message, cancellationToken);
             var reply = BuildConfigurationConsultationReply(message, productsForConfig);
@@ -207,6 +253,88 @@ public partial class GeminiChatService : IAiChatService
     }
 
 
+
+
+    private sealed record ChatTurnAnalysis(AiChatIntent Intent, string NormalizedMessage, decimal? BudgetTarget, string? Game, string? Purpose, string? ProductType, string PriceMode);
+
+    private static ChatTurnAnalysis AnalyzeChatTurn(string message)
+    {
+        var n = RemoveDiacritics((message ?? string.Empty).ToLowerInvariant());
+        var productType = DetectChatProductType(n);
+        var priceMode = ContainsAny(n, "dat nhat", "cao nhat", "dat tien nhat", "gia cao nhat") ? "highest" : ContainsAny(n, "re nhat", "thap nhat", "gia thap nhat") ? "lowest" : "normal";
+        var budget = BudgetDebugRegex().Match(n).Success && TryChatMoney(Regex.Match(n, @"\d+(?:[\.,]\d+)?").Value, out var money) ? money : (decimal?)null;
+        var game = ContainsAny(n, "valorant") ? "Valorant" : ContainsAny(n, "gta") ? "GTA V" : ContainsAny(n, "cs2") ? "CS2" : ContainsAny(n, "pubg") ? "PUBG" : ContainsAny(n, " lol", " lien minh") ? "LOL" : null;
+        var purpose = ContainsAny(n, "choi", "game", "gaming", "valorant", "gta", "cs2", "pubg") ? "Gaming" : ContainsAny(n, "stream") ? "Stream" : ContainsAny(n, "do hoa", "render") ? "Đồ họa / render" : null;
+        AiChatIntent intent;
+        if (priceMode != "normal" && ContainsAny(n, "san pham", "pc", "ram", "vga", "gpu", "cpu", "linh kien", "chuot", "ban phim", "man hinh", "tai nghe")) intent = AiChatIntent.ProductExtremeQuery;
+        else if (ContainsAny(n, "cai nao dang mua", "san pham ban de xuat", "trong may cai", "nen chon cai nao", "con nao ngon", "tot nhat trong danh sach", "mau nao dang mua") || (ContainsAny(n, "loi ich cua no", "loi ich") && ContainsAny(n, "cai nao", "san pham ban de xuat", "may cai tren"))) intent = AiChatIntent.CompareRecommendation;
+        else if (productType != null || ContainsAny(n, "linh kien ma", "khong phai pc", "thanh ram")) intent = AiChatIntent.ComponentAdvice;
+        else if (ContainsAny(n, "tu van cau hinh", "build pc", "pc choi", "may choi", "may gaming", "cau hinh stream", "cau hinh") || (budget.HasValue && purpose == "Gaming")) intent = AiChatIntent.PcBuildAdvice;
+        else intent = DetectIntent(message);
+        return new(intent, n, budget, game, purpose, productType, priceMode);
+    }
+
+    private static string? DetectChatProductType(string n)
+    {
+        if (ContainsAny(n, "thanh ram", " ram", "ram ", "bo nho trong")) return "RAM";
+        if (ContainsAny(n, "vga", "gpu", "card man hinh")) return "VGA";
+        if (ContainsAny(n, "cpu", "chip", "vi xu ly")) return "CPU";
+        if (ContainsAny(n, "mainboard", "bo mach chu", " main")) return "Mainboard";
+        if (ContainsAny(n, "ssd", "hdd", "o cung")) return "Storage";
+        if (ContainsAny(n, "nguon", "psu")) return "PSU";
+        if (ContainsAny(n, "vo case", " case")) return "Case";
+        if (ContainsAny(n, "tan nhiet", "cooler")) return "Cooler";
+        if (ContainsAny(n, "man hinh", "monitor")) return "Monitor";
+        if (ContainsAny(n, "chuot", "mouse")) return "Mouse";
+        if (ContainsAny(n, "ban phim", "keyboard")) return "Keyboard";
+        if (ContainsAny(n, "tai nghe", "headset", "headphone")) return "Headphone";
+        return null;
+    }
+
+    private static bool TryChatMoney(string value, out decimal result)
+    {
+        result = 0;
+        if (!decimal.TryParse(value.Replace(',', '.'), NumberStyles.Number, CultureInfo.InvariantCulture, out var amount)) return false;
+        result = amount < 1000 ? amount * 1_000_000 : amount;
+        return true;
+    }
+
+    private static string IntentName(AiChatIntent intent) => intent switch { AiChatIntent.PcBuildAdvice => "PC_BUILD_ADVICE", AiChatIntent.ComponentAdvice => "COMPONENT_ADVICE", AiChatIntent.CompareRecommendation => "COMPARE_RECOMMENDATION", AiChatIntent.ProductExtremeQuery => "PRODUCT_EXTREME_QUERY", _ => intent.ToString() };
+
+    private static AiProductContext? PickBestProduct(IReadOnlyList<AiProductContext> products, decimal? budget) => products.Count == 0 ? null : products.OrderByDescending(p => ScoreRecommendation(p, budget)).First();
+
+    private static decimal ScoreRecommendation(AiProductContext p, decimal? budget)
+    {
+        var text = RemoveDiacritics($"{p.Name} {p.Specifications} {p.Description}".ToLowerInvariant());
+        decimal score = p.StockQuantity > 0 ? 20 : 0;
+        if (text.Contains("rtx 4090")) score += 60; else if (text.Contains("rtx 4080")) score += 55; else if (text.Contains("rtx 4070")) score += 48; else if (text.Contains("rtx 4060")) score += 40; else if (text.Contains("rtx 3060")) score += 32; else if (text.Contains("rtx 3050")) score += 24;
+        if (text.Contains("32gb")) score += 12; else if (text.Contains("16gb")) score += 8;
+        if (text.Contains("1tb")) score += 8; else if (text.Contains("512")) score += 5;
+        if (budget.HasValue) score += Math.Max(0, 25 - Math.Abs(p.Price - budget.Value) / Math.Max(1, budget.Value) * 25);
+        return score;
+    }
+
+    private static string BuildCompareRecommendationReply(AiProductContext product, string? game, string? purpose)
+        => $"Trong các mẫu vừa đề xuất, mẫu đáng mua nhất là: {product.Name}\n\nLý do:\n- Cân bằng cấu hình/giá tốt hơn trong danh sách vừa tư vấn.\n- Phù hợp {(purpose ?? "nhu cầu bạn nêu")}{(string.IsNullOrWhiteSpace(game) ? string.Empty : $" / {game}")}.\n- {product.StockStatus}, bảo hành {product.Warranty}.\n- Thông số nổi bật: {product.Specifications}\n\nĐiểm cần lưu ý: nếu bạn thường mở thêm Discord/Chrome hoặc chơi game nặng, nên ưu tiên nâng RAM/SSD khi cấu hình hiện tại còn thấp.";
+
+    private static string BuildRulePipelineReply(ChatTurnAnalysis a, IReadOnlyList<AiProductContext> products)
+    {
+        if (a.Intent == AiChatIntent.ProductExtremeQuery)
+            return products.Count == 0 ? "Hiện KKSHOP chưa có sản phẩm phù hợp để xếp theo giá." : $"Sản phẩm có giá {(a.PriceMode == "lowest" ? "thấp nhất" : "cao nhất")} hiện tại tại KKSHOP là:";
+        if (a.Intent == AiChatIntent.ComponentAdvice)
+            return $"✓ Đã nhận nhu cầu\n\nLoại sản phẩm: {ProductTypeDisplay(a.ProductType)}\nMục đích: {a.Purpose ?? "Chưa nêu rõ"}\nGame: {a.Game ?? "Chưa nêu rõ"}\n\nGợi ý nhanh:\n- Chỉ lọc đúng nhóm {ProductTypeDisplay(a.ProductType)}, không đề xuất PC nguyên bộ.\n- Nếu là RAM chơi game, tối thiểu nên có 8GB và khuyến nghị 16GB để mở thêm Discord/Chrome.\n- Chuẩn DDR4/DDR5 cần phụ thuộc mainboard đang dùng.\n\n{(products.Count == 0 ? "Hiện KKSHOP chưa tìm thấy linh kiện đúng loại phù hợp." : $"{ProductTypeDisplay(a.ProductType)} đề xuất từ dữ liệu KKSHOP:")}";
+        return $"✓ Đã nhận nhu cầu\n\nNgân sách: {(a.BudgetTarget.HasValue ? a.BudgetTarget.Value.ToString("N0") + " đ" : "Chưa nêu rõ")}\nMục đích: {a.Purpose ?? "Tư vấn cấu hình"}\nGame: {a.Game ?? "Chưa nêu rõ"}\n\n{(products.Count == 0 ? "Hiện KKSHOP chưa tìm thấy PC nguyên bộ phù hợp." : "PC đề xuất từ dữ liệu KKSHOP:")}";
+    }
+
+    private static string ProductTypeDisplay(string? t) => t switch { "RAM" => "RAM", "VGA" => "VGA", "CPU" => "CPU", "Mainboard" => "Mainboard", "Storage" => "SSD/HDD", "PSU" => "Nguồn", "Case" => "Vỏ case", "Cooler" => "Tản nhiệt", "Monitor" => "Màn hình", "Mouse" => "Chuột", "Keyboard" => "Bàn phím", "Headphone" => "Tai nghe", _ => "Linh kiện" };
+
+    private static void UpdateConversationAfterRule(AiConversationContext c, string message, ChatTurnAnalysis a, IReadOnlyList<AiProductContext> products)
+    {
+        c.LastIntent = a.Intent; c.LastUserMessage = message; c.LastBudgetTarget = a.BudgetTarget ?? c.LastBudgetTarget; c.LastPurpose = a.Purpose ?? c.LastPurpose; c.LastGame = a.Game ?? c.LastGame; c.LastProductType = a.ProductType ?? c.LastProductType; c.LastRenderedCards.Clear(); c.LastRenderedCards.AddRange(products);
+    }
+
+    private void LogPipelineDebug(string requestId, string? sessionId, string rawMessage, ChatTurnAnalysis a, AiConversationContext c, IReadOnlyList<AiProductContext> products, bool usedDb, bool usedGemini, string queryType, AiChatIntent? lastBefore, string? error)
+        => _logger.LogInformation("[KKSHOP_AI_PIPELINE] requestId={RequestId}; sessionId={SessionId}; rawMessage={RawMessage}; normalizedMessage={NormalizedMessage}; detectedIntent={Intent}; extractedBudgetTarget={BudgetTarget}; extractedPurpose={Purpose}; extractedGame={Game}; extractedProductType={ProductType}; priceMode={PriceMode}; usedDatabaseFallback={UsedDb}; usedGemini={UsedGemini}; generatedQueryType={QueryType}; categoryFilter={CategoryFilter}; productTypeFilter={ProductTypeFilter}; resultCount={ResultCount}; returnedProductNames={Names}; returnedProductPrices={Prices}; lastIntentBefore={Before}; lastIntentAfter={After}; lastRecommendedProductCount={RecommendedCount}; renderCardType={RenderType}; errorMessage={Error}", requestId, sessionId ?? "none", TrimForLog(rawMessage), a.NormalizedMessage, IntentName(a.Intent), a.BudgetTarget, a.Purpose ?? "none", a.Game ?? "none", a.ProductType ?? "all", a.PriceMode, usedDb, usedGemini, queryType, a.Intent == AiChatIntent.PcBuildAdvice ? "PC" : "product", a.ProductType ?? "all", products.Count, string.Join(" | ", products.Select(p => p.Name)), string.Join(" | ", products.Select(p => p.Price.ToString("N0"))), lastBefore?.ToString() ?? "none", c.LastIntent?.ToString() ?? "none", c.RecentSuggestedProducts.Count, products.FirstOrDefault()?.ProductTypeLabel ?? "none", error ?? "none");
 
     private static bool IsConfigurationConsultation(string message)
     {
