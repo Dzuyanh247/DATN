@@ -104,9 +104,8 @@
                     <section class="panel">
                         <div class="panel-header">TỔNG TIỀN</div>
                         <div class="panel-body">
-                            <div class="voucher-row"><input class="ui-input" id="voucherCodeInput" name="VoucherCode" placeholder="Mã voucher" value="@Model.VoucherCode" /><button type="button" class="voucher-btn" id="chooseVoucherBtn">Chọn mã voucher</button></div>
+                            <div class="voucher-row"><input class="ui-input" id="voucherCodeInput" name="VoucherCode" placeholder="Mã voucher" value="@Model.VoucherCode" /><button type="button" class="voucher-btn" id="chooseVoucherBtn">Áp dụng</button></div>
                             <div class="voucher-message small mt-2" id="voucherMessage"></div>
-                            <div class="voucher-list border rounded p-2 mt-2 d-none" id="voucherList"></div>
                             <div class="sum-row"><span>Tổng cộng</span><strong id="subtotalText" data-subtotal="@subtotal">@subtotal.ToString("N0") VNĐ</strong></div>
                             <div class="sum-row"><span>Phí vận chuyển</span><strong id="shippingFeeText">Chưa tính</strong></div>
                             <div class="sum-row"><span>Giảm giá Voucher</span><strong id="voucherDiscountText">0 VNĐ</strong></div>
