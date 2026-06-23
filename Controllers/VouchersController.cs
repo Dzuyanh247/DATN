@@ -16,7 +16,7 @@ public class VouchersController : ControllerBase
     {
         var userId = User.Identity?.IsAuthenticated == true ? int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!) : (int?)null;
         var result = await _voucherService.ValidateAsync(request.Code, request.Subtotal, request.ShippingFee, userId, cancellationToken);
-        return Ok(new { success = result.Success, message = result.Message, code = result.Voucher?.Code, name = result.Voucher?.Name, discountAmount = result.DiscountAmount });
+        return Ok(new { success = result.Success, message = result.Message, failureCode = result.FailureCode, code = result.Voucher?.Code, name = result.Voucher?.Name, discountAmount = result.DiscountAmount });
     }
 
     [HttpGet("available")]
