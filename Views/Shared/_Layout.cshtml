@@ -3,10 +3,16 @@
 @inject ApplicationDbContext DbContext
 @inject ICompareService CompareService
 @inject ISearchSuggestionService SearchSuggestionService
+@inject Microsoft.Extensions.Configuration.IConfiguration Configuration
 @{
     var menuCategories = await DbContext.Categories.OrderBy(c => c.CreatedAt).ToListAsync();
     var categoryIdByName = menuCategories.ToDictionary(c => c.Name, c => c.Id, StringComparer.OrdinalIgnoreCase);
     var siteLogoUrl = ImageUrlHelper.ResolveImageUrl(await DbContext.SiteSettings.OrderBy(x => x.Id).Select(x => x.LogoUrl).FirstOrDefaultAsync(), string.Empty);
+    var configuredZaloUrl = Configuration["ShopContact:ZaloUrl"];
+    var configuredZaloPhone = Configuration["ShopContact:ZaloPhone"];
+    var onlineSalesZaloUrl = !string.IsNullOrWhiteSpace(configuredZaloUrl)
+        ? configuredZaloUrl.Trim()
+        : $"https://zalo.me/{(string.IsNullOrWhiteSpace(configuredZaloPhone) ? "0968239497" : configuredZaloPhone.Trim())}";
     var compareProducts = await CompareService.GetProductsAsync();
     var searchSuggestionData = await SearchSuggestionService.GetHeaderSuggestionsAsync();
     var compareCount = compareProducts.Count;
@@ -124,7 +130,7 @@ else
     <div class="container ttg-shell ttg-topbar-inner">
         <div class="ttg-topbar-left">
             <a asp-controller="Contact" asp-action="Index" class="ttg-pill"><i class="bi bi-geo-alt"></i> Hệ thống showroom</a>
-            <a asp-controller="Contact" asp-action="Index" class="ttg-pill"><i class="bi bi-telephone"></i> Bán hàng trực tuyến</a>
+            <a href="@onlineSalesZaloUrl" target="_blank" rel="noopener noreferrer" class="ttg-pill"><i class="bi bi-telephone"></i> Bán hàng trực tuyến</a>
             <a asp-controller="Articles" asp-action="Index" asp-route-type="TinCongNghe" class="ttg-pill"><i class="bi bi-newspaper"></i> Trang tin công nghệ</a>
             <a asp-controller="BuildPc" asp-action="Index" class="ttg-pill ttg-pill-cta"><i class="bi bi-cpu"></i> Tư vấn build PC</a>
             <a asp-controller="Articles" asp-action="Index" asp-route-type="PhanMemHay" class="ttg-pill"><i class="bi bi-stars"></i> Phần mềm hay</a>
