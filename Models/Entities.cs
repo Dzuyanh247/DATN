@@ -439,6 +439,8 @@ public class ShopLocation : BaseEntity
 {
     [MaxLength(120)] public string ShopName { get; set; } = string.Empty;
     [MaxLength(250)] public string? Address { get; set; }
+    [MaxLength(30)] public string? Hotline { get; set; }
+    [MaxLength(80)] public string? OpeningHours { get; set; }
     public double Latitude { get; set; }
     public double Longitude { get; set; }
     public bool IsDefault { get; set; } = true;

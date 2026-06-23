@@ -91,6 +91,7 @@ builder.Services.AddScoped<ISupportChatAutomationService, SupportChatAutomationS
 builder.Services.AddScoped<IProductSearchForAiService, ProductSearchForAiService>();
 builder.Services.AddScoped<ISearchSuggestionService, SearchSuggestionService>();
 builder.Services.AddScoped<ISearchKeywordService, SearchKeywordService>();
+builder.Services.AddScoped<IShowroomService, ShowroomService>();
 builder.Services.AddSingleton<IShopPolicyService, ShopPolicyService>();
 builder.Services.AddHttpClient<IAiChatService, GeminiChatService>();
 builder.Services.AddHttpClient<IGhnShippingService, GhnShippingService>((sp, client) =>
@@ -469,6 +470,14 @@ END");
 BEGIN
     ALTER TABLE ShopLocations ADD IsDefault BIT NOT NULL DEFAULT 1;
 END");
+    await db.Database.ExecuteSqlRawAsync(@"IF COL_LENGTH('ShopLocations', 'Hotline') IS NULL
+BEGIN
+    ALTER TABLE ShopLocations ADD Hotline NVARCHAR(30) NULL;
+END");
+    await db.Database.ExecuteSqlRawAsync(@"IF COL_LENGTH('ShopLocations', 'OpeningHours') IS NULL
+BEGIN
+    ALTER TABLE ShopLocations ADD OpeningHours NVARCHAR(80) NULL;
+END");
 
     await db.Database.ExecuteSqlRawAsync(@"IF NOT EXISTS (SELECT 1 FROM ShippingConfigs)
 BEGIN
@@ -485,6 +494,8 @@ END");
         {
             ShopName = "Cửa hàng chính",
             Address = shopAddress,
+            Hotline = "0375 570 025",
+            OpeningHours = "08:30 - 20:00",
             Latitude = point.Latitude,
             Longitude = point.Longitude,
             IsDefault = true
