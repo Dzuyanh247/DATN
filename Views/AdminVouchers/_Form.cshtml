@@ -74,6 +74,12 @@
                     <span asp-validation-for="MinimumOrderAmount" class="text-danger"></span>
                 </div>
                 <div class="voucher-field field-sm">
+                    <label class="form-label" for="MaxOrderAmount">Đơn hàng tối đa</label>
+                    <input id="MaxOrderAmount" name="MaxOrderAmount" class="form-control money-field" type="text" inputmode="numeric" placeholder="Không giới hạn" value='@(Model.MaxOrderAmount?.ToString("0.##", invariant) ?? string.Empty)' />
+                    <div class="form-text">Để trống nếu không giới hạn tối đa.</div>
+                    <span asp-validation-for="MaxOrderAmount" class="text-danger"></span>
+                </div>
+                <div class="voucher-field field-sm">
                     <label class="form-label" for="Quantity">Số lượng voucher</label>
                     <input asp-for="Quantity" class="form-control" type="number" min="1" placeholder="100" disabled="@(unlimitedQuantity)" />
                     <div class="voucher-check form-check">
@@ -111,10 +117,7 @@
                 <div class="voucher-field voucher-status-field">
                     <div class="voucher-toggle-card form-check">
                         <input asp-for="IsActive" class="form-check-input" />
-                        <div>
-                            <label asp-for="IsActive" class="form-check-label">Đang hoạt động</label>
-                            <div class="form-text">Cho phép dùng khi còn hạn và còn lượt.</div>
-                        </div>
+                        <label asp-for="IsActive" class="form-check-label">Đang hoạt động</label>
                     </div>
                 </div>
             </div>
@@ -135,6 +138,7 @@
                     <div><dt>Kiểu giảm</dt><dd data-preview="type">Giảm số tiền cố định</dd></div>
                     <div><dt>Giá trị</dt><dd data-preview="value">0 VNĐ</dd></div>
                     <div><dt>Đơn tối thiểu</dt><dd data-preview="minimum">0 VNĐ</dd></div>
+                    <div><dt>Đơn tối đa</dt><dd data-preview="maximum">Không giới hạn</dd></div>
                     <div><dt>Số lượng</dt><dd data-preview="quantity">Theo số lượng nhập</dd></div>
                     <div><dt>Hiệu lực</dt><dd data-preview="time">Chọn ngày bắt đầu và kết thúc</dd></div>
                 </dl>

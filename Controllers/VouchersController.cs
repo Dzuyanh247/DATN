@@ -24,7 +24,7 @@ public class VouchersController : ControllerBase
     {
         var userId = User.Identity?.IsAuthenticated == true ? int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!) : (int?)null;
         var results = await _voucherService.GetAvailableAsync(subtotal, shippingFee, userId, cancellationToken);
-        return Ok(new { success = true, data = results.Select(x => new { code = x.Voucher!.Code, name = x.Voucher.Name, discountType = x.Voucher.DiscountType.ToString(), discountValue = x.Voucher.DiscountValue, maxDiscountAmount = x.Voucher.MaxDiscountAmount, minimumOrderAmount = x.Voucher.MinimumOrderAmount, endDate = x.Voucher.EndDate, discountAmount = x.DiscountAmount }) });
+        return Ok(new { success = true, data = results.Select(x => new { code = x.Voucher!.Code, name = x.Voucher.Name, discountType = x.Voucher.DiscountType.ToString(), discountValue = x.Voucher.DiscountValue, maxDiscountAmount = x.Voucher.MaxDiscountAmount, minimumOrderAmount = x.Voucher.MinimumOrderAmount, maxOrderAmount = x.Voucher.MaxOrderAmount, endDate = x.Voucher.EndDate, discountAmount = x.DiscountAmount }) });
     }
 }
 

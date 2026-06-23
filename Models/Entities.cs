@@ -296,6 +296,7 @@ public class Voucher : BaseEntity
     public decimal DiscountValue { get; set; }
     public decimal? MaxDiscountAmount { get; set; }
     public decimal MinimumOrderAmount { get; set; }
+    public decimal? MaxOrderAmount { get; set; }
     public int Quantity { get; set; }
     public int UsedCount { get; set; }
     public int? MaxUsagePerUser { get; set; }
