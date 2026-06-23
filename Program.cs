@@ -404,6 +404,7 @@ BEGIN
         DiscountValue DECIMAL(18,2) NOT NULL DEFAULT 0,
         MaxDiscountAmount DECIMAL(18,2) NULL,
         MinimumOrderAmount DECIMAL(18,2) NOT NULL DEFAULT 0,
+        MaxOrderAmount DECIMAL(18,2) NULL,
         Quantity INT NOT NULL DEFAULT 0,
         UsedCount INT NOT NULL DEFAULT 0,
         MaxUsagePerUser INT NULL,
@@ -431,6 +432,7 @@ BEGIN
         CONSTRAINT FK_VoucherUsages_Orders FOREIGN KEY (OrderId) REFERENCES Orders(Id) ON DELETE CASCADE
     );
 END");
+    await db.Database.ExecuteSqlRawAsync(@"IF COL_LENGTH('Vouchers', 'MaxOrderAmount') IS NULL ALTER TABLE Vouchers ADD MaxOrderAmount DECIMAL(18,2) NULL;");
     await db.Database.ExecuteSqlRawAsync(@"IF COL_LENGTH('Orders', 'VoucherDiscountAmount') IS NULL ALTER TABLE Orders ADD VoucherDiscountAmount DECIMAL(18,2) NOT NULL DEFAULT 0;");
     await db.Database.ExecuteSqlRawAsync(@"IF COL_LENGTH('Orders', 'FinalTotal') IS NULL ALTER TABLE Orders ADD FinalTotal DECIMAL(18,2) NOT NULL DEFAULT 0;");
 

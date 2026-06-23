@@ -192,6 +192,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(x => x.DiscountValue).HasPrecision(18, 2);
             entity.Property(x => x.MaxDiscountAmount).HasPrecision(18, 2);
             entity.Property(x => x.MinimumOrderAmount).HasPrecision(18, 2);
+            entity.Property(x => x.MaxOrderAmount).HasPrecision(18, 2);
         });
         modelBuilder.Entity<VoucherUsage>(entity =>
         {

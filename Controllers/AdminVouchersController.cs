@@ -41,7 +41,7 @@ public class AdminVouchersController : Controller
         NormalizeAndValidate(model, id);
         if (!ModelState.IsValid) return View(model);
         voucher.Code = model.Code; voucher.Name = model.Name; voucher.DiscountType = model.DiscountType; voucher.DiscountValue = model.DiscountValue;
-        voucher.MaxDiscountAmount = model.MaxDiscountAmount; voucher.MinimumOrderAmount = model.MinimumOrderAmount; voucher.Quantity = model.Quantity;
+        voucher.MaxDiscountAmount = model.MaxDiscountAmount; voucher.MinimumOrderAmount = model.MinimumOrderAmount; voucher.MaxOrderAmount = model.MaxOrderAmount; voucher.Quantity = model.Quantity;
         voucher.MaxUsagePerUser = model.MaxUsagePerUser; voucher.StartDate = model.StartDate; voucher.EndDate = model.EndDate; voucher.IsActive = model.IsActive;
         await _db.SaveChangesAsync();
         TempData["SuccessMessage"] = "Đã cập nhật voucher.";
@@ -74,6 +74,7 @@ public class AdminVouchersController : Controller
         model.Name = (model.Name ?? string.Empty).Trim();
         if (Request.Form.ContainsKey("UnlimitedQuantity")) model.Quantity = int.MaxValue;
         if (model.DiscountType == VoucherDiscountType.FixedAmount) model.MaxDiscountAmount = null;
+        if (model.MaxOrderAmount.GetValueOrDefault() <= 0) model.MaxOrderAmount = null;
 
         if (string.IsNullOrWhiteSpace(model.Code)) ModelState.AddModelError(nameof(model.Code), "Vui lòng nhập mã voucher.");
         if (model.Code.Any(char.IsWhiteSpace)) ModelState.AddModelError(nameof(model.Code), "Mã voucher không được chứa khoảng trắng.");
@@ -82,6 +83,7 @@ public class AdminVouchersController : Controller
         if (model.DiscountType == VoucherDiscountType.FixedAmount && model.DiscountValue < 1000) ModelState.AddModelError(nameof(model.DiscountValue), "Giá trị giảm tiền cố định phải từ 1.000 VNĐ.");
         if (model.DiscountType == VoucherDiscountType.Percent && model.MaxDiscountAmount.HasValue && model.MaxDiscountAmount <= 0) ModelState.AddModelError(nameof(model.MaxDiscountAmount), "Giảm tối đa phải lớn hơn 0 hoặc để trống.");
         if (model.MinimumOrderAmount < 0) ModelState.AddModelError(nameof(model.MinimumOrderAmount), "Giá trị đơn hàng tối thiểu không được âm.");
+        if (model.MaxOrderAmount.HasValue && model.MaxOrderAmount <= model.MinimumOrderAmount) ModelState.AddModelError(nameof(model.MaxOrderAmount), "Đơn hàng tối đa phải lớn hơn đơn hàng tối thiểu hoặc để trống.");
         if (model.Quantity < 1) ModelState.AddModelError(nameof(model.Quantity), "Số lượng voucher phải từ 1 hoặc chọn không giới hạn.");
         if (model.Quantity < model.UsedCount) ModelState.AddModelError(nameof(model.Quantity), "Số lượng không được nhỏ hơn số lượt đã dùng.");
         if (model.MaxUsagePerUser.HasValue && model.MaxUsagePerUser < 1) ModelState.AddModelError(nameof(model.MaxUsagePerUser), "Số lần dùng tối đa mỗi tài khoản phải từ 1.");

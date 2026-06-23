@@ -66,7 +66,8 @@ public class VoucherService : IVoucherService
         if (voucher.StartDate > now) return new(false, "Voucher chưa đến thời gian sử dụng.", voucher, 0m, "NOT_STARTED");
         if (voucher.EndDate < now) return new(false, "Voucher đã hết hạn.", voucher, 0m, "EXPIRED");
         if (voucher.Quantity != int.MaxValue && (voucher.Quantity <= 0 || voucher.UsedCount >= voucher.Quantity)) return new(false, "Voucher đã hết lượt.", voucher, 0m, "OUT_OF_QUANTITY");
-        if (voucher.MinimumOrderAmount > 0 && subtotal < voucher.MinimumOrderAmount) return new(false, $"Đơn chưa đạt tối thiểu {voucher.MinimumOrderAmount:N0} VNĐ.", voucher, 0m, "MIN_ORDER_NOT_MET");
+        if (voucher.MinimumOrderAmount > 0 && subtotal < voucher.MinimumOrderAmount) return new(false, "Đơn hàng chưa đạt giá trị tối thiểu để dùng voucher.", voucher, 0m, "MIN_ORDER_NOT_MET");
+        if (voucher.MaxOrderAmount.GetValueOrDefault() > 0 && subtotal > voucher.MaxOrderAmount.Value) return new(false, "Đơn hàng vượt quá giá trị tối đa được áp dụng voucher.", voucher, 0m, "MAX_ORDER_EXCEEDED");
         if (userId.HasValue && voucher.MaxUsagePerUser.GetValueOrDefault() > 0)
         {
             var usedByUser = await _db.VoucherUsages.CountAsync(x => x.VoucherId == voucher.Id && x.UserId == userId.Value, cancellationToken);
@@ -89,7 +90,7 @@ public class VoucherService : IVoucherService
 
     private void LogVoucherDecision(VoucherValidationResult result, decimal subtotal, decimal shippingFee, int? userId, string? requestedCode = null)
     {
-        _logger.LogInformation("Voucher decision: success={Success}, failure={FailureCode}, requestedCode={RequestedCode}, voucherId={VoucherId}, voucherCode={VoucherCode}, isActive={IsActive}, startDate={StartDate}, endDate={EndDate}, minimumOrderAmount={MinimumOrderAmount}, subtotal={Subtotal}, shippingFee={ShippingFee}, quantity={Quantity}, usedCount={UsedCount}, maxUsagePerUser={MaxUsagePerUser}, userId={UserId}, discountType={DiscountType}, discountValue={DiscountValue}",
+        _logger.LogInformation("Voucher decision: success={Success}, failure={FailureCode}, requestedCode={RequestedCode}, voucherId={VoucherId}, voucherCode={VoucherCode}, isActive={IsActive}, startDate={StartDate}, endDate={EndDate}, minimumOrderAmount={MinimumOrderAmount}, maxOrderAmount={MaxOrderAmount}, subtotal={Subtotal}, shippingFee={ShippingFee}, quantity={Quantity}, usedCount={UsedCount}, maxUsagePerUser={MaxUsagePerUser}, userId={UserId}, discountType={DiscountType}, discountValue={DiscountValue}",
             result.Success,
             result.FailureCode,
             requestedCode,
@@ -99,6 +100,7 @@ public class VoucherService : IVoucherService
             result.Voucher?.StartDate,
             result.Voucher?.EndDate,
             result.Voucher?.MinimumOrderAmount,
+            result.Voucher?.MaxOrderAmount,
             subtotal,
             shippingFee,
             result.Voucher?.Quantity,
