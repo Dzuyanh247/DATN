@@ -854,3 +854,174 @@ body.admin-page {
     .dashboard-stat-card strong{font-size:1.55rem!important;}
     .dashboard-stat-card strong.is-money{font-size:1.18rem!important;}
 }
+
+/* Admin dashboard soft glass visual tuning: calm content background and cohesive cards. */
+:root {
+    --admin-dashboard-surface: rgba(248, 250, 252, .88);
+    --admin-dashboard-surface-soft: rgba(241, 245, 249, .82);
+    --admin-dashboard-surface-hover: rgba(248, 250, 252, .96);
+    --admin-dashboard-border: rgba(148, 163, 184, .28);
+    --admin-dashboard-border-blue: rgba(96, 165, 250, .24);
+    --admin-dashboard-shadow: 0 10px 26px rgba(15, 23, 42, .075);
+    --admin-dashboard-shadow-soft: 0 6px 18px rgba(15, 23, 42, .055);
+}
+
+body:has(.admin-shell) {
+    background: #0b1628;
+}
+
+.admin-shell {
+    background-image:
+        linear-gradient(135deg, rgba(226, 232, 240, .84), rgba(219, 234, 254, .76) 46%, rgba(241, 245, 249, .82)),
+        linear-gradient(180deg, rgba(15, 23, 42, .18), rgba(15, 23, 42, .08)),
+        var(--admin-bg-image) !important;
+    background-blend-mode: normal, soft-light, normal;
+}
+
+.admin-main {
+    background:
+        radial-gradient(circle at 20% 0%, rgba(14, 165, 233, .10), transparent 34%),
+        linear-gradient(180deg, rgba(248, 250, 252, .38), rgba(226, 232, 240, .26));
+}
+
+.admin-content {
+    background: rgba(241, 245, 249, .72) !important;
+    border-color: rgba(148, 163, 184, .22) !important;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, .07) !important;
+}
+
+.admin-topbar,
+.admin-data-panel,
+.admin-card,
+.admin-panel,
+.admin-table-card,
+.admin-filter-panel,
+.card,
+.admin-form-section,
+.admin-form-card,
+.admin-detail-panel,
+.admin-order-detail-panel,
+.admin-order-panel,
+.dashboard-panel,
+.dashboard-section,
+.dashboard-stat-card,
+.admin-stat-card,
+.admin-article-featured,
+.admin-warranty-table-wrap {
+    background: var(--admin-dashboard-surface) !important;
+    border: 1px solid var(--admin-dashboard-border) !important;
+    box-shadow: var(--admin-dashboard-shadow-soft) !important;
+}
+
+.dashboard-hero,
+.admin-article-hero {
+    background:
+        linear-gradient(135deg, rgba(15, 23, 42, .76), rgba(30, 64, 113, .68) 62%, rgba(15, 23, 42, .62)) !important;
+    border-color: rgba(147, 197, 253, .24) !important;
+    box-shadow: 0 12px 28px rgba(8, 17, 31, .14) !important;
+}
+
+.dashboard-hero p,
+.admin-article-hero p,
+.dashboard-welcome small {
+    color: rgba(226, 232, 240, .84) !important;
+}
+
+.dashboard-welcome {
+    background: rgba(226, 232, 240, .13) !important;
+    border-color: rgba(191, 219, 254, .22) !important;
+}
+
+.dashboard-stat-card {
+    position: relative;
+    overflow: hidden;
+    min-height: 108px !important;
+    background:
+        linear-gradient(145deg, rgba(248, 250, 252, .90), rgba(239, 246, 255, .78)) !important;
+    border-color: var(--admin-dashboard-border-blue) !important;
+    box-shadow: var(--admin-dashboard-shadow-soft) !important;
+}
+
+.dashboard-stat-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(90deg, rgba(14, 165, 233, .18), transparent 42%);
+    opacity: .36;
+    pointer-events: none;
+}
+
+.dashboard-stat-card > * {
+    position: relative;
+    z-index: 1;
+}
+
+.dashboard-stat-card small {
+    color: #64748b !important;
+}
+
+.dashboard-stat-card strong {
+    color: #102033;
+}
+
+.dashboard-panel,
+.dashboard-section {
+    background: linear-gradient(180deg, rgba(248, 250, 252, .90), rgba(241, 245, 249, .84)) !important;
+    border-color: var(--admin-dashboard-border) !important;
+    box-shadow: var(--admin-dashboard-shadow) !important;
+}
+
+.dashboard-actions > a,
+.dashboard-product-list > a,
+.dashboard-alert-list a,
+.dashboard-alert-static {
+    background: var(--admin-dashboard-surface-soft) !important;
+    border: 1px solid rgba(148, 163, 184, .24) !important;
+    box-shadow: none !important;
+}
+
+.dashboard-actions > a:hover,
+.dashboard-product-list > a:hover,
+.dashboard-alert-list a:hover {
+    background: var(--admin-dashboard-surface-hover) !important;
+    border-color: rgba(59, 130, 246, .28) !important;
+    box-shadow: 0 8px 18px rgba(15, 23, 42, .06) !important;
+}
+
+.dashboard-actions > a > i,
+.alert-icon {
+    background: rgba(219, 234, 254, .72) !important;
+    color: #1d4ed8 !important;
+}
+
+.dashboard-alert-list b,
+.dashboard-alert-static b {
+    background: rgba(219, 234, 254, .72);
+    color: #1e40af;
+    border: 1px solid rgba(96, 165, 250, .24);
+}
+
+.admin-content .table thead th {
+    background: rgba(226, 232, 240, .82) !important;
+}
+
+.admin-content .table tbody tr,
+.admin-content .table tbody td {
+    background-color: rgba(248, 250, 252, .86) !important;
+}
+
+.admin-empty-state {
+    background: rgba(241, 245, 249, .70) !important;
+    border-color: rgba(148, 163, 184, .24) !important;
+}
+
+.chart-column > div {
+    background: linear-gradient(180deg, rgba(226, 232, 240, .26), rgba(203, 213, 225, .34)) !important;
+    border-bottom-color: rgba(100, 116, 139, .32) !important;
+}
+
+.chart-column i {
+    background: linear-gradient(180deg, #38bdf8, #2563eb) !important;
+    box-shadow: 0 6px 14px rgba(37, 99, 235, .16);
+}
