@@ -5,86 +5,145 @@
     var invariant = CultureInfo.InvariantCulture;
 }
 <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
-<div class="admin-form-grid" id="voucherForm">
-    <div class="admin-field-full admin-form-section">
-        <h5 class="border-bottom pb-2 mb-3">Thông tin mã voucher</h5>
-        <div class="admin-form-grid">
-            <div class="admin-field-sm">
-                <label class="form-label">Mã voucher</label>
-                <input asp-for="Code" class="form-control text-uppercase" placeholder="SALE100K, GIAM10, FREESHIP" autocomplete="off" />
-                <div class="form-text">Mã tự chuyển in hoa và không chứa khoảng trắng.</div>
-                <span asp-validation-for="Code" class="text-danger"></span>
-            </div>
-            <div class="admin-field-lg">
-                <label class="form-label">Tên chương trình / Ghi chú</label>
-                <input asp-for="Name" class="form-control" placeholder="Ví dụ: Giảm 100.000 VNĐ cho đơn hàng đủ điều kiện" />
-            </div>
-        </div>
-    </div>
-
-    <div class="admin-field-full admin-form-section">
-        <h5 class="border-bottom pb-2 mb-3">Cách giảm giá</h5>
-        <div class="admin-form-grid">
-            <div class="admin-field-md">
-                <label class="form-label">Loại giảm giá</label>
-                <select asp-for="DiscountType" class="form-select">
-                    <option value="FixedAmount">Giảm số tiền cố định</option>
-                    <option value="Percent">Giảm theo phần trăm</option>
-                </select>
-            </div>
-            <div class="admin-field-sm admin-field-number">
-                <label class="form-label">Giá trị giảm</label>
-                <input id="DiscountValue" name="DiscountValue" class="form-control money-field" type="text" inputmode="numeric" placeholder="Ví dụ: 100000" value='@(Model.DiscountValue > 0 ? Model.DiscountValue.ToString("0.##", invariant) : string.Empty)' />
-                <div class="form-text" id="discountValueHelp">Ví dụ: 100000 cho voucher giảm 100.000 VNĐ.</div>
-                <span asp-validation-for="DiscountValue" class="text-danger"></span>
-            </div>
-            <div class="admin-field-sm admin-field-number" id="maxDiscountGroup">
-                <label class="form-label">Giảm tối đa</label>
-                <input id="MaxDiscountAmount" name="MaxDiscountAmount" class="form-control money-field" type="text" inputmode="numeric" placeholder="Để trống nếu không giới hạn" value='@(Model.MaxDiscountAmount?.ToString("0.##", invariant) ?? string.Empty)' />
-                <div class="form-text">Chỉ áp dụng cho voucher giảm theo phần trăm.</div>
-                <span asp-validation-for="MaxDiscountAmount" class="text-danger"></span>
-            </div>
-        </div>
-    </div>
-
-    <div class="admin-field-full admin-form-section">
-        <h5 class="border-bottom pb-2 mb-3">Điều kiện áp dụng</h5>
-        <div class="admin-form-grid">
-            <div class="admin-field-md">
-                <label class="form-label">Giá trị đơn hàng tối thiểu</label>
-                <input id="MinimumOrderAmount" name="MinimumOrderAmount" class="form-control money-field" type="text" inputmode="numeric" placeholder="Ví dụ: 500000" value='@Model.MinimumOrderAmount.ToString("0.##", invariant)' />
-                <div class="form-text">Nhập 0 nếu không yêu cầu tối thiểu.</div>
-                <span asp-validation-for="MinimumOrderAmount" class="text-danger"></span>
-            </div>
-            <div class="admin-field-sm admin-field-number">
-                <label class="form-label">Số lượng voucher</label>
-                <input asp-for="Quantity" class="form-control" type="number" min="1" placeholder="Ví dụ: 100" disabled="@(unlimitedQuantity)" />
-                <div class="form-check mt-2">
-                    <input class="form-check-input" type="checkbox" id="UnlimitedQuantity" name="UnlimitedQuantity" value="true" checked="@(unlimitedQuantity)" />
-                    <label class="form-check-label" for="UnlimitedQuantity">Không giới hạn số lượng</label>
+<div class="voucher-admin-form" id="voucherForm">
+    <div class="voucher-form-main">
+        <section class="admin-form-card voucher-form-card">
+            <div class="voucher-card-heading">
+                <div>
+                    <span class="voucher-card-kicker">Thông tin chung</span>
+                    <h5 class="admin-card-title mb-0"><i class="bi bi-ticket-perforated"></i>Thông tin mã voucher</h5>
                 </div>
-                <span asp-validation-for="Quantity" class="text-danger"></span>
+                <p class="voucher-card-help">Đặt mã ngắn gọn, dễ nhận diện khi nhập ở trang thanh toán.</p>
             </div>
-            <div class="admin-field-sm admin-field-number">
-                <label class="form-label">Số lần dùng tối đa mỗi tài khoản</label>
-                <input asp-for="MaxUsagePerUser" class="form-control" type="number" min="1" placeholder="Để trống nếu không giới hạn" />
-                <span asp-validation-for="MaxUsagePerUser" class="text-danger"></span>
+            <div class="voucher-grid voucher-grid-identity">
+                <div class="voucher-field voucher-field-code">
+                    <label class="form-label" for="Code">Mã voucher</label>
+                    <input asp-for="Code" class="form-control text-uppercase" placeholder="SALE100K" autocomplete="off" />
+                    <div class="form-text">Tự chuyển in hoa, không chứa khoảng trắng.</div>
+                    <span asp-validation-for="Code" class="text-danger"></span>
+                </div>
+                <div class="voucher-field voucher-field-wide">
+                    <label class="form-label" for="Name">Tên chương trình / Ghi chú</label>
+                    <input asp-for="Name" class="form-control" placeholder="Ví dụ: Giảm 100.000 VNĐ cho đơn đủ điều kiện" />
+                </div>
             </div>
-        </div>
+        </section>
+
+        <section class="admin-form-card voucher-form-card">
+            <div class="voucher-card-heading">
+                <div>
+                    <span class="voucher-card-kicker">Ưu đãi</span>
+                    <h5 class="admin-card-title mb-0"><i class="bi bi-percent"></i>Cách giảm giá</h5>
+                </div>
+            </div>
+            <div class="voucher-grid voucher-grid-three">
+                <div class="voucher-field">
+                    <label class="form-label" for="DiscountType">Loại giảm giá</label>
+                    <select asp-for="DiscountType" class="form-select">
+                        <option value="FixedAmount">Giảm số tiền cố định</option>
+                        <option value="Percent">Giảm theo phần trăm</option>
+                    </select>
+                </div>
+                <div class="voucher-field voucher-field-compact">
+                    <label class="form-label" for="DiscountValue">Giá trị giảm</label>
+                    <input id="DiscountValue" name="DiscountValue" class="form-control money-field" type="text" inputmode="numeric" placeholder="100000" value='@(Model.DiscountValue > 0 ? Model.DiscountValue.ToString("0.##", invariant) : string.Empty)' />
+                    <div class="form-text" id="discountValueHelp">Ví dụ: 100000 cho voucher giảm 100.000 VNĐ.</div>
+                    <span asp-validation-for="DiscountValue" class="text-danger"></span>
+                </div>
+                <div class="voucher-field voucher-field-compact" id="maxDiscountGroup">
+                    <label class="form-label" for="MaxDiscountAmount">Giảm tối đa</label>
+                    <input id="MaxDiscountAmount" name="MaxDiscountAmount" class="form-control money-field" type="text" inputmode="numeric" placeholder="Không giới hạn" value='@(Model.MaxDiscountAmount?.ToString("0.##", invariant) ?? string.Empty)' />
+                    <div class="form-text">Chỉ dùng cho giảm theo phần trăm.</div>
+                    <span asp-validation-for="MaxDiscountAmount" class="text-danger"></span>
+                </div>
+            </div>
+        </section>
+
+        <section class="admin-form-card voucher-form-card">
+            <div class="voucher-card-heading">
+                <div>
+                    <span class="voucher-card-kicker">Điều kiện</span>
+                    <h5 class="admin-card-title mb-0"><i class="bi bi-bag-check"></i>Điều kiện áp dụng</h5>
+                </div>
+            </div>
+            <div class="voucher-grid voucher-grid-three">
+                <div class="voucher-field voucher-field-compact">
+                    <label class="form-label" for="MinimumOrderAmount">Đơn hàng tối thiểu</label>
+                    <input id="MinimumOrderAmount" name="MinimumOrderAmount" class="form-control money-field" type="text" inputmode="numeric" placeholder="500000" value='@Model.MinimumOrderAmount.ToString("0.##", invariant)' />
+                    <div class="form-text">Nhập 0 nếu không yêu cầu.</div>
+                    <span asp-validation-for="MinimumOrderAmount" class="text-danger"></span>
+                </div>
+                <div class="voucher-field voucher-field-compact">
+                    <label class="form-label" for="Quantity">Số lượng voucher</label>
+                    <input asp-for="Quantity" class="form-control" type="number" min="1" placeholder="100" disabled="@(unlimitedQuantity)" />
+                    <div class="voucher-check form-check">
+                        <input class="form-check-input" type="checkbox" id="UnlimitedQuantity" name="UnlimitedQuantity" value="true" checked="@(unlimitedQuantity)" />
+                        <label class="form-check-label" for="UnlimitedQuantity">Không giới hạn số lượng</label>
+                    </div>
+                    <span asp-validation-for="Quantity" class="text-danger"></span>
+                </div>
+                <div class="voucher-field voucher-field-compact">
+                    <label class="form-label" for="MaxUsagePerUser">Số lần dùng / tài khoản</label>
+                    <input asp-for="MaxUsagePerUser" class="form-control" type="number" min="1" placeholder="Không giới hạn" />
+                    <span asp-validation-for="MaxUsagePerUser" class="text-danger"></span>
+                </div>
+            </div>
+        </section>
+
+        <section class="admin-form-card voucher-form-card">
+            <div class="voucher-card-heading">
+                <div>
+                    <span class="voucher-card-kicker">Hiệu lực</span>
+                    <h5 class="admin-card-title mb-0"><i class="bi bi-calendar-range"></i>Thời gian và trạng thái</h5>
+                </div>
+            </div>
+            <div class="voucher-grid voucher-grid-time">
+                <div class="voucher-field">
+                    <label class="form-label" for="StartDate">Ngày bắt đầu</label>
+                    <input asp-for="StartDate" class="form-control" type="datetime-local" />
+                    <span asp-validation-for="StartDate" class="text-danger"></span>
+                </div>
+                <div class="voucher-field">
+                    <label class="form-label" for="EndDate">Ngày kết thúc</label>
+                    <input asp-for="EndDate" class="form-control" type="datetime-local" />
+                    <span asp-validation-for="EndDate" class="text-danger"></span>
+                </div>
+                <div class="voucher-field voucher-status-field">
+                    <div class="voucher-toggle-card form-check">
+                        <input asp-for="IsActive" class="form-check-input" />
+                        <div>
+                            <label asp-for="IsActive" class="form-check-label">Đang hoạt động</label>
+                            <div class="form-text">Cho phép dùng khi còn hạn và còn lượt.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
     </div>
 
-    <div class="admin-field-full admin-form-section">
-        <h5 class="border-bottom pb-2 mb-3">Thời gian và trạng thái</h5>
-        <div class="admin-form-grid">
-            <div class="admin-field-md"><label class="form-label">Ngày bắt đầu</label><input asp-for="StartDate" class="form-control" type="datetime-local" /><span asp-validation-for="StartDate" class="text-danger"></span></div>
-            <div class="admin-field-md"><label class="form-label">Ngày kết thúc</label><input asp-for="EndDate" class="form-control" type="datetime-local" /><span asp-validation-for="EndDate" class="text-danger"></span></div>
-            <div class="admin-field-full"><div class="form-check"><input asp-for="IsActive" class="form-check-input" /><label asp-for="IsActive" class="form-check-label">Đang hoạt động</label><div class="form-text">Voucher có thể được sử dụng khi còn hạn và còn lượt.</div></div></div>
+    <aside class="voucher-form-side">
+        <div class="admin-form-card voucher-preview-card">
+            <div class="voucher-card-heading">
+                <div>
+                    <span class="voucher-card-kicker">Xem trước</span>
+                    <h5 class="admin-card-title mb-0"><i class="bi bi-eye"></i>Voucher sẽ hiển thị</h5>
+                </div>
+            </div>
+            <div class="voucher-preview-box" id="voucherPreview">
+                <div class="voucher-preview-code" data-preview="code">MÃVOUCHER</div>
+                <dl class="voucher-preview-list">
+                    <div><dt>Kiểu giảm</dt><dd data-preview="type">Giảm số tiền cố định</dd></div>
+                    <div><dt>Giá trị</dt><dd data-preview="value">0 VNĐ</dd></div>
+                    <div><dt>Đơn tối thiểu</dt><dd data-preview="minimum">0 VNĐ</dd></div>
+                    <div><dt>Số lượng</dt><dd data-preview="quantity">Theo số lượng nhập</dd></div>
+                    <div><dt>Hiệu lực</dt><dd data-preview="time">Chọn ngày bắt đầu và kết thúc</dd></div>
+                </dl>
+            </div>
+            <div class="voucher-form-actions">
+                <button class="btn btn-primary" type="submit"><i class="bi bi-save me-1"></i>Lưu voucher</button>
+                <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Quay lại</a>
+            </div>
         </div>
-    </div>
-
-    <div class="admin-field-full">
-        <div class="alert alert-light border mb-0"><strong>Xem trước:</strong> <span id="voucherPreview">Nhập thông tin để xem trước voucher.</span></div>
-    </div>
+    </aside>
 </div>
-<div class="mt-4 d-flex gap-2"><button class="btn btn-primary">Lưu voucher</button><a asp-action="Index" class="btn btn-outline-secondary">Quay lại</a></div>
 <script src="~/js/admin-voucher.js" asp-append-version="true"></script>

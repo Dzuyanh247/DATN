@@ -1,5 +1,10 @@
 @model Voucher
 @{ ViewData["Title"] = "Sửa voucher"; }
-<h3 class="mb-3">Sửa mã voucher</h3>
-<form method="post" class="card p-3 p-lg-4">@Html.AntiForgeryToken()<partial name="_Form" model="Model" /></form>
+<div class="admin-page-heading">
+    <div>
+        <p class="admin-eyebrow mb-1">Voucher</p>
+        <h3 class="mb-0">Sửa mã voucher</h3>
+    </div>
+</div>
+<form method="post" class="voucher-page-form">@Html.AntiForgeryToken()<partial name="_Form" model="Model" /></form>
 <partial name="_ValidationScriptsPartial" />
