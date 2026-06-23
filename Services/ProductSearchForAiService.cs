@@ -229,14 +229,15 @@ public partial class ProductSearchForAiService : IProductSearchForAiService
         var accessory = DetectAccessoryType(normalized);
         if (accessory != null) componentType = accessory;
         var isCompare = ContainsAny(normalized, "so sanh", "compare", "khac nhau");
-        var isPcAdvice = (PcIntentWords.Any(normalized.Contains) || !string.IsNullOrWhiteSpace(game)) && accessory == null && componentType == null;
+        var hasSpecificProductName = DetectSpecificProductName(normalized, componentType);
+        var isProductQuestion = IsProductQuestion(normalized);
+        var isPcAdvice = !hasSpecificProductName && !isProductQuestion && (PcIntentWords.Any(normalized.Contains) || !string.IsNullOrWhiteSpace(game)) && accessory == null && componentType == null;
         var isPolicy = ContainsAny(normalized, "tra gop", "freeship", "doi tra", "bao hanh tan noi", "hoa toc", "chinh sach");
         var isOrder = ContainsAny(normalized, "don hang", "ma don", "dh0");
         var isWarranty = ContainsAny(normalized, "bao hanh", "warranty");
         var isPayment = ContainsAny(normalized, "thanh toan", "chuyen khoan", "cod");
         var isHuman = ContainsAny(normalized, "nhan vien", "tu van vien", "nguoi that");
         var intent = isHuman ? "HUMAN_SUPPORT" : isOrder ? "ORDER_QA" : isPayment ? "PAYMENT_QA" : isWarranty ? "WARRANTY_QA" : isPolicy ? "POLICY_QA" : isPcAdvice ? "PC_ADVICE" : isCompare ? "PRODUCT_COMPARE" : "PRODUCT_QA";
-        var hasSpecificProductName = DetectSpecificProductName(normalized, componentType);
         var budget = ParseBudget(text);
         return new AiSearchAnalysis(intent, isPcAdvice ? "PC" : "COMPONENT", budget.Min, budget.Max, game, ParseFps(normalized), componentType, hasSpecificProductName);
     }
@@ -291,6 +292,9 @@ public partial class ProductSearchForAiService : IProductSearchForAiService
         if (!string.IsNullOrWhiteSpace(analysis.TargetGame)) tokens.Add(analysis.TargetGame);
         return tokens.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
     }
+
+    private static bool IsProductQuestion(string normalized)
+        => ContainsAny(normalized, "ton dien", "hao dien", "an dien", "dien nang", "cong suat", "nong khong", "on khong", "co tot khong", "tot khong", "co nen mua", "uu diem", "nhuoc diem", "danh gia", "phan tich", "choi duoc khong", "nang cap duoc khong");
 
     private static bool DetectSpecificProductName(string normalized, string? componentType)
     {
