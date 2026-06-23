@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Net;
 using System.Net.Http.Json;
 using System.Text.RegularExpressions;
 using System.Text.Json;
@@ -43,6 +44,7 @@ public interface IAiChatService
 public partial class GeminiChatService : IAiChatService
 {
     private const string FriendlyErrorMessage = "Mình đang gặp lỗi tạm thời khi xử lý câu trả lời. Bạn thử gửi lại giúp mình nhé.";
+    private const string ProviderBusyMessage = "AI đang bận, bạn vui lòng thử lại sau hoặc chọn Gặp nhân viên.";
     private readonly HttpClient _httpClient;
     private readonly IProductSearchForAiService _productSearch;
     private readonly IMemoryCache _cache;
@@ -145,10 +147,22 @@ public partial class GeminiChatService : IAiChatService
             if (!response.IsSuccessStatusCode)
             {
                 var body = await response.Content.ReadAsStringAsync(timeout.Token);
-                _logger.LogWarning("[KKSHOP_AI_ERROR] requestId={RequestId}; sessionId={SessionId}; status={StatusCode}; userMessage={UserMessage}; intent={Intent}; productContext={ProductContext}; body={Body}", requestId, sessionId, response.StatusCode, TrimForLog(message), intent, conversation.CurrentProductContext?.Name ?? "none", TrimForLog(body));
-                var fallback = BuildFallbackReply(message, intent, conversation);
-                LogDebugState(requestId, sessionId, message, intent, conversation, products, false, $"provider-status-{(int)response.StatusCode}", fallback.Length, 0, body);
-                return new(!string.IsNullOrWhiteSpace(fallback), string.IsNullOrWhiteSpace(fallback) ? FriendlyErrorMessage : fallback, [], false, requestId);
+                var isProviderBusy = response.StatusCode == HttpStatusCode.ServiceUnavailable;
+                var fallback = isProviderBusy ? ProviderBusyMessage : BuildFallbackReply(message, intent, conversation);
+                var reply = string.IsNullOrWhiteSpace(fallback) ? FriendlyErrorMessage : fallback;
+                var logBody = TrimForLog(body, isProviderBusy ? 120 : 180);
+
+                if (isProviderBusy)
+                {
+                    _logger.LogWarning("[KKSHOP_AI_PROVIDER_BUSY] requestId={RequestId}; sessionId={SessionId}; status={StatusCode}; userMessage={UserMessage}; intent={Intent}; productContext={ProductContext}; body={Body}", requestId, sessionId, response.StatusCode, TrimForLog(message), intent, conversation.CurrentProductContext?.Name ?? "none", logBody);
+                }
+                else
+                {
+                    _logger.LogWarning("[KKSHOP_AI_ERROR] requestId={RequestId}; sessionId={SessionId}; status={StatusCode}; userMessage={UserMessage}; intent={Intent}; productContext={ProductContext}; body={Body}", requestId, sessionId, response.StatusCode, TrimForLog(message), intent, conversation.CurrentProductContext?.Name ?? "none", logBody);
+                }
+
+                LogDebugState(requestId, sessionId, message, intent, conversation, products, false, isProviderBusy ? "provider-busy" : $"provider-status-{(int)response.StatusCode}", reply.Length, 0, logBody);
+                return new(true, reply, [], false, requestId);
             }
             using var document = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync(timeout.Token), cancellationToken: timeout.Token);
             var reply = ExtractReply(document.RootElement);
@@ -377,7 +391,7 @@ public partial class GeminiChatService : IAiChatService
         return string.Join("\n", parts.EnumerateArray().Select(p => p.TryGetProperty("text", out var text) ? text.GetString() : null).Where(x => !string.IsNullOrWhiteSpace(x)));
     }
 
-    private static string TrimForLog(string text) => text.Length <= 180 ? text : text[..180] + "...";
+    private static string TrimForLog(string text, int maxLength = 180) => text.Length <= maxLength ? text : text[..maxLength] + "...";
 
     [GeneratedRegex(@"/Products/Detail/(\d+)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex ProductUrlRegex();
