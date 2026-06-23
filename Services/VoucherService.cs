@@ -67,11 +67,13 @@ public class VoucherService : IVoucherService
         if (voucher.EndDate < now) return new(false, "Voucher đã hết hạn.", voucher, 0m, "EXPIRED");
         if (voucher.Quantity != int.MaxValue && (voucher.Quantity <= 0 || voucher.UsedCount >= voucher.Quantity)) return new(false, "Voucher đã hết lượt.", voucher, 0m, "OUT_OF_QUANTITY");
         if (voucher.MinimumOrderAmount > 0 && subtotal < voucher.MinimumOrderAmount) return new(false, "Đơn hàng chưa đạt giá trị tối thiểu để dùng voucher.", voucher, 0m, "MIN_ORDER_NOT_MET");
-        if (voucher.MaxOrderAmount.GetValueOrDefault() > 0 && subtotal > voucher.MaxOrderAmount.Value) return new(false, "Đơn hàng vượt quá giá trị tối đa được áp dụng voucher.", voucher, 0m, "MAX_ORDER_EXCEEDED");
-        if (userId.HasValue && voucher.MaxUsagePerUser.GetValueOrDefault() > 0)
+        var maxOrderAmount = voucher.MaxOrderAmount.GetValueOrDefault();
+        if (maxOrderAmount > 0 && subtotal > maxOrderAmount) return new(false, "Đơn hàng vượt quá giá trị tối đa được áp dụng voucher.", voucher, 0m, "MAX_ORDER_EXCEEDED");
+        var maxUsagePerUser = voucher.MaxUsagePerUser.GetValueOrDefault();
+        if (userId.HasValue && maxUsagePerUser > 0)
         {
             var usedByUser = await _db.VoucherUsages.CountAsync(x => x.VoucherId == voucher.Id && x.UserId == userId.Value, cancellationToken);
-            if (usedByUser >= voucher.MaxUsagePerUser!.Value) return new(false, "Đã vượt giới hạn sử dụng.", voucher, 0m, "USER_USAGE_LIMIT");
+            if (usedByUser >= maxUsagePerUser) return new(false, "Đã vượt giới hạn sử dụng.", voucher, 0m, "USER_USAGE_LIMIT");
         }
 
         var baseAmount = Math.Max(subtotal + shippingFee, 0m);
