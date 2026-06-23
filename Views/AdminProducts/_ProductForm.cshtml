@@ -524,30 +524,47 @@
                 || (normalized.startsWith('stt ') && normalized.includes('mô tả') && normalized.includes(' sl') && normalized.endsWith('bh'));
         }
 
-        const groupHeaderRegex = /^(bộ vi xử lý|bo vi xu ly|cpu|ram laptop|bộ nhớ trong|bo nho trong|ổ cứng|o cung|ssd laptop|hiển thị|hien thi|màn hình|man hinh|đồ họa|do hoa|vga|gpu|kết nối|ket noi|network|keyboard|bàn phím|ban phim|mouse|chuột|chuot|pin laptop|pin|hệ điều hành|he dieu hanh|thông tin khác|thong tin khac)$/i;
-        const attributeLabelRegex = /^(tên bộ vi xử lý|ten bo vi xu ly|dung lượng|dung luong|loại ram|loai ram|tên ổ cứng|ten o cung|card đồ họa|card do hoa|độ phân giải|do phan giai|tần số quét|tan so quet|công nghệ|cong nghe|kích thước|kich thuoc|màu sắc|mau sac|bảo mật|bao mat|camera|audio|âm thanh|am thanh|trọng lượng|trong luong)$/i;
+        const groupHeaderRegex = /^(bộ vi xử lý(?: \(cpu\))?|bo vi xu ly|cpu|bộ nhớ trong(?: \(ram laptop\))?|ram laptop|bo nho trong|ổ cứng(?: \(ssd laptop\))?|o cung|ssd laptop|ổ đĩa quang(?: \(odd\))?|hiển thị(?: \(màn hình\))?|hien thi|màn hình|man hinh|đồ họa(?: \(vga\))?|do hoa|vga|gpu|kết nối(?: \(network\))?|ket noi|network|keyboard(?: \(bàn phím\))?|bàn phím|ban phim|mouse(?: \(chuột\))?|chuột|chuot|giao tiếp mở rộng|pin laptop|sạc pin laptop|sac pin laptop|hệ điều hành(?: \(operating system\))?|he dieu hanh|thông tin khác|thong tin khac)$/i;
+        const attributeLabelRegex = /^(tên bộ vi xử lý|ten bo vi xu ly|tốc độ|toc do|bộ nhớ đệm|bo nho dem|cache|dung lượng|dung luong|số khe cắm|so khe cam|khả năng nâng cấp|kha nang nang cap|màn hình|man hinh|độ phân giải|do phan giai|bộ xử lý|bo xu ly|công nghệ|cong nghe|wireless|lan|bluetooth|kiểu bàn phím|kieu ban phim|cảm ứng đa điểm|cam ung da diem|kết nối usb|ket noi usb|kết nối hdmi\/vga|ket noi hdmi\/vga|card reader|tai nghe|camera|sạc pin laptop|sac pin laptop|đi kèm|di kem|hệ điều hành đi kèm|he dieu hanh di kem|hệ điều hành tương thích|he dieu hanh tuong thich|phần mềm office|phan mem office|tính năng đặc biệt|tinh nang dac biet|audio|âm thanh|am thanh|trọng lượng|trong luong|kích thước|kich thuoc|chất liệu|chat lieu|màu sắc|mau sac|bảo mật|bao mat)$/i;
         const meaninglessRegex = /^(none|--|n\/a|không có|khong co|trống|trong)$/i;
 
         function isGroupHeader(line) { return groupHeaderRegex.test(trimField(line)); }
         function isAttributeLabel(line) { return attributeLabelRegex.test(trimField(line)); }
         function isMeaninglessValue(line) { return meaninglessRegex.test(trimField(line)); }
 
-        function mapLabelToName(line) {
+        function mapLabelToName(line, group) {
             const value = trimField(line);
-            if (/cpu|vi xử lý|vi xu ly/i.test(value)) return 'CPU';
-            if (/ram|bộ nhớ|bo nho|dung lượng|dung luong/i.test(value)) return 'RAM';
-            if (/ssd|hdd|ổ cứng|o cung/i.test(value)) return 'SSD';
-            if (/vga|gpu|đồ họa|do hoa|card/i.test(value)) return 'GPU';
-            if (/màn hình|man hinh|hiển thị|hien thi|phân giải|phan giai|tần số|tan so/i.test(value)) return 'Màn hình';
-            if (/hệ điều hành|he dieu hanh/i.test(value)) return 'OS';
+            const label = value.replace(/(?:\s*[:|]\s+|\s{2,}).*$/, '');
+            if (/^(tên bộ vi xử lý|ten bo vi xu ly|tốc độ|toc do)$/i.test(label)) return 'CPU';
+            if (/^(bộ nhớ đệm|bo nho dem|cache)$/i.test(label)) return 'Cache';
+            if (/^(dung lượng|dung luong)$/i.test(label)) {
+                if (/ram|bộ nhớ|bo nho/i.test(group || '')) return 'RAM';
+                if (/ssd|ổ cứng|o cung/i.test(group || '')) return 'SSD';
+                if (/pin/i.test(group || '')) return 'Pin';
+            }
+            if (/^(số khe cắm|so khe cam)$/i.test(label)) return 'Khe RAM';
+            if (/^(khả năng nâng cấp|kha nang nang cap)$/i.test(label)) return 'Khả năng nâng cấp';
+            if (/^(màn hình|man hinh)$/i.test(label)) return 'Màn hình';
+            if (/^(độ phân giải|do phan giai)$/i.test(label)) return 'Độ phân giải';
+            if (/^(bộ xử lý|bo xu ly)$/i.test(label) && /vga|đồ họa|do hoa|gpu/i.test(group || '')) return 'GPU';
+            if (/^(công nghệ|cong nghe)$/i.test(label) && /vga|đồ họa|do hoa|gpu/i.test(group || '')) return 'Công nghệ GPU';
+            const direct = [['Wireless','WiFi'],['Lan','LAN'],['Bluetooth','Bluetooth'],['Kiểu bàn phím','Bàn phím'],['Cảm ứng đa điểm','Chuột/Touchpad'],['Kết nối USB','Cổng USB'],['Kết nối HDMI/VGA','HDMI/VGA'],['Card reader','Card reader'],['Tai nghe','Jack âm thanh'],['Camera','Camera'],['Sạc Pin Laptop','Sạc'],['Đi kèm','Sạc'],['Hệ điều hành đi kèm','OS'],['Hệ điều hành tương thích','OS tương thích'],['Phần mềm Office','Office'],['Tính năng đặc biệt','Tính năng đặc biệt'],['Audio','Audio'],['Trọng lượng','Trọng lượng'],['Kích thước','Kích thước'],['Chất liệu','Chất liệu'],['Màu sắc','Màu sắc'],['Bảo mật','Bảo mật']];
+            const found = direct.find(([k]) => new RegExp(`^${k}$`, 'i').test(label));
+            if (found) return found[1];
             return 'Thông số khác';
         }
 
+        function splitInlineLabelValue(line) {
+            const cleaned = trimField(line);
+            const m = cleaned.match(/^(.+?)(?:\s*[:|]\s+|\s{2,})(.+)$/);
+            if (m) return { label: trimField(m[1]), value: trimField(m[2]) };
+            const prefixes = ['Hệ điều hành tương thích','Hệ điều hành đi kèm','Tính năng đặc biệt','Phần mềm Office','Sạc Pin Laptop','Dung lượng pin','Trọng lượng','Kích thước','Chất liệu','Màu sắc','Bảo mật','Wireless','Bluetooth','Camera','Audio','Lan','Đi kèm'];
+            const prefix = prefixes.find(x => cleaned.toLowerCase().startsWith(`${x.toLowerCase()} `));
+            return prefix ? { label: prefix, value: trimField(cleaned.slice(prefix.length)) } : { label: cleaned, value: '' };
+        }
+
         function cleanLaptopValue(name, value) {
-            let cleaned = trimField(value).replace(/\bProcessor\b/ig, '').replace(/^[-:]+\s*/, '').trim();
-            if (name === 'SSD') cleaned = cleaned.replace(/\bM\.?2\s*2242\s*/ig, '');
-            if (name === 'GPU') cleaned = cleaned.replace(/\b(?:NVIDIA\s+GeForce|NVIDIA|AMD\s+Radeon)\s+/ig, '');
-            if (name === 'Màn hình') cleaned = cleaned.replace(/ inch/ig, '"');
+            let cleaned = trimField(value).replace(/^[-:]+\s*/, '').trim();
             return trimField(cleaned.replace(/^[,\-\s]+|[,\-\s]+$/g, ''));
         }
 
@@ -592,10 +609,27 @@
             return merged.map((spec, index) => ({ ...spec, stt: index + 1 }));
         }
 
+        function parseLaptopTable(lines) {
+            if (lines.filter(isGroupHeader).length < 2) return [];
+            const result = []; let group = '', pending = null, values = [];
+            const flush = () => { if (pending) { const value = values.map(trimField).filter(x => x && !isMeaninglessValue(x)).join('; '); if (value) result.push(buildSpec(pending, value)); } pending = null; values = []; };
+            lines.forEach(line => {
+                if (isGroupHeader(line)) { flush(); group = line; return; }
+                const split = splitInlineLabelValue(line); const mapped = mapLabelToName(split.label, group);
+                if (mapped !== 'Thông số khác' && attributeLabelRegex.test(split.label)) { flush(); pending = mapped; if (split.value && !isMeaninglessValue(split.value)) values.push(split.value); return; }
+                if (pending) { if (!isMeaninglessValue(line)) values.push(line); return; }
+                const spec = classifySpec(line); if (spec) result.push(spec);
+            });
+            flush();
+            return mergeSimilarSpecs(result);
+        }
+
         window.parsePastedSpecs = function parsePastedSpecs(rawText) {
             const result = [];
             const lines = (rawText || '').split(/\r?\n/).map(trimField).filter(line => line && !isHeaderLine(line) && !isMeaninglessValue(line));
             const fallbackRegex = /^\s*(\d+)\s+(.+?)\s+(\d+)\s+([0-9]+th|[0-9]+\s*tháng|[0-9]+)\s*$/i;
+            const laptopSpecs = parseLaptopTable(lines);
+            if (laptopSpecs.length) return laptopSpecs;
 
             for (let i = 0; i < lines.length; i++) {
                 const line = lines[i];
@@ -612,10 +646,10 @@
                     else {
                         spec = classifySpec(line);
                         if (!spec && i + 1 < lines.length && isAttributeLabel(line) && !isGroupHeader(lines[i + 1]) && !isAttributeLabel(lines[i + 1])) {
-                            spec = buildSpec(mapLabelToName(line), lines[i + 1]);
+                            spec = buildSpec(mapLabelToName(line, null), lines[i + 1]);
                             i++;
                         } else if (!spec && i + 2 < lines.length && isGroupHeader(line) && isAttributeLabel(lines[i + 1])) {
-                            spec = buildSpec(mapLabelToName(line), lines[i + 2]);
+                            spec = buildSpec(mapLabelToName(line, null), lines[i + 2]);
                             i += 2;
                         }
                         if (!spec && !isGroupHeader(line) && !isAttributeLabel(line)) spec = buildSpec('Thông số khác', line.replace(/^\s*\d+\s+/, ''));

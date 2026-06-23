@@ -57,6 +57,12 @@ public static class ProductComponentSpecHelper
             .Where(line => !string.IsNullOrWhiteSpace(line) && !IsMeaninglessValue(line) && !IsTableHeaderLine(line))
             .ToList();
 
+        if (LooksLikeLaptopSpecTable(lines))
+        {
+            var laptopSpecs = ParseLaptopSpecTable(lines);
+            if (laptopSpecs.Count > 0) return Normalize(MergeSimilarSpecs(laptopSpecs));
+        }
+
         for (var i = 0; i < lines.Count; i++)
         {
             var line = lines[i];
@@ -208,20 +214,138 @@ public static class ProductComponentSpecHelper
 
     private static string CleanLaptopValue(string name, string value)
     {
-        var cleaned = CleanLine(Regex.Replace(value, @"\bProcessor\b", string.Empty, RegexOptions.IgnoreCase));
-        if (name == "SSD") cleaned = Regex.Replace(cleaned, @"\bM\.?2\s*2242\s*", string.Empty, RegexOptions.IgnoreCase);
-        if (name == "GPU") cleaned = Regex.Replace(cleaned, @"\b(?:NVIDIA\s+GeForce|NVIDIA|AMD\s+Radeon)\s+", string.Empty, RegexOptions.IgnoreCase);
-        if (name == "Màn hình") cleaned = cleaned.Replace(" inch", "\"", StringComparison.OrdinalIgnoreCase);
-        return CleanLine(cleaned.Trim(',', '-', ' '));
+        var cleaned = CleanLine(value);
+        return CleanLine(cleaned.Trim(',', '-', ':', ' '));
     }
 
-    private static bool IsGroupHeader(string line)
-        => Regex.IsMatch(line, @"^(bộ vi xử lý|bo vi xu ly|cpu|ram laptop|bộ nhớ trong|bo nho trong|ổ cứng|o cung|ssd laptop|hiển thị|hien thi|màn hình|man hinh|đồ họa|do hoa|vga|gpu|kết nối|ket noi|network|keyboard|bàn phím|ban phim|mouse|chuột|chuot|pin laptop|pin|hệ điều hành|he dieu hanh|thông tin khác|thong tin khac)$", RegexOptions.IgnoreCase);
+    private static bool LooksLikeLaptopSpecTable(List<string> lines)
+        => lines.Count(IsLaptopGroupHeader) >= 2;
+
+    private static List<ProductComponentSpecViewModel> ParseLaptopSpecTable(List<string> lines)
+    {
+        var specs = new List<ProductComponentSpecViewModel>();
+        string? currentGroup = null;
+        string? pendingName = null;
+        var pendingValues = new List<string>();
+
+        void Flush()
+        {
+            if (string.IsNullOrWhiteSpace(pendingName)) return;
+            var value = string.Join("; ", pendingValues.Select(CleanLine).Where(x => !string.IsNullOrWhiteSpace(x) && !IsMeaninglessValue(x)));
+            if (!string.IsNullOrWhiteSpace(value)) specs.Add(BuildSpec(pendingName, value));
+            pendingName = null;
+            pendingValues.Clear();
+        }
+
+        foreach (var line in lines)
+        {
+            if (IsLaptopGroupHeader(line))
+            {
+                Flush();
+                currentGroup = line;
+                continue;
+            }
+
+            var mapped = TryMapLaptopLabel(line, currentGroup, out var inlineValue);
+            if (!string.IsNullOrWhiteSpace(mapped))
+            {
+                Flush();
+                pendingName = mapped;
+                if (!string.IsNullOrWhiteSpace(inlineValue) && !IsMeaninglessValue(inlineValue)) pendingValues.Add(inlineValue);
+                continue;
+            }
+
+            if (!string.IsNullOrWhiteSpace(pendingName))
+            {
+                if (!IsMeaninglessValue(line)) pendingValues.Add(line);
+                continue;
+            }
+
+            var classified = ClassifySpec(line);
+            if (classified != null) specs.Add(classified);
+        }
+
+        Flush();
+        return specs;
+    }
+
+    private static bool IsGroupHeader(string line) => IsLaptopGroupHeader(line);
+
+    private static bool IsLaptopGroupHeader(string line)
+        => Regex.IsMatch(line, @"^(bộ vi xử lý(?: \(cpu\))?|bo vi xu ly|cpu|bộ nhớ trong(?: \(ram laptop\))?|ram laptop|bo nho trong|ổ cứng(?: \(ssd laptop\))?|o cung|ssd laptop|ổ đĩa quang(?: \(odd\))?|hiển thị(?: \(màn hình\))?|hien thi|màn hình|man hinh|đồ họa(?: \(vga\))?|do hoa|vga|gpu|kết nối(?: \(network\))?|ket noi|network|keyboard(?: \(bàn phím\))?|bàn phím|ban phim|mouse(?: \(chuột\))?|chuột|chuot|giao tiếp mở rộng|pin laptop|sạc pin laptop|sac pin laptop|hệ điều hành(?: \(operating system\))?|he dieu hanh|thông tin khác|thong tin khac)$", RegexOptions.IgnoreCase);
 
     private static bool IsAttributeLabel(string line)
-        => Regex.IsMatch(line, @"^(tên bộ vi xử lý|ten bo vi xu ly|dung lượng|dung luong|loại ram|loai ram|tên ổ cứng|ten o cung|card đồ họa|card do hoa|độ phân giải|do phan giai|tần số quét|tan so quet|công nghệ|cong nghe|kích thước|kich thuoc|màu sắc|mau sac|bảo mật|bao mat|camera|audio|âm thanh|am thanh|trọng lượng|trong luong)$", RegexOptions.IgnoreCase);
+        => !string.IsNullOrWhiteSpace(TryMapLaptopLabel(line, null, out _));
 
-    private static string MapAttributeToName(string line) => MapGroupToName(line);
+    private static string? TryMapLaptopLabel(string line, string? group, out string inlineValue)
+    {
+        inlineValue = string.Empty;
+        var cleaned = CleanLine(line);
+        var label = cleaned;
+        var match = Regex.Match(cleaned, @"^(.+?)(?:\s*[:|]\s+|\s{2,})(.+)$");
+        if (match.Success)
+        {
+            label = CleanLine(match.Groups[1].Value);
+            inlineValue = CleanLine(match.Groups[2].Value);
+        }
+        else
+        {
+            var inlinePrefixes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["Wireless"] = "WiFi", ["Lan"] = "LAN", ["Bluetooth"] = "Bluetooth", ["Camera"] = "Camera",
+                ["Audio"] = "Audio", ["Trọng lượng"] = "Trọng lượng", ["Kích thước"] = "Kích thước",
+                ["Chất liệu"] = "Chất liệu", ["Màu sắc"] = "Màu sắc", ["Bảo mật"] = "Bảo mật",
+                ["Dung lượng pin"] = "Pin", ["Sạc Pin Laptop"] = "Sạc", ["Đi kèm"] = "Sạc",
+                ["Hệ điều hành đi kèm"] = "OS", ["Hệ điều hành tương thích"] = "OS tương thích",
+                ["Phần mềm Office"] = "Office", ["Tính năng đặc biệt"] = "Tính năng đặc biệt"
+            };
+            foreach (var prefix in inlinePrefixes.Keys.OrderByDescending(x => x.Length))
+            {
+                if (!cleaned.StartsWith(prefix + " ", StringComparison.OrdinalIgnoreCase)) continue;
+                inlineValue = CleanLine(cleaned[prefix.Length..]);
+                return inlinePrefixes[prefix];
+            }
+        }
+
+        if (Regex.IsMatch(label, @"^tên bộ vi xử lý$|^ten bo vi xu ly$|^tốc độ$|^toc do$", RegexOptions.IgnoreCase)) return "CPU";
+        if (Regex.IsMatch(label, @"^bộ nhớ đệm$|^bo nho dem$|^cache$", RegexOptions.IgnoreCase)) return "Cache";
+        if (Regex.IsMatch(label, @"^dung lượng$|^dung luong$", RegexOptions.IgnoreCase))
+        {
+            if (Regex.IsMatch(group ?? string.Empty, @"ram|bộ nhớ|bo nho", RegexOptions.IgnoreCase)) return "RAM";
+            if (Regex.IsMatch(group ?? string.Empty, @"ssd|ổ cứng|o cung", RegexOptions.IgnoreCase)) return "SSD";
+            if (Regex.IsMatch(group ?? string.Empty, @"pin", RegexOptions.IgnoreCase)) return "Pin";
+        }
+        if (Regex.IsMatch(label, @"^số khe cắm$|^so khe cam$", RegexOptions.IgnoreCase)) return "Khe RAM";
+        if (Regex.IsMatch(label, @"^khả năng nâng cấp$|^kha nang nang cap$", RegexOptions.IgnoreCase)) return "Khả năng nâng cấp";
+        if (Regex.IsMatch(label, @"^màn hình$|^man hinh$", RegexOptions.IgnoreCase)) return "Màn hình";
+        if (Regex.IsMatch(label, @"^độ phân giải$|^do phan giai$", RegexOptions.IgnoreCase)) return "Độ phân giải";
+        if (Regex.IsMatch(label, @"^bộ xử lý$|^bo xu ly$", RegexOptions.IgnoreCase) && Regex.IsMatch(group ?? string.Empty, @"vga|đồ họa|do hoa|gpu", RegexOptions.IgnoreCase)) return "GPU";
+        if (Regex.IsMatch(label, @"^công nghệ$|^cong nghe$", RegexOptions.IgnoreCase) && Regex.IsMatch(group ?? string.Empty, @"vga|đồ họa|do hoa|gpu", RegexOptions.IgnoreCase)) return "Công nghệ GPU";
+        if (Regex.IsMatch(label, @"^wireless$", RegexOptions.IgnoreCase)) return "WiFi";
+        if (Regex.IsMatch(label, @"^lan$", RegexOptions.IgnoreCase)) return "LAN";
+        if (Regex.IsMatch(label, @"^bluetooth$", RegexOptions.IgnoreCase)) return "Bluetooth";
+        if (Regex.IsMatch(label, @"^kiểu bàn phím$|^kieu ban phim$", RegexOptions.IgnoreCase)) return "Bàn phím";
+        if (Regex.IsMatch(label, @"^cảm ứng đa điểm$|^cam ung da diem$", RegexOptions.IgnoreCase)) return "Chuột/Touchpad";
+        if (Regex.IsMatch(label, @"^kết nối usb$|^ket noi usb$", RegexOptions.IgnoreCase)) return "Cổng USB";
+        if (Regex.IsMatch(label, @"^kết nối hdmi/vga$|^ket noi hdmi/vga$", RegexOptions.IgnoreCase)) return "HDMI/VGA";
+        if (Regex.IsMatch(label, @"^card reader$", RegexOptions.IgnoreCase)) return "Card reader";
+        if (Regex.IsMatch(label, @"^tai nghe$", RegexOptions.IgnoreCase)) return "Jack âm thanh";
+        if (Regex.IsMatch(label, @"^camera$", RegexOptions.IgnoreCase)) return "Camera";
+        if (Regex.IsMatch(label, @"^sạc pin laptop$|^sac pin laptop$|^đi kèm$|^di kem$", RegexOptions.IgnoreCase)) return "Sạc";
+        if (Regex.IsMatch(label, @"^hệ điều hành đi kèm$|^he dieu hanh di kem$", RegexOptions.IgnoreCase)) return "OS";
+        if (Regex.IsMatch(label, @"^hệ điều hành tương thích$|^he dieu hanh tuong thich$", RegexOptions.IgnoreCase)) return "OS tương thích";
+        if (Regex.IsMatch(label, @"^phần mềm office$|^phan mem office$", RegexOptions.IgnoreCase)) return "Office";
+        if (Regex.IsMatch(label, @"^tính năng đặc biệt$|^tinh nang dac biet$", RegexOptions.IgnoreCase)) return "Tính năng đặc biệt";
+        if (Regex.IsMatch(label, @"^audio$|^âm thanh$|^am thanh$", RegexOptions.IgnoreCase)) return "Audio";
+        if (Regex.IsMatch(label, @"^trọng lượng$|^trong luong$", RegexOptions.IgnoreCase)) return "Trọng lượng";
+        if (Regex.IsMatch(label, @"^kích thước$|^kich thuoc$", RegexOptions.IgnoreCase)) return "Kích thước";
+        if (Regex.IsMatch(label, @"^chất liệu$|^chat lieu$", RegexOptions.IgnoreCase)) return "Chất liệu";
+        if (Regex.IsMatch(label, @"^màu sắc$|^mau sac$", RegexOptions.IgnoreCase)) return "Màu sắc";
+        if (Regex.IsMatch(label, @"^bảo mật$|^bao mat$", RegexOptions.IgnoreCase)) return "Bảo mật";
+        return null;
+    }
+
+    private static string MapAttributeToName(string line) => TryMapLaptopLabel(line, null, out _) ?? MapGroupToName(line);
 
     private static string MapGroupToName(string line)
     {
