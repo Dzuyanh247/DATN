@@ -9,7 +9,7 @@
     <div class="col-lg-4"><label class="form-label">Slug</label><input asp-for="Slug" class="form-control" /></div>
     <div class="col-md-4"><label class="form-label">Chuyên mục</label><select asp-for="Type" class="form-select">@foreach (var t in ArticleTypes.Labels) { <option value="@t.Key">@t.Value</option> }</select></div>
     <div class="col-md-4"><label class="form-label">Trạng thái</label><select asp-for="IsPublished" class="form-select"><option value="true">Hiển thị</option><option value="false">Nháp / Ẩn</option></select></div>
-    <div class="col-md-4 d-flex align-items-end"><div class="form-check"><input asp-for="IsFeatured" class="form-check-input" /><label asp-for="IsFeatured" class="form-check-label">Bài nổi bật</label></div></div>
+    <div class="col-md-4 d-flex align-items-end"><div class="d-flex flex-column gap-2"><div class="form-check"><input asp-for="IsFeatured" class="form-check-input" /><label asp-for="IsFeatured" class="form-check-label">Bài nổi bật</label></div><div class="form-check"><input asp-for="IsPinned" class="form-check-input" /><label asp-for="IsPinned" class="form-check-label">Ghim bài viết</label></div></div></div>
     <div class="col-md-6"><label class="form-label">Link ảnh đại diện</label><input asp-for="CoverImageUrl" class="form-control" id="CoverImageUrl" /></div>
     <div class="col-md-6"><label class="form-label">Upload ảnh</label><input name="coverImageFile" type="file" accept="image/jpeg,image/png,image/webp" class="form-control" id="coverImageFile" /><small class="text-muted">Ưu tiên file upload. Tối đa 3MB.</small></div>
     <div class="col-md-4"><img id="coverPreview" src="@(string.IsNullOrWhiteSpace(Model.CoverImageUrl) ? "https://placehold.co/600x360/002b36/14d9ff?text=Preview" : Model.CoverImageUrl)" class="img-fluid rounded border" alt="Preview" /></div>
@@ -20,6 +20,7 @@
         <div class="col-md-4"><label class="form-label">Ngày tạo</label><input value="@Model.CreatedAt.ToString("dd/MM/yyyy HH:mm")" class="form-control" readonly /></div>
         <div class="col-md-4"><label class="form-label">Ngày cập nhật</label><input value="@Model.UpdatedAt.ToString("dd/MM/yyyy HH:mm")" class="form-control" readonly /></div>
         <div class="col-md-4"><label class="form-label">Lượt xem</label><input value="@Model.ViewCount" class="form-control" readonly /></div>
+        <div class="col-md-4"><label class="form-label">Thời điểm ghim</label><input value="@(Model.PinnedAt?.ToString("dd/MM/yyyy HH:mm") ?? "Chưa ghim")" class="form-control" readonly /></div>
     }
     <div class="col-12 d-flex gap-2"><button class="btn btn-primary">Lưu bài viết</button><a class="btn btn-outline-secondary" asp-action="Index">Quay lại</a></div>
 </form>

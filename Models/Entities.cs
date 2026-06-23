@@ -420,6 +420,8 @@ public class Article : BaseEntity
     [MaxLength(1000)] public string? CoverImageUrl { get; set; }
     public bool IsPublished { get; set; } = true;
     public bool IsFeatured { get; set; }
+    public bool IsPinned { get; set; }
+    public DateTime? PinnedAt { get; set; }
     public int ViewCount { get; set; }
 }
 
