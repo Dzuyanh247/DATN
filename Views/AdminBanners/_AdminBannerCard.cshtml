@@ -2,24 +2,22 @@
 @{
     var positionLabel = Model.Position == "MainBanner" ? "Banner chính" : Model.Position == "SubBanner" ? "Banner phụ" : "Banner khác";
     var positionClass = Model.Position == "MainBanner" ? "is-main" : Model.Position == "SubBanner" ? "is-sub" : "is-other";
-    var title = string.IsNullOrWhiteSpace(Model.Title) ? Model.ImageUrl : Model.Title;
+    var thumbClass = Model.Position == "SubBanner" ? "is-sub" : string.Empty;
+    var linkLabel = string.IsNullOrWhiteSpace(Model.LinkUrl) ? "Chưa gắn link" : Model.LinkUrl;
 }
 
-<article class="admin-banner-card">
-    <div class="admin-banner-thumb">
-        <img src="@Model.ImageUrl" alt="@(string.IsNullOrWhiteSpace(Model.Title) ? positionLabel : Model.Title)" onerror="this.src='https://placehold.co/600x220?text=No+Image'" />
-    </div>
-    <div class="admin-banner-card-body">
-        <div class="admin-banner-card-title" title="@title">@title</div>
-        <div class="admin-banner-badges">
-            <span class="banner-badge @positionClass">@positionLabel</span>
-            <span class="banner-badge @(Model.IsActive ? "is-active" : "is-off")">@(Model.IsActive ? "Đang hiển thị" : "Đã tắt")</span>
-        </div>
-        <dl class="admin-banner-meta">
-            <div><dt>Thứ tự</dt><dd>@Model.SortOrder</dd></div>
-            <div><dt>Link đích</dt><dd title="@Model.LinkUrl">@(string.IsNullOrWhiteSpace(Model.LinkUrl) ? "Chưa gắn link" : Model.LinkUrl)</dd></div>
-            <div><dt>URL ảnh</dt><dd title="@Model.ImageUrl">@Model.ImageUrl</dd></div>
-        </dl>
+<tr class="admin-banner-row">
+    <td>
+        <span class="admin-banner-thumb @thumbClass">
+            <img src="@Model.ImageUrl" alt="@(string.IsNullOrWhiteSpace(Model.Title) ? positionLabel : Model.Title)" onerror="this.src='https://placehold.co/320x140?text=No+Image'" />
+        </span>
+    </td>
+    <td><span class="banner-badge @positionClass">@positionLabel</span></td>
+    <td><span class="banner-badge @(Model.IsActive ? "is-active" : "is-off")">@(Model.IsActive ? "Đang hiển thị" : "Đã tắt")</span></td>
+    <td><strong>@Model.SortOrder</strong></td>
+    <td><span class="admin-banner-ellipsis" title="@Model.LinkUrl">@linkLabel</span></td>
+    <td><span class="admin-banner-ellipsis admin-banner-image-url" title="@Model.ImageUrl">@Model.ImageUrl</span></td>
+    <td>
         <div class="admin-banner-actions">
             <a class="btn btn-sm btn-success" asp-action="Edit" asp-route-id="@Model.Id"><i class="bi bi-pencil-square"></i>Sửa</a>
             <form method="post" asp-action="ToggleStatus">
@@ -33,5 +31,5 @@
                 <button class="btn btn-sm btn-danger" type="submit"><i class="bi bi-trash3"></i>Xóa</button>
             </form>
         </div>
-    </div>
-</article>
+    </td>
+</tr>
