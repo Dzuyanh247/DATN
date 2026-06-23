@@ -4,43 +4,165 @@
     var main = Model.Where(x => x.Position == "MainBanner").OrderBy(x => x.SortOrder).ToList();
     var sub = Model.Where(x => x.Position == "SubBanner").OrderBy(x => x.SortOrder).ToList();
     var other = Model.Where(x => x.Position != "MainBanner" && x.Position != "SubBanner").OrderBy(x => x.SortOrder).ToList();
+    var activeMain = main.FirstOrDefault(x => x.IsActive);
+    var activeSubs = sub.Where(x => x.IsActive).Take(3).ToList();
 }
-<div class="admin-banner-page">
-    <div class="d-flex justify-content-between align-items-center mb-3"><h3 class="mb-0">Quản lý banner</h3><a class="btn btn-primary" asp-action="Create"><i class="bi bi-plus-circle me-1"></i>Thêm banner mới</a></div>
 
-    <div class="banner-layout-preview card p-3 mb-4">
-        <h5>Preview layout trang chủ</h5>
-        <div class="layout-main">@if (main.Any()) { <img src="@main.FirstOrDefault(x=>x.IsActive)?.ImageUrl" onerror="this.style.display='none'"/> } else { <span>Chưa có banner chính đang bật</span> }</div>
-        <div class="layout-sub-grid">
-            @foreach (var b in sub.Where(x => x.IsActive).Take(3)) { <img src="@b.ImageUrl" alt="@b.Title" onerror="this.style.display='none'" /> }
+<div class="admin-banner-page">
+    <div class="admin-banner-header">
+        <div>
+            <span class="admin-banner-eyebrow">Nội dung trang chủ</span>
+            <h3>Quản lý banner</h3>
+            <p>Theo dõi banner chính, banner phụ và trạng thái hiển thị trên trang chủ KKSHOP.</p>
         </div>
+        <a class="btn btn-primary admin-banner-create" asp-action="Create"><i class="bi bi-plus-circle me-1"></i>Thêm banner mới</a>
     </div>
 
-    @foreach (var group in new[] { ("Banner chính trang chủ", main), ("Banner phụ trang chủ", sub), ("Banner khác", other) })
-    {
-        <h5 class="mb-3">@group.Item1</h5>
-        <div class="row g-3 mb-4">
-            @if (!group.Item2.Any()) { <div class="col-12"><div class="alert alert-light border">Chưa có banner.</div></div> }
-            @foreach (var b in group.Item2)
-            {
-                <div class="col-md-6 col-xl-4">
-                    <div class="banner-card card h-100">
-                        <img class="card-img-top" src="@b.ImageUrl" alt="@b.Title" onerror="this.src='https://placehold.co/600x220?text=No+Image'"/>
-                        <div class="card-body">
-                            <h6>@b.Title</h6>
-                            <div class="d-flex gap-2 flex-wrap mb-2">
-                                <span class="badge @(b.Position=="MainBanner"?"text-bg-danger":b.Position=="SubBanner"?"text-bg-primary":"text-bg-secondary")">@(b.Position=="MainBanner"?"Banner chính":b.Position=="SubBanner"?"Banner phụ":"Banner khác")</span>
-                                <span class="badge @(b.IsActive?"text-bg-success":"text-bg-secondary")">@(b.IsActive?"Đang hiển thị":"Đang ẩn")</span>
-                            </div>
-                            <p class="small mb-1"><b>Thứ tự:</b> @b.SortOrder</p>
-                            <p class="small mb-2 text-truncate"><b>Link:</b> @b.LinkUrl</p>
-                            <a class="btn btn-sm btn-outline-primary" asp-action="Edit" asp-route-id="@b.Id">Sửa</a>
-                            <form method="post" asp-action="ToggleStatus" class="d-inline">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@b.Id" /><button class="btn btn-sm btn-outline-warning">@(b.IsActive?"Tắt":"Bật")</button></form>
-                            <form method="post" asp-action="Delete" class="d-inline" onsubmit="return confirm('Xóa banner này?');">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@b.Id" /><button class="btn btn-sm btn-outline-danger">Xóa</button></form>
-                        </div>
+    <section class="admin-banner-section banner-layout-preview">
+        <div class="admin-banner-section-head">
+            <div>
+                <span class="admin-banner-eyebrow">Mini preview trang chủ</span>
+                <h5>Xem trước bố cục banner trang chủ</h5>
+            </div>
+            <span class="admin-banner-note">Chỉ hiển thị banner đang bật</span>
+        </div>
+        <div class="mini-home-preview">
+            <div class="mini-main-banner">
+                @if (activeMain != null)
+                {
+                    <img src="@activeMain.ImageUrl" alt="@(string.IsNullOrWhiteSpace(activeMain.Title) ? "Banner chính" : activeMain.Title)" onerror="this.style.display='none'" />
+                    <span class="mini-label">Banner chính</span>
+                }
+                else
+                {
+                    <div class="mini-empty"><i class="bi bi-image"></i><span>Chưa có banner chính đang bật</span></div>
+                }
+            </div>
+            <div class="mini-sub-grid">
+                @for (var i = 0; i < 3; i++)
+                {
+                    var banner = activeSubs.ElementAtOrDefault(i);
+                    <div class="mini-sub-item">
+                        @if (banner != null)
+                        {
+                            <img src="@banner.ImageUrl" alt="@(string.IsNullOrWhiteSpace(banner.Title) ? $"Banner phụ {i + 1}" : banner.Title)" onerror="this.style.display='none'" />
+                            <span class="mini-label">Phụ @(i + 1)</span>
+                        }
+                        else
+                        {
+                            <div class="mini-empty mini-empty-sub"><i class="bi bi-image"></i><span>Ô phụ @(i + 1)</span></div>
+                        }
                     </div>
-                </div>
+                }
+            </div>
+        </div>
+    </section>
+
+    <section class="admin-banner-section">
+        <div class="admin-banner-section-head">
+            <div>
+                <span class="admin-banner-eyebrow">MainBanner</span>
+                <h5>Banner chính trang chủ</h5>
+            </div>
+            <span class="admin-banner-count">@main.Count banner</span>
+        </div>
+        <div class="main-banner-grid">
+            @if (!main.Any())
+            {
+                <div class="admin-banner-empty"><i class="bi bi-images"></i><strong>Chưa có banner chính</strong><span>Thêm banner mới và chọn vị trí MainBanner để hiển thị tại khu vực chính.</span></div>
+            }
+            @foreach (var b in main)
+            {
+                @await Html.PartialAsync("_AdminBannerCard", b)
             }
         </div>
+    </section>
+
+    <section class="admin-banner-section">
+        <div class="admin-banner-section-head">
+            <div>
+                <span class="admin-banner-eyebrow">SubBanner</span>
+                <h5>Banner phụ trang chủ</h5>
+            </div>
+            <span class="admin-banner-count">@sub.Count banner</span>
+        </div>
+        <div class="sub-banner-grid">
+            @if (!sub.Any())
+            {
+                <div class="admin-banner-empty"><i class="bi bi-grid-3x3-gap"></i><strong>Chưa có banner phụ</strong><span>Banner phụ sẽ được xếp thành 3 ô nhỏ bên dưới banner chính.</span></div>
+            }
+            @foreach (var b in sub)
+            {
+                @await Html.PartialAsync("_AdminBannerCard", b)
+            }
+        </div>
+    </section>
+
+    @if (other.Any())
+    {
+        <section class="admin-banner-section">
+            <div class="admin-banner-section-head">
+                <div>
+                    <span class="admin-banner-eyebrow">Khác</span>
+                    <h5>Banner khác</h5>
+                </div>
+                <span class="admin-banner-count">@other.Count banner</span>
+            </div>
+            <div class="sub-banner-grid">
+                @foreach (var b in other)
+                {
+                    @await Html.PartialAsync("_AdminBannerCard", b)
+                }
+            </div>
+        </section>
     }
 </div>
+
+<style>
+    .admin-banner-page { --banner-border:#e2e8f0; --banner-muted:#64748b; --banner-soft:#f8fafc; --banner-blue:#1764aa; background:#f5f7fb; margin:-.5rem; padding:1rem; border-radius:22px; }
+    .admin-banner-header, .admin-banner-section { background:#fff; border:1px solid var(--banner-border); border-radius:20px; box-shadow:0 12px 30px rgba(15,23,42,.055); }
+    .admin-banner-header { display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:1.25rem 1.35rem; margin-bottom:1rem; }
+    .admin-banner-header h3 { margin:.1rem 0 .25rem; font-size:1.55rem; font-weight:850; color:#172033; }
+    .admin-banner-header p { margin:0; color:var(--banner-muted); font-size:.92rem; }
+    .admin-banner-eyebrow { display:block; color:var(--banner-blue); font-size:.72rem; font-weight:850; letter-spacing:.08em; text-transform:uppercase; }
+    .admin-banner-create { border-radius:999px; padding:.72rem 1rem; font-weight:800; white-space:nowrap; box-shadow:0 10px 18px rgba(23,100,170,.18); }
+    .admin-banner-section { padding:1rem; margin-bottom:1rem; }
+    .admin-banner-section-head { display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:.9rem; }
+    .admin-banner-section-head h5 { margin:.1rem 0 0; font-weight:850; color:#172033; }
+    .admin-banner-note, .admin-banner-count { border-radius:999px; padding:.42rem .72rem; background:#f1f5f9; color:#475569; font-size:.76rem; font-weight:750; white-space:nowrap; }
+    .mini-home-preview { border:1px dashed #cbd5e1; border-radius:18px; background:linear-gradient(180deg,#f8fbff,#fff); padding:.85rem; }
+    .mini-main-banner, .mini-sub-item { position:relative; overflow:hidden; border-radius:16px; background:#eef2f7; border:1px solid #e2e8f0; }
+    .mini-main-banner { height:150px; margin-bottom:.75rem; }
+    .mini-sub-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.75rem; }
+    .mini-sub-item { height:82px; }
+    .mini-main-banner img, .mini-sub-item img, .admin-banner-thumb img { width:100%; height:100%; object-fit:cover; display:block; }
+    .mini-label { position:absolute; left:.6rem; bottom:.55rem; border-radius:999px; padding:.24rem .55rem; background:rgba(15,23,42,.72); color:#fff; font-size:.7rem; font-weight:800; }
+    .mini-empty { height:100%; display:grid; place-items:center; align-content:center; gap:.25rem; color:#94a3b8; text-align:center; font-size:.82rem; }
+    .mini-empty i { font-size:1.35rem; }
+    .mini-empty-sub { font-size:.75rem; }
+    .main-banner-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1rem; }
+    .sub-banner-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:1rem; }
+    .admin-banner-card { min-width:0; overflow:hidden; background:#fff; border:1px solid #e5edf6; border-radius:18px; box-shadow:0 8px 20px rgba(15,23,42,.045); }
+    .admin-banner-thumb { height:120px; background:#f1f5f9; border-bottom:1px solid #edf2f7; }
+    .sub-banner-grid .admin-banner-thumb { height:120px; }
+    .admin-banner-card-body { padding:.9rem; }
+    .admin-banner-card-title { display:-webkit-box; min-height:2.4em; overflow:hidden; color:#172033; font-weight:800; line-height:1.25; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow-wrap:anywhere; }
+    .admin-banner-badges { display:flex; flex-wrap:wrap; gap:.45rem; margin:.65rem 0; }
+    .banner-badge { display:inline-flex; align-items:center; border-radius:999px; padding:.34rem .58rem; font-size:.72rem; font-weight:850; line-height:1; }
+    .banner-badge.is-main { background:#ffedd5; color:#c2410c; }
+    .banner-badge.is-sub { background:#dbeafe; color:#1d4ed8; }
+    .banner-badge.is-other { background:#f1f5f9; color:#475569; }
+    .banner-badge.is-active { background:#dcfce7; color:#15803d; }
+    .banner-badge.is-off { background:#f1f5f9; color:#64748b; }
+    .admin-banner-meta { display:grid; gap:.45rem; margin:0 0 .85rem; }
+    .admin-banner-meta div { display:grid; grid-template-columns:70px minmax(0,1fr); gap:.5rem; align-items:center; }
+    .admin-banner-meta dt { color:#94a3b8; font-size:.72rem; font-weight:850; text-transform:uppercase; }
+    .admin-banner-meta dd { margin:0; min-width:0; color:#334155; font-size:.84rem; font-weight:650; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .admin-banner-actions { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; }
+    .admin-banner-actions .btn { display:inline-flex; align-items:center; gap:.32rem; border-radius:999px; font-weight:800; padding:.38rem .68rem; }
+    .admin-banner-empty { grid-column:1/-1; display:grid; place-items:center; gap:.25rem; min-height:150px; border:1px dashed #cbd5e1; border-radius:16px; color:#64748b; text-align:center; background:#f8fafc; padding:1rem; }
+    .admin-banner-empty i { font-size:2rem; color:#94a3b8; }
+    .admin-banner-empty strong { color:#334155; }
+    @@media (max-width: 991.98px) { .sub-banner-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .admin-banner-header { align-items:flex-start; flex-direction:column; } }
+    @@media (max-width: 767.98px) { .admin-banner-page { margin:0; padding:.75rem; border-radius:16px; } .main-banner-grid, .sub-banner-grid, .mini-sub-grid { grid-template-columns:1fr; } .mini-main-banner { height:130px; } .mini-sub-item { height:78px; } .admin-banner-section-head { align-items:flex-start; flex-direction:column; } .admin-banner-create { width:100%; justify-content:center; } }
+</style>
