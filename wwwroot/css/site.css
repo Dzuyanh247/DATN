@@ -838,6 +838,12 @@
     font-size: 1.02rem;
 }
 
+.compare-scope-note {
+    max-width: 840px;
+    color: #5f7f95;
+    font-size: .82rem;
+}
+
 .compare-legal-note {
     max-width: 840px;
     color: #64748b;
