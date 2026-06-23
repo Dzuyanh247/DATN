@@ -149,7 +149,7 @@ public partial class GeminiChatService : IAiChatService
                 var body = await response.Content.ReadAsStringAsync(timeout.Token);
                 var isProviderBusy = response.StatusCode == HttpStatusCode.ServiceUnavailable;
                 var fallback = isProviderBusy ? ProviderBusyMessage : BuildFallbackReply(message, intent, conversation);
-                var reply = string.IsNullOrWhiteSpace(fallback) ? FriendlyErrorMessage : fallback;
+                var fallbackReply = string.IsNullOrWhiteSpace(fallback) ? FriendlyErrorMessage : fallback;
                 var logBody = TrimForLog(body, isProviderBusy ? 120 : 180);
 
                 if (isProviderBusy)
@@ -161,8 +161,8 @@ public partial class GeminiChatService : IAiChatService
                     _logger.LogWarning("[KKSHOP_AI_ERROR] requestId={RequestId}; sessionId={SessionId}; status={StatusCode}; userMessage={UserMessage}; intent={Intent}; productContext={ProductContext}; body={Body}", requestId, sessionId, response.StatusCode, TrimForLog(message), intent, conversation.CurrentProductContext?.Name ?? "none", logBody);
                 }
 
-                LogDebugState(requestId, sessionId, message, intent, conversation, products, false, isProviderBusy ? "provider-busy" : $"provider-status-{(int)response.StatusCode}", reply.Length, 0, logBody);
-                return new(true, reply, [], false, requestId);
+                LogDebugState(requestId, sessionId, message, intent, conversation, products, false, isProviderBusy ? "provider-busy" : $"provider-status-{(int)response.StatusCode}", fallbackReply.Length, 0, logBody);
+                return new(true, fallbackReply, [], false, requestId);
             }
             using var document = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync(timeout.Token), cancellationToken: timeout.Token);
             var reply = ExtractReply(document.RootElement);
