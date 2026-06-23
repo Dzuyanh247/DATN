@@ -26,7 +26,7 @@
             </div>
             <span class="admin-banner-note">Chỉ hiển thị banner đang bật</span>
         </div>
-        <div class="mini-home-preview">
+        <div class="mini-home-preview admin-banner-mini-preview">
             <div class="mini-main-banner">
                 @if (activeMain != null)
                 {
@@ -119,50 +119,50 @@
 </div>
 
 <style>
-    .admin-banner-page { --banner-border:#e2e8f0; --banner-muted:#64748b; --banner-soft:#f8fafc; --banner-blue:#1764aa; background:#f5f7fb; margin:-.5rem; padding:1rem; border-radius:22px; }
+    .admin-banner-page { --banner-border:#e2e8f0; --banner-muted:#64748b; --banner-soft:#f8fafc; --banner-blue:#1764aa; --banner-frame:linear-gradient(45deg,#f8fafc 25%,transparent 25%),linear-gradient(-45deg,#f8fafc 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#f8fafc 75%),linear-gradient(-45deg,transparent 75%,#f8fafc 75%),#eef2f7; --banner-frame-size:18px 18px; --banner-frame-position:0 0,0 9px,9px -9px,-9px 0; background:#f5f7fb; margin:-.5rem; padding:1rem; border-radius:22px; }
     .admin-banner-header, .admin-banner-section { background:#fff; border:1px solid var(--banner-border); border-radius:20px; box-shadow:0 12px 30px rgba(15,23,42,.055); }
     .admin-banner-header { display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:1.25rem 1.35rem; margin-bottom:1rem; }
     .admin-banner-header h3 { margin:.1rem 0 .25rem; font-size:1.55rem; font-weight:850; color:#172033; }
     .admin-banner-header p { margin:0; color:var(--banner-muted); font-size:.92rem; }
     .admin-banner-eyebrow { display:block; color:var(--banner-blue); font-size:.72rem; font-weight:850; letter-spacing:.08em; text-transform:uppercase; }
     .admin-banner-create { border-radius:999px; padding:.72rem 1rem; font-weight:800; white-space:nowrap; box-shadow:0 10px 18px rgba(23,100,170,.18); }
-    .admin-banner-section { padding:1rem; margin-bottom:1rem; }
-    .admin-banner-section-head { display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:.9rem; }
+    .admin-banner-section { padding:.9rem; margin-bottom:1rem; }
+    .admin-banner-section-head { display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:.7rem; }
     .admin-banner-section-head h5 { margin:.1rem 0 0; font-weight:850; color:#172033; }
     .admin-banner-note, .admin-banner-count { border-radius:999px; padding:.42rem .72rem; background:#f1f5f9; color:#475569; font-size:.76rem; font-weight:750; white-space:nowrap; }
-    .mini-home-preview { border:1px dashed #cbd5e1; border-radius:18px; background:linear-gradient(180deg,#f8fbff,#fff); padding:.85rem; }
-    .mini-main-banner, .mini-sub-item { position:relative; overflow:hidden; border-radius:16px; background:#eef2f7; border:1px solid #e2e8f0; }
-    .mini-main-banner { height:150px; margin-bottom:.75rem; }
-    .mini-sub-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.75rem; }
-    .mini-sub-item { height:82px; }
-    .mini-main-banner img, .mini-sub-item img, .admin-banner-thumb img { width:100%; height:100%; object-fit:cover; display:block; }
-    .mini-label { position:absolute; left:.6rem; bottom:.55rem; border-radius:999px; padding:.24rem .55rem; background:rgba(15,23,42,.72); color:#fff; font-size:.7rem; font-weight:800; }
+    .mini-home-preview { max-height:220px; border:1px dashed #cbd5e1; border-radius:16px; background:linear-gradient(180deg,#f8fbff,#fff); padding:.65rem; overflow:hidden; }
+    .mini-main-banner, .mini-sub-item, .admin-banner-thumb { position:relative; overflow:hidden; border-radius:10px; background:var(--banner-frame); background-size:var(--banner-frame-size); background-position:var(--banner-frame-position); border:1px solid #e2e8f0; }
+    .mini-main-banner { height:92px; margin-bottom:.55rem; }
+    .mini-sub-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.55rem; }
+    .mini-sub-item { height:58px; }
+    .admin-banner-mini-preview img, .mini-main-banner img, .mini-sub-item img, .admin-banner-thumb img { width:100%; height:100%; object-fit:contain; display:block; background:transparent; }
+    .mini-label { position:absolute; left:.45rem; bottom:.4rem; border-radius:999px; padding:.18rem .45rem; background:rgba(15,23,42,.72); color:#fff; font-size:.64rem; font-weight:800; }
     .mini-empty { height:100%; display:grid; place-items:center; align-content:center; gap:.25rem; color:#94a3b8; text-align:center; font-size:.82rem; }
     .mini-empty i { font-size:1.35rem; }
     .mini-empty-sub { font-size:.75rem; }
-    .main-banner-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1rem; }
-    .sub-banner-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:1rem; }
-    .admin-banner-card { min-width:0; overflow:hidden; background:#fff; border:1px solid #e5edf6; border-radius:18px; box-shadow:0 8px 20px rgba(15,23,42,.045); }
-    .admin-banner-thumb { height:120px; background:#f1f5f9; border-bottom:1px solid #edf2f7; }
-    .sub-banner-grid .admin-banner-thumb { height:120px; }
-    .admin-banner-card-body { padding:.9rem; }
-    .admin-banner-card-title { display:-webkit-box; min-height:2.4em; overflow:hidden; color:#172033; font-weight:800; line-height:1.25; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow-wrap:anywhere; }
-    .admin-banner-badges { display:flex; flex-wrap:wrap; gap:.45rem; margin:.65rem 0; }
-    .banner-badge { display:inline-flex; align-items:center; border-radius:999px; padding:.34rem .58rem; font-size:.72rem; font-weight:850; line-height:1; }
+    .main-banner-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.8rem; }
+    .sub-banner-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.8rem; }
+    .admin-banner-card { min-width:0; overflow:hidden; background:#fff; border:1px solid #e5edf6; border-radius:14px; box-shadow:0 8px 20px rgba(15,23,42,.045); }
+    .admin-banner-thumb { height:100px; border-radius:10px 10px 0 0; border-width:0 0 1px; border-color:#edf2f7; }
+    .sub-banner-grid .admin-banner-thumb { height:90px; }
+    .admin-banner-card-body { padding:.65rem .72rem .72rem; }
+    .admin-banner-card-title { display:-webkit-box; min-height:1.2em; overflow:hidden; color:#172033; font-size:.86rem; font-weight:800; line-height:1.2; -webkit-line-clamp:1; -webkit-box-orient:vertical; overflow-wrap:anywhere; }
+    .admin-banner-badges { display:flex; flex-wrap:wrap; gap:.35rem; margin:.5rem 0; }
+    .banner-badge { display:inline-flex; align-items:center; border-radius:999px; padding:.26rem .48rem; font-size:.66rem; font-weight:850; line-height:1; }
     .banner-badge.is-main { background:#ffedd5; color:#c2410c; }
     .banner-badge.is-sub { background:#dbeafe; color:#1d4ed8; }
     .banner-badge.is-other { background:#f1f5f9; color:#475569; }
     .banner-badge.is-active { background:#dcfce7; color:#15803d; }
     .banner-badge.is-off { background:#f1f5f9; color:#64748b; }
-    .admin-banner-meta { display:grid; gap:.45rem; margin:0 0 .85rem; }
-    .admin-banner-meta div { display:grid; grid-template-columns:70px minmax(0,1fr); gap:.5rem; align-items:center; }
-    .admin-banner-meta dt { color:#94a3b8; font-size:.72rem; font-weight:850; text-transform:uppercase; }
-    .admin-banner-meta dd { margin:0; min-width:0; color:#334155; font-size:.84rem; font-weight:650; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .admin-banner-actions { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; }
-    .admin-banner-actions .btn { display:inline-flex; align-items:center; gap:.32rem; border-radius:999px; font-weight:800; padding:.38rem .68rem; }
+    .admin-banner-meta { display:grid; gap:.3rem; margin:0 0 .6rem; }
+    .admin-banner-meta div { display:grid; grid-template-columns:58px minmax(0,1fr); gap:.4rem; align-items:center; }
+    .admin-banner-meta dt { color:#94a3b8; font-size:.64rem; font-weight:850; text-transform:uppercase; }
+    .admin-banner-meta dd { margin:0; min-width:0; color:#334155; font-size:.76rem; font-weight:650; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .admin-banner-actions { display:flex; align-items:center; gap:.35rem; flex-wrap:wrap; }
+    .admin-banner-actions .btn { display:inline-flex; align-items:center; gap:.28rem; border-radius:999px; font-size:.76rem; font-weight:800; padding:.3rem .55rem; }
     .admin-banner-empty { grid-column:1/-1; display:grid; place-items:center; gap:.25rem; min-height:150px; border:1px dashed #cbd5e1; border-radius:16px; color:#64748b; text-align:center; background:#f8fafc; padding:1rem; }
     .admin-banner-empty i { font-size:2rem; color:#94a3b8; }
     .admin-banner-empty strong { color:#334155; }
     @@media (max-width: 991.98px) { .sub-banner-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .admin-banner-header { align-items:flex-start; flex-direction:column; } }
-    @@media (max-width: 767.98px) { .admin-banner-page { margin:0; padding:.75rem; border-radius:16px; } .main-banner-grid, .sub-banner-grid, .mini-sub-grid { grid-template-columns:1fr; } .mini-main-banner { height:130px; } .mini-sub-item { height:78px; } .admin-banner-section-head { align-items:flex-start; flex-direction:column; } .admin-banner-create { width:100%; justify-content:center; } }
+    @@media (max-width: 767.98px) { .admin-banner-page { margin:0; padding:.75rem; border-radius:16px; } .main-banner-grid, .sub-banner-grid, .mini-sub-grid { grid-template-columns:1fr; } .mini-home-preview { max-height:none; } .mini-main-banner { height:90px; } .mini-sub-item { height:58px; } .admin-banner-section-head { align-items:flex-start; flex-direction:column; } .admin-banner-create { width:100%; justify-content:center; } }
 </style>
