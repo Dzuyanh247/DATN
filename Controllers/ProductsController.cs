@@ -5,6 +5,7 @@ using Datn.PcStore.ViewModels;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
+using System.Text.RegularExpressions;
 using Datn.PcStore.Services;
 
 namespace Datn.PcStore.Controllers;
@@ -167,7 +168,7 @@ public class ProductsController : Controller
 
         IEnumerable<Product> filteredProducts = filteredFacetProducts;
         if (vm.Brands.Length > 0)
-            filteredProducts = filteredProducts.Where(product => product.Brand != null && vm.Brands.Contains(product.Brand, StringComparer.OrdinalIgnoreCase));
+            filteredProducts = filteredProducts.Where(product => ExtractProductBrands(product).Any(productBrand => vm.Brands.Contains(productBrand, StringComparer.OrdinalIgnoreCase)));
         if (vm.ComponentFamilies.Length > 0)
             filteredProducts = filteredProducts.Where(product => vm.ComponentFamilies.Any(family => ProductMatchesFamily(product, family)));
 
@@ -397,24 +398,24 @@ public class ProductsController : Controller
     private void LogFilterDebug(ProductFilterVm vm, int baseProductCount, int filteredProductCount)
     {
         _logger.LogDebug(
-            "Products filter: currentPath={CurrentPath}, filterActionUrl={FilterActionUrl}, clearFilterUrl={ClearFilterUrl}, categoryId={CategoryId}, categorySlug={CategorySlug}, isComponentListing={IsComponentListing}, type={Type}, baseProducts={BaseProducts}, selectedFilters={SelectedFilters}, filteredProducts={FilteredProducts}, facets price={PriceFacetCount}, brand={BrandFacetCount}, cpu={CpuFacetCount}, ram={RamFacetCount}, gpu={GpuFacetCount}, storage={StorageFacetCount}, specGroups={SpecGroupCount}",
+            "Products filter: currentCategory={CurrentCategory}, currentComponentType={CurrentComponentType}, currentPath={CurrentPath}, filterActionUrl={FilterActionUrl}, clearFilterUrl={ClearFilterUrl}, categoryId={CategoryId}, categorySlug={CategorySlug}, isComponentListing={IsComponentListing}, baseProducts={BaseProducts}, selectedFilters={SelectedFilters}, filteredProducts={FilteredProducts}, rawSpecKeys={RawSpecKeys}, normalizedFilterGroups={NormalizedFilterGroups}, renderedFilterGroups={RenderedFilterGroups}, duplicatedGroupsRemoved={DuplicatedGroupsRemoved}, emptyGroupsSkipped={EmptyGroupsSkipped}, optionCounts={OptionCounts}",
+            vm.CategorySlug,
+            vm.Type,
             vm.CurrentPath,
             vm.FilterActionUrl,
             vm.ClearFilterUrl,
             vm.CategoryId,
             vm.CategorySlug,
             vm.IsComponentListing,
-            vm.Type,
             baseProductCount,
             string.Join("; ", BuildSelectedFilterDebugValues(vm)),
             filteredProductCount,
-            vm.PriceRangeOptions.Count,
-            vm.BrandOptions.Count,
-            vm.CpuOptions.Count,
-            vm.RamOptions.Count,
-            vm.GpuOptions.Count,
-            vm.StorageOptions.Count,
-            vm.SpecFilterGroups.Count);
+            string.Join(",", vm.SpecFilterGroups.Select(g => g.Name)),
+            string.Join(",", vm.SpecFilterGroups.Select(g => g.Name)),
+            string.Join(",", vm.SpecFilterGroups.Where(g => g.Options.Count > 0).Select(g => g.Name)),
+            "brand-alias/spec-alias groups normalized",
+            "empty normalized groups are not rendered",
+            string.Join("; ", vm.SpecFilterGroups.Select(g => $"{g.Name}={string.Join('/', g.Options.Select(o => $"{o.Label}:{o.Count}"))}")));
     }
 
     private static IEnumerable<string> BuildSelectedFilterDebugValues(ProductFilterVm vm)
@@ -453,12 +454,7 @@ public class ProductsController : Controller
             })
             .ToList();
 
-        vm.BrandOptions = scopedProducts
-            .Where(product => !string.IsNullOrWhiteSpace(product.Brand) && !string.Equals(product.Brand.Trim(), "N/A", StringComparison.OrdinalIgnoreCase))
-            .GroupBy(product => product.Brand!.Trim(), StringComparer.OrdinalIgnoreCase)
-            .Select(group => new ProductFilterOptionVm { Value = group.Key, Label = group.Key, Count = group.Count() })
-            .OrderBy(option => option.Label)
-            .ToList();
+        vm.BrandOptions = BuildBrandOptions(scopedProducts);
 
         vm.ComponentTypeGroups = vm.IsComponentListing && string.IsNullOrWhiteSpace(vm.Type) ? BuildComponentTypeGroups(products, vm.Type) : new List<ProductFilterGroupVm>();
         vm.ComponentFamilyOptions = vm.IsComponentListing && !string.IsNullOrWhiteSpace(vm.Type) ? BuildComponentFamilyOptions(scopedProducts, vm.Type) : new List<ProductFilterOptionVm>();
@@ -567,37 +563,201 @@ public class ProductsController : Controller
         return counts.GetValueOrDefault(ComponentTypes.Normalize(type));
     }
 
-    private static List<ProductSpecFilterGroupVm> BuildSpecFilterGroups(IEnumerable<Product> products, string componentType) =>
+    private static List<ProductFilterOptionVm> BuildBrandOptions(IEnumerable<Product> products) =>
         products
-            .SelectMany(product => ProductSpecificationKeyValueHelper.ParseStored(product.Specifications)
-                .Where(spec => !string.IsNullOrWhiteSpace(spec.Name) && !string.IsNullOrWhiteSpace(spec.Value))
-                .Select(spec => new { product.Id, Name = spec.Name?.Trim() ?? string.Empty, Value = spec.Value?.Trim() ?? string.Empty }))
-            .Where(spec => ProductFilterFacetHelper.IsRenderableFilterOption(spec.Name)
-                && ProductFilterFacetHelper.IsRenderableFilterOption(spec.Value)
-                && IsSpecAllowedForComponent(componentType, spec.Name))
-            .GroupBy(spec => spec.Name, StringComparer.OrdinalIgnoreCase)
-            .Where(group => group.Select(spec => spec.Value).Distinct(StringComparer.OrdinalIgnoreCase).Count() > 1)
-            .OrderBy(group => GetSpecGroupSortOrder(group.Key))
-            .ThenBy(group => group.Key)
-            .Take(8)
+            .SelectMany(product => ExtractProductBrands(product).Select(brand => new { product.Id, Brand = brand }))
+            .GroupBy(item => item.Brand, StringComparer.OrdinalIgnoreCase)
+            .Select(group => new ProductFilterOptionVm
+            {
+                Value = group.Key,
+                Label = group.Key,
+                Count = group.Select(item => item.Id).Distinct().Count()
+            })
+            .OrderBy(option => option.Label)
+            .ToList();
+
+    private static List<ProductSpecFilterGroupVm> BuildSpecFilterGroups(IEnumerable<Product> products, string componentType)
+    {
+        var normalizedType = ComponentTypes.Normalize(componentType);
+        var values = products
+            .SelectMany(product => ExtractComponentFilterValues(product, normalizedType)
+                .Where(item => !IsBrandGroup(item.Group))
+                .Select(item => new { product.Id, item.Group, item.Value }))
+            .GroupBy(item => item.Group, StringComparer.OrdinalIgnoreCase)
             .Select(group => new ProductSpecFilterGroupVm
             {
                 Name = group.Key,
                 Options = group
-                    .GroupBy(spec => spec.Value, StringComparer.OrdinalIgnoreCase)
+                    .GroupBy(item => item.Value, StringComparer.OrdinalIgnoreCase)
                     .Select(valueGroup => new ProductFilterOptionVm
                     {
                         Value = BuildSpecValue(group.Key, valueGroup.Key),
                         Label = valueGroup.Key,
-                        Count = valueGroup.Select(spec => spec.Id).Distinct().Count()
+                        Count = valueGroup.Select(item => item.Id).Distinct().Count()
                     })
+                    .Where(option => option.Count > 0)
                     .OrderBy(option => GetSpecValueSortOrder(option.Label))
                     .ThenBy(option => option.Label)
-                    .Take(12)
                     .ToList()
             })
             .Where(group => group.Options.Count > 0)
+            .OrderBy(group => GetComponentSpecGroupOrder(normalizedType, group.Name))
+            .ThenBy(group => group.Name)
             .ToList();
+
+        return values;
+    }
+
+    private static bool IsBrandGroup(string group) => string.Equals(group, "THƯƠNG HIỆU", StringComparison.OrdinalIgnoreCase);
+
+    private static IEnumerable<string> ExtractProductBrands(Product product)
+    {
+        var brands = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        AddCleanBrand(brands, product.Brand);
+        foreach (var spec in ProductSpecificationKeyValueHelper.ParseStored(product.Specifications))
+        {
+            if (IsBrandSpecKey(spec.Name)) AddCleanBrand(brands, spec.Value);
+        }
+        return brands;
+    }
+
+    private static void AddCleanBrand(HashSet<string> brands, string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return;
+        var brand = value.Trim();
+        if (string.Equals(brand, "N/A", StringComparison.OrdinalIgnoreCase) || !ProductFilterFacetHelper.IsRenderableFilterOption(brand)) return;
+        brands.Add(brand);
+    }
+
+    private static bool IsBrandSpecKey(string? key)
+    {
+        var normalized = NormalizeSearchValue(key);
+        return normalized is "brand" or "thuong hieu" or "hang" or "nha san xuat" or "manufacturer";
+    }
+
+    private static IEnumerable<(string Group, string Value)> ExtractComponentFilterValues(Product product, string componentType)
+    {
+        var results = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        void Add(string group, string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value) || !ProductFilterFacetHelper.IsRenderableFilterOption(value)) return;
+            results.Add($"{group}::{value.Trim()}");
+        }
+
+        foreach (var brand in ExtractProductBrands(product)) Add("THƯƠNG HIỆU", brand);
+
+        var text = BuildComponentSearchText(product);
+        switch (componentType)
+        {
+            case ComponentTypes.VGA:
+                AddRegex(results, "DÒNG GPU", text, @"\bGTX\s*1660\s*SUPER\b", "GTX 1660 Super");
+                AddRegex(results, "DÒNG GPU", text, @"\bGTX\s*1660\b", "GTX 1660");
+                AddRegex(results, "DÒNG GPU", text, @"\b(?:RTX|RX)\s*\d{4}\s*(?:TI|XT)?\b", NormalizeGpuLabel);
+                AddRegex(results, "DUNG LƯỢNG VRAM", text, @"\b(4|6|8|12|16|24|32)\s*GB\b(?=.{0,20}(?:GDDR|VRAM)|.{0,40}(?:RTX|GTX|RX))", m => $"{m.Groups[1].Value}GB");
+                AddRegex(results, "LOẠI VRAM", text, @"\bGDDR\s*([56]X?)\b", m => $"GDDR{m.Groups[1].Value.ToUpperInvariant()}");
+                AddRegex(results, "BUS / MEMORY BUS", text, @"\b(64|96|128|192|256|320|384|512)\s*[- ]?bit\b", m => $"{m.Groups[1].Value}-bit");
+                break;
+            case ComponentTypes.RAM:
+                AddRegex(results, "DUNG LƯỢNG", text, @"\b(8|16|32|64|128)\s*GB\b", m => $"{m.Groups[1].Value}GB");
+                AddRegex(results, "LOẠI RAM", text, @"\bDDR\s*([345])\b", m => $"DDR{m.Groups[1].Value}");
+                AddRegex(results, "BUS RAM", text, @"\b(2400|2666|3000|3200|3600|4800|5200|5600|6000|6400|7200)\s*(?:MHz|Mhz)?\b", m => $"{m.Groups[1].Value}MHz");
+                break;
+            case ComponentTypes.CPU:
+                AddRegex(results, "DÒNG CPU", text, @"\bIntel\s+Core\s+i([3579])\b|\bCore\s+i([3579])\b", m => $"Intel Core i{(m.Groups[1].Success ? m.Groups[1].Value : m.Groups[2].Value)}");
+                AddRegex(results, "DÒNG CPU", text, @"\b(?:AMD\s+)?Ryzen\s+([3579])\b", m => $"AMD Ryzen {m.Groups[1].Value}");
+                AddRegex(results, "SOCKET", text, @"\b(AM4|AM5|LGA\s*1700|LGA\s*1200|LGA\s*1851)\b", NormalizeNoSpaceUpper);
+                AddRegex(results, "SỐ NHÂN", text, @"\b(4|6|8|10|12|14|16|24)\s*(?:nhân|cores?|core)\b", m => $"{m.Groups[1].Value} nhân");
+                break;
+            case ComponentTypes.Mainboard:
+                AddRegex(results, "SOCKET", text, @"\b(AM4|AM5|LGA\s*1700|LGA\s*1200|LGA\s*1851)\b", NormalizeNoSpaceUpper);
+                AddRegex(results, "CHIPSET", text, @"\b(A520|B450|B550|B650|X570|X670|H510|H610|B560|B660|B760|Z690|Z790|Z890)\b", m => m.Value.ToUpperInvariant());
+                AddRegex(results, "LOẠI RAM HỖ TRỢ", text, @"\bDDR\s*([45])\b", m => $"DDR{m.Groups[1].Value}");
+                AddRegex(results, "FORM FACTOR", text, @"\b(Micro\s*-?\s*ATX|Mini\s*-?\s*ITX|E-?ATX|ATX)\b", NormalizeFormFactor);
+                break;
+            case ComponentTypes.Storage:
+                AddRegex(results, "DUNG LƯỢNG", text, @"\b(256|500|512)\s*GB\b|\b(1|2|4)\s*TB\b", NormalizeCapacity);
+                AddRegex(results, "CHUẨN Ổ CỨNG", text, @"\b(SSD|HDD)\b", m => m.Value.ToUpperInvariant());
+                AddRegex(results, "GIAO TIẾP", text, @"\b(NVMe|SATA|PCIe\s*[345]\.0)\b", m => Regex.Replace(m.Value, @"\s+", " ").ToUpperInvariant().Replace("PCIE", "PCIe"));
+                break;
+            case ComponentTypes.PSU:
+                AddRegex(results, "CÔNG SUẤT", text, @"\b(450|500|550|600|650|700|750|850|1000|1200)\s*W\b", m => $"{m.Groups[1].Value}W");
+                AddRegex(results, "CHUẨN HIỆU SUẤT", text, @"\b80\s*Plus\s*(Bronze|Gold|Platinum|Titanium|Silver)?\b", m => $"80 Plus{(m.Groups[1].Success ? " " + m.Groups[1].Value : string.Empty)}");
+                break;
+            case ComponentTypes.Cooler:
+                AddRegex(results, "LOẠI TẢN", text, @"\b(AIO|tản nước|tan nuoc|liquid)\b", "Tản nước AIO");
+                AddRegex(results, "LOẠI TẢN", text, @"\b(tản khí|tan khi|air cooler)\b", "Tản khí");
+                AddRegex(results, "SOCKET HỖ TRỢ", text, @"\b(AM4|AM5|LGA\s*1700|LGA\s*1200|LGA\s*1851)\b", NormalizeNoSpaceUpper);
+                break;
+            case ComponentTypes.Case:
+                AddRegex(results, "KÍCH THƯỚC CASE", text, @"\b(Mid\s*Tower|Full\s*Tower|Mini\s*Tower|ATX|Micro\s*-?\s*ATX|Mini\s*-?\s*ITX)\b", NormalizeFormFactor);
+                AddRegex(results, "HỖ TRỢ MAINBOARD", text, @"\b(E-?ATX|ATX|Micro\s*-?\s*ATX|Mini\s*-?\s*ITX)\b", NormalizeFormFactor);
+                break;
+        }
+
+        return results.Select(item =>
+        {
+            var parts = item.Split("::", 2, StringSplitOptions.TrimEntries);
+            return (Group: parts[0], Value: parts[1]);
+        });
+    }
+
+    private static string BuildComponentSearchText(Product product) =>
+        string.Join(' ', product.Brand, product.Name, product.ShortDescription, product.Description, product.DetailDescription, product.Specifications,
+            string.Join(' ', ProductSpecificationKeyValueHelper.ParseStored(product.Specifications).Select(spec => $"{spec.Name} {spec.Value}")));
+
+    private static void AddRegex(HashSet<string> results, string group, string text, string pattern, string value) =>
+        AddRegex(results, group, text, pattern, _ => value);
+
+    private static void AddRegex(HashSet<string> results, string group, string text, string pattern, Func<Match, string> label)
+    {
+        foreach (Match match in Regex.Matches(text, pattern, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
+        {
+            var value = label(match);
+            if (!string.IsNullOrWhiteSpace(value)) results.Add($"{group}::{value}");
+        }
+    }
+
+    private static string NormalizeGpuLabel(Match match)
+    {
+        var normalized = Regex.Replace(match.Value.ToUpperInvariant(), @"\s+", " ");
+        normalized = Regex.Replace(normalized, @"\bTI\b", "Ti");
+        return normalized;
+    }
+
+    private static string NormalizeNoSpaceUpper(Match match) => Regex.Replace(match.Value, @"\s+", string.Empty).ToUpperInvariant();
+    private static string NormalizeCapacity(Match match) => match.Groups[1].Success ? $"{match.Groups[1].Value}GB" : $"{match.Groups[2].Value}TB";
+    private static string NormalizeFormFactor(Match match)
+    {
+        var value = Regex.Replace(match.Value.Trim(), @"\s+", " ", RegexOptions.CultureInvariant);
+        return NormalizeSearchValue(value) switch
+        {
+            "micro atx" or "micro-atx" => "Micro-ATX",
+            "mini itx" or "mini-itx" => "Mini-ITX",
+            "eatx" or "e-atx" => "E-ATX",
+            _ when value.Contains("mid", StringComparison.OrdinalIgnoreCase) => "Mid Tower",
+            _ when value.Contains("full", StringComparison.OrdinalIgnoreCase) => "Full Tower",
+            _ when value.Contains("mini tower", StringComparison.OrdinalIgnoreCase) => "Mini Tower",
+            _ => "ATX"
+        };
+    }
+
+    private static int GetComponentSpecGroupOrder(string componentType, string group)
+    {
+        var order = componentType switch
+        {
+            ComponentTypes.VGA => new[] { "DÒNG GPU", "DUNG LƯỢNG VRAM", "LOẠI VRAM", "BUS / MEMORY BUS" },
+            ComponentTypes.RAM => new[] { "DUNG LƯỢNG", "LOẠI RAM", "BUS RAM" },
+            ComponentTypes.CPU => new[] { "DÒNG CPU", "SOCKET", "SỐ NHÂN" },
+            ComponentTypes.Mainboard => new[] { "SOCKET", "CHIPSET", "LOẠI RAM HỖ TRỢ", "FORM FACTOR" },
+            ComponentTypes.Storage => new[] { "DUNG LƯỢNG", "CHUẨN Ổ CỨNG", "GIAO TIẾP" },
+            ComponentTypes.PSU => new[] { "CÔNG SUẤT", "CHUẨN HIỆU SUẤT" },
+            ComponentTypes.Cooler => new[] { "LOẠI TẢN", "SOCKET HỖ TRỢ" },
+            ComponentTypes.Case => new[] { "KÍCH THƯỚC CASE", "HỖ TRỢ MAINBOARD" },
+            _ => Array.Empty<string>()
+        };
+        var index = Array.FindIndex(order, item => string.Equals(item, group, StringComparison.OrdinalIgnoreCase));
+        return index >= 0 ? index : int.MaxValue;
+    }
 
     private static bool IsSpecAllowedForComponent(string componentType, string specName)
     {
@@ -831,10 +991,16 @@ public class ProductsController : Controller
 
         return products.Where(product =>
         {
+            var componentType = ComponentTypes.Normalize(product.ComponentType);
+            var normalizedComponentSpecs = ExtractComponentFilterValues(product, componentType)
+                .Select(item => (Name: item.Group, Value: item.Value));
             var productSpecs = ProductSpecificationKeyValueHelper.ParseStored(product.Specifications);
             return selectedByName.All(group => productSpecs.Any(spec =>
                 string.Equals(spec.Name?.Trim(), group.Key, StringComparison.OrdinalIgnoreCase) &&
-                group.Any(selected => string.Equals(spec.Value?.Trim(), selected.Value, StringComparison.OrdinalIgnoreCase))));
+                group.Any(selected => string.Equals(spec.Value?.Trim(), selected.Value, StringComparison.OrdinalIgnoreCase))) ||
+                normalizedComponentSpecs.Any(spec =>
+                    string.Equals(spec.Name, group.Key, StringComparison.OrdinalIgnoreCase) &&
+                    group.Any(selected => string.Equals(spec.Value, selected.Value, StringComparison.OrdinalIgnoreCase))));
         });
     }
 
@@ -844,6 +1010,6 @@ public class ProductsController : Controller
         if (parts.Length != 2 || string.IsNullOrWhiteSpace(parts[0]) || string.IsNullOrWhiteSpace(parts[1]))
             return null;
 
-        return (parts[0], parts[1]);
+        return (Name: parts[0], Value: parts[1]);
     }
 }
