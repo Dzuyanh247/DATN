@@ -386,7 +386,7 @@ public class AccountController : Controller
     public async Task<IActionResult> Profile()
     {
         var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        var user = await _db.Users.FirstOrDefaultAsync(x => x.Id == userId);
+        var user = await _db.Users.Include(x => x.Role).FirstOrDefaultAsync(x => x.Id == userId);
         if (user == null) return NotFound();
 
         var vm = new AccountSettingsViewModel
@@ -413,7 +413,7 @@ public class AccountController : Controller
     public async Task<IActionResult> UpdateProfile([Bind(Prefix = "Profile")] AccountProfileViewModel vm)
     {
         var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        var user = await _db.Users.FirstOrDefaultAsync(x => x.Id == userId);
+        var user = await _db.Users.Include(x => x.Role).FirstOrDefaultAsync(x => x.Id == userId);
         if (user == null)
         {
             TempData["ErrorMessage"] = "Không tìm thấy tài khoản người dùng.";
@@ -455,7 +455,7 @@ public class AccountController : Controller
     public async Task<IActionResult> ChangePassword([Bind(Prefix = "ChangePassword")] ChangePasswordViewModel vm)
     {
         var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        var user = await _db.Users.FirstOrDefaultAsync(x => x.Id == userId);
+        var user = await _db.Users.Include(x => x.Role).FirstOrDefaultAsync(x => x.Id == userId);
         if (user == null)
         {
             TempData["ErrorMessage"] = "Không tìm thấy tài khoản người dùng.";
