@@ -129,12 +129,18 @@ public class ProductsController : Controller
             vm.ComponentTypes = Array.Empty<string>();
         }
 
-        if (vm.CategoryId.HasValue)
-            query = query.Where(p => p.CategoryId == vm.CategoryId.Value);
-
         if (vm.IsComponentListing)
         {
+            // The /linh-kien listing is a component hub.  Some add-on items such as
+            // monitors, keyboards, mice, and headsets may live in accessory-specific
+            // categories, so do not keep the incoming Linh kiện categoryId as a hard
+            // product filter here.  Non-component category pages still use categoryId
+            // normally in the branch below.
             query = await ApplyComponentListingScopeAsync(query);
+        }
+        else if (vm.CategoryId.HasValue)
+        {
+            query = query.Where(p => p.CategoryId == vm.CategoryId.Value);
         }
 
         query = query.Where(p => p.IsActive);
@@ -537,7 +543,8 @@ public class ProductsController : Controller
                 Title = "Linh kiện máy tính",
                 Options = BuildComponentOptions(counts, currentType,
                     ComponentTypes.CPU, ComponentTypes.Mainboard, ComponentTypes.RAM, ComponentTypes.VGA,
-                    ComponentTypes.MonitorArm, ComponentTypes.Storage, ComponentTypes.Cooler, ComponentTypes.Case, ComponentTypes.PSU)
+                    ComponentTypes.Storage, ComponentTypes.Cooler, ComponentTypes.Case, ComponentTypes.PSU,
+                    ComponentTypes.Monitor, ComponentTypes.Keyboard, ComponentTypes.Mouse, ComponentTypes.Headphone)
             }
         };
 
