@@ -524,50 +524,107 @@
                 || (normalized.startsWith('stt ') && normalized.includes('mô tả') && normalized.includes(' sl') && normalized.endsWith('bh'));
         }
 
+        const groupHeaderRegex = /^(bộ vi xử lý|bo vi xu ly|cpu|ram laptop|bộ nhớ trong|bo nho trong|ổ cứng|o cung|ssd laptop|hiển thị|hien thi|màn hình|man hinh|đồ họa|do hoa|vga|gpu|kết nối|ket noi|network|keyboard|bàn phím|ban phim|mouse|chuột|chuot|pin laptop|pin|hệ điều hành|he dieu hanh|thông tin khác|thong tin khac)$/i;
+        const attributeLabelRegex = /^(tên bộ vi xử lý|ten bo vi xu ly|dung lượng|dung luong|loại ram|loai ram|tên ổ cứng|ten o cung|card đồ họa|card do hoa|độ phân giải|do phan giai|tần số quét|tan so quet|công nghệ|cong nghe|kích thước|kich thuoc|màu sắc|mau sac|bảo mật|bao mat|camera|audio|âm thanh|am thanh|trọng lượng|trong luong)$/i;
+        const meaninglessRegex = /^(none|--|n\/a|không có|khong co|trống|trong)$/i;
+
+        function isGroupHeader(line) { return groupHeaderRegex.test(trimField(line)); }
+        function isAttributeLabel(line) { return attributeLabelRegex.test(trimField(line)); }
+        function isMeaninglessValue(line) { return meaninglessRegex.test(trimField(line)); }
+
+        function mapLabelToName(line) {
+            const value = trimField(line);
+            if (/cpu|vi xử lý|vi xu ly/i.test(value)) return 'CPU';
+            if (/ram|bộ nhớ|bo nho|dung lượng|dung luong/i.test(value)) return 'RAM';
+            if (/ssd|hdd|ổ cứng|o cung/i.test(value)) return 'SSD';
+            if (/vga|gpu|đồ họa|do hoa|card/i.test(value)) return 'GPU';
+            if (/màn hình|man hinh|hiển thị|hien thi|phân giải|phan giai|tần số|tan so/i.test(value)) return 'Màn hình';
+            if (/hệ điều hành|he dieu hanh/i.test(value)) return 'OS';
+            return 'Thông số khác';
+        }
+
+        function cleanLaptopValue(name, value) {
+            let cleaned = trimField(value).replace(/\bProcessor\b/ig, '').replace(/^[-:]+\s*/, '').trim();
+            if (name === 'SSD') cleaned = cleaned.replace(/\bM\.?2\s*2242\s*/ig, '');
+            if (name === 'GPU') cleaned = cleaned.replace(/\b(?:NVIDIA\s+GeForce|NVIDIA|AMD\s+Radeon)\s+/ig, '');
+            if (name === 'Màn hình') cleaned = cleaned.replace(/ inch/ig, '"');
+            return trimField(cleaned.replace(/^[,\-\s]+|[,\-\s]+$/g, ''));
+        }
+
+        function buildSpec(name, value) {
+            return { stt: 1, description: `${name} | ${cleanLaptopValue(name, value)}`, quantity: 1, warranty: '' };
+        }
+
+        function classifySpec(line) {
+            if (isGroupHeader(line) || isAttributeLabel(line) || isMeaninglessValue(line)) return null;
+            const rules = [
+                [/\b(ryzen|intel\s+core|core\s+ultra|i[3579][-\s]?\d{4,5}|cpu|processor|hx|hs)\b/i, 'CPU'],
+                [/\b(ram|ddr[345]|so-?dimm|\d+\s*gb\s+ddr)\b/i, 'RAM'],
+                [/\b(ssd|hdd|m\.?2|nvme|pcie|sata)\b/i, 'SSD'],
+                [/\b(vga|gpu|rtx|gtx|mx\d+|radeon|arc|gddr)\b/i, 'GPU'],
+                [/\b(\d{2}(?:\.\d)?\s*(?:inch|"|inches)|fhd|qhd|uhd|ips|oled|mini\s*led|\d{2,3}\s*hz|srgb|dci-p3|g-sync|freesync)\b/i, 'Màn hình'],
+                [/\b(wi-?fi|802\.11|wireless)\b/i, 'WiFi'],
+                [/\bbluetooth\b/i, 'Bluetooth'],
+                [/\b(\d+(?:[\.,]\d+)?\s*wh|\d+\s*mah|cell)\b/i, 'Pin'],
+                [/\b(windows|linux|ubuntu|dos|macos|hệ điều hành|he dieu hanh|os)\b/i, 'OS'],
+                [/\b\d+(?:[\.,]\d+)?\s*kg\b/i, 'Trọng lượng'],
+                [/\b\d+(?:[\.,]\d+)?\s*x\s*\d+(?:[\.,]\d+)?\s*x\s*\d+(?:[\.,]\d+)?\s*(mm|cm)\b/i, 'Kích thước'],
+                [/\b(black|white|gray|grey|silver|blue|red|đen|trắng|xám|bạc|xanh|đỏ|màu)\b/i, 'Màu sắc'],
+                [/\b(fingerprint|tpm|privacy|bảo mật|bao mat|khuôn mặt|khuon mat)\b/i, 'Bảo mật'],
+                [/\b(audio|speaker|loa|dolby|nahimic|microphone|mic)\b/i, 'Audio'],
+                [/\b(camera|webcam|fhd webcam|hd webcam|ir camera)\b/i, 'Camera']
+            ];
+            if (/\b\d+\s*w\b/i.test(line) && /\b(adapter|sạc|sac|charger|power)\b/i.test(line)) return buildSpec('Sạc', line);
+            const match = rules.find(([regex]) => regex.test(line));
+            return match ? buildSpec(match[1], line) : null;
+        }
+
+        function mergeSimilarSpecs(specs) {
+            const merged = [];
+            specs.forEach(spec => {
+                const parts = trimField(spec.description).split(' | ');
+                const name = parts.length > 1 ? parts[0] : 'Thông số khác';
+                const value = parts.length > 1 ? parts.slice(1).join(' | ') : spec.description;
+                const existing = name !== 'Thông số khác' ? merged.find(x => trimField(x.description).toLowerCase().startsWith(`${name.toLowerCase()} | `)) : null;
+                if (!existing) merged.push(spec);
+                else if (!existing.description.toLowerCase().includes(value.toLowerCase())) existing.description += `; ${value}`;
+            });
+            return merged.map((spec, index) => ({ ...spec, stt: index + 1 }));
+        }
+
         window.parsePastedSpecs = function parsePastedSpecs(rawText) {
             const result = [];
-            const lines = (rawText || '').split(/\r?\n/);
+            const lines = (rawText || '').split(/\r?\n/).map(trimField).filter(line => line && !isHeaderLine(line) && !isMeaninglessValue(line));
             const fallbackRegex = /^\s*(\d+)\s+(.+?)\s+(\d+)\s+([0-9]+th|[0-9]+\s*tháng|[0-9]+)\s*$/i;
 
-            lines.forEach(line => {
-                if (!trimField(line) || isHeaderLine(line)) return;
-
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
                 let spec = null;
-                const separator = line.includes('	') ? '	' : (line.includes('|') ? '|' : null);
+                const separator = line.includes('\t') ? '\t' : (line.includes('|') ? '|' : null);
                 if (separator) {
                     const columns = line.split(separator).map(trimField).filter(Boolean);
                     if (columns.length >= 4 && !isHeaderLine(columns.join(' '))) {
-                        spec = {
-                            stt: parseInt(columns[0], 10) || result.length + 1,
-                            description: columns[1],
-                            quantity: parseInt(columns[2], 10) || 1,
-                            warranty: columns[3]
-                        };
-                    } else if (columns.length > 0) {
-                        const description = trimField(columns.slice(1).join(' ') || columns.join(' '));
-                        spec = { stt: result.length + 1, description, quantity: 1, warranty: '' };
+                        spec = { stt: parseInt(columns[0], 10) || result.length + 1, description: columns[1], quantity: parseInt(columns[2], 10) || 1, warranty: columns[3] };
                     }
                 } else {
                     const match = line.match(fallbackRegex);
-                    if (match) {
-                        spec = {
-                            stt: parseInt(match[1], 10) || result.length + 1,
-                            description: trimField(match[2]),
-                            quantity: parseInt(match[3], 10) || 1,
-                            warranty: trimField(match[4])
-                        };
-                    } else {
-                        const description = trimField(line.replace(/^\s*\d+\s+/, ''));
-                        if (description) spec = { stt: result.length + 1, description, quantity: 1, warranty: '' };
+                    if (match) spec = { stt: parseInt(match[1], 10) || result.length + 1, description: trimField(match[2]), quantity: parseInt(match[3], 10) || 1, warranty: trimField(match[4]) };
+                    else {
+                        spec = classifySpec(line);
+                        if (!spec && i + 1 < lines.length && isAttributeLabel(line) && !isGroupHeader(lines[i + 1]) && !isAttributeLabel(lines[i + 1])) {
+                            spec = buildSpec(mapLabelToName(line), lines[i + 1]);
+                            i++;
+                        } else if (!spec && i + 2 < lines.length && isGroupHeader(line) && isAttributeLabel(lines[i + 1])) {
+                            spec = buildSpec(mapLabelToName(line), lines[i + 2]);
+                            i += 2;
+                        }
+                        if (!spec && !isGroupHeader(line) && !isAttributeLabel(line)) spec = buildSpec('Thông số khác', line.replace(/^\s*\d+\s+/, ''));
                     }
                 }
+                if (spec && spec.description && !isHeaderLine(spec.description)) result.push(spec);
+            }
 
-                if (spec && spec.description && !isHeaderLine(spec.description)) {
-                    result.push(spec);
-                }
-            });
-
-            return result;
+            return mergeSimilarSpecs(result);
         };
 
         function createInput(className, value, type) {
