@@ -27,6 +27,7 @@ public interface IProductSearchForAiService
 {
     Task<IReadOnlyList<AiProductContext>> SearchAsync(string message, CancellationToken cancellationToken = default);
     Task<AiProductContext?> GetByIdAsync(int productId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<AiProductContext>> QueryByIntentAsync(string intent, string? productType, string priceMode, decimal? budgetTarget, CancellationToken cancellationToken = default);
 }
 
 public partial class ProductSearchForAiService : IProductSearchForAiService
@@ -49,6 +50,40 @@ public partial class ProductSearchForAiService : IProductSearchForAiService
         if (product == null) return null;
         var scope = IsPcProduct(product) ? "PC" : ComponentTypes.Normalize(product.ComponentType);
         return ToContext(product, scope);
+    }
+
+
+    public async Task<IReadOnlyList<AiProductContext>> QueryByIntentAsync(string intent, string? productType, string priceMode, decimal? budgetTarget, CancellationToken cancellationToken = default)
+    {
+        var max = Math.Clamp(_options.MaxProductsContext, 1, 10);
+        var query = _db.Products.AsNoTracking().Include(x => x.Category)
+            .Where(x => x.IsActive && (x.DiscountPrice ?? x.SalePrice ?? x.Price) > 0 && (x.StockQuantity > 0 || x.IsInStock));
+        var isPcIntent = string.Equals(intent, "PC_BUILD_ADVICE", StringComparison.OrdinalIgnoreCase);
+        var isExtremeAll = string.Equals(intent, "PRODUCT_EXTREME_QUERY", StringComparison.OrdinalIgnoreCase) && string.IsNullOrWhiteSpace(productType);
+        var scope = isPcIntent ? "PC" : isExtremeAll ? "ALL" : ComponentTypes.Normalize(productType);
+        query = scope == "PC" ? ApplyPcScope(query) : scope == "ALL" ? query : ApplyComponentScope(query, scope);
+        if (string.Equals(priceMode, "highest", StringComparison.OrdinalIgnoreCase))
+        {
+            var rows = await query.OrderByDescending(x => x.DiscountPrice ?? x.SalePrice ?? x.Price).Take(Math.Min(3, max)).ToListAsync(cancellationToken);
+            return rows.Select(x => ToContext(x, scope == "PC" ? "PC" : scope == "ALL" ? (IsPcProduct(x) ? "PC" : ComponentTypes.Normalize(x.ComponentType)) : ComponentTypes.Normalize(productType))).ToList();
+        }
+        if (string.Equals(priceMode, "lowest", StringComparison.OrdinalIgnoreCase))
+        {
+            var rows = await query.OrderBy(x => x.DiscountPrice ?? x.SalePrice ?? x.Price).Take(Math.Min(3, max)).ToListAsync(cancellationToken);
+            return rows.Select(x => ToContext(x, scope == "PC" ? "PC" : scope == "ALL" ? (IsPcProduct(x) ? "PC" : ComponentTypes.Normalize(x.ComponentType)) : ComponentTypes.Normalize(productType))).ToList();
+        }
+        var candidates = await query.Take(200).ToListAsync(cancellationToken);
+        IEnumerable<Product> ordered = candidates;
+        if (budgetTarget.HasValue)
+        {
+            ordered = candidates
+                .Where(x => (x.DiscountPrice ?? x.SalePrice ?? x.Price) >= budgetTarget.Value * 0.65m && (x.DiscountPrice ?? x.SalePrice ?? x.Price) <= budgetTarget.Value * 1.15m)
+                .OrderByDescending(x => (x.DiscountPrice ?? x.SalePrice ?? x.Price) <= budgetTarget.Value)
+                .ThenBy(x => Math.Abs((x.DiscountPrice ?? x.SalePrice ?? x.Price) - budgetTarget.Value));
+            if (!ordered.Any()) ordered = candidates.OrderBy(x => Math.Abs((x.DiscountPrice ?? x.SalePrice ?? x.Price) - budgetTarget.Value));
+        }
+        else ordered = candidates.OrderBy(x => x.DiscountPrice ?? x.SalePrice ?? x.Price);
+        return ordered.Take(max).Select(x => ToContext(x, scope == "PC" ? "PC" : scope == "ALL" ? (IsPcProduct(x) ? "PC" : ComponentTypes.Normalize(x.ComponentType)) : ComponentTypes.Normalize(productType))).ToList();
     }
 
     public async Task<IReadOnlyList<AiProductContext>> SearchAsync(string message, CancellationToken cancellationToken = default)
@@ -143,7 +178,7 @@ public partial class ProductSearchForAiService : IProductSearchForAiService
 
     private static IQueryable<Product> ApplyComponentScope(IQueryable<Product> query, string? componentType)
     {
-        query = query.Where(x => x.ProductType == ProductKinds.Component || x.ProductType == ProductKinds.PC || (x.Category != null && ((x.Category.Name ?? string.Empty) == "Linh kiện" || (x.Category.Name ?? string.Empty) == "Màn hình" || (x.Category.Name ?? string.Empty).Contains("Phụ kiện") || (x.Category.Name ?? string.Empty).Contains("Bàn phím") || (x.Category.Name ?? string.Empty).Contains("Chuột") || (x.Category.Name ?? string.Empty).Contains("Tai nghe"))));
+        query = query.Where(x => x.ProductType == ProductKinds.Component || (x.Category != null && ((x.Category.Name ?? string.Empty) == "Linh kiện" || (x.Category.Name ?? string.Empty) == "Màn hình" || (x.Category.Name ?? string.Empty).Contains("Phụ kiện") || (x.Category.Name ?? string.Empty).Contains("Bàn phím") || (x.Category.Name ?? string.Empty).Contains("Chuột") || (x.Category.Name ?? string.Empty).Contains("Tai nghe"))));
         if (string.IsNullOrWhiteSpace(componentType)) return query;
         var normalized = ComponentTypes.Normalize(componentType);
         return normalized switch
@@ -194,7 +229,7 @@ public partial class ProductSearchForAiService : IProductSearchForAiService
         var accessory = DetectAccessoryType(normalized);
         if (accessory != null) componentType = accessory;
         var isCompare = ContainsAny(normalized, "so sanh", "compare", "khac nhau");
-        var isPcAdvice = (PcIntentWords.Any(normalized.Contains) || !string.IsNullOrWhiteSpace(game)) && accessory == null;
+        var isPcAdvice = (PcIntentWords.Any(normalized.Contains) || !string.IsNullOrWhiteSpace(game)) && accessory == null && componentType == null;
         var isPolicy = ContainsAny(normalized, "tra gop", "freeship", "doi tra", "bao hanh tan noi", "hoa toc", "chinh sach");
         var isOrder = ContainsAny(normalized, "don hang", "ma don", "dh0");
         var isWarranty = ContainsAny(normalized, "bao hanh", "warranty");
@@ -306,7 +341,7 @@ public partial class ProductSearchForAiService : IProductSearchForAiService
         [ComponentTypes.Keyboard] = ["ban phim", "keyboard", "keycap", "ban phim co"],
         [ComponentTypes.Mouse] = ["chuot", "mouse"],
         [ComponentTypes.Monitor] = ["man hinh", "monitor"],
-        [ComponentTypes.RAM] = [" ram", "bo nho"],
+        [ComponentTypes.RAM] = [" ram", "ram ", "thanh ram", "bo nho"],
         [ComponentTypes.Storage] = ["ssd", "hdd", "o cung"],
         [ComponentTypes.VGA] = ["vga", "gpu", "card", "card man hinh"],
         [ComponentTypes.CPU] = ["cpu", "bo vi xu ly"],
@@ -389,19 +424,19 @@ public partial class ProductSearchForAiService : IProductSearchForAiService
 
     private static string LabelForComponent(string? componentType) => ComponentTypes.Normalize(componentType) switch
     {
-        ComponentTypes.CPU => "CPU",
-        ComponentTypes.VGA => "VGA",
-        ComponentTypes.Mainboard => "Mainboard",
-        ComponentTypes.RAM => "RAM",
-        ComponentTypes.Storage => "Ổ cứng",
-        ComponentTypes.PSU => "Nguồn",
-        ComponentTypes.Case => "Vỏ case",
-        ComponentTypes.Cooler => "Tản nhiệt",
-        ComponentTypes.Mouse => "Chuột",
-        ComponentTypes.Keyboard => "Bàn phím",
-        ComponentTypes.Headphone => "Tai nghe",
-        ComponentTypes.Monitor => "Màn hình",
-        _ => "Linh kiện"
+        ComponentTypes.CPU => "CPU đề xuất",
+        ComponentTypes.VGA => "VGA đề xuất",
+        ComponentTypes.Mainboard => "Mainboard đề xuất",
+        ComponentTypes.RAM => "RAM đề xuất",
+        ComponentTypes.Storage => "SSD/HDD đề xuất",
+        ComponentTypes.PSU => "Nguồn đề xuất",
+        ComponentTypes.Case => "Vỏ case đề xuất",
+        ComponentTypes.Cooler => "Tản nhiệt đề xuất",
+        ComponentTypes.Mouse => "Chuột đề xuất",
+        ComponentTypes.Keyboard => "Bàn phím đề xuất",
+        ComponentTypes.Headphone => "Tai nghe đề xuất",
+        ComponentTypes.Monitor => "Màn hình đề xuất",
+        _ => "Linh kiện đề xuất"
     };
 
     private async Task<List<AiProductContext>> FindNearestPcAsync(IQueryable<Product> inStockActiveQuery, AiSearchAnalysis analysis, int max, CancellationToken ct)
