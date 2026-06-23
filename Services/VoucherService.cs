@@ -19,8 +19,11 @@ public class VoucherService : IVoucherService
 
     public async Task<List<VoucherValidationResult>> GetAvailableAsync(decimal subtotal, decimal shippingFee, int? userId, CancellationToken cancellationToken = default)
     {
-        var now = DateTime.UtcNow;
-        var vouchers = await _db.Vouchers.Where(x => x.IsActive && x.StartDate <= now && x.EndDate >= now && x.UsedCount < x.Quantity).OrderBy(x => x.EndDate).ToListAsync(cancellationToken);
+        var now = DateTime.Now;
+        var vouchers = await _db.Vouchers
+            .Where(x => x.IsActive && x.StartDate <= now && x.EndDate >= now)
+            .OrderBy(x => x.EndDate)
+            .ToListAsync(cancellationToken);
         var results = new List<VoucherValidationResult>();
         foreach (var voucher in vouchers)
         {
@@ -33,24 +36,24 @@ public class VoucherService : IVoucherService
     public async Task<VoucherValidationResult> ValidateAsync(string? code, decimal subtotal, decimal shippingFee, int? userId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(code)) return new(false, "Vui lòng nhập mã voucher.", null, 0m);
-        var normalized = code.Trim().ToUpperInvariant();
-        var voucher = await _db.Vouchers.FirstOrDefaultAsync(x => x.Code == normalized, cancellationToken);
+        var normalized = NormalizeCode(code);
+        var voucher = await _db.Vouchers.FirstOrDefaultAsync(x => x.Code.Trim().ToUpper() == normalized, cancellationToken);
         if (voucher == null) return new(false, "Mã voucher không tồn tại.", null, 0m);
         return await ValidateVoucherAsync(voucher, subtotal, shippingFee, userId, cancellationToken);
     }
 
     private async Task<VoucherValidationResult> ValidateVoucherAsync(Voucher voucher, decimal subtotal, decimal shippingFee, int? userId, CancellationToken cancellationToken)
     {
-        var now = DateTime.UtcNow;
+        var now = DateTime.Now;
         if (!voucher.IsActive) return new(false, "Voucher đang tạm tắt.", voucher, 0m);
-        if (voucher.StartDate > now) return new(false, "Voucher chưa đến ngày sử dụng.", voucher, 0m);
+        if (voucher.StartDate > now) return new(false, "Voucher chưa đến thời gian sử dụng.", voucher, 0m);
         if (voucher.EndDate < now) return new(false, "Voucher đã hết hạn.", voucher, 0m);
-        if (voucher.Quantity <= 0 || voucher.UsedCount >= voucher.Quantity) return new(false, "Voucher đã hết lượt sử dụng.", voucher, 0m);
-        if (subtotal < voucher.MinimumOrderAmount) return new(false, $"Đơn hàng cần tối thiểu {voucher.MinimumOrderAmount:N0} VNĐ để dùng voucher này.", voucher, 0m);
-        if (userId.HasValue && voucher.MaxUsagePerUser.HasValue)
+        if (voucher.Quantity != int.MaxValue && (voucher.Quantity <= 0 || voucher.UsedCount >= voucher.Quantity)) return new(false, "Voucher đã hết lượt sử dụng.", voucher, 0m);
+        if (voucher.MinimumOrderAmount > 0 && subtotal < voucher.MinimumOrderAmount) return new(false, "Đơn hàng chưa đạt giá trị tối thiểu để dùng voucher.", voucher, 0m);
+        if (userId.HasValue && voucher.MaxUsagePerUser.GetValueOrDefault() > 0)
         {
             var usedByUser = await _db.VoucherUsages.CountAsync(x => x.VoucherId == voucher.Id && x.UserId == userId.Value, cancellationToken);
-            if (usedByUser >= voucher.MaxUsagePerUser.Value) return new(false, "Bạn đã dùng quá số lần cho phép của voucher này.", voucher, 0m);
+            if (usedByUser >= voucher.MaxUsagePerUser!.Value) return new(false, "Bạn đã dùng voucher này quá số lần cho phép.", voucher, 0m);
         }
         var baseAmount = Math.Max(subtotal + shippingFee, 0m);
         var discount = voucher.DiscountType == VoucherDiscountType.Percent ? subtotal * voucher.DiscountValue / 100m : voucher.DiscountValue;
@@ -58,4 +61,6 @@ public class VoucherService : IVoucherService
         discount = Math.Min(Math.Max(discount, 0m), baseAmount);
         return new(true, "Áp dụng voucher thành công.", voucher, discount);
     }
+
+    private static string NormalizeCode(string code) => code.Trim().ToUpperInvariant();
 }
