@@ -10,12 +10,21 @@
         ?? product.ThumbnailImage, "/images/no-image.png");
     var galleryImageUrls = galleryImages
         .Select(image => ImageUrlHelper.ResolveImageUrl(image.ImageUrl, "/images/no-image.png"))
+        .Where(url => !string.IsNullOrWhiteSpace(url))
+        .ToList();
+    var thumbnailImage = ImageUrlHelper.ResolveImageUrl(product.ThumbnailImage, "/images/no-image.png");
+    if (!string.IsNullOrWhiteSpace(thumbnailImage))
+    {
+        galleryImageUrls.Insert(0, thumbnailImage);
+    }
+    galleryImageUrls = galleryImageUrls
         .Distinct(StringComparer.OrdinalIgnoreCase)
         .ToList();
     if (!galleryImageUrls.Any())
     {
         galleryImageUrls.Add(mainImage);
     }
+    mainImage = galleryImageUrls.First();
 
     var culture = new System.Globalization.CultureInfo("vi-VN");
     var finalPrice = (product.DiscountPrice ?? product.SalePrice) ?? product.Price;
@@ -315,16 +324,29 @@
             const page = document.querySelector('.product-detail-page');
             if (!page) return;
 
-            page.querySelectorAll('.thumb-btn').forEach(function (button) {
-                button.addEventListener('click', function () {
-                    const mainImage = page.querySelector('#main-product-image');
-                    if (mainImage && this.dataset.src) mainImage.src = this.dataset.src;
-                    page.querySelectorAll('.thumb-btn').forEach(function (item) {
-                        item.classList.remove('active');
-                        item.setAttribute('aria-pressed', 'false');
+            const mainImage = page.querySelector('#main-product-image');
+            const thumbButtons = Array.from(page.querySelectorAll('.thumb-btn'));
+            thumbButtons.forEach(function (button) {
+                button.addEventListener('click', function (event) {
+                    event.preventDefault();
+                    event.stopPropagation();
+
+                    const selectedSrc = button.dataset.src;
+                    if (!mainImage || !selectedSrc || mainImage.getAttribute('src') === selectedSrc) {
+                        thumbButtons.forEach(function (item) {
+                            const isActive = item === button;
+                            item.classList.toggle('active', isActive);
+                            item.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+                        });
+                        return;
+                    }
+
+                    mainImage.src = selectedSrc;
+                    thumbButtons.forEach(function (item) {
+                        const isActive = item === button;
+                        item.classList.toggle('active', isActive);
+                        item.setAttribute('aria-pressed', isActive ? 'true' : 'false');
                     });
-                    this.classList.add('active');
-                    this.setAttribute('aria-pressed', 'true');
                 });
             });
 

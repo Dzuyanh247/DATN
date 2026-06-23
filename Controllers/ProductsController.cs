@@ -563,7 +563,7 @@ public class ProductsController : Controller
     private static List<ProductSpecFilterGroupVm> BuildSpecFilterGroups(IEnumerable<Product> products, string componentType) =>
         products
             .SelectMany(product => ProductSpecificationKeyValueHelper.ParseStored(product.Specifications)
-                .Where(spec => spec.IsFilterable && !string.IsNullOrWhiteSpace(spec.Name) && !string.IsNullOrWhiteSpace(spec.Value))
+                .Where(spec => !string.IsNullOrWhiteSpace(spec.Name) && !string.IsNullOrWhiteSpace(spec.Value))
                 .Select(spec => new { product.Id, Name = spec.Name?.Trim() ?? string.Empty, Value = spec.Value?.Trim() ?? string.Empty }))
             .Where(spec => ProductFilterFacetHelper.IsRenderableFilterOption(spec.Name)
                 && ProductFilterFacetHelper.IsRenderableFilterOption(spec.Value)
@@ -584,7 +584,8 @@ public class ProductsController : Controller
                         Label = valueGroup.Key,
                         Count = valueGroup.Select(spec => spec.Id).Distinct().Count()
                     })
-                    .OrderBy(option => option.Label)
+                    .OrderBy(option => GetSpecValueSortOrder(option.Label))
+                    .ThenBy(option => option.Label)
                     .Take(12)
                     .ToList()
             })
@@ -603,17 +604,17 @@ public class ProductsController : Controller
         var keys = componentType.Trim().ToLowerInvariant() switch
         {
             "cpu" => new[] { "hangcpu", "hang", "thuonghieu", "socket", "sonhan", "nhan", "soluong", "luong", "tdp", "thehecpu", "thehe" },
-            "ram" => new[] { "dungluong", "busram", "bus", "loairam", "chuanram" },
-            "vga" => new[] { "chipset", "dungluongvram", "vram", "seriesgpu", "series" },
-            "mainboard" => new[] { "hang", "thuonghieu", "socket", "chipset" },
-            "ssd" or "hdd" or "storage" => new[] { "dungluong", "chuanocung", "giaotiep", "loaiocung" },
-            "psu" => new[] { "congsuat", "chuannnguon", "chuannguon", "hieusuat80plus", "80plus" },
+            "ram" => new[] { "dungluong", "dungluongram", "capacity", "busram", "bus", "tocdo", "speed", "loairam", "chuanram", "type", "thuonghieu", "hang" },
+            "vga" => new[] { "gpu", "chipset", "chipdohoa", "dungluongvram", "vram", "bonho", "seriesgpu", "series", "hang", "thuonghieu" },
+            "mainboard" => new[] { "hang", "thuonghieu", "socket", "chipset", "ramhotro", "ramho tro", "loairam", "chuanram", "formfactor", "kichthuoc" },
+            "ssd" or "hdd" or "storage" => new[] { "dungluong", "capacity", "chuan", "chuanocung", "giaotiep", "loaiocung", "pcie", "nvme", "kichthuoc" },
+            "psu" => new[] { "congsuat", "watt", "chuannnguon", "chuannguon", "hieusuat80plus", "80plus", "formfactor" },
             "monitor" => new[] { "kichthuoc", "tansoquet", "dophangiai", "tamnen" },
             "keyboard" => new[] { "loaiswitch", "switch", "layout", "ketnoi" },
             "mouse" => new[] { "dpi", "ketnoi", "loaicambien", "cambien" },
             "headphone" => new[] { "ketnoi", "kieutainghe", "amthanh" },
-            "case" => new[] { "formmainhotro", "formfactor", "kichthuoccase", "kichthuoc" },
-            "cooler" => new[] { "loaitan", "sockethotro", "socket" },
+            "case" => new[] { "formmainhotro", "mainboardhotro", "hotromainboard", "formfactor", "kichthuoccase", "kichthuoc", "loaiCase", "loaicase" },
+            "cooler" => new[] { "loaitan", "type", "sockethotro", "socket", "soquat", "quat", "kichthuocquat" },
             _ => Array.Empty<string>()
         };
         return keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -640,6 +641,19 @@ public class ProductsController : Controller
         if (normalized.Contains("dung") || normalized.Contains("bộ nhớ") || normalized.Contains("bo nho") || normalized.Contains("vram")) return 4;
         if (normalized.Contains("kết nối") || normalized.Contains("ket noi")) return 5;
         return 10;
+    }
+
+    private static int GetSpecValueSortOrder(string value)
+    {
+        var normalized = NormalizeSpecKey(value);
+        var digits = new string(value.Where(char.IsDigit).ToArray());
+        if (int.TryParse(digits, out var number))
+        {
+            if (normalized.Contains("tb")) return number * 1024;
+            return number;
+        }
+
+        return int.MaxValue;
     }
 
     private static string BuildSpecValue(string name, string value) => $"{name.Trim()}::{value.Trim()}";
