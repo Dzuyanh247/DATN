@@ -51,12 +51,12 @@ public class ShippingController : ControllerBase
             _logger.LogWarning("Shipping calculate cart userId={UserId} quantity={Quantity} weight={Weight} size={Length}x{Width}x{Height}", userId, quantity, weight, length, width, height);
 
             var quote = await _shippingService.CalculateAsync(request.DistrictId, request.WardCode!, request.ProvinceName ?? string.Empty, request.DistrictName ?? string.Empty, request.WardName ?? string.Empty, request.AddressDetail ?? string.Empty, weight, length, width, height, cancellationToken);
-            return Ok(new { success = true, shippingFee = quote.ShippingFee, isFreeShipping = quote.IsFreeShipping, feeSource = quote.Provider, currency = "VND", message = quote.Message, total = quote.GhnTotal, service_fee = quote.GhnServiceFee, insurance_fee = quote.GhnInsuranceFee, leadtime = quote.GhnLeadTime, shippingProvider = quote.Provider, formula = quote.FormulaSnapshot });
+            return Ok(new { success = true, shippingFee = quote.ShippingFee, isFreeShipping = quote.IsFreeShipping, feeSource = quote.Provider, currency = "VND", message = quote.Message, total = quote.GhnTotal, service_fee = quote.GhnServiceFee, insurance_fee = quote.GhnInsuranceFee, leadtime = quote.GhnLeadTime, distanceKm = quote.DistanceKm, durationMinutes = quote.DurationMinutes, shippingProvider = quote.Provider, formula = quote.FormulaSnapshot });
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Shipping calculate failed");
-            return Ok(new { success = false, message = ex.Message });
+            return Ok(new { success = false, message = "Chưa thể tính phí vận chuyển, vui lòng kiểm tra địa chỉ giao hàng." });
         }
     }
 
