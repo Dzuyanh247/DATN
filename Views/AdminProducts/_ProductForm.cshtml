@@ -229,7 +229,7 @@
                         <div data-aim-primary></div>
                         <div class="admin-image-preview-title mt-3">Thư viện ảnh sản phẩm</div>
                         <div class="admin-image-gallery-grid" data-aim-gallery></div>
-                        @await Html.PartialAsync("_AdminImageUploader", new { PrimaryTarget = "#ThumbnailImageUrl", GalleryTarget = "#ProductImageUrlsText", Multiple = true, CurrentUrl = Model.ThumbnailImageUrl ?? string.Empty, Hidden = true })
+                        @await Html.PartialAsync("_AdminImageUploader", new AdminImageUploaderViewModel { FieldName = "#ThumbnailImageUrl", GalleryFieldName = "#ProductImageUrlsText", Multiple = true, Value = Model.ThumbnailImageUrl, Hidden = true, Label = "Ảnh sản phẩm" })
                     </div>
                 </div>
                 <div id="existing-image-order-container"></div>

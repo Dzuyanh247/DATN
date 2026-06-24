@@ -36,7 +36,7 @@
                 <div class="admin-image-pane admin-single-image-preview banner-single-image-preview" data-admin-image-manager="single" data-primary-target="#ImageUrl" data-label="Ảnh banner">
                     <h6 class="fw-bold mb-3">Quản lý ảnh</h6>
                     <div data-aim-single></div>
-                    @await Html.PartialAsync("_AdminImageUploader", new { PrimaryTarget = "#ImageUrl", GalleryTarget = "", Multiple = false, CurrentUrl = Model.ImageUrl ?? string.Empty, Hidden = true })
+                    @await Html.PartialAsync("_AdminImageUploader", new AdminImageUploaderViewModel { FieldName = "#ImageUrl", Value = Model.ImageUrl, Hidden = true, Label = "Ảnh banner" })
                 </div>
             </div>
         </div>
