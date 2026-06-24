@@ -29,11 +29,13 @@ public sealed class CloudinaryImageUploadService : ICloudinaryImageUploadService
 
     private readonly CloudinaryOptions _options;
     private readonly HttpClient _httpClient;
+    private readonly ILogger<CloudinaryImageUploadService> _logger;
 
-    public CloudinaryImageUploadService(IOptions<CloudinaryOptions> options, HttpClient httpClient)
+    public CloudinaryImageUploadService(IOptions<CloudinaryOptions> options, HttpClient httpClient, ILogger<CloudinaryImageUploadService> logger)
     {
         _options = options.Value;
         _httpClient = httpClient;
+        _logger = logger;
     }
 
     public int MaxFileSizeBytes => Math.Max(1, _options.MaxFileSizeMb) * 1024 * 1024;
@@ -43,8 +45,16 @@ public sealed class CloudinaryImageUploadService : ICloudinaryImageUploadService
         if (file.Length <= 0) throw new InvalidOperationException("File ảnh không hợp lệ.");
         if (file.Length > MaxFileSizeBytes) throw new InvalidOperationException($"Dung lượng ảnh tối đa {_options.MaxFileSizeMb}MB.");
         if (!AllowedContentTypes.Contains(file.ContentType)) throw new InvalidOperationException("Chỉ hỗ trợ file ảnh jpg, png, webp, gif hoặc avif.");
-        if (string.IsNullOrWhiteSpace(_options.CloudName) || string.IsNullOrWhiteSpace(_options.ApiKey) || string.IsNullOrWhiteSpace(_options.ApiSecret))
-            throw new InvalidOperationException("Chưa cấu hình Cloudinary. Vui lòng khai báo Cloudinary:CloudName, ApiKey và ApiSecret.");
+        var missingSettings = new List<string>();
+        if (string.IsNullOrWhiteSpace(_options.CloudName)) missingSettings.Add("CloudName");
+        if (string.IsNullOrWhiteSpace(_options.ApiKey)) missingSettings.Add("ApiKey");
+        if (string.IsNullOrWhiteSpace(_options.ApiSecret)) missingSettings.Add("ApiSecret");
+        if (missingSettings.Count > 0)
+        {
+            var message = $"Chưa cấu hình Cloudinary. Thiếu: {string.Join(", ", missingSettings)}. Vui lòng khai báo Cloudinary:CloudName, ApiKey và ApiSecret.";
+            _logger.LogWarning("Cloudinary upload configuration is missing required settings: {MissingSettings}", string.Join(", ", missingSettings));
+            throw new InvalidOperationException(message);
+        }
 
         var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString();
         var folder = string.IsNullOrWhiteSpace(_options.Folder) ? "kkshop/admin" : _options.Folder.Trim('/');
@@ -64,7 +74,18 @@ public sealed class CloudinaryImageUploadService : ICloudinaryImageUploadService
         var endpoint = $"https://api.cloudinary.com/v1_1/{Uri.EscapeDataString(_options.CloudName)}/image/upload";
         using var response = await _httpClient.PostAsync(endpoint, content, cancellationToken);
         var json = await response.Content.ReadAsStringAsync(cancellationToken);
-        if (!response.IsSuccessStatusCode) throw new InvalidOperationException("Upload Cloudinary thất bại.");
+        if (!response.IsSuccessStatusCode)
+        {
+            var reasonPhrase = string.IsNullOrWhiteSpace(response.ReasonPhrase) ? "Không có ReasonPhrase" : response.ReasonPhrase;
+            var message = $"Upload Cloudinary thất bại. Status={(int)response.StatusCode} {reasonPhrase}. Endpoint={endpoint}. Response={json}";
+            _logger.LogWarning(
+                "Cloudinary upload failed. Status={StatusCode} {ReasonPhrase}. Endpoint={Endpoint}. Response={ResponseBody}",
+                (int)response.StatusCode,
+                reasonPhrase,
+                endpoint,
+                json);
+            throw new InvalidOperationException(message);
+        }
         using var doc = JsonDocument.Parse(json);
         return doc.RootElement.GetProperty("secure_url").GetString() ?? throw new InvalidOperationException("Cloudinary không trả về URL ảnh.");
     }
