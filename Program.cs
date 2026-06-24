@@ -95,7 +95,7 @@ builder.Services.AddScoped<ISearchKeywordService, SearchKeywordService>();
 builder.Services.AddScoped<IShowroomService, ShowroomService>();
 builder.Services.AddSingleton<IShopPolicyService, ShopPolicyService>();
 builder.Services.AddHttpClient<IAiChatService, GeminiChatService>();
-builder.Services.AddHttpClient<ICloudinaryImageUploadService, CloudinaryImageUploadService>();
+builder.Services.AddScoped<ICloudinaryImageUploadService, CloudinaryImageUploadService>();
 builder.Services.AddHttpClient<IGhnShippingService, GhnShippingService>((sp, client) =>
 {
     var options = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<GhnOptions>>().Value;
