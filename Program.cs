@@ -520,7 +520,7 @@ END");
             await db.SaveChangesAsync();
         }
     }
-    await SeedData.InitializeAsync(db);
+    await SeedData.InitializeAsync(db, app.Configuration, app.Logger);
 }
 
 app.Run();
