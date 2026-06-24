@@ -24,6 +24,6 @@ public class ContactController : Controller
         return RedirectToAction(nameof(Index));
     }
 
-    [Authorize(Roles = "Admin,Staff")]
+    [Authorize(Roles = "Admin,CustomerSupport,SupportStaff")]
     public async Task<IActionResult> Manage() => View(await _db.Feedbacks.OrderByDescending(f => f.CreatedAt).ToListAsync());
 }

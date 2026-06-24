@@ -29,6 +29,13 @@
                       controllerName == "AdminArticles" ||
                       (controllerName == "Articles" && (actionName == "Create" || actionName == "Edit"));
     var isComparePage = controllerName == "Compare";
+    var canAccessAdmin = User.IsBackOfficeUser();
+    var canManageProducts = User.CanManageProducts();
+    var canManageOrders = User.CanManageOrders();
+    var canManageSupport = User.CanManageSupport();
+    var canManageUsers = User.CanManageUsers();
+    var canManageSettings = User.CanManageSettings();
+    var adminHomeController = User.IsInRole("Admin") || User.IsInRole("Staff") ? "AdminDashboard" : "AdminChat";
 }
 <!DOCTYPE html>
 <html lang="vi">
@@ -76,33 +83,48 @@
 {
     <div class="admin-shell">
         <aside class="admin-sidebar">
-            <a class="admin-brand" asp-controller="@(User.IsInRole("Admin") ? "AdminDashboard" : "AdminChat")" asp-action="Index">
+            <a class="admin-brand" asp-controller="@adminHomeController" asp-action="Index">
                 <i class="bi bi-grid-1x2-fill"></i><span>KKSHOP Admin</span>
             </a>
             <div class="admin-sidebar-scroll">
                 <nav class="admin-nav">
-                @if (User.IsInRole("Admin"))
-                {
                     <span class="admin-nav-label">Tổng quan</span>
                     <a class="@(controllerName == "AdminDashboard" ? "active" : "")" asp-controller="AdminDashboard" asp-action="Index"><i class="bi bi-grid-1x2"></i><span>Dashboard</span></a>
+                @if (canManageOrders)
+                {
                     <span class="admin-nav-label">Bán hàng</span>
                     <a class="@(controllerName == "AdminOrders" ? "active" : "")" asp-controller="AdminOrders" asp-action="Index"><i class="bi bi-bag-check"></i><span>Đơn hàng</span></a>
                     <a class="@(controllerName == "AdminInvoices" ? "active" : "")" asp-controller="AdminInvoices" asp-action="Index"><i class="bi bi-receipt-cutoff"></i><span>Hóa đơn</span></a>
+                }
+                @if (User.IsInRole("Admin") || User.IsInRole("Staff"))
+                {
                     <a class="@(controllerName == "AdminVouchers" ? "active" : "")" asp-controller="AdminVouchers" asp-action="Index"><i class="bi bi-ticket-perforated"></i><span>Voucher</span></a>
+                }
+                @if (canManageProducts)
+                {
                     <span class="admin-nav-label">Sản phẩm</span>
                     <a class="@(controllerName == "AdminProducts" ? "active" : "")" asp-controller="AdminProducts" asp-action="Index"><i class="bi bi-pc-display"></i><span>Sản phẩm PC</span></a>
                     <a class="@(controllerName == "AdminComponents" ? "active" : "")" asp-controller="AdminComponents" asp-action="Index"><i class="bi bi-cpu"></i><span>Linh kiện</span></a>
                     <a class="@(controllerName == "AdminCategories" ? "active" : "")" asp-controller="AdminCategories" asp-action="Index"><i class="bi bi-tags"></i><span>Danh mục</span></a>
+                }
+                @if (User.IsInRole("Admin") || User.IsInRole("CustomerSupport"))
+                {
+                    <span class="admin-nav-label">Khách hàng</span>
                     <a class="@(controllerName == "AdminReviews" ? "active" : "")" asp-controller="AdminReviews" asp-action="Index"><i class="bi bi-star"></i><span>Đánh giá</span></a>
+                }
+                @if (canManageSettings)
+                {
                     <a class="@(controllerName == "AdminSearchKeywords" ? "active" : "")" asp-controller="AdminSearchKeywords" asp-action="Index"><i class="bi bi-search-heart"></i><span>Từ khóa tìm kiếm</span></a>
                     <a class="@(controllerName == "AdminBanners" ? "active" : "")" asp-controller="AdminBanners" asp-action="Index"><i class="bi bi-images"></i><span>Banner</span></a>
                     <a class="@(controllerName == "AdminArticles" ? "active" : "")" asp-controller="AdminArticles" asp-action="Index"><i class="bi bi-newspaper"></i><span>Bài viết</span></a>
-                    <span class="admin-nav-label">Khách hàng</span>
+                }
+                @if (canManageUsers)
+                {
                     <a class="@(controllerName == "AdminUsers" ? "active" : "")" asp-controller="AdminUsers" asp-action="Index"><i class="bi bi-people"></i><span>Người dùng</span></a>
                 }
-                <a class="@(controllerName == "AdminChat" ? "active" : "")" asp-controller="AdminChat" asp-action="Index"><i class="bi bi-chat-dots"></i><span>Chat hỗ trợ</span></a>
-                @if (User.IsInRole("Admin"))
+                @if (canManageSupport)
                 {
+                <a class="@(controllerName == "AdminChat" ? "active" : "")" asp-controller="AdminChat" asp-action="Index"><i class="bi bi-chat-dots"></i><span>Chat hỗ trợ</span></a>
                     <span class="admin-nav-label">Hậu mãi</span>
                     <a class="@(controllerName == "AdminWarranty" ? "active" : "")" asp-controller="AdminWarranty" asp-action="Index"><i class="bi bi-shield-check"></i><span>Bảo hành</span></a>
                 }
@@ -167,9 +189,9 @@ else
             {
                 <a class="text-light text-decoration-none" asp-controller="Account" asp-action="Profile">Thông tin tài khoản</a>
                 <a class="text-light text-decoration-none" asp-controller="Orders" asp-action="MyOrders">Đơn hàng</a>
-                @if (User.IsInRole("Admin") || User.IsInRole("SupportStaff") || User.IsInRole("CustomerSupport"))
+                @if (canAccessAdmin)
                 {
-                    <a class="text-light text-decoration-none" asp-controller="@(User.IsInRole("Admin") ? "AdminDashboard" : "AdminChat")" asp-action="Index">Quản trị</a>
+                    <a class="text-light text-decoration-none" asp-controller="@adminHomeController" asp-action="Index">Vào quản lý</a>
                 }
                 <form method="post" asp-controller="Account" asp-action="Logout" class="d-inline"><button class="btn btn-sm btn-outline-light py-0">Đăng xuất</button></form>
             }
