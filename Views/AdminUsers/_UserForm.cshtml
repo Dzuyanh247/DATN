@@ -16,7 +16,7 @@
             </div>
             <div class="admin-user-fields">
                 <div class="admin-user-field">
-                    <label asp-for="Username" class="form-label">Username</label>
+                    <label asp-for="Username" class="form-label">Tên đăng nhập</label>
                     <input asp-for="Username" class="form-control" />
                     <span asp-validation-for="Username" class="text-danger"></span>
                 </div>
@@ -87,15 +87,15 @@
                 </div>
                 <div class="form-check form-switch admin-user-active">
                     <input asp-for="IsActive" class="form-check-input" />
-                    <label asp-for="IsActive" class="form-check-label">Active</label>
+                    <label asp-for="IsActive" class="form-check-label">Đang hoạt động</label>
                 </div>
             </div>
         </section>
     </div>
 
     <div class="admin-user-actions">
-        <button class="btn btn-primary"><i class="bi bi-save"></i> Lưu</button>
-        <a asp-action="Index" class="btn btn-outline-secondary">Quay lại</a>
+        <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> Quay lại</a>
+        <button class="btn btn-primary"><i class="bi bi-save"></i> Lưu thay đổi</button>
     </div>
 </form>
 
