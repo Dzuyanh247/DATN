@@ -19,56 +19,18 @@ public class AdminSettingsController : Controller
     }
 
     [HttpGet("")]
-    public async Task<IActionResult> Index()
+    public IActionResult Index()
     {
-        var settings = await GetOrCreateSettingsAsync();
-        return View(new AdminSiteSettingsVm { SiteName = settings.SiteName, LogoUrl = settings.LogoUrl, DealSectionBackgroundUrl = settings.DealSectionBackgroundUrl, HotPromotionBackgroundUrl = settings.HotPromotionBackgroundUrl });
+        TempData["SettingsMessage"] = "Khu vực Cài đặt đã được chuyển sang Quản lý banner.";
+        TempData["SettingsSuccess"] = true;
+        return RedirectToAction("Index", "AdminBanners");
     }
 
     [HttpPost("")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Index(AdminSiteSettingsVm vm)
+    public IActionResult Index(AdminSiteSettingsVm vm)
     {
-        var settings = await GetOrCreateSettingsAsync();
-        vm.SiteName = settings.SiteName;
-        var logoUrl = vm.LogoUrl?.Trim();
-        Uri? parsedUri = null;
-
-        if (!string.IsNullOrWhiteSpace(logoUrl) &&
-            !Uri.TryCreate(logoUrl, UriKind.Absolute, out parsedUri))
-        {
-            vm.LogoUrl = logoUrl;
-            vm.Message = "Logo URL không hợp lệ. Vui lòng dán URL tuyệt đối (https://...).";
-            return View(vm);
-        }
-
-        if (!string.IsNullOrWhiteSpace(logoUrl) && parsedUri is not null &&
-            parsedUri.Scheme != Uri.UriSchemeHttp && parsedUri.Scheme != Uri.UriSchemeHttps)
-        {
-            vm.LogoUrl = logoUrl;
-            vm.Message = "Logo URL chỉ hỗ trợ giao thức http/https.";
-            return View(vm);
-        }
-
-        var dealUrl = vm.DealSectionBackgroundUrl?.Trim();
-        var hotUrl = vm.HotPromotionBackgroundUrl?.Trim();
-
-        if (!TryValidateOptionalHttpUrl(dealUrl, out var dealErr)) { vm.Message = dealErr; return View(vm); }
-        if (!TryValidateOptionalHttpUrl(hotUrl, out var hotErr)) { vm.Message = hotErr; return View(vm); }
-
-        settings.LogoUrl = string.IsNullOrWhiteSpace(logoUrl) ? null : logoUrl;
-        settings.DealSectionBackgroundUrl = string.IsNullOrWhiteSpace(dealUrl) ? null : dealUrl;
-        settings.HotPromotionBackgroundUrl = string.IsNullOrWhiteSpace(hotUrl) ? null : hotUrl;
-
-        settings.UpdatedAt = DateTime.UtcNow;
-        await _db.SaveChangesAsync();
-
-        vm.LogoUrl = settings.LogoUrl;
-        vm.DealSectionBackgroundUrl = settings.DealSectionBackgroundUrl;
-        vm.HotPromotionBackgroundUrl = settings.HotPromotionBackgroundUrl;
-        vm.IsSuccess = true;
-        vm.Message = "Đã lưu cấu hình giao diện thành công.";
-        return View(vm);
+        return RedirectToAction("Index", "AdminBanners");
     }
 
     private async Task<SiteSetting> GetOrCreateSettingsAsync()

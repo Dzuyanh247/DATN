@@ -1,12 +1,14 @@
-@model List<Banner>
+@model AdminBannersIndexVm
 @{
     ViewData["Title"] = "Quản lý banner";
-    var main = Model.Where(x => x.Position == "MainBanner").OrderBy(x => x.SortOrder).ToList();
-    var sub = Model.Where(x => x.Position == "SubBanner").OrderBy(x => x.SortOrder).ToList();
-    var other = Model.Where(x => x.Position != "MainBanner" && x.Position != "SubBanner").OrderBy(x => x.SortOrder).ToList();
+    var banners = Model.Banners;
+    var settings = Model.Settings;
+    var main = banners.Where(x => x.Position == "MainBanner").OrderBy(x => x.SortOrder).ToList();
+    var sub = banners.Where(x => x.Position == "SubBanner").OrderBy(x => x.SortOrder).ToList();
+    var other = banners.Where(x => x.Position != "MainBanner" && x.Position != "SubBanner").OrderBy(x => x.SortOrder).ToList();
     var activeMain = main.FirstOrDefault(x => x.IsActive);
     var activeSubs = sub.Where(x => x.IsActive).Take(3).ToList();
-    var activeCount = Model.Count(x => x.IsActive);
+    var activeCount = banners.Count(x => x.IsActive);
 }
 
 <div class="admin-banner-page">
@@ -64,7 +66,7 @@
                 <h5>Thống kê banner</h5>
             </div>
             <div class="admin-banner-stats">
-                <div class="admin-banner-stat"><span><i class="bi bi-images"></i></span><small>Tổng banner</small><strong>@Model.Count</strong></div>
+                <div class="admin-banner-stat"><span><i class="bi bi-images"></i></span><small>Tổng banner</small><strong>@banners.Count</strong></div>
                 <div class="admin-banner-stat"><span><i class="bi bi-aspect-ratio"></i></span><small>Banner chính</small><strong>@main.Count</strong></div>
                 <div class="admin-banner-stat"><span><i class="bi bi-grid-3x3-gap"></i></span><small>Banner phụ</small><strong>@sub.Count</strong></div>
                 <div class="admin-banner-stat"><span><i class="bi bi-eye"></i></span><small>Đang hiển thị</small><strong>@activeCount</strong></div>
@@ -80,7 +82,7 @@
                 <h5>Quản lý nhanh</h5>
             </div>
             <div class="admin-banner-tabs" aria-label="Bộ lọc nhanh">
-                <span>Tất cả @Model.Count</span><span>Banner chính @main.Count</span><span>Banner phụ @sub.Count</span><span>Đang hiển thị @activeCount</span><span>Đã tắt @(Model.Count - activeCount)</span>
+                <span>Tất cả @banners.Count</span><span>Banner chính @main.Count</span><span>Banner phụ @sub.Count</span><span>Đang hiển thị @activeCount</span><span>Đã tắt @(banners.Count - activeCount)</span>
             </div>
         </div>
         <div class="admin-banner-table-wrap">
@@ -93,7 +95,7 @@
                     {
                         @await Html.PartialAsync("_AdminBannerCard", b)
                     }
-                    @if (!Model.Any())
+                    @if (!banners.Any())
                     {
                         <tr><td colspan="7"><div class="admin-banner-empty"><i class="bi bi-images"></i><strong>Chưa có banner</strong><span>Thêm banner mới để bắt đầu quản lý khu vực hiển thị trang chủ.</span></div></td></tr>
                     }
@@ -101,6 +103,28 @@
             </table>
         </div>
     </section>
+
+    <section class="admin-banner-section admin-site-image-settings">
+        <div class="admin-banner-section-head">
+            <div>
+                <span class="admin-banner-eyebrow">Cấu hình hình ảnh website</span>
+                <h5>Logo và background giao diện</h5>
+            </div>
+            <span class="admin-banner-note">Đã gộp từ /Admin/Settings</span>
+        </div>
+        @if (TempData["SettingsMessage"] is string settingsMessage)
+        {
+            <div class="alert @(TempData["SettingsSuccess"]?.ToString() == "True" ? "alert-success" : "alert-danger")" role="alert">@settingsMessage</div>
+        }
+        <form method="post" asp-action="SaveSettings" class="admin-settings-compact-form">
+            @Html.AntiForgeryToken()
+            @await Html.PartialAsync("_AdminImageConfigRow", new AdminImageConfigRowViewModel { FieldName = "LogoUrl", InputId = "LogoUrl", Label = "Logo website", Value = settings.LogoUrl, PreviewClass = "is-logo", Placeholder = "https://res.cloudinary.com/..." })
+            @await Html.PartialAsync("_AdminImageConfigRow", new AdminImageConfigRowViewModel { FieldName = "DealSectionBackgroundUrl", InputId = "DealSectionBackgroundUrl", Label = "Ảnh nền Deal Hot", Value = settings.DealSectionBackgroundUrl, FallbackUrl = "/images/defaults/deal-bg.jpg", PreviewClass = "is-background", Placeholder = "https://..." })
+            @await Html.PartialAsync("_AdminImageConfigRow", new AdminImageConfigRowViewModel { FieldName = "HotPromotionBackgroundUrl", InputId = "HotPromotionBackgroundUrl", Label = "Ảnh nền Khuyến mãi Hot", Value = settings.HotPromotionBackgroundUrl, FallbackUrl = "/images/defaults/hot-promotion-bg.jpg", PreviewClass = "is-background", Placeholder = "https://..." })
+            <div class="admin-settings-actions"><button type="submit" class="btn btn-primary"><i class="bi bi-save me-1"></i>Lưu cấu hình ảnh</button></div>
+        </form>
+    </section>
+
 </div>
 
 <style>
@@ -155,3 +179,19 @@
     @@media (max-width: 991.98px) { .admin-banner-hero { grid-template-columns:1fr; } .admin-banner-stats { grid-template-columns:repeat(2,minmax(0,1fr)); } .admin-banner-header, .admin-banner-section-head { align-items:flex-start; flex-direction:column; } .admin-banner-tabs { justify-content:flex-start; } .admin-banner-quick-create { margin-top:0; } }
     @@media (max-width: 767.98px) { .admin-banner-page { margin:0; padding:.75rem; border-radius:14px; } .admin-banner-stats, .mini-sub-grid { grid-template-columns:1fr; } .mini-home-preview { height:auto; } .mini-main-banner { height:120px; } .mini-sub-item { height:64px; } .admin-banner-create { width:100%; justify-content:center; } }
 </style>
+
+<script src="~/js/admin-image-uploader.js"></script>
+<script>
+(() => {
+    document.querySelectorAll('.admin-image-config-row').forEach(row => {
+        const input = row.querySelector('input.form-control');
+        const preview = row.querySelector('.admin-image-config-preview');
+        const render = () => {
+            const url = input?.value?.trim();
+            if (!preview) return;
+            preview.innerHTML = url ? `<img src="${url.replaceAll('"','&quot;')}" alt="" onerror="this.style.display='none'" />` : '<span>Chưa có ảnh</span>';
+        };
+        input?.addEventListener('input', render);
+    });
+})();
+</script>

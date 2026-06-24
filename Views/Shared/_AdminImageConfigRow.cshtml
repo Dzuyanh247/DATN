@@ -1,0 +1,24 @@
+@model AdminImageConfigRowViewModel
+@{
+    var previewUrl = ImageUrlHelper.ResolveImageUrl(Model.Value, Model.FallbackUrl ?? string.Empty);
+}
+<div class="admin-image-config-row" data-admin-image-manager="single" data-primary-target="#@Model.InputId" data-label="@Model.Label">
+    <div class="admin-image-config-name">@Model.Label</div>
+    <div class="admin-image-config-preview @Model.PreviewClass">
+        @if (!string.IsNullOrWhiteSpace(previewUrl))
+        {
+            <img src="@previewUrl" alt="@Model.Label" onerror="this.style.display='none'" />
+        }
+        else
+        {
+            <span>Chưa có ảnh</span>
+        }
+    </div>
+    <input class="form-control" id="@Model.InputId" name="@Model.FieldName" value="@Model.Value" placeholder="@(Model.Placeholder ?? "https://...")" />
+    <div class="admin-image-config-actions">
+        <button type="button" class="btn btn-outline-primary btn-sm" data-add-single><i class="bi bi-upload me-1"></i>Thay ảnh</button>
+        <button type="button" class="btn btn-outline-danger btn-sm" data-clear-single><i class="bi bi-trash me-1"></i>Xóa</button>
+    </div>
+    <div class="d-none" data-aim-single></div>
+    @await Html.PartialAsync("_AdminImageUploader", new AdminImageUploaderViewModel { FieldName = "#" + Model.InputId, Value = Model.Value, Hidden = true, Label = Model.Label })
+</div>
