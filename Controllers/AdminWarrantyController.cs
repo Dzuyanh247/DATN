@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Datn.PcStore.Controllers;
 
-[Authorize(Roles = "Admin")]
+[Authorize(Roles = "Admin,CustomerSupport,SupportStaff")]
 public class AdminWarrantyController : Controller
 {
     private readonly ApplicationDbContext _db;

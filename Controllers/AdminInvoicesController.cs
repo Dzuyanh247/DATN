@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Datn.PcStore.Controllers;
 
-[Authorize(Roles = "Admin")]
+[Authorize(Roles = "Admin,Staff,SupportStaff")]
 [Route("Admin/Invoices")]
 public class AdminInvoicesController : Controller
 {

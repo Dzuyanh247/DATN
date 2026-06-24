@@ -30,7 +30,7 @@
             <td>@u.Username</td>
             <td>@u.FullName</td>
             <td>@u.Email</td>
-            <td><span class="badge bg-info text-dark">@u.Role</span></td>
+            <td><span class="badge bg-info text-dark">@RolePermissionService.GetDisplayName(u.Role)</span></td>
             <td>@(u.IsActive ? "Active" : "Locked")</td>
             <td>@u.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
             <td class="d-flex gap-2">

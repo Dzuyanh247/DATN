@@ -42,7 +42,7 @@ public class BrandsApiController : ControllerBase
             .ToList();
     }
 
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Staff")]
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create([FromBody] CreateComponentBrandRequest? request)

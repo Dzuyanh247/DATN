@@ -1,26 +1,100 @@
 @model Datn.PcStore.ViewModels.AdminUserUpsertVm
 
-<form method="post" class="admin-form-grid admin-form-section">
+<form method="post" class="admin-user-form">
     @Html.AntiForgeryToken()
     <input type="hidden" asp-for="Id" />
-    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+    <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
 
-    <div class="admin-field-md"><label class="form-label">Username</label><input asp-for="Username" class="form-control" /></div>
-    <div class="admin-field-md"><label class="form-label">Họ tên</label><input asp-for="FullName" class="form-control" /></div>
-    <div class="admin-field-md"><label class="form-label">Email</label><input asp-for="Email" class="form-control" /></div>
+    <div class="admin-user-form__grid">
+        <section class="admin-user-card">
+            <div class="admin-user-card__header">
+                <i class="bi bi-key"></i>
+                <div>
+                    <h2>Thông tin đăng nhập</h2>
+                    <p>Tài khoản dùng để đăng nhập hệ thống.</p>
+                </div>
+            </div>
+            <div class="admin-user-fields">
+                <div class="admin-user-field">
+                    <label asp-for="Username" class="form-label">Username</label>
+                    <input asp-for="Username" class="form-control" />
+                    <span asp-validation-for="Username" class="text-danger"></span>
+                </div>
+                <div class="admin-user-field">
+                    <label asp-for="Email" class="form-label">Email</label>
+                    <input asp-for="Email" class="form-control" />
+                    <span asp-validation-for="Email" class="text-danger"></span>
+                </div>
+                <div class="admin-user-field">
+                    <label asp-for="Password" class="form-label">Mật khẩu mới @(Model.Id == 0 ? string.Empty : "(bỏ trống nếu không đổi)")</label>
+                    <input asp-for="Password" type="password" class="form-control" autocomplete="new-password" />
+                    <span asp-validation-for="Password" class="text-danger"></span>
+                </div>
+            </div>
+        </section>
 
-    <div class="admin-field-sm"><label class="form-label">SĐT</label><input asp-for="Phone" class="form-control" /></div>
-    <div class="admin-field-lg"><label class="form-label">Địa chỉ</label><input asp-for="Address" class="form-control" /></div>
-    <div class="admin-field-sm">
-        <label class="form-label">Role</label>
-        <select asp-for="RoleId" class="form-select" asp-items="@(new Microsoft.AspNetCore.Mvc.Rendering.SelectList(Model.Roles, "Id", "Name"))"></select>
+        <section class="admin-user-card">
+            <div class="admin-user-card__header">
+                <i class="bi bi-person-vcard"></i>
+                <div>
+                    <h2>Thông tin cá nhân</h2>
+                    <p>Thông tin liên hệ nội bộ và khách hàng.</p>
+                </div>
+            </div>
+            <div class="admin-user-fields">
+                <div class="admin-user-field">
+                    <label asp-for="FullName" class="form-label">Họ tên</label>
+                    <input asp-for="FullName" class="form-control" />
+                    <span asp-validation-for="FullName" class="text-danger"></span>
+                </div>
+                <div class="admin-user-field admin-user-field--short">
+                    <label asp-for="Phone" class="form-label">SĐT</label>
+                    <input asp-for="Phone" class="form-control" />
+                    <span asp-validation-for="Phone" class="text-danger"></span>
+                </div>
+                <div class="admin-user-field">
+                    <label asp-for="Address" class="form-label">Địa chỉ</label>
+                    <input asp-for="Address" class="form-control" />
+                    <span asp-validation-for="Address" class="text-danger"></span>
+                </div>
+            </div>
+        </section>
+
+        <section class="admin-user-card admin-user-card--side">
+            <div class="admin-user-card__header">
+                <i class="bi bi-shield-check"></i>
+                <div>
+                    <h2>Phân quyền và trạng thái</h2>
+                    <p>Chọn vai trò phù hợp cho tài khoản.</p>
+                </div>
+            </div>
+            <div class="admin-user-fields">
+                <div class="admin-user-field">
+                    <label asp-for="RoleId" class="form-label">Vai trò</label>
+                    <select asp-for="RoleId" class="form-select">
+                        @foreach (var role in Model.Roles)
+                        {
+                            <option value="@role.Id" title="@role.Description">@role.DisplayName</option>
+                        }
+                    </select>
+                    <span asp-validation-for="RoleId" class="text-danger"></span>
+                </div>
+                <div class="admin-role-help">
+                    @foreach (var role in Model.Roles)
+                    {
+                        <div><strong>@role.DisplayName:</strong> @role.Description</div>
+                    }
+                </div>
+                <div class="form-check form-switch admin-user-active">
+                    <input asp-for="IsActive" class="form-check-input" />
+                    <label asp-for="IsActive" class="form-check-label">Active</label>
+                </div>
+            </div>
+        </section>
     </div>
 
-    <div class="admin-field-md"><label class="form-label">Mật khẩu mới @(Model.Id == 0 ? string.Empty : "(bỏ trống nếu không đổi)")</label><input asp-for="Password" type="password" class="form-control" /></div>
-    <div class="admin-field-xs admin-field-check form-check ms-2"><input asp-for="IsActive" class="form-check-input" /><label asp-for="IsActive" class="form-check-label">Active</label></div>
-
-    <div class="admin-field-full d-flex gap-2">
-        <button class="btn btn-primary">Lưu</button>
+    <div class="admin-user-actions">
+        <button class="btn btn-primary"><i class="bi bi-save"></i> Lưu</button>
         <a asp-action="Index" class="btn btn-outline-secondary">Quay lại</a>
     </div>
 </form>

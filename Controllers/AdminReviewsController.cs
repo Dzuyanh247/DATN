@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Datn.PcStore.Controllers;
 
-[Authorize(Roles = "Admin")]
+[Authorize(Roles = "Admin,CustomerSupport")]
 public class AdminReviewsController : Controller
 {
     private readonly ApplicationDbContext _db;

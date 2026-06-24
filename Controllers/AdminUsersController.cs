@@ -60,6 +60,7 @@ public class AdminUsersController : Controller
     public async Task<IActionResult> Create(AdminUserUpsertVm vm)
     {
         await LoadRolesAsync(vm);
+        ValidateRole(vm);
 
         if (string.IsNullOrWhiteSpace(vm.Password))
         {
@@ -117,6 +118,7 @@ public class AdminUsersController : Controller
     public async Task<IActionResult> Edit(AdminUserUpsertVm vm)
     {
         await LoadRolesAsync(vm);
+        ValidateRole(vm);
 
         if (await _db.Users.AnyAsync(x => x.Id != vm.Id && x.Email == vm.Email))
         {
@@ -133,10 +135,16 @@ public class AdminUsersController : Controller
             return View(vm);
         }
 
-        var user = await _db.Users.FindAsync(vm.Id);
+        var user = await _db.Users.Include(x => x.Role).FirstOrDefaultAsync(x => x.Id == vm.Id);
         if (user == null)
         {
             return NotFound();
+        }
+
+        if (await IsLastActiveAdminAsync(user) && (!await IsAdminRoleIdAsync(vm.RoleId) || !vm.IsActive))
+        {
+            ModelState.AddModelError(string.Empty, "Không thể hạ quyền hoặc vô hiệu hóa Admin cuối cùng của hệ thống.");
+            return View(vm);
         }
 
         user.Username = vm.Username;
@@ -169,9 +177,15 @@ public class AdminUsersController : Controller
             return RedirectToAction(nameof(Index));
         }
 
-        var user = await _db.Users.FindAsync(id);
+        var user = await _db.Users.Include(x => x.Role).FirstOrDefaultAsync(x => x.Id == id);
         if (user == null)
         {
+            return RedirectToAction(nameof(Index));
+        }
+
+        if (user.IsActive && await IsLastActiveAdminAsync(user))
+        {
+            TempData["Err"] = "Không thể khóa Admin cuối cùng của hệ thống.";
             return RedirectToAction(nameof(Index));
         }
 
@@ -194,9 +208,15 @@ public class AdminUsersController : Controller
             return RedirectToAction(nameof(Index));
         }
 
-        var user = await _db.Users.FindAsync(id);
+        var user = await _db.Users.Include(x => x.Role).FirstOrDefaultAsync(x => x.Id == id);
         if (user == null)
         {
+            return RedirectToAction(nameof(Index));
+        }
+
+        if (await IsLastActiveAdminAsync(user))
+        {
+            TempData["Err"] = "Không thể xóa Admin cuối cùng của hệ thống.";
             return RedirectToAction(nameof(Index));
         }
 
@@ -237,11 +257,43 @@ public class AdminUsersController : Controller
 
     private async Task LoadRolesAsync(AdminUserUpsertVm vm)
     {
-        vm.Roles = await _db.Roles.OrderBy(x => x.Name)
+        var roles = await _db.Roles.OrderBy(x => x.Name).ToListAsync();
+        vm.Roles = roles
+            .Where(x => RolePermissionService.IsValidRole(x.Name))
             .Select(x => new RoleOptionVm
             {
                 Id = x.Id,
-                Name = x.Name ?? string.Empty
-            }).ToListAsync();
+                Name = x.Name ?? string.Empty,
+                DisplayName = RolePermissionService.GetDisplayName(x.Name),
+                Description = RolePermissionService.GetDescription(x.Name)
+            }).ToList();
+
+        if (vm.RoleId == 0)
+        {
+            vm.RoleId = vm.Roles.FirstOrDefault(x => x.Name == RolePermissionService.Customer)?.Id ?? vm.Roles.FirstOrDefault()?.Id ?? 0;
+        }
+    }
+
+    private void ValidateRole(AdminUserUpsertVm vm)
+    {
+        if (!vm.Roles.Any(x => x.Id == vm.RoleId))
+        {
+            ModelState.AddModelError(nameof(vm.RoleId), "Vai trò không hợp lệ.");
+        }
+    }
+
+    private async Task<bool> IsAdminRoleIdAsync(int roleId)
+    {
+        return await _db.Roles.AnyAsync(x => x.Id == roleId && x.Name == RolePermissionService.Admin);
+    }
+
+    private async Task<bool> IsLastActiveAdminAsync(User user)
+    {
+        if (!RolePermissionService.IsAdminRole(user.Role?.Name) || !user.IsActive)
+        {
+            return false;
+        }
+
+        return (await _db.Users.CountAsync(x => x.IsActive && x.Role != null && x.Role.Name == RolePermissionService.Admin)) <= 1;
     }
 }
