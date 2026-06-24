@@ -16,6 +16,7 @@ builder.Services.AddControllersWithViews();
 builder.Services.AddSignalR();
 builder.Services.AddMemoryCache();
 builder.Services.Configure<AiChatOptions>(builder.Configuration.GetSection("AiChat"));
+builder.Services.Configure<CloudinaryOptions>(builder.Configuration.GetSection("Cloudinary"));
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(databaseConnection.ConnectionString));
 
@@ -94,6 +95,7 @@ builder.Services.AddScoped<ISearchKeywordService, SearchKeywordService>();
 builder.Services.AddScoped<IShowroomService, ShowroomService>();
 builder.Services.AddSingleton<IShopPolicyService, ShopPolicyService>();
 builder.Services.AddHttpClient<IAiChatService, GeminiChatService>();
+builder.Services.AddHttpClient<ICloudinaryImageUploadService, CloudinaryImageUploadService>();
 builder.Services.AddHttpClient<IGhnShippingService, GhnShippingService>((sp, client) =>
 {
     var options = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<GhnOptions>>().Value;

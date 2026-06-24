@@ -33,10 +33,19 @@
 
             <form method="post" class="admin-form-grid admin-form-section">
                 @Html.AntiForgeryToken()
-                <div class="admin-field-lg mb-3">
-                    <label asp-for="LogoUrl" class="form-label">Logo URL (Cloudinary)</label>
-                    <input asp-for="LogoUrl" class="form-control" id="logo-url-input" placeholder="https://res.cloudinary.com/..." />
-                    <span asp-validation-for="LogoUrl" class="text-danger"></span>
+                <div class="admin-field-full mb-3">
+                    <div class="admin-image-manager-grid">
+                        <div class="admin-image-pane">
+                            <h6 class="fw-bold mb-3">Ảnh bằng URL</h6>
+                            <label asp-for="LogoUrl" class="form-label">Logo URL (Cloudinary)</label>
+                            <input asp-for="LogoUrl" class="form-control" id="logo-url-input" placeholder="https://res.cloudinary.com/..." />
+                            <span asp-validation-for="LogoUrl" class="text-danger"></span>
+                        </div>
+                        <div class="admin-image-pane">
+                            <h6 class="fw-bold mb-3">Tải ảnh từ thiết bị</h6>
+                            @await Html.PartialAsync("_AdminImageUploader", new { PrimaryTarget = "#logo-url-input", GalleryTarget = "", Multiple = false, CurrentUrl = Model.LogoUrl ?? string.Empty })
+                        </div>
+                    </div>
                 </div>
 
                 <p class="admin-field-full text-muted mb-3">Dán URL ảnh động/tĩnh từ Cloudinary. Hệ thống sẽ lưu URL vào DB và dùng trực tiếp trên mọi máy sau khi pull code + DB.</p>
@@ -63,6 +72,7 @@
 </div>
 
 @section Scripts {
+<script src="~/js/admin-image-uploader.js"></script>
 <script>
 (() => {
     const input = document.getElementById('logo-url-input');
@@ -94,3 +104,5 @@
 })();
 </script>
 }
+
+<script src="~/js/admin-image-uploader.js"></script>

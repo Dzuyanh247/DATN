@@ -70,8 +70,12 @@
                 <h5 class="admin-card-title"><i class="bi bi-images me-2"></i>Hình ảnh</h5>
                 <div class="admin-form-grid">
                     @if (orderedImages.Any()) { <div class="admin-field-full"><label class="form-label">Ảnh hiện có</label><div class="apf-image-list mb-3" id="existing-image-list">@foreach (var image in orderedImages) { <div class="apf-image-item" data-image-id="@image.Id"><img src="@image.ImageUrl" alt="Ảnh linh kiện" onerror="this.onerror=null;this.src='/images/no-image.png';" /><div><span class="badge text-bg-warning apf-primary-badge">Ảnh đại diện</span><label class="form-check-label text-danger small d-block mt-2"><input class="form-check-input" type="checkbox" name="RemoveImageIds" value="@image.Id" /> Xóa</label></div></div> }</div></div> }
-                    <div class="admin-field-full"><label asp-for="ThumbnailImageUrl" class="form-label">Ảnh đại diện <span class="required-mark">*</span></label><input asp-for="ThumbnailImageUrl" class="form-control js-image-url" placeholder="https://..." /><span asp-validation-for="ThumbnailImageUrl" class="text-danger"></span></div>
-                    <div class="admin-field-full"><label asp-for="ProductImageUrlsText" class="form-label">Thư viện ảnh <span class="text-muted">(không bắt buộc)</span></label><textarea asp-for="ProductImageUrlsText" rows="5" class="form-control js-gallery-urls" placeholder="Mỗi URL ảnh trên một dòng"></textarea><span asp-validation-for="ProductImageUrlsText" class="text-danger"></span><div id="existing-image-order-container"></div></div>
+                    <div class="admin-field-full">
+                        <div class="admin-image-manager-grid">
+                            <div class="admin-image-pane"><h6 class="fw-bold mb-3">Ảnh bằng URL</h6><label asp-for="ThumbnailImageUrl" class="form-label">URL ảnh đại diện <span class="required-mark">*</span></label><input asp-for="ThumbnailImageUrl" class="form-control js-image-url" placeholder="https://..." /><span asp-validation-for="ThumbnailImageUrl" class="text-danger"></span><label asp-for="ProductImageUrlsText" class="form-label mt-3">Thư viện ảnh</label><textarea asp-for="ProductImageUrlsText" rows="5" class="form-control js-gallery-urls" placeholder="Mỗi URL ảnh trên một dòng"></textarea><span asp-validation-for="ProductImageUrlsText" class="text-danger"></span><div id="existing-image-order-container"></div></div>
+                            <div class="admin-image-pane"><h6 class="fw-bold mb-3">Tải ảnh từ thiết bị</h6>@await Html.PartialAsync("_AdminImageUploader", new { PrimaryTarget = "#ThumbnailImageUrl", GalleryTarget = "#ProductImageUrlsText", Multiple = true, CurrentUrl = Model.ThumbnailImageUrl ?? string.Empty })</div>
+                        </div>
+                    </div>
                     <div class="admin-field-full"><label class="form-label">Preview ảnh</label><div class="image-preview-grid" id="image-preview-grid"></div></div>
                 </div>
             </div>
@@ -208,3 +212,5 @@ const list=document.getElementById('existing-image-list'), order=document.getEle
 updateTypeUi();updatePrice();previews();reindex();
 })();
 </script>
+
+<script src="~/js/admin-image-uploader.js"></script>
