@@ -55,7 +55,7 @@ public partial class ProductSearchForAiService : IProductSearchForAiService
 
     public async Task<IReadOnlyList<AiProductContext>> QueryByIntentAsync(string intent, string? productType, string priceMode, decimal? budgetTarget, CancellationToken cancellationToken = default)
     {
-        var max = Math.Clamp(_options.MaxProductsContext, 1, 10);
+        var max = Math.Clamp(_options.MaxProductsContext, 1, 3);
         var query = _db.Products.AsNoTracking().Include(x => x.Category)
             .Where(x => x.IsActive && (x.DiscountPrice ?? x.SalePrice ?? x.Price) > 0 && (x.StockQuantity > 0 || x.IsInStock));
         var isPcIntent = string.Equals(intent, "PC_BUILD_ADVICE", StringComparison.OrdinalIgnoreCase);
@@ -89,7 +89,7 @@ public partial class ProductSearchForAiService : IProductSearchForAiService
     public async Task<IReadOnlyList<AiProductContext>> SearchAsync(string message, CancellationToken cancellationToken = default)
     {
         message = (message ?? string.Empty).Trim();
-        var max = Math.Clamp(_options.MaxProductsContext, 1, 10);
+        var max = Math.Clamp(_options.MaxProductsContext, 1, 3);
         var analysis = Analyze(message);
         var tokens = ExtractTokens(message, analysis);
 
@@ -134,13 +134,13 @@ public partial class ProductSearchForAiService : IProductSearchForAiService
         }
 
         var fallbackReason = "none";
-        if (products.Count == 0 && analysis.CategoryScope == "PC")
+        if (products.Count == 0 && analysis.CategoryScope == "PC" && !analysis.BudgetMin.HasValue && !analysis.BudgetMax.HasValue)
         {
             fallbackReason = "no_pc_in_exact_budget_or_keyword";
             products = await FindNearestPcAsync(inStockActiveQuery, analysis, max, cancellationToken);
         }
 
-        if (products.Count == 0 && analysis.CategoryScope == "PC")
+        if (products.Count == 0 && analysis.CategoryScope == "PC" && !analysis.BudgetMin.HasValue && !analysis.BudgetMax.HasValue)
         {
             fallbackReason = "no_pc_after_nearest_budget_try_build_components";
             products = await BuildComponentFallbackAsync(inStockActiveQuery, analysis, max, cancellationToken);
@@ -263,8 +263,8 @@ public partial class ProductSearchForAiService : IProductSearchForAiService
         var match = BudgetRegex().Match(normalized);
         if (!match.Success || !TryMoney(match.Groups[2].Value, out var amount)) return (null, null);
         var prefix = match.Groups[1].Value;
-        if (prefix.Contains("duoi") || prefix.Contains("<")) return (null, amount);
-        if (prefix.Contains("tren") || prefix.Contains(">")) return (amount, null);
+        if (prefix.Contains("duoi") || prefix.Contains("toi da") || prefix.Contains("<=") || prefix.Contains("<")) return (null, amount);
+        if (prefix.Contains("tren") || prefix.Contains(">=") || prefix.Contains(">")) return (amount, null);
         if (prefix.Contains("tam") || prefix.Contains("khoang")) return (amount * 0.85m, amount * 1.15m);
         return (null, amount);
     }
@@ -315,7 +315,7 @@ public partial class ProductSearchForAiService : IProductSearchForAiService
 
     private static string TrimText(string value, int max) => string.IsNullOrWhiteSpace(value) ? "Đang cập nhật" : value.Length <= max ? value : value[..max] + "...";
 
-    [GeneratedRegex(@"(duoi|khoang|tam|tren|>=|>|<=|<)?\s*(\d+(?:[\.,]\d+)?)\s*(?:trieu|tr|m|million)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    [GeneratedRegex(@"(duoi|toi da|khoang|tam|tren|>=|>|<=|<)?\s*(\d+(?:[\.,]\d+)?)\s*(?:trieu|tr|m|million)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex BudgetRegex();
 
     [GeneratedRegex(@"(\d+(?:[\.,]\d+)?)\s*(?:-|den|toi)\s*(\d+(?:[\.,]\d+)?)\s*(?:trieu|tr|m|million)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
