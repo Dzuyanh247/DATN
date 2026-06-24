@@ -223,16 +223,14 @@
                         <label asp-for="ThumbnailImageUrl" class="form-label">URL ảnh đại diện</label><input asp-for="ThumbnailImageUrl" class="form-control js-image-url" placeholder="https://..." /><div class="form-text text-muted">Giữ nguyên cách nhập URL ảnh hiện có.</div><span asp-validation-for="ThumbnailImageUrl" class="text-danger"></span>
                         <label asp-for="ProductImageUrlsText" class="form-label mt-3">Thư viện ảnh (mỗi URL một dòng)</label><textarea asp-for="ProductImageUrlsText" rows="6" class="form-control js-gallery-urls" placeholder="Mỗi URL ảnh trên một dòng"></textarea><div class="form-text text-muted">Mỗi dòng là một URL ảnh. Tick Xóa ở ảnh hiện có nếu cần bỏ ảnh.</div><span asp-validation-for="ProductImageUrlsText" class="text-danger"></span>
                     </div>
-                    <div class="admin-image-pane">
-                        <h6 class="fw-bold mb-3">Tải ảnh từ thiết bị</h6>
-                        @await Html.PartialAsync("_AdminImageUploader", new { PrimaryTarget = "#ThumbnailImageUrl", GalleryTarget = "#ProductImageUrlsText", Multiple = true, CurrentUrl = Model.ThumbnailImageUrl ?? string.Empty })
+                    <div class="admin-image-pane admin-image-preview-section" data-admin-image-manager="product" data-primary-target="#ThumbnailImageUrl" data-gallery-target="#ProductImageUrlsText">
+                        <h6 class="fw-bold mb-3">Quản lý ảnh</h6>
+                        <div class="admin-image-preview-title">Ảnh đại diện</div>
+                        <div data-aim-primary></div>
+                        <div class="admin-image-preview-title mt-3">Thư viện ảnh sản phẩm</div>
+                        <div class="admin-image-gallery-grid" data-aim-gallery></div>
+                        @await Html.PartialAsync("_AdminImageUploader", new { PrimaryTarget = "#ThumbnailImageUrl", GalleryTarget = "#ProductImageUrlsText", Multiple = true, CurrentUrl = Model.ThumbnailImageUrl ?? string.Empty, Hidden = true })
                     </div>
-                </div>
-                <div class="admin-image-preview-section" data-admin-image-manager="product" data-primary-target="#ThumbnailImageUrl" data-gallery-target="#ProductImageUrlsText">
-                    <div class="admin-image-preview-title">Ảnh đại diện</div>
-                    <div data-aim-primary></div>
-                    <div class="admin-image-preview-title mt-3">Thư viện ảnh sản phẩm</div>
-                    <div class="admin-image-gallery-grid" data-aim-gallery></div>
                 </div>
                 <div id="existing-image-order-container"></div>
             </div>
