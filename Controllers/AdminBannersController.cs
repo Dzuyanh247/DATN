@@ -70,9 +70,13 @@ public class AdminBannersController : Controller
         var dealUrl = vm.DealSectionBackgroundUrl?.Trim();
         var hotUrl = vm.HotPromotionBackgroundUrl?.Trim();
 
-        if (!TryValidateOptionalHttpUrl(logoUrl, out var logoErr) ||
-            !TryValidateOptionalHttpUrl(dealUrl, out var dealErr) ||
-            !TryValidateOptionalHttpUrl(hotUrl, out var hotErr))
+        string? logoErr = null;
+        string? dealErr = null;
+        string? hotErr = null;
+
+        if (!TryValidateOptionalHttpUrl(logoUrl, out logoErr) ||
+            !TryValidateOptionalHttpUrl(dealUrl, out dealErr) ||
+            !TryValidateOptionalHttpUrl(hotUrl, out hotErr))
         {
             TempData["SettingsMessage"] = logoErr ?? dealErr ?? hotErr ?? "URL ảnh không hợp lệ.";
             TempData["SettingsSuccess"] = false;
