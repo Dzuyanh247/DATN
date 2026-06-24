@@ -45,7 +45,7 @@ public static class RolePermissionService
     {
         Admin => "Quản trị viên",
         Staff => "Nhân viên bán hàng",
-        CustomerSupport => "Chăm sóc khách hàng",
+        CustomerSupport => "Nhân viên hỗ trợ",
         SupportStaff => "Nhân viên hỗ trợ",
         _ => "Khách hàng"
     };
@@ -54,8 +54,8 @@ public static class RolePermissionService
     {
         Admin => "Toàn quyền hệ thống.",
         Staff => "Quản lý sản phẩm và đơn hàng.",
-        CustomerSupport => "Xử lý hỗ trợ, đánh giá, liên hệ.",
-        SupportStaff => "Hỗ trợ đơn hàng và bảo hành.",
+        CustomerSupport => "Tiếp nhận chat, đánh giá và liên hệ khách hàng.",
+        SupportStaff => "Hỗ trợ đơn hàng, chat và bảo hành.",
         _ => "Không có quyền quản trị."
     };
 }
