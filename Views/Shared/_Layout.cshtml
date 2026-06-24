@@ -70,6 +70,10 @@
     {
         <link rel="stylesheet" href="~/css/admin-chat.css" asp-append-version="true" />
     }
+    @if (!isAdminPage)
+    {
+        <link rel="stylesheet" href="~/css/mobile.css" asp-append-version="true" />
+    }
 </head>
 <body class="@(isAdminPage ? "admin-page" : (!isComparePage && compareCount > 0 ? "has-compare-tray" : string.Empty))">
 @if (isAdminPage)
@@ -413,6 +417,22 @@ document.querySelectorAll('form[action*="/Cart/Add"]').forEach(function(f){f.add
 if(window.__successToastMessage){window.showGlobalToast(window.__successToastMessage,'success');}
 if(window.__infoToastMessage){window.showGlobalToast(window.__infoToastMessage,'info');}
 document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el){new bootstrap.Tooltip(el);});
+const mobileFilterPanel=document.querySelector('[data-mobile-filter-panel]');
+const mobileFilterBackdrop=document.querySelector('[data-mobile-filter-backdrop]');
+const mobileFilterToggles=document.querySelectorAll('[data-mobile-filter-toggle]');
+const setMobileFilterOpen=(open)=>{
+    if(!mobileFilterPanel) return;
+    const isMobile=window.innerWidth<992;
+    mobileFilterPanel.classList.toggle('is-open',open&&isMobile);
+    if(isMobile) mobileFilterPanel.setAttribute('aria-hidden',open?'false':'true');
+    else mobileFilterPanel.removeAttribute('aria-hidden');
+    document.body.classList.toggle('mobile-filter-open',open&&isMobile);
+    mobileFilterToggles.forEach(btn=>btn.setAttribute('aria-expanded',(open&&isMobile)?'true':'false'));
+};
+mobileFilterToggles.forEach(btn=>btn.addEventListener('click',()=>setMobileFilterOpen(!mobileFilterPanel.classList.contains('is-open'))));
+if(mobileFilterBackdrop) mobileFilterBackdrop.addEventListener('click',()=>setMobileFilterOpen(false));
+window.addEventListener('keydown',event=>{if(event.key==='Escape') setMobileFilterOpen(false);});
+window.addEventListener('resize',()=>{if(window.innerWidth>=992) setMobileFilterOpen(false);});
 const productHoverPopup=document.getElementById('ttg-product-preview');
 const esc=(s)=>(s||'').toString().replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const hasRawJson=(s)=>{const value=(s||'').toString().trim();return value.startsWith('[')||value.startsWith('{')||/"(description|stt|quantity)"/i.test(value);};

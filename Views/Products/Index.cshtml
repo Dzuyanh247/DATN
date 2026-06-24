@@ -70,8 +70,15 @@
         </nav>
     </header>
 
+    <div class="products-mobile-filter-bar mobile-only" aria-label="Bộ lọc sản phẩm trên điện thoại">
+        <button class="products-mobile-filter-btn" type="button" data-mobile-filter-toggle aria-expanded="false" aria-controls="product-filter-panel">
+            <i class="bi bi-sliders"></i> Bộ lọc
+        </button>
+    </div>
+
     <div class="products-layout" id="product-filter">
-        <aside class="products-filter-sidebar" aria-label="Bộ lọc sản phẩm">
+        <div class="products-mobile-filter-backdrop mobile-only" data-mobile-filter-backdrop></div>
+        <aside class="products-filter-sidebar" id="product-filter-panel" aria-label="Bộ lọc sản phẩm" data-mobile-filter-panel>
             <form method="get" action="@Model.FilterActionUrl" id="product-filter-form">
                 <input type="hidden" name="categoryId" value="@Model.CategoryId" />
                 <input type="hidden" name="categorySlug" value="@Model.CategorySlug" />
@@ -82,6 +89,7 @@
                     <div>
                         <span>LỌC SẢN PHẨM</span>
                     </div>
+                    <button class="products-filter-close mobile-only" type="button" data-mobile-filter-toggle aria-label="Đóng bộ lọc"><i class="bi bi-x-lg"></i></button>
                     <a href="@Model.ClearFilterUrl"
                        class="products-clear-filter" data-preserve-filter-scroll>Xóa lọc</a>
                 </div>
