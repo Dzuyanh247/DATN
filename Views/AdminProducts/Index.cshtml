@@ -1,6 +1,7 @@
 @model List<Product>
 @{
     var categories = ViewBag.Categories as List<Category> ?? new();
+    var stockFilter = ViewBag.Stock as string;
 }
 
 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -18,6 +19,7 @@
         <input name="keyword" value="@ViewBag.Keyword" class="form-control" placeholder="Tìm theo tên sản phẩm" />
     </div>
     <div class="col-md-4">
+        <input type="hidden" name="stock" value="@stockFilter" />
         <select name="categoryId" class="form-select">
             <option value="">-- Tất cả danh mục --</option>
             @foreach (var c in categories)
@@ -37,6 +39,14 @@
         <button class="btn btn-outline-primary w-100">Lọc</button>
     </div>
 </form>
+
+@if (stockFilter == "low")
+{
+    <div class="alert alert-warning d-flex justify-content-between align-items-center">
+        <span>Đang lọc sản phẩm PC có tồn kho thấp (từ 5 sản phẩm trở xuống).</span>
+        <a class="btn btn-sm btn-outline-secondary" asp-action="Index">Bỏ lọc</a>
+    </div>
+}
 
 <table class="table table-striped align-middle admin-products-table">
     <thead>

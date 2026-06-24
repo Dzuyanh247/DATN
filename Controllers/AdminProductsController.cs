@@ -12,6 +12,8 @@ namespace Datn.PcStore.Controllers;
 [Authorize(Roles = "Admin,Staff")]
 public class AdminProductsController : Controller
 {
+    private const int LowStockThreshold = 5;
+
     private readonly ApplicationDbContext _db;
     private readonly ILogger<AdminProductsController> _logger;
 
@@ -22,13 +24,15 @@ public class AdminProductsController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> Index(string? keyword, int? categoryId)
+    public async Task<IActionResult> Index(string? keyword, int? categoryId, string? stock)
     {
         var query = _db.Products.Include(p => p.Category).Include(p => p.ProductImages).Where(p => p.ProductType == ProductKinds.PC).AsQueryable();
         if (!string.IsNullOrWhiteSpace(keyword)) query = query.Where(x => (x.Name ?? string.Empty).Contains(keyword));
         if (categoryId.HasValue) query = query.Where(x => x.CategoryId == categoryId);
+        if (string.Equals(stock, "low", StringComparison.OrdinalIgnoreCase)) query = query.Where(x => x.StockQuantity <= LowStockThreshold);
         ViewBag.Keyword = keyword;
         ViewBag.CategoryId = categoryId;
+        ViewBag.Stock = string.Equals(stock, "low", StringComparison.OrdinalIgnoreCase) ? "low" : null;
         ViewBag.Categories = await _db.Categories.OrderBy(x => x.Name ?? string.Empty).ToListAsync();
         return View(await query.OrderByDescending(p => p.CreatedAt).ToListAsync());
     }
