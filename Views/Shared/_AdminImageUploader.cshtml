@@ -43,10 +43,11 @@
     var currentUrl = uploader?.Value ?? ReadString(Model, nameof(AdminImageUploaderViewModel.Value), "CurrentUrl") ?? string.Empty;
     var hidden = uploader?.Hidden ?? ReadBool(Model, false, nameof(AdminImageUploaderViewModel.Hidden));
     var multiple = uploader?.Multiple ?? ReadBool(Model, false, nameof(AdminImageUploaderViewModel.Multiple));
+    var compact = uploader?.Compact ?? ReadBool(Model, false, nameof(AdminImageUploaderViewModel.Compact));
     var aspectHint = uploader?.AspectHint ?? ReadString(Model, nameof(AdminImageUploaderViewModel.AspectHint));
     var cssClass = uploader?.CssClass ?? ReadString(Model, nameof(AdminImageUploaderViewModel.CssClass));
 }
-<div class="admin-image-uploader @cssClass @(hidden ? "d-none" : null)" data-admin-image-uploader data-primary-target="@fieldName" data-gallery-target="@galleryFieldName">
+<div class="admin-image-uploader @cssClass @(hidden ? "d-none" : null) @(compact ? "is-compact" : null)" data-admin-image-uploader data-primary-target="@fieldName" data-gallery-target="@galleryFieldName">
     @if (hidden)
     {
         <input class="d-none" data-aiu-file type="file" accept="image/*" @(multiple ? "multiple" : null) />

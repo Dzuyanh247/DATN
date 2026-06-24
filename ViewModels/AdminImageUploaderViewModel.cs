@@ -10,6 +10,7 @@ public class AdminImageUploaderViewModel
     public string? GalleryValue { get; set; }
     public bool Hidden { get; set; } = false;
     public bool Multiple { get; set; } = false;
+    public bool Compact { get; set; } = false;
     public string? AspectHint { get; set; }
     public string? CssClass { get; set; }
 }

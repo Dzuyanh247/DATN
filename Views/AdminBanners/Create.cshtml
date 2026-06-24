@@ -1,46 +1,57 @@
 @model Banner
 @{
-    ViewData["Title"] = "Thêm banner";
+    ViewData["Title"] = "Thêm banner mới";
 }
 
 <div class="admin-banner-page">
-    <h3 class="mb-3">Thêm banner mới</h3>
+    <div class="admin-banner-header">
+        <div>
+            <span class="admin-banner-eyebrow">Banner trang chủ</span>
+            <h3>Thêm banner mới</h3>
+            <p>Nhập URL thủ công hoặc upload ảnh; chỉ lưu vào database khi bấm lưu.</p>
+        </div>
+    </div>
 
     <form method="post" class="banner-form admin-banner-form">
         @Html.AntiForgeryToken()
+
         <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
-        <div class="admin-form-card mb-4">
-            <h5 class="admin-card-title"><i class="bi bi-info-circle me-2"></i>Thông tin banner</h5>
-            <div class="admin-form-grid">
-                <div class="admin-field-full"><label class="form-label">Tên banner</label><input asp-for="Title" class="form-control" /><span asp-validation-for="Title" class="text-danger"></span></div>
-                <div class="admin-field-full"><label class="form-label">Link khi click</label><input asp-for="LinkUrl" class="form-control" placeholder="https://..." /></div>
-                <div class="admin-field-md"><label class="form-label">Vị trí hiển thị</label><select asp-for="Position" class="form-select" data-banner-position><option value="MainBanner">MainBanner - Banner chính</option><option value="SubBanner">SubBanner - Banner phụ</option><option value="Other">Other - Banner khác</option></select></div>
-                <div class="admin-field-xs admin-field-number"><label class="form-label">Thứ tự hiển thị</label><input asp-for="SortOrder" class="form-control" type="number" /><span asp-validation-for="SortOrder" class="text-danger"></span></div>
-                <div class="admin-field-full"><div class="form-check admin-status-check"><input asp-for="IsActive" class="form-check-input" /><label class="form-check-label" asp-for="IsActive">Đang hiển thị</label></div></div>
-            </div>
-        </div>
+        <div class="admin-two-column-form">
+            <div class="admin-main-column">
+                <div class="admin-form-card mb-4">
+                    <h5 class="admin-card-title"><i class="bi bi-info-circle me-2"></i>Thông tin banner</h5>
+                    <div class="admin-form-grid">
+                        <div class="admin-field-full"><label class="form-label">Tên banner</label><input asp-for="Title" class="form-control" /><span asp-validation-for="Title" class="text-danger"></span></div>
+                        <div class="admin-field-full"><label class="form-label">Link khi click</label><input asp-for="LinkUrl" class="form-control" placeholder="https://..." /></div>
+                        <div class="admin-field-md"><label class="form-label">Vị trí hiển thị</label><select asp-for="Position" class="form-select" data-banner-position><option value="MainBanner">MainBanner - Banner chính</option><option value="SubBanner">SubBanner - Banner phụ</option><option value="Other">Other - Banner khác</option></select></div>
+                        <div class="admin-field-xs admin-field-number"><label class="form-label">Thứ tự hiển thị</label><input asp-for="SortOrder" class="form-control" type="number" /><span asp-validation-for="SortOrder" class="text-danger"></span></div>
+                        <div class="admin-field-full"><div class="form-check admin-status-check"><input asp-for="IsActive" class="form-check-input" /><label class="form-check-label" asp-for="IsActive">Đang hiển thị</label></div></div>
+                    </div>
+                </div>
 
-        <div class="admin-form-card mb-4">
-            <h5 class="admin-card-title"><i class="bi bi-image me-2"></i>Hình ảnh banner</h5>
-            <div class="admin-image-manager-grid banner-image-manager">
-                <div class="admin-image-pane">
-                    <h6 class="fw-bold mb-3">Ảnh bằng URL</h6>
+                <div class="admin-form-card mb-4">
+                    <h5 class="admin-card-title"><i class="bi bi-link-45deg me-2"></i>URL ảnh banner</h5>
                     <label asp-for="ImageUrl" class="form-label">URL ảnh banner</label>
                     <input asp-for="ImageUrl" class="form-control" placeholder="https://..." data-banner-url />
                     <div class="form-text" data-main-size-hint>Nên dùng ảnh ngang lớn, ví dụ 1200x400 hoặc 1400x450.</div>
                     <div class="form-text d-none" data-sub-size-hint>Nên dùng ảnh ngang nhỏ, ví dụ 400x160 hoặc 600x240.</div>
                     <span asp-validation-for="ImageUrl" class="text-danger"></span>
                 </div>
-                <div class="admin-image-pane admin-single-image-preview banner-single-image-preview" data-admin-image-manager="single" data-primary-target="#ImageUrl" data-label="Ảnh banner">
-                    <h6 class="fw-bold mb-3">Quản lý ảnh</h6>
-                    <div data-aim-single></div>
+            </div>
+
+            <aside class="admin-side-column apf-sticky-side">
+                <div class="admin-form-card banner-image-card" data-admin-image-manager="single" data-primary-target="#ImageUrl" data-label="Ảnh banner">
+                    <h5 class="admin-card-title"><i class="bi bi-image me-2"></i>Ảnh banner</h5>
+                    <div class="banner-single-image-preview"><div data-aim-single></div></div>
                     @await Html.PartialAsync("_AdminImageUploader", new AdminImageUploaderViewModel { FieldName = "#ImageUrl", Value = Model.ImageUrl, Hidden = true, Label = "Ảnh banner" })
                 </div>
-            </div>
+                <div class="admin-actions-card apf-actions mt-3">
+                    <button class="btn btn-primary w-100 mb-2">Lưu banner</button>
+                    <a asp-action="Index" class="btn btn-outline-secondary w-100">Quay lại</a>
+                </div>
+            </aside>
         </div>
-
-        <div class="admin-banner-actions"><button class="btn btn-primary">Lưu banner</button><a asp-action="Index" class="btn btn-outline-secondary">Quay lại</a></div>
     </form>
 </div>
 
