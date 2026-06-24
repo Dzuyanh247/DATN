@@ -66,6 +66,12 @@ public class ShippingService : IShippingService
                     GhnLeadTime = ghn.LeadTime
                 };
             }
+
+            if (!localPolicyMatched)
+            {
+                _logger.LogWarning("GHN shipping fee failed for non-local address districtId={DistrictId} wardCode={WardCode} error={Error}", districtId, wardCode, ghn.ErrorMessage);
+                throw new InvalidOperationException("Chưa thể tính phí vận chuyển, vui lòng kiểm tra địa chỉ giao hàng.");
+            }
         }
 
         var policyConfig = new Datn.PcStore.Models.ShippingConfig
