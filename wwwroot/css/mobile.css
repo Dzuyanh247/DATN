@@ -240,3 +240,149 @@
     .kk-chat { right: 6px; bottom: 6px; }
     .kk-chat-launcher { width: 44px; height: 44px; }
 }
+
+/* Mobile home product rails: scoped to home sections only, desktop >= 992px untouched. */
+@media (max-width: 991.98px) {
+    body:not(.admin-page) { overflow-x: hidden; }
+
+    .ttg-header-actions .ttg-cta .icon {
+        display: inline-flex !important;
+        flex: 0 0 30px;
+        color: #0f4c5c;
+    }
+    .ttg-header-actions .ttg-cta {
+        background: #fff;
+        border-color: #dbeafe;
+        color: #0f172a;
+    }
+    .ttg-header-actions .ttg-cta:empty::after { content: "..."; }
+
+    .ttg-cat-nav { min-width: 0; max-width: 100%; }
+    .ttg-cat-link { flex-shrink: 0; min-width: max-content; }
+    .ttg-cat-link i { flex: 0 0 26px; }
+
+    .standard-product-section {
+        width: 100%;
+        max-width: 100%;
+        padding: 10px 10px 12px;
+        overflow: hidden;
+    }
+    .standard-product-section .ttg-section-head {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: start;
+        gap: 8px;
+    }
+    .standard-product-section .ttg-section-head > .d-flex {
+        min-width: 0;
+        gap: 6px !important;
+    }
+    .standard-product-section .ttg-section-title {
+        max-width: 100%;
+        font-size: .9rem;
+        line-height: 1.25;
+        padding: 7px 9px;
+        overflow-wrap: anywhere;
+    }
+    .standard-product-section .ttg-hot-badge {
+        padding: 4px 8px;
+        font-size: .72rem;
+        line-height: 1.1;
+    }
+    .standard-product-section .ttg-view-all {
+        justify-self: end;
+        align-self: center;
+        white-space: nowrap;
+        padding: 6px 0;
+        font-size: .78rem;
+    }
+
+    .standard-product-section .ttg-products-grid,
+    .standard-product-section .promo-product-grid {
+        display: flex !important;
+        grid-template-columns: unset !important;
+        gap: 10px;
+        width: 100%;
+        max-width: 100%;
+        overflow-x: auto;
+        overflow-y: hidden;
+        overscroll-behavior-x: contain;
+        scroll-snap-type: x mandatory;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        padding: 2px 2px 8px;
+    }
+    .standard-product-section .ttg-products-grid::-webkit-scrollbar,
+    .standard-product-section .promo-product-grid::-webkit-scrollbar { display: none; }
+
+    .standard-product-section .ttg-product-card {
+        flex: 0 0 calc(50% - 7px) !important;
+        min-width: calc(50% - 7px) !important;
+        max-width: 190px;
+        height: auto;
+        min-height: 0;
+        scroll-snap-align: start;
+        padding: 8px;
+        border-radius: 10px;
+    }
+    .standard-product-section .ttg-product-image-wrap {
+        flex: 0 0 130px !important;
+        height: 130px !important;
+        margin-bottom: 7px;
+    }
+    .standard-product-section .ttg-product-image {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+    }
+    .standard-product-section .ttg-product-title {
+        height: auto;
+        min-height: 36px;
+        margin-bottom: 5px;
+        font-size: 12.5px;
+        line-height: 1.35;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+    .standard-product-section .ttg-price-row {
+        min-height: 34px;
+        align-items: flex-start;
+    }
+    .standard-product-section .ttg-price { font-size: 14px; line-height: 1.25; white-space: normal; }
+    .standard-product-section .ttg-old-price { font-size: 11px; min-height: 14px; }
+    .standard-product-section .ttg-price-discount {
+        align-self: flex-start;
+        margin: 0;
+        padding: 2px 4px;
+        font-size: 10px;
+        line-height: 13px;
+    }
+    .standard-product-section .ttg-card-actions { gap: 5px; padding-top: 6px; }
+    .standard-product-section .ttg-add-btn {
+        min-height: 32px;
+        height: 32px;
+        border-radius: 8px;
+        font-size: 11.5px;
+    }
+    .standard-product-section .ttg-secondary-actions { gap: 4px; }
+    .standard-product-section .ttg-compare-btn,
+    .standard-product-section .ttg-action-stock {
+        height: 25px;
+        min-height: 25px;
+        padding-inline: 5px;
+        font-size: 10.5px;
+        line-height: 23px;
+    }
+}
+
+@media (max-width: 359.98px) {
+    .standard-product-section .ttg-product-card {
+        flex-basis: 76% !important;
+        min-width: 76% !important;
+        max-width: 76%;
+    }
+    .standard-product-section .ttg-section-head { grid-template-columns: 1fr; }
+    .standard-product-section .ttg-view-all { justify-self: start; }
+}
