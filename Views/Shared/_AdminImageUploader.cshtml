@@ -1,12 +1,52 @@
-@model dynamic
+@model object
+@using System.Reflection
 @{
-    string primaryTarget = Model.PrimaryTarget;
-    string? galleryTarget = Model.GalleryTarget as string;
-    bool multiple = Model.Multiple == true;
-    string currentUrl = Model.CurrentUrl ?? string.Empty;
-    bool hidden = Model.Hidden == true;
+    string? ReadString(object? source, params string[] names)
+    {
+        if (source is null) return null;
+
+        foreach (var name in names)
+        {
+            var property = source.GetType().GetProperty(name, BindingFlags.Instance | BindingFlags.Public | BindingFlags.IgnoreCase);
+            if (property?.GetValue(source) is string value)
+            {
+                return value;
+            }
+        }
+
+        return null;
+    }
+
+    bool ReadBool(object? source, bool defaultValue, params string[] names)
+    {
+        if (source is null) return defaultValue;
+
+        foreach (var name in names)
+        {
+            var property = source.GetType().GetProperty(name, BindingFlags.Instance | BindingFlags.Public | BindingFlags.IgnoreCase);
+            var value = property?.GetValue(source);
+            if (value is bool boolValue)
+            {
+                return boolValue;
+            }
+
+        }
+
+        return defaultValue;
+    }
+
+    var uploader = Model as AdminImageUploaderViewModel;
+    var fieldName = uploader?.FieldName ?? ReadString(Model, nameof(AdminImageUploaderViewModel.FieldName), "PrimaryTarget") ?? string.Empty;
+    var galleryFieldName = uploader?.GalleryFieldName ?? ReadString(Model, nameof(AdminImageUploaderViewModel.GalleryFieldName), "GalleryTarget") ?? string.Empty;
+    var label = uploader?.Label ?? ReadString(Model, nameof(AdminImageUploaderViewModel.Label)) ?? "Chọn ảnh hoặc kéo thả vào đây";
+    var helpText = uploader?.HelpText ?? ReadString(Model, nameof(AdminImageUploaderViewModel.HelpText)) ?? "JPG, PNG, WEBP, GIF, AVIF";
+    var currentUrl = uploader?.Value ?? ReadString(Model, nameof(AdminImageUploaderViewModel.Value), "CurrentUrl") ?? string.Empty;
+    var hidden = uploader?.Hidden ?? ReadBool(Model, false, nameof(AdminImageUploaderViewModel.Hidden));
+    var multiple = uploader?.Multiple ?? ReadBool(Model, false, nameof(AdminImageUploaderViewModel.Multiple));
+    var aspectHint = uploader?.AspectHint ?? ReadString(Model, nameof(AdminImageUploaderViewModel.AspectHint));
+    var cssClass = uploader?.CssClass ?? ReadString(Model, nameof(AdminImageUploaderViewModel.CssClass));
 }
-<div class="admin-image-uploader @(hidden ? "d-none" : null)" data-admin-image-uploader data-primary-target="@primaryTarget" data-gallery-target="@galleryTarget">
+<div class="admin-image-uploader @cssClass @(hidden ? "d-none" : null)" data-admin-image-uploader data-primary-target="@fieldName" data-gallery-target="@galleryFieldName">
     @if (hidden)
     {
         <input class="d-none" data-aiu-file type="file" accept="image/*" @(multiple ? "multiple" : null) />
@@ -15,8 +55,12 @@
     {
     <div class="admin-upload-drop" data-aiu-drop role="button" tabindex="0">
         <i class="bi bi-image fs-2 text-primary"></i>
-        <div class="fw-semibold">Chọn ảnh hoặc kéo thả vào đây</div>
-        <div class="small text-muted">JPG, PNG, WEBP, GIF, AVIF</div>
+        <div class="fw-semibold">@label</div>
+        <div class="small text-muted">@helpText</div>
+        @if (!string.IsNullOrWhiteSpace(aspectHint))
+        {
+            <div class="small text-muted">@aspectHint</div>
+        }
         <input class="d-none" data-aiu-file type="file" accept="image/*" @(multiple ? "multiple" : null) />
     </div>
     <div class="d-flex justify-content-between small text-muted mt-2"><span data-aiu-name>Chưa chọn file</span><span data-aiu-size></span></div>

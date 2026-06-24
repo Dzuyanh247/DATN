@@ -13,7 +13,7 @@
     <div class="col-12">
         <div class="admin-image-manager-grid">
             <div class="admin-image-pane"><h6 class="fw-bold mb-3">Ảnh bằng URL</h6><label class="form-label">Ảnh đại diện bài viết</label><input asp-for="CoverImageUrl" class="form-control" id="CoverImageUrl" placeholder="https://..." /><div class="form-text">Có thể dán URL như trước, dữ liệu cũ vẫn dùng bình thường.</div></div>
-            <div class="admin-image-pane admin-single-image-preview" data-admin-image-manager="single" data-primary-target="#CoverImageUrl" data-label="Ảnh đại diện bài viết"><h6 class="fw-bold mb-3">Quản lý ảnh</h6><div data-aim-single></div>@await Html.PartialAsync("_AdminImageUploader", new { PrimaryTarget = "#CoverImageUrl", GalleryTarget = "", Multiple = false, CurrentUrl = Model.CoverImageUrl ?? string.Empty, Hidden = true })</div>
+            <div class="admin-image-pane admin-single-image-preview" data-admin-image-manager="single" data-primary-target="#CoverImageUrl" data-label="Ảnh đại diện bài viết"><h6 class="fw-bold mb-3">Quản lý ảnh</h6><div data-aim-single></div>@await Html.PartialAsync("_AdminImageUploader", new AdminImageUploaderViewModel { FieldName = "#CoverImageUrl", Value = Model.CoverImageUrl, Hidden = true, Label = "Ảnh đại diện bài viết" })</div>
         </div>
     </div>
     <div class="col-md-4 d-none"><img id="coverPreview" src="@(string.IsNullOrWhiteSpace(Model.CoverImageUrl) ? "https://placehold.co/600x360/002b36/14d9ff?text=Preview" : Model.CoverImageUrl)" class="img-fluid rounded border" alt="Preview" /></div>
