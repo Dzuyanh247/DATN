@@ -12,6 +12,8 @@ namespace Datn.PcStore.Controllers;
 [Authorize(Roles = "Admin,Staff,CustomerSupport,SupportStaff")]
 public class AdminDashboardController : Controller
 {
+    private const int LowStockThreshold = 5;
+
     private readonly ApplicationDbContext _db;
     public AdminDashboardController(ApplicationDbContext db) => _db = db;
 
@@ -36,6 +38,7 @@ public class AdminDashboardController : Controller
             .Include(x => x.User).Include(x => x.Details)
             .OrderByDescending(x => x.CreatedAt).Take(8).ToListAsync(cancellationToken);
         var attentionProducts = await _db.Products.AsNoTracking().Include(x => x.Category)
+            .Where(x => x.StockQuantity <= LowStockThreshold)
             .OrderBy(x => x.StockQuantity).ThenByDescending(x => x.UpdatedAt).Take(6).ToListAsync(cancellationToken);
         var allOrderStates = await _db.Orders.AsNoTracking()
             .Select(x => new { x.Status, x.PaymentStatus, x.PaymentMethod }).ToListAsync(cancellationToken);
@@ -56,7 +59,7 @@ public class AdminDashboardController : Controller
             BankTransferConfirmationCount = allOrderStates.Count(x => x.PaymentMethod == PaymentMethods.BankTransfer && x.PaymentStatus == PaymentStatuses.PendingConfirmation),
             NewWarrantyCount = await _db.WarrantyRequests.CountAsync(x => x.Status == WarrantyStatuses.Pending, cancellationToken),
             UnreadSupportCount = await _db.ChatConversations.SumAsync(x => (int?)x.StaffUnreadCount, cancellationToken) ?? 0,
-            LowStockCount = await _db.Products.CountAsync(x => x.IsActive && x.StockQuantity <= 5, cancellationToken),
+            LowStockCount = await _db.Products.CountAsync(x => x.IsActive && x.StockQuantity <= LowStockThreshold, cancellationToken),
             TodayRevenue = validPaidOrders.Where(x => (x.PaidAt ?? x.CreatedAt) >= todayUtc && (x.PaidAt ?? x.CreatedAt) < tomorrowUtc).Sum(x => x.TotalAmount),
             MonthRevenue = validPaidOrders.Where(x => (x.PaidAt ?? x.CreatedAt) >= monthStartUtc).Sum(x => x.TotalAmount),
             AdminDisplayName = string.IsNullOrWhiteSpace(adminName) ? User.Identity?.Name ?? "Quản trị viên" : adminName,
@@ -69,7 +72,7 @@ public class AdminDashboardController : Controller
             AttentionProducts = attentionProducts.Select(x => new AdminDashboardProductVm
             {
                 Id = x.Id, Name = x.Name ?? "Sản phẩm không xác định", ImageUrl = x.ThumbnailImage ?? "/images/no-image.png", CategoryName = x.Category?.Name ?? "Chưa phân loại",
-                Price = x.DiscountPrice ?? x.SalePrice ?? x.Price, StockQuantity = x.StockQuantity, IsActive = x.IsActive, UpdatedAt = x.UpdatedAt
+                Price = x.DiscountPrice ?? x.SalePrice ?? x.Price, StockQuantity = x.StockQuantity, IsActive = x.IsActive, ProductType = x.ProductType ?? ProductKinds.PC, UpdatedAt = x.UpdatedAt
             }).ToList(),
             RevenueLastSevenDays = Enumerable.Range(0, 7).Select(offset =>
             {

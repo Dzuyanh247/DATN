@@ -43,6 +43,8 @@ public class AdminDashboardProductVm
     public decimal Price { get; init; }
     public int StockQuantity { get; init; }
     public bool IsActive { get; init; }
+    public string ProductType { get; init; } = ProductKinds.PC;
+    public string EditController => ProductType == ProductKinds.Component ? "AdminComponents" : "AdminProducts";
     public DateTime UpdatedAt { get; init; }
 }
 
