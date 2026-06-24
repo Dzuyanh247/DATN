@@ -1,11 +1,44 @@
 using Datn.PcStore.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace Datn.PcStore.Data;
 
 public static class SeedData
 {
-    public static async Task InitializeAsync(ApplicationDbContext db)
+    public static async Task InitializeAsync(
+        ApplicationDbContext db,
+        IConfiguration configuration,
+        ILogger logger)
+    {
+        var enableDemoSeed = configuration.GetValue<bool>("Seeding:EnableDemoSeed");
+        var enableMinimalSeed = configuration.GetValue<bool>("Seeding:EnableMinimalSeed");
+
+        if (!enableDemoSeed && !enableMinimalSeed)
+        {
+            logger.LogInformation("Database seeding is disabled.");
+            return;
+        }
+
+        if (enableMinimalSeed)
+        {
+            await SeedMinimalAsync(db, logger);
+        }
+
+        if (enableDemoSeed)
+        {
+            await SeedDemoAsync(db);
+        }
+    }
+
+    private static Task SeedMinimalAsync(ApplicationDbContext db, ILogger logger)
+    {
+        logger.LogInformation("Minimal database seeding is enabled, but no required minimal seed data is defined.");
+        return Task.CompletedTask;
+    }
+
+    private static async Task SeedDemoAsync(ApplicationDbContext db)
     {
         var roleNames = new[] { "Admin", "Staff", "SupportStaff", "CustomerSupport", "Customer" };
         foreach (var roleName in roleNames)
