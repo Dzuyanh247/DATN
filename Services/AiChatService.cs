@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Globalization;
 using System.Net;
 using System.Net.Http.Json;
@@ -56,7 +57,7 @@ public interface IAiChatService
 
 public partial class GeminiChatService : IAiChatService
 {
-    private const string FriendlyErrorMessage = "Mình đang gặp lỗi tạm thời khi xử lý câu trả lời. Bạn thử gửi lại giúp mình nhé.";
+    private const string FriendlyErrorMessage = "Xin lỗi, hệ thống gặp lỗi khi tạo phản hồi. Vui lòng thử lại.";
     private const string ProviderBusyMessage = "AI đang bận, bạn vui lòng thử lại sau hoặc chọn Gặp nhân viên.";
     private readonly HttpClient _httpClient;
     private readonly IProductSearchForAiService _productSearch;
@@ -78,6 +79,7 @@ public partial class GeminiChatService : IAiChatService
     public async Task<AiChatResponse> AskAsync(string message, string? sessionId, string? ipAddress, CancellationToken cancellationToken = default)
     {
         var requestId = Guid.NewGuid().ToString("N");
+        var startedAt = Stopwatch.GetTimestamp();
         message = (message ?? string.Empty).Trim();
         if (message.Length == 0) return new(false, "Bạn vui lòng nhập câu hỏi cần tư vấn.", [], false, requestId);
         if (message.Length > 500) return new(false, "Câu hỏi quá dài, bạn vui lòng rút gọn dưới 500 ký tự.", [], false, requestId);
@@ -115,22 +117,24 @@ public partial class GeminiChatService : IAiChatService
 
         if (intent == AiChatIntent.CompareRecommendation)
         {
-            var selected = PickBestProduct(conversation.RecentSuggestedProducts, conversation.LastBudgetTarget);
-            if (selected != null)
+            var selectedList = PickBestProducts(conversation.RecentSuggestedProducts, conversation.LastBudgetTarget);
+            if (selectedList.Count > 0)
             {
-                conversation.LastSelectedProduct = selected;
-                SaveRecentSuggestedProducts(conversation, [selected]);
-                var reply = BuildCompareRecommendationReply(selected, analysis.Game ?? conversation.LastGame, conversation.LastPurpose);
-                UpdateConversationAfterRule(conversation, message, analysis, [selected]);
-                LogPipelineDebug(requestId, sessionId, message, analysis, conversation, [selected], true, false, "COMPARE_RECOMMENDATION", lastIntentBefore, null);
-                return new(true, reply, [selected], true, requestId);
+                conversation.LastSelectedProduct = selectedList[0];
+                SaveRecentSuggestedProducts(conversation, selectedList);
+                var reply = BuildBestPickReply(selectedList, analysis.Game ?? conversation.LastGame, conversation.LastPurpose, conversation.LastBudgetTarget);
+                UpdateConversationAfterRule(conversation, message, analysis, selectedList);
+                LogPipelineDebug(requestId, sessionId, message, analysis, conversation, selectedList, false, false, "BEST_PICK_CONSULT", lastIntentBefore, null);
+                return new(true, reply, [], false, requestId);
             }
             return new(true, "Mình chưa có danh sách sản phẩm vừa đề xuất trong phiên này. Bạn cho mình biết nhu cầu/ngân sách để mình gợi ý rồi chọn mẫu đáng mua nhất nhé.", [], false, requestId);
         }
 
         if (intent == AiChatIntent.ProductExtremeQuery || intent == AiChatIntent.PcBuildAdvice || intent == AiChatIntent.ComponentAdvice)
         {
-            var productsByRule = await _productSearch.QueryByIntentAsync(IntentName(intent), analysis.ProductType, analysis.PriceMode, analysis.BudgetTarget, cancellationToken);
+            var productsByRule = LimitProductCards(intent == AiChatIntent.ProductExtremeQuery
+                ? await _productSearch.QueryByIntentAsync(IntentName(intent), analysis.ProductType, analysis.PriceMode, analysis.BudgetTarget, cancellationToken)
+                : await _productSearch.SearchAsync(message, cancellationToken));
             var reply = BuildRulePipelineReply(analysis, productsByRule);
             if (productsByRule.Count > 0) SaveRecentSuggestedProducts(conversation, productsByRule);
             UpdateConversationAfterRule(conversation, message, analysis, productsByRule);
@@ -162,14 +166,15 @@ public partial class GeminiChatService : IAiChatService
 
         var contextProduct = ResolveContextProduct(message, conversation);
         var isAnalysisIntent = intent is AiChatIntent.ProductQuestion or AiChatIntent.ProductAnalysis or AiChatIntent.ProductBenefits or AiChatIntent.ProductProsCons or AiChatIntent.ProductRecommendation or AiChatIntent.ProductAdvice or AiChatIntent.ProductCompare;
-        var shouldSearchProducts = intent is AiChatIntent.ProductSearch or AiChatIntent.ProductQuestion or AiChatIntent.ProductAdvice or AiChatIntent.ProductAnalysis or AiChatIntent.ProductBenefits or AiChatIntent.ProductProsCons or AiChatIntent.ProductRecommendation or AiChatIntent.ProductCompare || productFromUrl != null;
+        var shouldSearchProducts = IsSearchMode(intent, message, conversation) || productFromUrl != null;
         IReadOnlyList<AiProductContext> products = productFromUrl != null ? [productFromUrl] : contextProduct != null && isAnalysisIntent ? [contextProduct] : shouldSearchProducts ? await _productSearch.SearchAsync(message, cancellationToken) : [];
+        products = LimitProductCards(products);
         if (products.Count > 0)
         {
             conversation.CurrentProductContext = products[0];
             conversation.LastReferencedProduct = products[0];
         }
-        var shouldAttachProductCards = ShouldAttachProductCards(intent);
+        var shouldAttachProductCards = ShouldAttachProductCards(intent, message);
         if (isAnalysisIntent && contextProduct != null && HasContextReference(message, conversation))
         {
             var ruleBasedReply = BuildRuleBasedProductAnalysis(message, contextProduct, conversation.RecentSuggestedProducts);
@@ -177,7 +182,7 @@ public partial class GeminiChatService : IAiChatService
             conversation.RecentMessages.Add($"AI: {ruleBasedReply}");
             return new(true, ruleBasedReply, [], false, requestId);
         }
-        LogDebugState(requestId, sessionId, message, intent, conversation, products, shouldAttachProductCards, "pending", 0, shouldAttachProductCards ? products.Count : 0, null);
+        LogDebugState(requestId, sessionId, message, intent, conversation, products, shouldAttachProductCards, shouldSearchProducts ? "search-mode-pending" : "consult-mode-pending", 0, shouldAttachProductCards ? products.Count : 0, null);
         if (shouldSearchProducts && products.Count == 0)
         {
             var normalizedMessage = RemoveDiacritics(message.ToLowerInvariant());
@@ -225,14 +230,16 @@ public partial class GeminiChatService : IAiChatService
                 return new(true, fallbackReply, [], false, requestId);
             }
             using var document = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync(timeout.Token), cancellationToken: timeout.Token);
+            var tokenUsage = ExtractTokenUsage(document.RootElement);
             var reply = ExtractReply(document.RootElement);
             if (string.IsNullOrWhiteSpace(reply)) reply = BuildFallbackReply(message, intent, conversation);
-            if (string.IsNullOrWhiteSpace(reply)) reply = FriendlyErrorMessage;
-            reply = CompleteSentence(reply.Trim());
+            if (string.IsNullOrWhiteSpace(reply) || !IsCompleteReply(reply)) reply = FriendlyErrorMessage;
+            else reply = CompleteSentence(reply.Trim());
             IReadOnlyList<AiProductContext> outgoingProducts = shouldAttachProductCards ? products : [];
             if (outgoingProducts.Count > 0) SaveRecentSuggestedProducts(conversation, outgoingProducts);
             conversation.RecentMessages.Add($"AI: {reply}");
             LogDebugState(requestId, sessionId, message, intent, conversation, products, shouldAttachProductCards, "ok", reply.Length, outgoingProducts.Count, null);
+            LogAiTurnMetrics(requestId, intent, shouldSearchProducts, tokenUsage, Stopwatch.GetElapsedTime(startedAt));
             var result = new AiChatResponse(true, reply, outgoingProducts, shouldAttachProductCards, requestId);
             _cache.Set(cacheKey, result, TimeSpan.FromMinutes(7));
             return result;
@@ -308,6 +315,9 @@ public partial class GeminiChatService : IAiChatService
 
     private static AiProductContext? PickBestProduct(IReadOnlyList<AiProductContext> products, decimal? budget) => products.Count == 0 ? null : products.OrderByDescending(p => ScoreRecommendation(p, budget)).First();
 
+    private static IReadOnlyList<AiProductContext> PickBestProducts(IReadOnlyList<AiProductContext> products, decimal? budget)
+        => products.OrderByDescending(p => ScoreRecommendation(p, budget)).Take(3).ToList();
+
     private static decimal ScoreRecommendation(AiProductContext p, decimal? budget)
     {
         var text = RemoveDiacritics($"{p.Name} {p.Specifications} {p.Description}".ToLowerInvariant());
@@ -321,6 +331,23 @@ public partial class GeminiChatService : IAiChatService
 
     private static string BuildCompareRecommendationReply(AiProductContext product, string? game, string? purpose)
         => $"Trong các mẫu vừa đề xuất, mẫu đáng mua nhất là: {product.Name}\n\nLý do:\n- Cân bằng cấu hình/giá tốt hơn trong danh sách vừa tư vấn.\n- Phù hợp {(purpose ?? "nhu cầu bạn nêu")}{(string.IsNullOrWhiteSpace(game) ? string.Empty : $" / {game}")}.\n- {product.StockStatus}, bảo hành {product.Warranty}.\n- Thông số nổi bật: {product.Specifications}\n\nĐiểm cần lưu ý: nếu bạn thường mở thêm Discord/Chrome hoặc chơi game nặng, nên ưu tiên nâng RAM/SSD khi cấu hình hiện tại còn thấp.";
+
+
+    private static string BuildBestPickReply(IReadOnlyList<AiProductContext> products, string? game, string? purpose, decimal? budget)
+    {
+        var labels = new[] { "🥇 Đáng mua nhất", "🥈 Hiệu năng / giá tốt nhất", "🥉 Tiết kiệm nhất" };
+        var lines = new List<string> { "Mình sẽ chọn trong danh sách vừa đề xuất, không tìm thêm sản phẩm mới:", string.Empty };
+        for (var i = 0; i < products.Count && i < labels.Length; i++)
+        {
+            var p = products[i];
+            lines.Add($"{labels[i]}\n{p.Name} — {p.Price:N0} đ");
+            lines.Add($"Lý do: {p.StockStatus.ToLowerInvariant()}, bảo hành {p.Warranty}, phù hợp {(purpose ?? "nhu cầu bạn nêu")}{(string.IsNullOrWhiteSpace(game) ? string.Empty : $" / {game}")}.");
+            if (!string.IsNullOrWhiteSpace(p.Specifications)) lines.Add($"Điểm nổi bật: {p.Specifications}");
+            lines.Add(string.Empty);
+        }
+        lines.Add("Nếu bạn muốn, mình có thể phân tích kỹ mẫu hạng 1 về điện năng, nhiệt độ, hiệu năng game và khả năng nâng cấp.");
+        return string.Join("\n", lines).Trim();
+    }
 
     private static string BuildRulePipelineReply(ChatTurnAnalysis a, IReadOnlyList<AiProductContext> products)
     {
@@ -353,6 +380,10 @@ public partial class GeminiChatService : IAiChatService
         return Regex.IsMatch(window, @"\b(?:rtx|gtx|rx)\s*\d{3,4}\b|\bi[3579][-\s]*\d{4,5}[a-z]*\b|\bryzen\s*[3579]\s*\d{3,5}[a-z]*\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
     }
 
+    private static bool IsPowerQuestion(string message) => ContainsAny(RemoveDiacritics((message ?? string.Empty).ToLowerInvariant()), "ton dien", "hao dien", "an dien", "dien nang", "cong suat", "nguon bao nhieu", "psu bao nhieu");
+
+    private static bool IsThermalQuestion(string message) => ContainsAny(RemoveDiacritics((message ?? string.Empty).ToLowerInvariant()), "nong khong", "nhiet do", "co nong", "mat khong");
+
     private static bool IsProductQuestion(string normalized)
         => ContainsAny(normalized, "ton dien", "hao dien", "an dien", "dien nang", "cong suat", "nguon bao nhieu", "psu bao nhieu", "nong khong", "on khong", "co tot khong", "tot khong", "co nen mua", "uu diem", "nhuoc diem", "danh gia", "phan tich", "bao hanh", "con hang", "gia bao nhieu", "gia", "choi duoc khong", "choi game duoc khong", "nang cap duoc khong");
 
@@ -360,7 +391,8 @@ public partial class GeminiChatService : IAiChatService
 
     private static void UpdateConversationAfterRule(AiConversationContext c, string message, ChatTurnAnalysis a, IReadOnlyList<AiProductContext> products)
     {
-        c.LastIntent = a.Intent; c.LastUserMessage = message; c.LastBudgetTarget = a.BudgetTarget ?? c.LastBudgetTarget; c.LastPurpose = a.Purpose ?? c.LastPurpose; c.LastGame = a.Game ?? c.LastGame; c.LastProductType = a.ProductType ?? c.LastProductType; c.LastRenderedCards.Clear(); c.LastRenderedCards.AddRange(products);
+        c.LastIntent = a.Intent; c.LastUserMessage = message; c.LastBudgetTarget = a.BudgetTarget ?? c.LastBudgetTarget; c.LastPurpose = a.Purpose ?? c.LastPurpose; c.LastGame = a.Game ?? c.LastGame; c.LastProductType = a.ProductType ?? c.LastProductType; c.LastRenderedCards.Clear(); c.LastRenderedCards.AddRange(products.Take(3));
+        if (products.Count > 0) { c.CurrentProductContext = products[0]; c.LastReferencedProduct = products[0]; }
     }
 
     private void LogPipelineDebug(string requestId, string? sessionId, string rawMessage, ChatTurnAnalysis a, AiConversationContext c, IReadOnlyList<AiProductContext> products, bool usedDb, bool usedGemini, string queryType, AiChatIntent? lastBefore, string? error)
@@ -398,13 +430,28 @@ public partial class GeminiChatService : IAiChatService
         return $"✓ Đã nhận nhu cầu\n\nNgân sách: {(string.IsNullOrWhiteSpace(budget) ? "Chưa nêu rõ" : budget)}\nMục đích: {purpose}\nGame: {game}\n\nĐang tìm cấu hình phù hợp...\n\n{source}. Mình chỉ hiển thị sản phẩm có trong dữ liệu KKSHOP.";
     }
 
-    private static bool ShouldAttachProductCards(AiChatIntent intent)
-        => intent is AiChatIntent.ProductSearch or AiChatIntent.ProductAdvice;
+    private static bool ShouldAttachProductCards(AiChatIntent intent, string message)
+        => IsExplicitProductListingRequest(message) && intent is (AiChatIntent.ProductSearch or AiChatIntent.ProductAdvice or AiChatIntent.PcBuildAdvice or AiChatIntent.ComponentAdvice or AiChatIntent.ProductExtremeQuery);
+
+    private static bool IsSearchMode(AiChatIntent intent, string message, AiConversationContext conversation)
+        => IsExplicitProductListingRequest(message) && intent is (AiChatIntent.ProductSearch or AiChatIntent.ProductAdvice or AiChatIntent.PcBuildAdvice or AiChatIntent.ComponentAdvice or AiChatIntent.ProductExtremeQuery);
+
+    private static bool IsExplicitProductListingRequest(string message)
+    {
+        var n = RemoveDiacritics((message ?? string.Empty).ToLowerInvariant());
+        if (ContainsAny(n, "xem them", "them san pham", "goi y them")) return true;
+        if (IsProductQuestion(n) || ContainsAny(n, "so sanh", "danh gia", "uu diem", "nhuoc diem", "co nen mua", "ton dien", "nong khong", "choi duoc khong")) return false;
+        return ContainsAny(n, "tu van cau hinh", "goi y pc", "tim pc", "mua pc", "pc duoi", "pc gaming", "build pc", "cau hinh", "ngan sach", "duoi", "toi da", "tam", "khoang", "tu ")
+            || Regex.IsMatch(n, @"\b\d+(?:[\.,]\d+)?\s*(?:-|den|toi)\s*\d+(?:[\.,]\d+)?\s*(?:trieu|tr|m)\b", RegexOptions.IgnoreCase)
+            || Regex.IsMatch(n, @"\b\d+(?:[\.,]\d+)?\s*(?:trieu|tr|m)\b", RegexOptions.IgnoreCase);
+    }
+
+    private static IReadOnlyList<AiProductContext> LimitProductCards(IReadOnlyList<AiProductContext> products) => products.Take(3).ToList();
 
     private static void SaveRecentSuggestedProducts(AiConversationContext conversation, IReadOnlyList<AiProductContext> products)
     {
         conversation.RecentSuggestedProducts.Clear();
-        conversation.RecentSuggestedProducts.AddRange(products.Take(5));
+        conversation.RecentSuggestedProducts.AddRange(products.Take(3));
         conversation.CurrentProductContext = conversation.RecentSuggestedProducts.FirstOrDefault();
         conversation.LastReferencedProduct = conversation.CurrentProductContext;
     }
@@ -412,7 +459,7 @@ public partial class GeminiChatService : IAiChatService
     private static string BuildFallbackReply(string message, AiChatIntent intent, AiConversationContext conversation)
     {
         var product = ResolveContextProduct(message, conversation) ?? conversation.RecentSuggestedProducts.FirstOrDefault();
-        return product != null && intent is AiChatIntent.ProductQuestion or AiChatIntent.ProductAnalysis or AiChatIntent.ProductBenefits or AiChatIntent.ProductProsCons or AiChatIntent.ProductRecommendation or AiChatIntent.ClarifyProductAdvice
+        return product != null && intent is (AiChatIntent.ProductQuestion or AiChatIntent.ProductAnalysis or AiChatIntent.ProductBenefits or AiChatIntent.ProductProsCons or AiChatIntent.ProductRecommendation or AiChatIntent.ClarifyProductAdvice)
             ? BuildRuleBasedProductAnalysis(message, product, conversation.RecentSuggestedProducts)
             : string.Empty;
     }
@@ -428,14 +475,46 @@ public partial class GeminiChatService : IAiChatService
         var cpu = Regex.Match(source, @"\b(?:i[3579]-?\d{4,5}[A-Z]*|i[3579]\s*\d{4,5}[A-Z]*|Ryzen\s*[3579]\s*\d{4,5}[A-Z]*)\b", RegexOptions.IgnoreCase).Value;
         var gpu = Regex.Match(source, @"\b(?:RTX|GTX|RX)\s*\d{3,4}\s*(?:\d+GB)?\b", RegexOptions.IgnoreCase).Value;
         var ram = Regex.Match(source, @"\b(?:8|16|32|64)\s*GB\s*(?:DDR\d)?\b", RegexOptions.IgnoreCase).Value;
-        if (!string.IsNullOrWhiteSpace(cpu)) bullets.Add($"CPU {cpu} mạnh cho đa nhiệm, học tập/làm việc, mở nhiều tab và các tác vụ phổ thông đến bán chuyên.");
-        if (!string.IsNullOrWhiteSpace(gpu)) bullets.Add($"GPU {gpu} phù hợp game eSports như Valorant, LOL, CS2 và GTA V ở Full HD ở mức tham khảo, tùy setting.");
-        if (!string.IsNullOrWhiteSpace(ram)) bullets.Add($"RAM {ram} đủ dùng cho gaming phổ thông, học tập và làm việc hằng ngày.");
+        var askPower = IsPowerQuestion(message);
+        var askThermal = IsThermalQuestion(message);
+        var askRecommendation = RemoveDiacritics(message.ToLowerInvariant()).Contains("co nen mua") || RemoveDiacritics(message.ToLowerInvariant()).Contains("danh gia");
+        if (askPower)
+        {
+            bullets.Add("Không quá tốn điện bạn nhé; mức thực tế còn tùy game, setting và hiệu suất bộ nguồn.");
+            if (!string.IsNullOrWhiteSpace(cpu)) bullets.Add($"CPU {cpu}: thường là phần tiêu thụ đáng kể nhưng không phải lúc nào cũng chạy tối đa.");
+            if (!string.IsNullOrWhiteSpace(gpu)) bullets.Add($"GPU {gpu}: khi chơi game sẽ là linh kiện ăn điện chính của bộ máy.");
+            bullets.Add("Toàn bộ hệ thống gaming phổ thông thường tăng tiền điện không quá lớn nếu dùng khoảng 4-5 giờ/ngày.");
+            bullets.Add("Đánh giá điện năng: ⭐ 8/10 nếu cấu hình không thuộc nhóm VGA cao cấp.");
+        }
+        else if (askThermal)
+        {
+            bullets.Add("Máy có thể ấm lên khi chơi game nặng, nhưng không đáng lo nếu case thoáng, quạt/tản hoạt động tốt và vệ sinh định kỳ.");
+            if (!string.IsNullOrWhiteSpace(cpu)) bullets.Add($"CPU {cpu}: nên kiểm tra tản nhiệt đi kèm và airflow trong case.");
+            if (!string.IsNullOrWhiteSpace(gpu)) bullets.Add($"GPU {gpu}: nhiệt độ phụ thuộc mẫu card, số quạt và thiết lập đồ họa.");
+            bullets.Add("Nếu bạn chơi lâu nhiều giờ, nên đặt máy nơi thoáng và theo dõi nhiệt bằng phần mềm như HWInfo/MSI Afterburner.");
+        }
+        else
+        {
+            if (!string.IsNullOrWhiteSpace(cpu)) bullets.Add($"CPU {cpu} mạnh cho đa nhiệm, học tập/làm việc, mở nhiều tab và các tác vụ phổ thông đến bán chuyên.");
+            if (!string.IsNullOrWhiteSpace(gpu)) bullets.Add($"GPU {gpu} phù hợp game eSports như Valorant, LOL, CS2 và GTA V ở Full HD ở mức tham khảo, tùy setting.");
+            if (!string.IsNullOrWhiteSpace(ram)) bullets.Add($"RAM {ram} đủ dùng cho gaming phổ thông, học tập và làm việc hằng ngày.");
+        }
         if (normalized.Contains("ssd")) bullets.Add("SSD giúp máy khởi động nhanh, mở game/ứng dụng mượt hơn HDD truyền thống.");
         if (normalized.Contains("pc") || normalized.Contains("may bo") || normalized.Contains("gaming")) bullets.Add("PC bộ sẵn giúp tiết kiệm thời gian chọn linh kiện, hạn chế rủi ro lệch cấu hình khi tự build.");
         bullets.Add($"Tình trạng {product.StockStatus.ToLowerInvariant()} và bảo hành {product.Warranty} giúp bạn yên tâm hơn khi mua tại KKSHOP.");
         if (normalized.Contains("rtx 3050")) bullets.Add("Lưu ý: RTX 3050 không phải lựa chọn tối ưu nếu bạn muốn chơi game AAA nặng ở 2K/4K hoặc bật setting rất cao.");
+        if (askRecommendation) bullets.Add("Đánh giá tổng quan: 8/10 nếu giá bán hợp lý so với cấu hình và nhu cầu chính là 1080p gaming/làm việc hằng ngày.");
         return intro + "\n" + string.Join("\n", bullets.Select(x => "- " + x));
+    }
+
+    private static bool IsCompleteReply(string reply)
+    {
+        reply = (reply ?? string.Empty).Trim();
+        if (reply.Length == 0) return false;
+        if (reply.Length < 40) return true;
+        if (reply.EndsWith("...", StringComparison.Ordinal)) return false;
+        var last = reply[^1];
+        return ".!?。…:)）]".Contains(last);
     }
 
     private static string CompleteSentence(string reply)
@@ -596,7 +675,19 @@ public partial class GeminiChatService : IAiChatService
                 : "- Nếu có sản phẩm, chọn tối đa 2-3 sản phẩm phù hợp nhất, nêu giá và lý do phù hợp.";
         var history = conversation.RecentMessages.Count == 0 ? "Không có." : string.Join("\n", conversation.RecentMessages.TakeLast(10));
         var currentProductLine = conversation.LastReferencedProduct == null ? "Chưa có" : $"{conversation.LastReferencedProduct.Name} (ID {conversation.LastReferencedProduct.Id})";
-        return $"Ngữ cảnh 10 tin gần nhất:\n{history}\n\nSản phẩm đang được nhắc tới gần nhất: {currentProductLine}\n\nCâu hỏi khách hàng: {message}\n\nQuy tắc bắt buộc khi trả lời:\n- Không tự gợi ý hoặc liệt kê sản phẩm nếu câu hỏi không có intent mua/tìm/giá/còn hàng/cấu hình/ngân sách/tên sản phẩm rõ ràng.\n- Chỉ dùng danh sách sản phẩm backend để nêu tên sản phẩm, giá, tồn kho, link, bảo hành và thông số cụ thể; không bịa sản phẩm ngoài danh sách.\n- Được phân tích tự nhiên dựa trên kiến thức phổ thông về PC khi đã có CPU/GPU/RAM/SSD/giá/tồn kho hoặc tên linh kiện trong dữ liệu; diễn đạt như nhân viên tư vấn, không trả lời quá cứng theo từng field.\n- Nếu có sản phẩm trong ngữ cảnh và khách dùng nó/máy này/con này/bộ này/sản phẩm này/em này thì hiểu là sản phẩm đang được nhắc tới gần nhất, không hỏi lại.\n- Các câu hỏi tự nhiên như lợi ích gì, có nên mua không, chơi Valorant/GTA V ổn không, ngân sách build PC, bàn phím giá rẻ, so sánh sản phẩm đều là câu hỏi hợp lệ cần tư vấn.\n- Khi phân tích sản phẩm, bắt buộc cố gắng suy luận từ tên, CPU, GPU, RAM, SSD, Mainboard, PSU, Case. Ví dụ Ryzen 7 5700X + RTX 3050 phù hợp eSports, GTA V, Valorant, CS2, học tập/làm việc và stream cơ bản ở mức tham khảo. Chỉ nói chưa đủ dữ liệu khi không đọc được cấu hình nào.\n{productRule}\n- Với FPS/game, không cam kết tuyệt đối; dùng các cụm như \"dự kiến\", \"phù hợp ở mức tham khảo\" vì FPS phụ thuộc setting và bản cập nhật game.\n- Nếu khách hỏi PC/cấu hình/gaming, chỉ dùng PC bộ/cấu hình có sẵn hoặc linh kiện build PC trong danh sách; tuyệt đối không biến chuột/bàn phím/tai nghe/màn hình thành PC đề xuất.\n- Với GTA V: 10-15 triệu chơi ổn Full HD thiết lập vừa/cao tùy linh kiện; 15-30 triệu rất ổn Full HD/2K tùy VGA; 50 triệu dư sức GTA V và có thể hướng tới game nặng hơn/2K/4K.\n- Không nói \"không tìm thấy\" nếu backend đã cung cấp bất kỳ sản phẩm hoặc linh kiện fallback nào.\n- Nếu khách hỏi chính sách, chỉ dùng nguồn sự thật chính sách bên dưới.\n\nNguồn sự thật chính sách KKSHOP:\n{policyKnowledge}\n\nDữ liệu sản phẩm KKSHOP được phép dùng:\n{productLines}";
+        return $"Ngữ cảnh 10 tin gần nhất:\n{history}\n\nSản phẩm đang được nhắc tới gần nhất: {currentProductLine}\n\nCâu hỏi khách hàng: {message}\n\nQuy tắc bắt buộc khi trả lời:\n- Không tự gợi ý hoặc liệt kê sản phẩm nếu câu hỏi thuộc tư vấn/đánh giá/điện năng/nhiệt độ/so sánh; các câu này chỉ trả lời, không đề xuất sản phẩm khác.\n- Chỉ dùng danh sách sản phẩm backend để nêu tên sản phẩm, giá, tồn kho, link, bảo hành và thông số cụ thể; không bịa sản phẩm ngoài danh sách.\n- Được phân tích tự nhiên dựa trên kiến thức phổ thông về PC khi đã có CPU/GPU/RAM/SSD/giá/tồn kho hoặc tên linh kiện trong dữ liệu; diễn đạt như nhân viên tư vấn, không trả lời quá cứng theo từng field.\n- Nếu có sản phẩm trong ngữ cảnh và khách dùng nó/máy này/con này/bộ này/sản phẩm này/em này thì hiểu là sản phẩm đang được nhắc tới gần nhất, không hỏi lại.\n- Các câu hỏi tự nhiên như lợi ích gì, có nên mua không, chơi Valorant/GTA V ổn không, ngân sách build PC, bàn phím giá rẻ, so sánh sản phẩm đều là câu hỏi hợp lệ cần tư vấn.\n- Khi phân tích sản phẩm, bắt buộc cố gắng suy luận từ tên, CPU, GPU, RAM, SSD, Mainboard, PSU, Case. Ví dụ Ryzen 7 5700X + RTX 3050 phù hợp eSports, GTA V, Valorant, CS2, học tập/làm việc và stream cơ bản ở mức tham khảo. Chỉ nói chưa đủ dữ liệu khi không đọc được cấu hình nào.\n{productRule}\n- Với FPS/game, không cam kết tuyệt đối; dùng các cụm như \"dự kiến\", \"phù hợp ở mức tham khảo\" vì FPS phụ thuộc setting và bản cập nhật game.\n- Nếu khách hỏi PC/cấu hình/gaming, chỉ dùng PC bộ/cấu hình có sẵn hoặc linh kiện build PC trong danh sách; tuyệt đối không biến chuột/bàn phím/tai nghe/màn hình thành PC đề xuất.\n- Với GTA V: 10-15 triệu chơi ổn Full HD thiết lập vừa/cao tùy linh kiện; 15-30 triệu rất ổn Full HD/2K tùy VGA; 50 triệu dư sức GTA V và có thể hướng tới game nặng hơn/2K/4K.\n- Không nói \"không tìm thấy\" nếu backend đã cung cấp bất kỳ sản phẩm hoặc linh kiện fallback nào.\n- Nếu khách hỏi chính sách, chỉ dùng nguồn sự thật chính sách bên dưới.\n\nNguồn sự thật chính sách KKSHOP:\n{policyKnowledge}\n\nDữ liệu sản phẩm KKSHOP được phép dùng:\n{productLines}";
+    }
+
+    private void LogAiTurnMetrics(string requestId, AiChatIntent intent, bool searchMode, string tokenUsage, TimeSpan elapsed)
+        => _logger.LogInformation("[KKSHOP_AI_METRICS] requestId={RequestId}; mode={Mode}; intent={Intent}; tokenUsage={TokenUsage}; aiResponseTimeMs={ElapsedMs}", requestId, searchMode ? "SEARCH" : "CONSULT", intent, tokenUsage, (long)elapsed.TotalMilliseconds);
+
+    private static string ExtractTokenUsage(JsonElement root)
+    {
+        if (!root.TryGetProperty("usageMetadata", out var usage)) return "unavailable";
+        var prompt = usage.TryGetProperty("promptTokenCount", out var p) ? p.GetInt32() : 0;
+        var candidates = usage.TryGetProperty("candidatesTokenCount", out var c) ? c.GetInt32() : 0;
+        var total = usage.TryGetProperty("totalTokenCount", out var t) ? t.GetInt32() : prompt + candidates;
+        return $"prompt={prompt}, candidates={candidates}, total={total}";
     }
 
     private static string ExtractReply(JsonElement root)
@@ -612,13 +703,13 @@ public partial class GeminiChatService : IAiChatService
     [GeneratedRegex(@"/Products/Detail/(\d+)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex ProductUrlRegex();
 
-    [GeneratedRegex(@"(?:duoi|khoang|tam|tren|>=|>|<=|<)?\s*\d+(?:[\.,]\d+)?\s*(?:trieu|tr|m|million)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    [GeneratedRegex(@"(?:duoi|toi da|khoang|tam|tren|>=|>|<=|<)?\s*\d+(?:[\.,]\d+)?\s*(?:trieu|tr|m|million)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex BudgetDebugRegex();
 
     private static string NormalizeCacheKey(string text) => text.Trim().ToLowerInvariant()[..Math.Min(text.Trim().Length, 160)];
 
     private static readonly string[] GreetingWords = ["chao", "chao ban", "hello", "hi", "alo", "shop oi", "ad oi"];
-    private static readonly string[] ContextReferenceWords = ["no", "may nay", "con nay", "bo nay", "san pham nay", "em nay", "cai nay", "mau nay", "chiec nay"];
+    private static readonly string[] ContextReferenceWords = ["no", "may nay", "con nay", "bo nay", "san pham nay", "em nay", "cai nay", "mau nay", "chiec nay", "con tren", "may tren", "bo tren", "cai tren"];
     private static readonly string[] SearchIntentWords = ["mua", "tim", "can", "gia", "bao nhieu", "con hang", "co hang", "goi y", "tu van cau hinh", "build", "ngan sach", "duoi", "tam", "khoang", "shop co san"];
     private static readonly string[] AdviceIntentWords = ["loi ich", "uu diem", "nhuoc diem", "phan tich", "co nen mua", "danh gia", "tot khong", "phu hop", "nen chon", "choi duoc", "choi duoc khong"];
     private static readonly string[] ProductTerms = ["pc", "may tinh", "may bo", "cau hinh", "linh kien", "chuot", "ban phim", "tai nghe", "man hinh", "cpu", "vga", "gpu", "ram", "ssd", "hdd", "nguon", "psu", "case", "tan nhiet", "main", "mainboard", "laptop", "gta", "gaming"];
