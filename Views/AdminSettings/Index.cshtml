@@ -46,6 +46,7 @@
                             @await Html.PartialAsync("_AdminImageUploader", new { PrimaryTarget = "#logo-url-input", GalleryTarget = "", Multiple = false, CurrentUrl = Model.LogoUrl ?? string.Empty })
                         </div>
                     </div>
+                    <div class="admin-single-image-preview mt-3" data-admin-image-manager="single" data-primary-target="#logo-url-input" data-label="Logo"><div data-aim-single></div></div>
                 </div>
 
                 <p class="admin-field-full text-muted mb-3">Dán URL ảnh động/tĩnh từ Cloudinary. Hệ thống sẽ lưu URL vào DB và dùng trực tiếp trên mọi máy sau khi pull code + DB.</p>
@@ -56,12 +57,16 @@
                     <div class="admin-field-lg">
                         <label asp-for="DealSectionBackgroundUrl" class="form-label fw-semibold">URL ảnh nền Deal Hot</label>
                         <img src="@ImageUrlHelper.ResolveImageUrl(Model.DealSectionBackgroundUrl, "/images/defaults/deal-bg.jpg")" class="img-fluid rounded border" alt="Deal background" onerror="this.style.display='none';" />
-                        <input asp-for="DealSectionBackgroundUrl" class="form-control mt-2" placeholder="https://..." />
+                        <input asp-for="DealSectionBackgroundUrl" class="form-control mt-2" id="DealSectionBackgroundUrl" placeholder="https://..." />
+                        @await Html.PartialAsync("_AdminImageUploader", new { PrimaryTarget = "#DealSectionBackgroundUrl", GalleryTarget = "", Multiple = false, CurrentUrl = Model.DealSectionBackgroundUrl ?? string.Empty })
+                        <div class="admin-single-image-preview mt-2" data-admin-image-manager="single" data-primary-target="#DealSectionBackgroundUrl" data-label="Ảnh nền Deal Hot"><div data-aim-single></div></div>
                     </div>
                     <div class="admin-field-lg">
                         <label asp-for="HotPromotionBackgroundUrl" class="form-label fw-semibold">URL ảnh nền Khuyến mãi Hot</label>
                         <img src="@ImageUrlHelper.ResolveImageUrl(Model.HotPromotionBackgroundUrl, "/images/defaults/hot-promotion-bg.jpg")" class="img-fluid rounded border" alt="Hot promotion background" onerror="this.style.display='none';" />
-                        <input asp-for="HotPromotionBackgroundUrl" class="form-control mt-2" placeholder="https://..." />
+                        <input asp-for="HotPromotionBackgroundUrl" class="form-control mt-2" id="HotPromotionBackgroundUrl" placeholder="https://..." />
+                        @await Html.PartialAsync("_AdminImageUploader", new { PrimaryTarget = "#HotPromotionBackgroundUrl", GalleryTarget = "", Multiple = false, CurrentUrl = Model.HotPromotionBackgroundUrl ?? string.Empty })
+                        <div class="admin-single-image-preview mt-2" data-admin-image-manager="single" data-primary-target="#HotPromotionBackgroundUrl" data-label="Ảnh nền Khuyến mãi Hot"><div data-aim-single></div></div>
                     </div>
                 </div>
 

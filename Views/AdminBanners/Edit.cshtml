@@ -15,6 +15,7 @@
             <div class="col-lg-7">
                 <div class="admin-form-grid"><div class="admin-field-full mb-3"><label class="form-label">Tên banner</label><input asp-for="Title" class="form-control" /><span asp-validation-for="Title" class="text-danger"></span></div>
                 <div class="admin-image-manager-grid mb-3"><div class="admin-image-pane"><h6 class="fw-bold mb-3">Ảnh bằng URL</h6><label asp-for="ImageUrl" class="form-label">URL ảnh banner</label><input asp-for="ImageUrl" class="form-control" placeholder="https://..." data-banner-url /><div class="form-text">Dán URL ảnh Cloudinary</div><span asp-validation-for="ImageUrl" class="text-danger"></span></div><div class="admin-image-pane"><h6 class="fw-bold mb-3">Tải ảnh từ thiết bị</h6>@await Html.PartialAsync("_AdminImageUploader", new { PrimaryTarget = "#ImageUrl", GalleryTarget = "", Multiple = false, CurrentUrl = Model.ImageUrl ?? string.Empty })</div></div>
+                <div class="admin-single-image-preview mb-3" data-admin-image-manager="single" data-primary-target="#ImageUrl" data-label="Ảnh banner"><div data-aim-single></div></div>
                 <div class="admin-field-lg mb-3"><label class="form-label">Link khi click</label><input asp-for="LinkUrl" class="form-control" /></div>
                 </div>
                 <div class="admin-form-grid">

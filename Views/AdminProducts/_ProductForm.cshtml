@@ -228,6 +228,12 @@
                         @await Html.PartialAsync("_AdminImageUploader", new { PrimaryTarget = "#ThumbnailImageUrl", GalleryTarget = "#ProductImageUrlsText", Multiple = true, CurrentUrl = Model.ThumbnailImageUrl ?? string.Empty })
                     </div>
                 </div>
+                <div class="admin-image-preview-section" data-admin-image-manager="product" data-primary-target="#ThumbnailImageUrl" data-gallery-target="#ProductImageUrlsText">
+                    <div class="admin-image-preview-title">Ảnh đại diện</div>
+                    <div data-aim-primary></div>
+                    <div class="admin-image-preview-title mt-3">Thư viện ảnh sản phẩm</div>
+                    <div class="admin-image-gallery-grid" data-aim-gallery></div>
+                </div>
                 <div id="existing-image-order-container"></div>
             </div>
 
