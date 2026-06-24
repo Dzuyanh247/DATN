@@ -305,7 +305,7 @@
                     <div class="admin-form-grid">
                         <div class="admin-field-full"><label asp-for="CategoryId" class="form-label">Danh mục</label><select asp-for="CategoryId" class="form-select" asp-items="@(new Microsoft.AspNetCore.Mvc.Rendering.SelectList(Model.Categories, "Id", "Name"))"><option value="">-- Chọn danh mục --</option></select><span asp-validation-for="CategoryId" class="text-danger"></span></div>
                         <div class="admin-field-sm admin-field-number"><label asp-for="StockQuantity" class="form-label">Tồn kho</label><input asp-for="StockQuantity" class="form-control" type="number" min="0" /><span asp-validation-for="StockQuantity" class="text-danger"></span></div>
-                        <div class="admin-field-full"><div class="form-check form-switch apf-switch mb-3"><input asp-for="IsActive" class="form-check-input" /><label asp-for="IsActive" class="form-check-label">Đang kinh doanh</label></div></div>
+                        <div class="admin-field-full"><div class="form-check admin-status-check mb-3"><input asp-for="IsActive" class="form-check-input" /><label asp-for="IsActive" class="form-check-label">Đang kinh doanh</label></div></div>
                     </div>
                 </div>
 
@@ -321,10 +321,10 @@
                 </div>
 
                 <div class="apf-card admin-form-card mb-4">
-                    <h5 class="admin-card-title apf-title"><i class="bi bi-toggle-on me-2"></i>Tuỳ chọn hiển thị</h5>
+                    <h5 class="admin-card-title apf-title">Tuỳ chọn hiển thị</h5>
                     <input type="hidden" asp-for="IsHotSale" />
                     <input type="hidden" asp-for="IsPromotion" />
-                    <div class="apf-check-grid"><div class="form-check"><input asp-for="IsDailyDeal" class="form-check-input" /><label asp-for="IsDailyDeal" class="form-check-label">DEAL HOT MỖI NGÀY</label></div></div>
+                    <div class="apf-check-grid"><div class="form-check feature-checkbox"><input asp-for="IsDailyDeal" class="form-check-input" /><label asp-for="IsDailyDeal" class="form-check-label">Deal hot mỗi ngày</label></div></div>
                 </div>
 
                 <div class="admin-actions-card apf-actions mt-0 d-flex flex-column gap-3"><div class="text-muted small">Kiểm tra lỗi dưới từng trường trước khi lưu.</div><div class="d-grid gap-2"><button type="submit" class="btn btn-primary"><i class="bi bi-save me-1"></i>Lưu sản phẩm</button><a asp-action="Index" class="btn btn-outline-secondary">Hủy / Quay lại danh sách</a></div></div>

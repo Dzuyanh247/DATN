@@ -62,7 +62,7 @@
                 <div class="admin-form-grid">
                     <div class="admin-field-full"><label asp-for="Name" class="form-label">Tên linh kiện <span class="required-mark">*</span></label><input asp-for="Name" class="form-control" id="component-name" placeholder="VD: Card màn hình Colorful GeForce RTX 3060 12GB" /><span asp-validation-for="Name" class="text-danger"></span></div>
                     <div class="admin-field-sm"><label asp-for="ProductCode" class="form-label">Mã sản phẩm <span class="text-muted">(không bắt buộc)</span></label><input asp-for="ProductCode" class="form-control" placeholder="Tự tạo nếu trống" /><span asp-validation-for="ProductCode" class="text-danger"></span></div>
-                    <div class="admin-field-full"><div class="form-check form-switch"><input asp-for="IsActive" class="form-check-input" /><label asp-for="IsActive" class="form-check-label">Trạng thái đang kinh doanh</label></div><div class="form-text">Tắt trạng thái nếu muốn lưu nháp hoặc tạm ngừng bán.</div></div>
+                    <div class="admin-field-full"><div class="form-check admin-status-check"><input asp-for="IsActive" class="form-check-input" /><label asp-for="IsActive" class="form-check-label">Trạng thái đang kinh doanh</label></div><div class="form-text">Tắt trạng thái nếu muốn lưu nháp hoặc tạm ngừng bán.</div></div>
                 </div>
             </div>
 

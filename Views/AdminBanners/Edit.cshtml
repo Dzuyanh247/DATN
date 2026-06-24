@@ -6,31 +6,42 @@
 <div class="admin-banner-page">
     <h3 class="mb-3">Sửa banner</h3>
 
-    <form method="post" class="banner-form card p-3 p-lg-4 admin-form-section" asp-route-id="@Model.Id">
+    <form method="post" class="banner-form admin-banner-form" asp-route-id="@Model.Id">
         @Html.AntiForgeryToken()
         <input type="hidden" asp-for="Id" />
-        
         <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-        <div class="row g-4">
-            <div class="col-lg-7">
-                <div class="admin-form-grid"><div class="admin-field-full mb-3"><label class="form-label">Tên banner</label><input asp-for="Title" class="form-control" /><span asp-validation-for="Title" class="text-danger"></span></div>
-                <div class="admin-image-manager-grid mb-3"><div class="admin-image-pane"><h6 class="fw-bold mb-3">Ảnh bằng URL</h6><label asp-for="ImageUrl" class="form-label">URL ảnh banner</label><input asp-for="ImageUrl" class="form-control" placeholder="https://..." data-banner-url /><div class="form-text">Dán URL ảnh Cloudinary</div><span asp-validation-for="ImageUrl" class="text-danger"></span></div><div class="admin-image-pane admin-single-image-preview" data-admin-image-manager="single" data-primary-target="#ImageUrl" data-label="Ảnh banner"><h6 class="fw-bold mb-3">Quản lý ảnh</h6><div data-aim-single></div>@await Html.PartialAsync("_AdminImageUploader", new { PrimaryTarget = "#ImageUrl", GalleryTarget = "", Multiple = false, CurrentUrl = Model.ImageUrl ?? string.Empty, Hidden = true })</div></div>
-                <div class="admin-field-lg mb-3"><label class="form-label">Link khi click</label><input asp-for="LinkUrl" class="form-control" /></div>
-                </div>
-                <div class="admin-form-grid">
-                    <div class="admin-field-md"><label class="form-label">Vị trí hiển thị</label><select asp-for="Position" class="form-select" data-banner-position><option value="MainBanner">MainBanner - Banner chính</option><option value="SubBanner">SubBanner - Banner phụ</option><option value="Other">Other - Banner khác</option></select></div>
-                    <div class="admin-field-xs admin-field-number"><label class="form-label">Thứ tự hiển thị</label><input asp-for="SortOrder" class="form-control" type="number" /></div>
-                </div>
-                <div class="form-check mt-3"><input asp-for="IsActive" class="form-check-input" /><label asp-for="IsActive" class="form-check-label">Đang hiển thị</label></div>
 
-            </div>
-            <div class="col-lg-5">
-                <div class="banner-preview" data-banner-preview data-current-image="@Model.ImageUrl" style="background-image:url('@Model.ImageUrl')"></div>
-                <p class="small text-muted mb-1" data-main-size-hint>Nên dùng ảnh ngang lớn, ví dụ 1200x400 hoặc 1400x450.</p>
-                <p class="small text-muted d-none" data-sub-size-hint>Nên dùng ảnh ngang nhỏ, ví dụ 400x160 hoặc 600x240.</p>
+        <div class="admin-form-card mb-4">
+            <h5 class="admin-card-title"><i class="bi bi-info-circle me-2"></i>Thông tin banner</h5>
+            <div class="admin-form-grid">
+                <div class="admin-field-full"><label class="form-label">Tên banner</label><input asp-for="Title" class="form-control" /><span asp-validation-for="Title" class="text-danger"></span></div>
+                <div class="admin-field-full"><label class="form-label">Link khi click</label><input asp-for="LinkUrl" class="form-control" placeholder="https://..." /></div>
+                <div class="admin-field-md"><label class="form-label">Vị trí hiển thị</label><select asp-for="Position" class="form-select" data-banner-position><option value="MainBanner">MainBanner - Banner chính</option><option value="SubBanner">SubBanner - Banner phụ</option><option value="Other">Other - Banner khác</option></select></div>
+                <div class="admin-field-xs admin-field-number"><label class="form-label">Thứ tự hiển thị</label><input asp-for="SortOrder" class="form-control" type="number" /></div>
+                <div class="admin-field-full"><div class="form-check admin-status-check"><input asp-for="IsActive" class="form-check-input" /><label asp-for="IsActive" class="form-check-label">Đang hiển thị</label></div></div>
             </div>
         </div>
-        <div class="mt-4 d-flex gap-2"><button class="btn btn-primary">Lưu thay đổi</button><a asp-action="Index" class="btn btn-outline-secondary">Quay lại</a></div>
+
+        <div class="admin-form-card mb-4">
+            <h5 class="admin-card-title"><i class="bi bi-image me-2"></i>Hình ảnh banner</h5>
+            <div class="admin-image-manager-grid banner-image-manager">
+                <div class="admin-image-pane">
+                    <h6 class="fw-bold mb-3">Ảnh bằng URL</h6>
+                    <label asp-for="ImageUrl" class="form-label">URL ảnh banner</label>
+                    <input asp-for="ImageUrl" class="form-control" placeholder="https://..." data-banner-url />
+                    <div class="form-text" data-main-size-hint>Nên dùng ảnh ngang lớn, ví dụ 1200x400 hoặc 1400x450.</div>
+                    <div class="form-text d-none" data-sub-size-hint>Nên dùng ảnh ngang nhỏ, ví dụ 400x160 hoặc 600x240.</div>
+                    <span asp-validation-for="ImageUrl" class="text-danger"></span>
+                </div>
+                <div class="admin-image-pane admin-single-image-preview banner-single-image-preview" data-admin-image-manager="single" data-primary-target="#ImageUrl" data-label="Ảnh banner">
+                    <h6 class="fw-bold mb-3">Quản lý ảnh</h6>
+                    <div data-aim-single></div>
+                    @await Html.PartialAsync("_AdminImageUploader", new { PrimaryTarget = "#ImageUrl", GalleryTarget = "", Multiple = false, CurrentUrl = Model.ImageUrl ?? string.Empty, Hidden = true })
+                </div>
+            </div>
+        </div>
+
+        <div class="admin-banner-actions"><button class="btn btn-primary">Lưu thay đổi</button><a asp-action="Index" class="btn btn-outline-secondary">Quay lại</a></div>
     </form>
 </div>
 

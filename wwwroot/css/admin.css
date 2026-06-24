@@ -1037,3 +1037,107 @@ body:has(.admin-shell) {
 .admin-image-pane.admin-single-image-preview{display:block}
 .admin-image-pane.admin-single-image-preview [data-aim-single]{display:flex;flex-wrap:wrap;gap:.65rem;align-items:flex-start}
 .admin-image-pane.admin-image-preview-section.is-dragover,.admin-image-pane.admin-single-image-preview.is-dragover{border-color:#60a5fa;background:#eff6ff}
+
+/* Admin UI polish: real checkbox ticks, natural labels, and compact banner image layout. */
+.admin-content .admin-status-check,
+.admin-content .feature-checkbox,
+.admin-content .deal-checkbox {
+    display: inline-flex;
+    width: auto;
+    max-width: 100%;
+    align-items: center;
+    gap: 10px;
+    min-height: 38px;
+    padding: .55rem .75rem !important;
+    border: 1px solid #e9ecef;
+    border-radius: .65rem;
+    background: #f8fafc;
+}
+
+.admin-content .admin-status-check .form-check-label,
+.admin-content .feature-checkbox .form-check-label,
+.admin-content .deal-checkbox .form-check-label {
+    min-width: 0;
+    width: auto;
+    white-space: normal;
+    overflow-wrap: normal;
+    word-break: normal;
+    font-weight: 700;
+}
+
+.admin-content .apf-check-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: .75rem;
+}
+
+.admin-content .apf-check-grid .form-check {
+    justify-self: start;
+}
+
+.admin-banner-form {
+    border: 0;
+    border-radius: 18px;
+    background: transparent;
+    box-shadow: none;
+}
+
+.admin-banner-form .admin-form-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 18px;
+    padding: 1.2rem !important;
+    background: #fff;
+    box-shadow: 0 10px 26px rgba(15,23,42,.045);
+}
+
+.admin-banner-form .banner-image-manager {
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 380px);
+    align-items: start;
+}
+
+.admin-banner-form .banner-single-image-preview [data-aim-single] {
+    display: flex;
+    align-items: flex-start;
+    gap: .75rem;
+}
+
+.admin-banner-form .banner-single-image-preview .admin-image-card.admin-image-thumb,
+.admin-banner-form .banner-single-image-preview .admin-image-card.admin-image-thumb.is-primary {
+    width: min(360px, 100%);
+    height: 130px;
+    max-width: 100%;
+    border-radius: 14px;
+}
+
+.admin-banner-form .banner-single-image-preview .admin-image-card.admin-image-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.admin-banner-form .banner-single-image-preview .admin-image-add-tile,
+.admin-banner-form .banner-single-image-preview .admin-image-primary-empty {
+    width: min(360px, 100%);
+    height: 130px;
+    min-height: 110px;
+}
+
+.admin-banner-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .75rem;
+    justify-content: flex-end;
+    padding-top: .25rem;
+}
+
+.admin-banner-actions .btn {
+    min-width: 120px;
+    min-height: 42px;
+    font-weight: 700;
+}
+
+@media (max-width: 991.98px) {
+    .admin-banner-form .banner-image-manager { grid-template-columns: 1fr; }
+    .admin-banner-actions { justify-content: stretch; }
+    .admin-banner-actions .btn { flex: 1 1 180px; }
+}
