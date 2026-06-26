@@ -10,3 +10,18 @@ wwwroot/uploads/*
 # Generated presentation files
 *.pptx
 output/*.pptx
+
+# Release package output (generated locally)
+ReleasePackage/Publish/**
+ReleasePackage/Database/*.sql
+!ReleasePackage/Database/.gitkeep
+ReleasePackage/Logs/**
+!ReleasePackage/Logs/.gitkeep
+ReleasePackage/**/*.bak
+ReleasePackage/**/*.zip
+ReleasePackage/**/*.exe
+ReleasePackage/**/*.dll
+ReleasePackage/**/*.pdb
+ReleasePackage/**/* - Copy.sql
+ReleasePackage/**/* - copy.sql
+ReleasePackage/**/* copy.sql
