@@ -53,28 +53,28 @@ public class AdminReportsController : Controller
             PeriodLabel = period == "this-month" ? "Tháng này" : "Hôm nay",
             FromDate = localStart,
             ToDate = period == "this-month" ? localEnd.AddDays(-1) : localStart,
-            ProductRevenue = ordered.Sum(o => o.SubtotalAmount > 0 ? o.SubtotalAmount : o.Details.Sum(d => d.TotalPrice > 0 ? d.TotalPrice : d.Quantity * d.UnitPrice)),
+            ProductRevenue = ordered.Sum(CalculateProductRevenue),
             ShippingFee = ordered.Sum(o => o.ShippingFee),
-            DiscountAmount = ordered.Sum(o => o.DiscountAmount > 0 ? o.DiscountAmount : o.VoucherDiscountAmount),
+            DiscountAmount = ordered.Sum(CalculateDiscountAmount),
             RefundAmount = 0,
             CustomerPaidCount = ordered.Select(o => o.UserId?.ToString() ?? FirstNonEmpty(o.ReceiverPhone, o.CustomerEmail, o.ReceiverName, $"order-{o.Id}")).Distinct().Count(),
             OrderCount = totalItems,
-            TotalRevenue = ordered.Sum(o => o.TotalAmount),
+            TotalRevenue = ordered.Sum(CalculateCustomerPaidAmount),
             ChartPoints = chartPoints,
             TopProducts = ordered.SelectMany(o => o.Details).GroupBy(d => d.ProductName ?? d.Product?.Name ?? "Sản phẩm không xác định")
-                .Select(g => new AdminTopProductRevenueVm { Name = g.Key, Quantity = g.Sum(x => x.Quantity), Revenue = g.Sum(x => x.TotalPrice > 0 ? x.TotalPrice : x.Quantity * x.UnitPrice) })
+                .Select(g => new AdminTopProductRevenueVm { Name = g.Key, ImageUrl = FirstNonEmpty(g.Select(x => x.ProductImage).Append("/images/placeholders/product.svg").ToArray()), Quantity = g.Sum(x => x.Quantity), Revenue = g.Sum(CalculateLineRevenue) })
                 .OrderByDescending(x => x.Quantity).ThenByDescending(x => x.Revenue).Take(10).ToList(),
             PaymentMethods = ordered.GroupBy(o => string.IsNullOrWhiteSpace(o.PaymentMethod) ? "UNKNOWN" : o.PaymentMethod)
-                .Select(g => new AdminPaymentMethodRevenueVm { Method = g.Key!, OrderCount = g.Count(), Revenue = g.Sum(o => o.TotalAmount) }).OrderByDescending(x => x.Revenue).ToList(),
-            OrderStatuses = ordered.GroupBy(o => o.Status).Select(g => new AdminOrderStatusRevenueVm { Status = g.Key, OrderCount = g.Count(), Revenue = g.Sum(o => o.TotalAmount) }).OrderByDescending(x => x.Revenue).ToList(),
+                .Select(g => new AdminPaymentMethodRevenueVm { Method = g.Key!, OrderCount = g.Count(), Revenue = g.Sum(CalculateCustomerPaidAmount) }).OrderByDescending(x => x.Revenue).ToList(),
+            OrderStatuses = ordered.GroupBy(o => o.Status).Select(g => new AdminOrderStatusRevenueVm { Status = g.Key, OrderCount = g.Count(), Revenue = g.Sum(CalculateCustomerPaidAmount) }).OrderByDescending(x => x.Revenue).ToList(),
             Orders = ordersPage.Select(o => new AdminRevenueOrderRowVm
             {
                 Id = o.Id,
                 CustomerName = FirstNonEmpty(o.ReceiverName, o.User?.FullName, "Khách hàng"),
-                ProductRevenue = o.SubtotalAmount > 0 ? o.SubtotalAmount : o.Details.Sum(d => d.TotalPrice > 0 ? d.TotalPrice : d.Quantity * d.UnitPrice),
+                ProductRevenue = CalculateProductRevenue(o),
                 ShippingFee = o.ShippingFee,
-                DiscountAmount = o.DiscountAmount > 0 ? o.DiscountAmount : o.VoucherDiscountAmount,
-                TotalAmount = o.TotalAmount,
+                DiscountAmount = CalculateDiscountAmount(o),
+                TotalAmount = CalculateCustomerPaidAmount(o),
                 PaymentMethod = o.PaymentMethod ?? string.Empty,
                 PaymentStatus = OrderStatusHelper.NormalizePaymentStatus(o.Status, o.PaymentStatus),
                 Status = o.Status,
@@ -93,8 +93,13 @@ public class AdminReportsController : Controller
         var startUtc = DateTime.SpecifyKind(localStart.AddHours(-7), DateTimeKind.Utc);
         var endUtc = DateTime.SpecifyKind(localEnd.AddHours(-7), DateTimeKind.Utc);
         var items = orders.Where(o => (o.PaidAt ?? o.CreatedAt) >= startUtc && (o.PaidAt ?? o.CreatedAt) < endUtc).ToList();
-        return new AdminRevenueChartPointVm { Label = localStart.ToString(labelFormat), Revenue = items.Sum(o => o.TotalAmount), OrderCount = items.Count };
+        return new AdminRevenueChartPointVm { Label = localStart.ToString(labelFormat), Revenue = items.Sum(CalculateCustomerPaidAmount), OrderCount = items.Count };
     }
+
+    private static decimal CalculateLineRevenue(OrderDetail detail) => detail.TotalPrice > 0 ? detail.TotalPrice : detail.Quantity * detail.UnitPrice;
+    private static decimal CalculateProductRevenue(Order order) => order.SubtotalAmount > 0 ? order.SubtotalAmount : order.Details.Sum(CalculateLineRevenue);
+    private static decimal CalculateDiscountAmount(Order order) => order.DiscountAmount > 0 ? order.DiscountAmount : order.VoucherDiscountAmount;
+    private static decimal CalculateCustomerPaidAmount(Order order) => CalculateProductRevenue(order) + order.ShippingFee - CalculateDiscountAmount(order);
 
     private static string FirstNonEmpty(params string?[] values) => values.FirstOrDefault(v => !string.IsNullOrWhiteSpace(v)) ?? string.Empty;
 }
