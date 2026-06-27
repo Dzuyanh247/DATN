@@ -325,7 +325,7 @@ public class OrdersController : Controller
             }
             if (order.PaymentMethod == PaymentMethods.BankTransfer)
             {
-                order.TransferContent = $"DH{order.Id}";
+                order.TransferContent = ToOrderCode(order.Id);
                 await _db.SaveChangesAsync();
                 HttpContext.Session.SetInt32("LastPendingPaymentOrderId", order.Id);
             }
@@ -334,7 +334,7 @@ public class OrdersController : Controller
             {
                 await _cartService.ClearBuyNowCartAsync();
             }
-            else if (order.PaymentMethod != PaymentMethods.BankTransfer)
+            else
             {
                 await _cartService.ClearCartAsync(userId);
             }
