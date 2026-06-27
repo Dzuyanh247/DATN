@@ -13,18 +13,21 @@ public class ArticlesController : Controller
     public async Task<IActionResult> Index(string? type)
     {
         var selectedType = string.IsNullOrWhiteSpace(type) ? null : ArticleTypes.Normalize(type);
+        var isNewsHome = string.IsNullOrWhiteSpace(selectedType) || selectedType == ArticleTypes.TechNews;
         var query = _db.Articles.Where(a => a.IsPublished).AsNoTracking();
-        if (!string.IsNullOrWhiteSpace(selectedType))
+        if (!isNewsHome)
         {
             var aliases = ArticleTypes.GetStorageAliases(selectedType);
             query = query.Where(a => aliases.Contains(a.Type));
         }
 
-        ViewBag.SelectedType = selectedType;
+        ViewBag.SelectedType = isNewsHome ? null : selectedType;
+        ViewBag.IsNewsHome = isNewsHome;
         var publishedTypes = await _db.Articles
             .Where(a => a.IsPublished)
             .Select(a => a.Type)
             .ToListAsync();
+        ViewBag.TotalPublishedArticles = publishedTypes.Count;
         ViewBag.Categories = publishedTypes
             .GroupBy(ArticleTypes.Normalize)
             .Select(g => new ArticleCategorySummary(g.Key, g.Count()))
