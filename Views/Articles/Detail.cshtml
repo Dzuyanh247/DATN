@@ -5,29 +5,51 @@
     var previous = ViewBag.PreviousArticle as Article;
     var next = ViewBag.NextArticle as Article;
     string Label(string? type) => type != null && ArticleTypes.Labels.TryGetValue(type, out var label) ? label : (type ?? "Tin tức");
-    var image = string.IsNullOrWhiteSpace(Model.CoverImageUrl) ? "https://placehold.co/1200x620/002b36/14d9ff?text=KKSHOP+News" : Model.CoverImageUrl;
+    var image = string.IsNullOrWhiteSpace(Model.CoverImageUrl) ? "https://placehold.co/1400x720/f1f5f9/0f172a?text=KKSHOP+News" : Model.CoverImageUrl;
+    var content = Model.Content ?? string.Empty;
+    var hasHtmlContent = System.Text.RegularExpressions.Regex.IsMatch(content, "<\\s*[a-zA-Z][^>]*>");
+    var renderedContent = hasHtmlContent
+        ? content
+        : System.Net.WebUtility.HtmlEncode(content).Replace("\r\n", "\n").Replace("\n", "<br />");
 }
-<article class="kk-detail-page">
-    <div class="kk-detail-header">
+<article class="kk-detail-page kk-news-detail-page">
+    <header class="kk-detail-header">
         <span class="kk-chip">@Label(Model.Type)</span>
         <h1>@Model.Title</h1>
-        <div class="kk-article-meta justify-content-center"><span><i class="bi bi-calendar3"></i> @Model.CreatedAt.ToString("dd/MM/yyyy HH:mm")</span><span><i class="bi bi-eye"></i> @Model.ViewCount lượt xem</span></div>
-        @if (!string.IsNullOrWhiteSpace(Model.Excerpt)) { <p>@Model.Excerpt</p> }
-    </div>
-    <img class="kk-detail-cover" src="@image" alt="@Model.Title" />
-    <div class="kk-detail-content">@Html.Raw(System.Net.WebUtility.HtmlEncode(Model.Content).Replace("\n", "<br />"))</div>
-    <div class="kk-prev-next">
+        <div class="kk-article-meta">
+            <span><i class="bi bi-calendar3"></i> @Model.CreatedAt.ToString("dd/MM/yyyy HH:mm")</span>
+            <span><i class="bi bi-eye"></i> @Model.ViewCount lượt xem</span>
+            <span><i class="bi bi-folder2-open"></i> @Label(Model.Type)</span>
+        </div>
+        @if (!string.IsNullOrWhiteSpace(Model.Excerpt))
+        {
+            <p class="kk-detail-excerpt">@Model.Excerpt</p>
+        }
+    </header>
+
+    <figure class="kk-detail-cover-wrap">
+        <img class="kk-detail-cover" src="@image" alt="@Model.Title" />
+    </figure>
+
+    <section class="kk-detail-content">
+        @Html.Raw(renderedContent)
+    </section>
+
+    <nav class="kk-prev-next" aria-label="Điều hướng bài viết">
         @if (previous != null) { <a asp-action="Detail" asp-route-slug="@previous.Slug"><i class="bi bi-arrow-left"></i> @previous.Title</a> }
         @if (next != null) { <a asp-action="Detail" asp-route-slug="@next.Slug">@next.Title <i class="bi bi-arrow-right"></i></a> }
-    </div>
+    </nav>
+
     @if (related.Any())
     {
-        <h4 class="kk-block-title">Bài viết liên quan</h4>
-        <div class="kk-related-grid">
-            @foreach (var item in related)
-            {
-                <a class="kk-related-card" asp-action="Detail" asp-route-slug="@item.Slug"><strong>@item.Title</strong><span><i class="bi bi-eye"></i> @item.ViewCount lượt xem</span></a>
-            }
-        </div>
+        <section class="kk-related-section">
+            <h4 class="kk-block-title">Bài viết liên quan</h4>
+            <div class="kk-related-grid">
+                @foreach (var item in related)
+                {
+                    <a class="kk-related-card" asp-action="Detail" asp-route-slug="@item.Slug"><strong>@item.Title</strong><span><i class="bi bi-eye"></i> @item.ViewCount lượt xem</span></a>
+                }
+            </div>
+        </section>
     }
 </article>
