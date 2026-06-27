@@ -22,30 +22,22 @@
     <span class="admin-order-result"><i class="bi bi-receipt-cutoff"></i> @Model.Orders.Count kết quả</span>
 </div>
 
-<div class="row g-3 admin-order-stats">
-    <div class="col-6 col-xl-3">
-        <div class="admin-stat-card admin-order-stat">
-            <div><span>Tổng đơn</span><strong>@Model.Stats.TotalOrders</strong></div>
-            <i class="bi bi-bag-check admin-order-stat-icon stat-neutral"></i>
-        </div>
+<div class="admin-order-stats">
+    <div class="admin-stat-card admin-order-stat">
+        <div><span>Tổng đơn</span><strong>@Model.Stats.TotalOrders</strong></div>
+        <i class="bi bi-bag-check admin-order-stat-icon stat-neutral"></i>
     </div>
-    <div class="col-6 col-xl-3">
-        <div class="admin-stat-card admin-order-stat">
-            <div><span>Chờ thanh toán</span><strong>@Model.Stats.PendingPaymentOrders</strong></div>
-            <i class="bi bi-hourglass-split admin-order-stat-icon stat-warning"></i>
-        </div>
+    <div class="admin-stat-card admin-order-stat">
+        <div><span>Chờ thanh toán</span><strong>@Model.Stats.PendingPaymentOrders</strong></div>
+        <i class="bi bi-hourglass-split admin-order-stat-icon stat-warning"></i>
     </div>
-    <div class="col-6 col-xl-3">
-        <div class="admin-stat-card admin-order-stat">
-            <div><span>Đã thanh toán</span><strong>@Model.Stats.PaidOrders</strong></div>
-            <i class="bi bi-credit-card-2-front admin-order-stat-icon stat-success"></i>
-        </div>
+    <div class="admin-stat-card admin-order-stat">
+        <div><span>Đã thanh toán</span><strong>@Model.Stats.PaidOrders</strong></div>
+        <i class="bi bi-credit-card-2-front admin-order-stat-icon stat-success"></i>
     </div>
-    <div class="col-6 col-xl-3">
-        <div class="admin-stat-card admin-order-stat">
-            <div><span>Hết hạn thanh toán</span><strong>@Model.Stats.ExpiredPaymentOrders</strong></div>
-            <i class="bi bi-exclamation-octagon admin-order-stat-icon stat-danger"></i>
-        </div>
+    <div class="admin-stat-card admin-order-stat">
+        <div><span>Hết hạn thanh toán</span><strong>@Model.Stats.ExpiredPaymentOrders</strong></div>
+        <i class="bi bi-exclamation-octagon admin-order-stat-icon stat-danger"></i>
     </div>
 </div>
 
