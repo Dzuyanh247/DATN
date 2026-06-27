@@ -1,4 +1,5 @@
 using Datn.PcStore.Data;
+using Datn.PcStore.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -11,25 +12,23 @@ public class ArticlesController : Controller
 
     public async Task<IActionResult> Index(string? type)
     {
+        var selectedType = string.IsNullOrWhiteSpace(type) ? null : ArticleTypes.Normalize(type);
         var query = _db.Articles.Where(a => a.IsPublished).AsNoTracking();
-        if (!string.IsNullOrWhiteSpace(type))
+        if (!string.IsNullOrWhiteSpace(selectedType))
         {
-            query = query.Where(a => a.Type == type);
+            var aliases = ArticleTypes.GetStorageAliases(selectedType);
+            query = query.Where(a => aliases.Contains(a.Type));
         }
 
-        ViewBag.SelectedType = type;
-        var categoryRaw = await _db.Articles
+        ViewBag.SelectedType = selectedType;
+        var publishedTypes = await _db.Articles
             .Where(a => a.IsPublished)
-            .GroupBy(a => a.Type)
-            .Select(g => new
-            {
-                Type = g.Key,
-                Count = g.Count()
-            })
-            .OrderBy(x => x.Type)
+            .Select(a => a.Type)
             .ToListAsync();
-        ViewBag.Categories = categoryRaw
-            .Select(x => new ArticleCategorySummary(x.Type, x.Count))
+        ViewBag.Categories = publishedTypes
+            .GroupBy(ArticleTypes.Normalize)
+            .Select(g => new ArticleCategorySummary(g.Key, g.Count()))
+            .OrderBy(x => ArticleTypes.Labels.TryGetValue(x.Type, out var label) ? label : x.Type)
             .ToList();
         ViewBag.LatestArticles = await _db.Articles
             .Where(a => a.IsPublished)
@@ -39,8 +38,7 @@ public class ArticlesController : Controller
             .ToListAsync();
 
         var articles = await query
-            .OrderByDescending(a => a.IsFeatured)
-            .ThenByDescending(a => a.CreatedAt)
+            .OrderByDescending(a => a.CreatedAt)
             .ToListAsync();
 
         return View(articles);
@@ -60,8 +58,9 @@ public class ArticlesController : Controller
         article.ViewCount++;
         await _db.SaveChangesAsync();
 
+        var relatedAliases = ArticleTypes.GetStorageAliases(article.Type);
         ViewBag.RelatedArticles = await _db.Articles
-            .Where(a => a.IsPublished && a.Id != article.Id && a.Type == article.Type)
+            .Where(a => a.IsPublished && a.Id != article.Id && relatedAliases.Contains(a.Type))
             .AsNoTracking()
             .OrderByDescending(a => a.CreatedAt)
             .Take(3)

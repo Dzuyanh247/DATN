@@ -347,8 +347,8 @@ public static class SeedData
         if (!await db.Articles.AnyAsync())
         {
             db.Articles.AddRange(
-                new Article { Title = "Top 5 cấu hình gaming đáng mua 2026", Slug = "top-5-cau-hinh-gaming-2026", Type = "Tin tức", Content = "Gợi ý cấu hình theo ngân sách từ 15 đến 40 triệu." },
-                new Article { Title = "Ưu đãi tháng 4 cho laptop", Slug = "uu-dai-thang-4-laptop", Type = "Khuyến mãi", Content = "Tặng chuột không dây và balo khi mua laptop." }
+                new Article { Title = "Top 5 cấu hình gaming đáng mua 2026", Slug = "top-5-cau-hinh-gaming-2026", Type = ArticleTypes.TechNews, Content = "Gợi ý cấu hình theo ngân sách từ 15 đến 40 triệu." },
+                new Article { Title = "Ưu đãi tháng 4 cho laptop", Slug = "uu-dai-thang-4-laptop", Type = ArticleTypes.Promotion, Content = "Tặng chuột không dây và balo khi mua laptop." }
             );
             await db.SaveChangesAsync();
         }

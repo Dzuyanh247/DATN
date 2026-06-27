@@ -2,14 +2,14 @@
 @{
     var isEdit = Model.Id > 0;
 }
-<form method="post" class="row g-3 article-admin-form">
+<form method="post" enctype="multipart/form-data" class="row g-3 article-admin-form">
     @if (isEdit) { <input type="hidden" asp-for="Id" /> }
     <div asp-validation-summary="ModelOnly" class="text-danger"></div>
     <div class="col-lg-8"><label class="form-label">Tiêu đề bài viết</label><input asp-for="Title" class="form-control" data-slug-source="#Slug" /></div>
     <div class="col-lg-4"><label class="form-label">Slug</label><input asp-for="Slug" class="form-control" /></div>
     <div class="col-md-4"><label class="form-label">Chuyên mục</label><select asp-for="Type" class="form-select">@foreach (var t in ArticleTypes.Labels) { <option value="@t.Key">@t.Value</option> }</select></div>
-    <div class="col-md-4"><label class="form-label">Trạng thái</label><select asp-for="IsPublished" class="form-select"><option value="true">Hiển thị</option><option value="false">Nháp / Ẩn</option></select></div>
-    <div class="col-md-4 d-flex align-items-end"><div class="form-check"><input asp-for="IsFeatured" class="form-check-input" /><label asp-for="IsFeatured" class="form-check-label">Bài nổi bật</label></div></div>
+    <div class="col-md-4"><label class="form-label">Trạng thái xuất bản</label><select asp-for="IsPublished" class="form-select"><option value="true">Đăng ngay / Hiển thị công khai</option><option value="false">Bản nháp / Ẩn</option></select><div class="form-text">Bài đăng công khai sẽ hiển thị ngoài trang Articles đúng chuyên mục.</div></div>
+    <div class="col-md-4 d-flex align-items-end"><div class="form-check"><input asp-for="IsFeatured" class="form-check-input" /><label asp-for="IsFeatured" class="form-check-label">Ghim bài / nổi bật</label></div></div>
     <div class="col-12">
         <div class="admin-image-manager-grid">
             <div class="admin-image-pane"><h6 class="fw-bold mb-3">Ảnh bằng URL</h6><label class="form-label">Ảnh đại diện bài viết</label><input asp-for="CoverImageUrl" class="form-control" id="CoverImageUrl" placeholder="https://..." /><div class="form-text">Có thể dán URL như trước, dữ liệu cũ vẫn dùng bình thường.</div></div>

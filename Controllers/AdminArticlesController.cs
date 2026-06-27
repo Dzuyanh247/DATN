@@ -89,7 +89,7 @@ public class AdminArticlesController : Controller
     {
         article.Title = article.Title?.Trim() ?? string.Empty;
         article.Slug = string.IsNullOrWhiteSpace(article.Slug) ? ToSlug(article.Title) : ToSlug(article.Slug);
-        article.Type = string.IsNullOrWhiteSpace(article.Type) ? ArticleTypes.TechNews : article.Type.Trim();
+        article.Type = ArticleTypes.Normalize(article.Type);
         article.Excerpt = article.Excerpt?.Trim();
         article.Content = article.Content?.Trim() ?? string.Empty;
         article.CoverImageUrl = article.CoverImageUrl?.Trim();
