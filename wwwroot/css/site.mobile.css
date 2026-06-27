@@ -1,0 +1,522 @@
+@media (max-width: 768px) {
+    html,
+    body {
+        max-width: 100%;
+        overflow-x: hidden;
+    }
+
+    body:not(.admin-page) .ttg-shell,
+    body:not(.admin-page) .container {
+        max-width: 100%;
+    }
+
+    body:not(.admin-page) .ttg-topbar {
+        padding: 4px 0 !important;
+        overflow: visible;
+    }
+
+    body:not(.admin-page) .ttg-topbar-inner {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 5px;
+        align-items: stretch;
+    }
+
+    body:not(.admin-page) .ttg-topbar-left,
+    body:not(.admin-page) .ttg-topbar-right {
+        width: 100%;
+        min-width: 0;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding: 0 0 2px;
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    body:not(.admin-page) .ttg-topbar-left::-webkit-scrollbar,
+    body:not(.admin-page) .ttg-topbar-right::-webkit-scrollbar,
+    body:not(.admin-page) .ttg-header-actions::-webkit-scrollbar,
+    body:not(.admin-page) .ttg-cat-nav::-webkit-scrollbar,
+    body:not(.admin-page) .ttg-products-grid::-webkit-scrollbar,
+    body:not(.admin-page) .promo-product-grid::-webkit-scrollbar {
+        display: none;
+    }
+
+    body:not(.admin-page) .ttg-topbar-left .ttg-pill,
+    body:not(.admin-page) .ttg-topbar-right a,
+    body:not(.admin-page) .ttg-topbar-right .btn {
+        min-height: 26px;
+        padding: 4px 9px;
+        font-size: 0.74rem;
+        line-height: 1.2;
+        white-space: nowrap;
+    }
+
+    body:not(.admin-page) .ttg-topbar-right form {
+        flex: 0 0 auto;
+    }
+
+    body:not(.admin-page) .ttg-main-header {
+        position: sticky;
+        top: 0;
+    }
+
+    body:not(.admin-page) .ttg-main-header-row {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        grid-template-areas:
+            "logo actions"
+            "search search";
+        gap: 8px 10px;
+        padding: 8px 0 7px;
+        align-items: center;
+    }
+
+    body:not(.admin-page) .site-logo {
+        grid-area: logo;
+        display: inline-flex;
+        align-items: center;
+        min-width: 0;
+    }
+
+    body:not(.admin-page) .site-logo img,
+    body:not(.admin-page) .site-logo-image {
+        max-width: 112px;
+        max-height: 42px;
+        object-fit: contain;
+    }
+
+    body:not(.admin-page) .ttg-search {
+        grid-area: search;
+        width: 100%;
+    }
+
+    body:not(.admin-page) .ttg-search-group {
+        height: 40px;
+        border-radius: 11px;
+    }
+
+    body:not(.admin-page) .ttg-search-category {
+        flex: 0 0 116px;
+    }
+
+    body:not(.admin-page) .ttg-search-category-toggle {
+        padding: 0 8px;
+        border-radius: 10px 0 0 10px;
+        font-size: 0.76rem;
+    }
+
+    body:not(.admin-page) .ttg-search .form-control {
+        min-width: 0;
+        padding-right: 6px;
+        font-size: 0.86rem;
+    }
+
+    body:not(.admin-page) .ttg-search-submit {
+        flex: 0 0 42px;
+        border-radius: 0 10px 10px 0;
+    }
+
+    body:not(.admin-page) .ttg-header-actions {
+        grid-area: actions;
+        justify-content: flex-end;
+        gap: 6px;
+        min-width: 0;
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding-bottom: 0;
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    body:not(.admin-page) .ttg-cta {
+        flex: 0 0 auto;
+        min-height: 38px;
+        padding: 6px 8px;
+        border-radius: 12px;
+        font-size: 0.72rem;
+        line-height: 1.1;
+        gap: 4px !important;
+    }
+
+    body:not(.admin-page) .ttg-cta .icon {
+        display: inline-flex;
+        width: 24px;
+        height: 24px;
+        font-size: 0.85rem;
+    }
+
+    body:not(.admin-page) .ttg-cta span:not(.icon) {
+        max-width: 74px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    body:not(.admin-page) #cart-count-badge {
+        transform: translate(-35%, -25%) !important;
+        font-size: 0.62rem;
+    }
+
+    body:not(.admin-page) .ttg-cat-nav-wrap {
+        border-top: 1px solid #eef2f7;
+    }
+
+    body:not(.admin-page) .ttg-cat-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 7px;
+        padding: 7px 0;
+    }
+
+    body:not(.admin-page) .ttg-all-categories,
+    body:not(.admin-page) .ttg-cat-btn {
+        width: 100%;
+    }
+
+    body:not(.admin-page) .ttg-cat-btn {
+        min-height: 38px;
+        justify-content: center;
+        padding: 8px 12px;
+        border-radius: 9px;
+        font-size: 0.86rem;
+    }
+
+    body:not(.admin-page) .ttg-category-menu {
+        position: static;
+        width: 100%;
+        max-height: 220px;
+        margin-top: 7px;
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.14);
+    }
+
+    body:not(.admin-page) .ttg-cat-nav {
+        display: flex;
+        gap: 8px;
+        width: 100%;
+        overflow-x: auto;
+        overflow-y: hidden;
+        white-space: nowrap;
+        padding-bottom: 2px;
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    body:not(.admin-page) .ttg-cat-link {
+        flex: 0 0 auto;
+        padding: 6px 10px;
+        border: 1px solid #e5e7eb;
+        border-radius: 999px;
+        background: #fff;
+        font-size: 0.8rem;
+    }
+
+    body:not(.admin-page) .ttg-cat-link i {
+        width: 24px;
+        height: 24px;
+        font-size: 0.8rem;
+    }
+
+    body:not(.admin-page) .ttg-home {
+        gap: 10px;
+    }
+
+    body:not(.admin-page) .home-banner-stack {
+        gap: 8px;
+        margin-left: -0.75rem;
+        margin-right: -0.75rem;
+        overflow: hidden;
+    }
+
+    body:not(.admin-page) .ttg-main-banner {
+        width: 100%;
+        height: auto;
+        aspect-ratio: 16 / 7.4;
+        border-radius: 0;
+        box-shadow: none;
+    }
+
+    body:not(.admin-page) .banner-image {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: center;
+    }
+
+    body:not(.admin-page) .ttg-banner-arrow {
+        width: 30px;
+        height: 30px;
+        font-size: 0.8rem;
+    }
+
+    body:not(.admin-page) .ttg-banner-arrow-prev {
+        left: 8px;
+    }
+
+    body:not(.admin-page) .ttg-banner-arrow-next {
+        right: 8px;
+    }
+
+    body:not(.admin-page) .ttg-banner-dots {
+        bottom: 7px;
+        gap: 5px;
+        padding: 4px 6px;
+    }
+
+    body:not(.admin-page) .home-secondary-banners {
+        display: flex;
+        gap: 8px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding: 0 0.75rem 2px;
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    body:not(.admin-page) .home-secondary-banners::-webkit-scrollbar {
+        display: none;
+    }
+
+    body:not(.admin-page) .home-secondary-banner {
+        flex: 0 0 82vw;
+        aspect-ratio: 16 / 7.2;
+        border-radius: 10px;
+        box-shadow: 0 6px 16px rgba(2, 27, 45, 0.12);
+    }
+
+    body:not(.admin-page) .home-secondary-banner img {
+        object-fit: cover;
+        object-position: center;
+    }
+
+    body:not(.admin-page) .ttg-section,
+    body:not(.admin-page) .standard-product-section,
+    body:not(.admin-page) .standard-product-section.promo-section {
+        padding: 9px;
+        margin-bottom: 10px;
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    body:not(.admin-page) .ttg-section-head {
+        flex-wrap: nowrap;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 8px;
+    }
+
+    body:not(.admin-page) .ttg-section-head > .d-flex {
+        min-width: 0;
+        flex: 1 1 auto;
+        flex-wrap: nowrap !important;
+    }
+
+    body:not(.admin-page) .ttg-section-title,
+    body:not(.admin-page) .standard-product-section .ttg-section-title {
+        max-width: 100%;
+        padding: 7px 9px;
+        font-size: 0.82rem;
+        line-height: 1.2;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    body:not(.admin-page) .ttg-hot-badge {
+        display: none;
+    }
+
+    body:not(.admin-page) .ttg-view-all,
+    body:not(.admin-page) .standard-product-section .ttg-view-all {
+        flex: 0 0 auto;
+        padding: 5px 0;
+        font-size: 0.75rem;
+        white-space: nowrap;
+    }
+
+    body:not(.admin-page) .ttg-tabs {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+    }
+
+    body:not(.admin-page) .ttg-products-grid,
+    body:not(.admin-page) .promo-product-grid,
+    body:not(.admin-page) .standard-product-section .ttg-products-grid {
+        display: grid;
+        grid-auto-flow: column;
+        grid-auto-columns: minmax(152px, 44vw);
+        grid-template-columns: none;
+        gap: 8px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding: 1px 1px 4px;
+        scroll-snap-type: x proximity;
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    body:not(.admin-page) .ttg-product-card,
+    body:not(.admin-page) .standard-product-section .ttg-product-card {
+        scroll-snap-align: start;
+        height: auto;
+        min-height: 276px;
+        padding: 8px;
+        border-radius: 10px;
+    }
+
+    body:not(.admin-page) .standard-product-section .ttg-product-image-wrap,
+    body:not(.admin-page) .ttg-product-image-wrap {
+        flex: 0 0 118px;
+        height: 118px;
+        margin-bottom: 7px;
+    }
+
+    body:not(.admin-page) .ttg-product-image,
+    body:not(.admin-page) .standard-product-section .ttg-product-image {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        object-position: center;
+    }
+
+    body:not(.admin-page) .ttg-product-title,
+    body:not(.admin-page) .standard-product-section .ttg-product-title {
+        height: 34px;
+        min-height: 34px;
+        margin-bottom: 5px;
+        font-size: 0.78rem;
+        line-height: 1.3;
+        overflow: hidden;
+    }
+
+    body:not(.admin-page) .ttg-price-row,
+    body:not(.admin-page) .standard-product-section .ttg-price-row {
+        min-height: 34px;
+        gap: 4px;
+    }
+
+    body:not(.admin-page) .ttg-price,
+    body:not(.admin-page) .standard-product-section .ttg-price {
+        font-size: 0.88rem;
+        line-height: 1.25;
+        white-space: normal;
+    }
+
+    body:not(.admin-page) .ttg-old-price,
+    body:not(.admin-page) .standard-product-section .ttg-old-price {
+        font-size: 0.7rem;
+        min-height: 13px;
+    }
+
+    body:not(.admin-page) .ttg-price-discount,
+    body:not(.admin-page) .standard-product-section .ttg-price-discount {
+        padding: 1px 4px;
+        font-size: 0.66rem;
+    }
+
+    body:not(.admin-page) .ttg-card-actions,
+    body:not(.admin-page) .standard-product-section .ttg-card-actions {
+        gap: 4px;
+        padding-top: 6px;
+    }
+
+    body:not(.admin-page) .ttg-add-btn,
+    body:not(.admin-page) .standard-product-section .ttg-add-btn,
+    body:not(.admin-page) .ttg-compare-btn,
+    body:not(.admin-page) .standard-product-section .ttg-compare-btn,
+    body:not(.admin-page) .ttg-action-stock,
+    body:not(.admin-page) .standard-product-section .ttg-action-stock {
+        min-height: 28px;
+        height: 28px;
+        padding: 0 5px;
+        font-size: 0.68rem;
+        line-height: 28px;
+    }
+
+    body:not(.admin-page) .ttg-secondary-actions,
+    body:not(.admin-page) .standard-product-section .ttg-secondary-actions {
+        gap: 4px;
+    }
+
+    body:not(.admin-page) .ttg-empty-state {
+        grid-column: auto;
+        min-width: 70vw;
+    }
+
+    body:not(.admin-page) .ttg-search-suggest {
+        max-height: 58vh;
+        border-radius: 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    body:not(.admin-page) .ttg-topbar-left .ttg-pill:nth-of-type(n+4) {
+        display: none;
+    }
+
+    body:not(.admin-page) .ttg-topbar-right a,
+    body:not(.admin-page) .ttg-topbar-right .btn {
+        font-size: 0.7rem;
+        padding-left: 8px;
+        padding-right: 8px;
+    }
+
+    body:not(.admin-page) .ttg-main-header-row {
+        grid-template-columns: 82px minmax(0, 1fr);
+        gap: 7px;
+    }
+
+    body:not(.admin-page) .site-logo img,
+    body:not(.admin-page) .site-logo-image {
+        max-width: 82px;
+        max-height: 36px;
+    }
+
+    body:not(.admin-page) .ttg-header-actions {
+        justify-content: flex-start;
+    }
+
+    body:not(.admin-page) .ttg-cta {
+        min-height: 34px;
+        padding: 5px 7px;
+        font-size: 0.68rem;
+    }
+
+    body:not(.admin-page) .ttg-cta .icon {
+        width: 22px;
+        height: 22px;
+    }
+
+    body:not(.admin-page) .ttg-cta span:not(.icon) {
+        max-width: 64px;
+    }
+
+    body:not(.admin-page) .ttg-search-category {
+        flex-basis: 98px;
+    }
+
+    body:not(.admin-page) .ttg-search-category-toggle {
+        font-size: 0.7rem;
+    }
+
+    body:not(.admin-page) .ttg-main-banner {
+        aspect-ratio: 16 / 8.3;
+    }
+
+    body:not(.admin-page) .home-secondary-banner {
+        flex-basis: 88vw;
+        aspect-ratio: 16 / 8;
+    }
+
+    body:not(.admin-page) .ttg-products-grid,
+    body:not(.admin-page) .promo-product-grid,
+    body:not(.admin-page) .standard-product-section .ttg-products-grid {
+        grid-auto-columns: minmax(148px, 46vw);
+    }
+
+    body:not(.admin-page) .standard-product-section .ttg-product-image-wrap,
+    body:not(.admin-page) .ttg-product-image-wrap {
+        flex-basis: 110px;
+        height: 110px;
+    }
+}

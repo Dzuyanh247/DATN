@@ -77,6 +77,10 @@
     {
         <link rel="stylesheet" href="~/css/admin-chat.css" asp-append-version="true" />
     }
+    @if (!isAdminPage)
+    {
+        <link rel="stylesheet" href="~/css/site.mobile.css" asp-append-version="true" />
+    }
 </head>
 <body class="@(isAdminPage ? "admin-page" : (!isComparePage && compareCount > 0 ? "has-compare-tray" : string.Empty))">
 @if (isAdminPage)
