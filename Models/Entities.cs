@@ -408,6 +408,45 @@ public static class ArticleTypes
         [Promotion] = "Khuyến mãi",
         [Guide] = "Hướng dẫn"
     };
+
+    private static readonly IReadOnlyDictionary<string, string> Aliases = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+    {
+        [TechNews] = TechNews,
+        ["Tin công nghệ"] = TechNews,
+        ["Tin tức"] = TechNews,
+        ["TechNews"] = TechNews,
+        [BuildPc] = BuildPc,
+        ["Tư vấn build PC"] = BuildPc,
+        ["Tu van build PC"] = BuildPc,
+        [Software] = Software,
+        ["Phần mềm hay"] = Software,
+        ["Phan mem hay"] = Software,
+        [Promotion] = Promotion,
+        ["Khuyến mãi"] = Promotion,
+        ["Khuyen mai"] = Promotion,
+        [Guide] = Guide,
+        ["Hướng dẫn"] = Guide,
+        ["Huong dan"] = Guide
+    };
+
+    public static string Normalize(string? type)
+    {
+        if (string.IsNullOrWhiteSpace(type)) return TechNews;
+
+        var trimmed = type.Trim();
+        return Aliases.TryGetValue(trimmed, out var normalized) ? normalized : trimmed;
+    }
+
+    public static IReadOnlyList<string> GetStorageAliases(string? type)
+    {
+        var normalized = Normalize(type);
+        return Aliases
+            .Where(x => x.Value == normalized)
+            .Select(x => x.Key)
+            .Append(normalized)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
 }
 
 public class Article : BaseEntity
