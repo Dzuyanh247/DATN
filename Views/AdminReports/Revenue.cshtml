@@ -1,7 +1,22 @@
+@using System.Globalization
 @model AdminRevenueReportVm
+@functions {
+    private static readonly CultureInfo ViCulture = CultureInfo.GetCultureInfo("vi-VN");
+    private static string Money(decimal value) => $"{value.ToString("N0", ViCulture)} đ";
+    private static string SignedMoney(decimal value) => value <= 0 ? Money(0) : $"-{Money(value)}";
+    private static string CompactMoney(decimal value)
+    {
+        if (value <= 0) return "0";
+        if (value >= 1_000_000_000) return $"{(value / 1_000_000_000m).ToString("0.#", ViCulture)}tỷ";
+        if (value >= 1_000_000) return $"{(value / 1_000_000m).ToString("0.#", ViCulture)}tr";
+        if (value >= 1_000) return $"{(value / 1_000m).ToString("0.#", ViCulture)}k";
+        return value.ToString("N0", ViCulture);
+    }
+}
 @{
     ViewData["Title"] = "Phân tích doanh thu";
     var maxRevenue = Model.ChartPoints.Any() ? Model.ChartPoints.Max(x => x.Revenue) : 0;
+    var labelThreshold = maxRevenue * 0.55m;
 }
 
 <header class="admin-page-heading revenue-report-heading">
@@ -18,32 +33,32 @@
 
 <section class="revenue-summary-grid">
 @foreach (var item in new[] {
-    ("Doanh thu bán hàng", Model.ProductRevenue, "bi-bag-check"), ("Phí vận chuyển", Model.ShippingFee, "bi-truck"),
-    ("Voucher/Giảm giá", Model.DiscountAmount, "bi-ticket-perforated"), ("Tổng khách thanh toán", (decimal)Model.CustomerPaidCount, "bi-people"),
-    ("Tổng đơn", (decimal)Model.OrderCount, "bi-receipt"), ("Giá trị TB mỗi đơn", Model.AverageOrderValue, "bi-graph-up") })
+    ("Doanh thu bán hàng", Money(Model.ProductRevenue), "bi-bag-check"), ("Phí vận chuyển", Money(Model.ShippingFee), "bi-truck"),
+    ("Voucher/Giảm giá", SignedMoney(Model.DiscountAmount), "bi-ticket-perforated"), ("Tổng khách thanh toán", Money(Model.TotalRevenue), "bi-cash-coin"),
+    ("Tổng đơn", Model.OrderCount.ToString("N0", ViCulture), "bi-receipt"), ("Giá trị TB mỗi đơn", Money(Model.AverageOrderValue), "bi-graph-up") })
 {
-    <article class="revenue-summary-card"><i class="bi @item.Item3"></i><span>@item.Item1</span><strong>@(item.Item1.StartsWith("Tổng khách") || item.Item1 == "Tổng đơn" ? item.Item2.ToString("N0") : item.Item2.ToString("N0") + " đ")</strong></article>
+    <article class="revenue-summary-card"><i class="bi @item.Item3"></i><span>@item.Item1</span><strong>@item.Item2</strong></article>
 }
 </section>
 
 <section class="dashboard-panel revenue-chart-panel">
     <div class="dashboard-panel-heading"><div><span class="admin-eyebrow">Biểu đồ</span><h3>@(Model.Period == "today" ? "Theo giờ" : "Theo ngày")</h3></div><i class="bi bi-bar-chart"></i></div>
     @if (maxRevenue <= 0) { <div class="admin-empty-state compact"><i class="bi bi-bar-chart-line"></i><strong>Chưa có doanh thu</strong><span>Khoảng thời gian này chưa có đơn thanh toán hợp lệ.</span></div> }
-    else { <div class="dashboard-chart revenue-chart">@foreach (var point in Model.ChartPoints){var height=Math.Max(6,(double)(point.Revenue/maxRevenue*100));<div class="chart-column" title="@point.Revenue.ToString("N0") đ · @point.OrderCount đơn"><span>@(point.Revenue > 0 ? point.Revenue.ToString("N0") : "0")</span><div><i style="height:@height%"></i></div><small>@point.Label</small></div>}</div> }
+    else { <div class="dashboard-chart revenue-chart">@foreach (var point in Model.ChartPoints){var height=Math.Max(6,(double)(point.Revenue/maxRevenue*100)); var showLabel = point.Revenue > 0 && (Model.Period == "today" || point.Revenue >= labelThreshold || point.Revenue == maxRevenue);<div class="chart-column" data-value="@point.Revenue" title="@Money(point.Revenue) · @point.OrderCount đơn"><span>@(showLabel ? CompactMoney(point.Revenue) : "")</span><div><i style="height:@height%"></i></div><small>@point.Label</small></div>}</div> }
 </section>
 
-<div class="revenue-report-grid">
-    <section class="dashboard-panel"><div class="dashboard-panel-heading"><div><span class="admin-eyebrow">Cơ cấu</span><h3>Cơ cấu doanh thu</h3></div></div><div class="revenue-structure-list"><div><span>Tiền sản phẩm</span><strong>@Model.ProductRevenue.ToString("N0") đ</strong></div><div><span>Phí vận chuyển</span><strong>@Model.ShippingFee.ToString("N0") đ</strong></div><div><span>Voucher/Giảm giá</span><strong>-@Model.DiscountAmount.ToString("N0") đ</strong></div>@if (Model.RefundAmount > 0){<div><span>Hoàn tiền</span><strong>-@Model.RefundAmount.ToString("N0") đ</strong></div>}<div class="total"><span>Tổng thu</span><strong>@Model.TotalRevenue.ToString("N0") đ</strong></div></div></section>
-    <section class="dashboard-panel"><div class="dashboard-panel-heading"><div><span class="admin-eyebrow">Top 10</span><h3>Sản phẩm bán chạy</h3></div></div>@if(!Model.TopProducts.Any()){<div class="admin-empty-state compact"><i class="bi bi-box"></i><strong>Chưa có dữ liệu</strong></div>}else{<div class="table-responsive"><table class="table align-middle revenue-mini-table"><thead><tr><th>Tên</th><th class="text-end">SL</th><th class="text-end">Doanh thu</th></tr></thead><tbody>@foreach(var p in Model.TopProducts){<tr><td>@p.Name</td><td class="text-end fw-bold">@p.Quantity</td><td class="text-end">@p.Revenue.ToString("N0") đ</td></tr>}</tbody></table></div>}</section>
+<div class="revenue-report-grid revenue-report-grid-primary">
+    <section class="dashboard-panel"><div class="dashboard-panel-heading"><div><span class="admin-eyebrow">Cơ cấu</span><h3>Cơ cấu doanh thu</h3></div></div><div class="revenue-structure-list"><div><span>Tiền sản phẩm</span><strong>@Money(Model.ProductRevenue)</strong></div><div><span>Phí vận chuyển</span><strong>@Money(Model.ShippingFee)</strong></div><div><span>Voucher/Giảm giá</span><strong>@SignedMoney(Model.DiscountAmount)</strong></div>@if (Model.RefundAmount > 0){<div><span>Hoàn tiền</span><strong>@SignedMoney(Model.RefundAmount)</strong></div>}<div class="total"><span>Tổng khách thanh toán</span><strong>@Money(Model.TotalRevenue)</strong></div></div></section>
+    <section class="dashboard-panel"><div class="dashboard-panel-heading"><div><span class="admin-eyebrow">Top 10</span><h3>Sản phẩm bán chạy</h3></div></div>@if(!Model.TopProducts.Any()){<div class="admin-empty-state compact"><i class="bi bi-box"></i><strong>Chưa có dữ liệu</strong></div>}else{<div class="table-responsive revenue-top-table-wrap"><table class="table align-middle revenue-mini-table revenue-top-table"><thead><tr><th>Ảnh</th><th>Tên</th><th class="text-end">SL</th><th class="text-end">Doanh thu</th></tr></thead><tbody>@foreach(var p in Model.TopProducts){<tr><td class="revenue-product-thumb-cell"><img class="revenue-product-thumb" src="@(string.IsNullOrWhiteSpace(p.ImageUrl) ? "/images/placeholders/product.svg" : p.ImageUrl)" alt="@p.Name" /></td><td><span class="revenue-product-name">@p.Name</span></td><td class="text-end fw-bold">@p.Quantity</td><td class="text-end">@Money(p.Revenue)</td></tr>}</tbody></table></div>}</section>
 </div>
 
 <div class="revenue-report-grid">
-    <section class="dashboard-panel"><div class="dashboard-panel-heading"><div><span class="admin-eyebrow">Thanh toán</span><h3>Theo phương thức</h3></div></div><div class="revenue-structure-list">@foreach(var p in Model.PaymentMethods){<div><span>@PaymentMethods.Label(p.Method)<small>@p.OrderCount đơn</small></span><strong>@p.Revenue.ToString("N0") đ</strong></div>}</div></section>
-    <section class="dashboard-panel"><div class="dashboard-panel-heading"><div><span class="admin-eyebrow">Trạng thái</span><h3>Theo trạng thái đơn</h3></div></div><div class="revenue-structure-list">@foreach(var s in Model.OrderStatuses){<div><span>@OrderStatusHelper.Label(s.Status)<small>@s.OrderCount đơn</small></span><strong>@s.Revenue.ToString("N0") đ</strong></div>}</div></section>
+    <section class="dashboard-panel"><div class="dashboard-panel-heading"><div><span class="admin-eyebrow">Thanh toán</span><h3>Theo phương thức</h3></div></div><div class="revenue-structure-list">@foreach(var p in Model.PaymentMethods){<div><span>@PaymentMethods.Label(p.Method)<small>@p.OrderCount đơn</small></span><strong>@Money(p.Revenue)</strong></div>}</div></section>
+    <section class="dashboard-panel"><div class="dashboard-panel-heading"><div><span class="admin-eyebrow">Trạng thái</span><h3>Theo trạng thái đơn</h3></div></div><div class="revenue-structure-list">@foreach(var s in Model.OrderStatuses){<div><span>@OrderStatusHelper.Label(s.Status)<small>@s.OrderCount đơn</small></span><strong>@Money(s.Revenue)</strong></div>}</div></section>
 </div>
 
 <section class="dashboard-panel revenue-orders-panel">
     <div class="dashboard-panel-heading"><div><span class="admin-eyebrow">Chi tiết</span><h3>Danh sách đơn hàng</h3></div><span class="admin-result-pill">@Model.TotalItems kết quả</span></div>
-    <div class="table-responsive"><table class="table align-middle dashboard-table"><thead><tr><th>Đơn hàng</th><th>Khách hàng</th><th>Thanh toán</th><th class="text-end">Sản phẩm</th><th class="text-end">Ship</th><th class="text-end">Giảm</th><th class="text-end">Tổng</th><th>Ngày ghi nhận</th><th></th></tr></thead><tbody>@foreach(var o in Model.Orders){<tr><td><strong>@o.OrderCode</strong><br/><span class="order-status-badge @OrderStatusHelper.BadgeClass(o.Status)">@OrderStatusHelper.Label(o.Status)</span></td><td>@o.CustomerName</td><td>@PaymentMethods.Label(o.PaymentMethod)<br/><span class="payment-status-badge @OrderStatusHelper.PaymentBadgeClass(o.PaymentStatus,o.Status)">@OrderStatusHelper.PaymentLabel(o.PaymentStatus,o.Status)</span></td><td class="text-end">@o.ProductRevenue.ToString("N0") đ</td><td class="text-end">@o.ShippingFee.ToString("N0") đ</td><td class="text-end">@o.DiscountAmount.ToString("N0") đ</td><td class="text-end fw-bold">@o.TotalAmount.ToString("N0") đ</td><td>@DateTimeHelper.FormatVietnam(o.RevenueAt,"dd/MM/yyyy HH:mm")</td><td><a class="btn btn-sm btn-light" asp-controller="AdminOrders" asp-action="Detail" asp-route-id="@o.Id"><i class="bi bi-eye"></i></a></td></tr>}</tbody></table></div>
+    <div class="table-responsive"><table class="table align-middle dashboard-table"><thead><tr><th>Đơn hàng</th><th>Khách hàng</th><th>Thanh toán</th><th class="text-end">Sản phẩm</th><th class="text-end">Ship</th><th class="text-end">Giảm</th><th class="text-end">Tổng</th><th>Ngày ghi nhận</th><th></th></tr></thead><tbody>@foreach(var o in Model.Orders){<tr><td><strong>@o.OrderCode</strong><br/><span class="order-status-badge @OrderStatusHelper.BadgeClass(o.Status)">@OrderStatusHelper.Label(o.Status)</span></td><td>@o.CustomerName</td><td>@PaymentMethods.Label(o.PaymentMethod)<br/><span class="payment-status-badge @OrderStatusHelper.PaymentBadgeClass(o.PaymentStatus,o.Status)">@OrderStatusHelper.PaymentLabel(o.PaymentStatus,o.Status)</span></td><td class="text-end">@Money(o.ProductRevenue)</td><td class="text-end">@Money(o.ShippingFee)</td><td class="text-end">@Money(o.DiscountAmount)</td><td class="text-end fw-bold">@Money(o.TotalAmount)</td><td>@DateTimeHelper.FormatVietnam(o.RevenueAt,"dd/MM/yyyy HH:mm")</td><td><a class="btn btn-sm btn-light" asp-controller="AdminOrders" asp-action="Detail" asp-route-id="@o.Id"><i class="bi bi-eye"></i></a></td></tr>}</tbody></table></div>
     @if(Model.TotalPages > 1){<nav class="revenue-pagination"><a class="@(Model.Page <= 1 ? "disabled" : "")" asp-action="Revenue" asp-route-period="@Model.Period" asp-route-page="@(Model.Page-1)">Trước</a><span>Trang @Model.Page / @Model.TotalPages</span><a class="@(Model.Page >= Model.TotalPages ? "disabled" : "")" asp-action="Revenue" asp-route-period="@Model.Period" asp-route-page="@(Model.Page+1)">Sau</a></nav>}
 </section>

@@ -37,6 +37,7 @@ public class AdminRevenueChartPointVm
 public class AdminTopProductRevenueVm
 {
     public string Name { get; init; } = string.Empty;
+    public string ImageUrl { get; init; } = "/images/placeholders/product.svg";
     public int Quantity { get; init; }
     public decimal Revenue { get; init; }
 }
