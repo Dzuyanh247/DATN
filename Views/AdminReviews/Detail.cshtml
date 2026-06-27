@@ -2,47 +2,156 @@
 @{
     ViewData["Title"] = "Chi tiết đánh giá";
     var image = ImageUrlHelper.ResolveImageUrl(Model.Product?.ThumbnailImage, "/images/placeholders/product-placeholder.png");
+    var orderCode = !string.IsNullOrWhiteSpace(Model.Order?.TransferContent) ? Model.Order.TransferContent : $"DH{Model.OrderId:D6}";
 }
-<div class="admin-page-heading">
-    <div><span class="admin-eyebrow">Đánh giá #@Model.Id</span><h2>Chi tiết đánh giá sản phẩm</h2><p>Thông tin mua hàng, nội dung khách gửi và lịch sử xử lý.</p></div>
-    <span class="badge @ReviewStatusHelper.BadgeClass(Model.Status) fs-6">@ReviewStatusHelper.Label(Model.Status)</span>
+<div class="admin-page-heading admin-review-detail-heading">
+    <div class="admin-review-heading-text">
+        <span class="admin-eyebrow">Đánh giá #@Model.Id</span>
+        <h2>Chi tiết đánh giá sản phẩm</h2>
+        <p>Thông tin mua hàng, nội dung khách gửi và lịch sử xử lý.</p>
+    </div>
+    <span class="badge @ReviewStatusHelper.BadgeClass(Model.Status) admin-review-detail-status">@ReviewStatusHelper.Label(Model.Status)</span>
 </div>
-<div class="row g-4">
-    <div class="col-xl-7">
-        <section class="admin-card mb-4">
-            <h3 class="h5 mb-3"><i class="bi bi-box-seam text-primary"></i> Thông tin sản phẩm</h3>
-            <div class="d-flex gap-3 align-items-center">
-                <img src="@image" alt="@Model.Product?.Name" class="rounded border" style="width:110px;height:110px;object-fit:contain"/>
-                <div><h4 class="h5">@Model.Product?.Name</h4><p class="text-muted mb-2">Mã sản phẩm: @(Model.Product?.ProductCode ?? "—")</p><a asp-controller="Products" asp-action="Detail" asp-route-id="@Model.ProductId" target="_blank">Xem sản phẩm <i class="bi bi-box-arrow-up-right"></i></a></div>
+
+<div class="admin-review-detail-layout">
+    <div class="admin-review-detail-main">
+        <section class="admin-card admin-review-detail-card">
+            <h3 class="admin-review-card-title"><i class="bi bi-box-seam text-primary"></i> Thông tin sản phẩm</h3>
+            <div class="admin-review-product-detail">
+                <img src="@image" alt="@Model.Product?.Name" />
+                <div class="admin-review-product-info">
+                    <h4>@Model.Product?.Name</h4>
+                    <p>Mã sản phẩm: @(Model.Product?.ProductCode ?? "—")</p>
+                    <a asp-controller="Products" asp-action="Detail" asp-route-id="@Model.ProductId" target="_blank">Xem sản phẩm <i class="bi bi-box-arrow-up-right"></i></a>
+                </div>
             </div>
         </section>
-        <section class="admin-card mb-4">
-            <h3 class="h5 mb-3"><i class="bi bi-person-check text-success"></i> Thông tin khách hàng</h3>
-            <div class="row g-3"><div class="col-md-6"><small class="text-muted d-block">Khách hàng</small><strong>@Model.User?.FullName</strong></div><div class="col-md-6"><small class="text-muted d-block">Đơn hàng</small><a asp-controller="AdminOrders" asp-action="Detail" asp-route-id="@Model.OrderId">DH@Model.OrderId.ToString("D6")</a></div><div class="col-md-6"><small class="text-muted d-block">Ngày mua</small><strong>@DateTimeHelper.FormatVietnam(Model.Order?.CreatedAt,"dd/MM/yyyy HH:mm")</strong></div><div class="col-md-6"><small class="text-muted d-block">Xác thực</small><span class="badge text-bg-success">Đã mua hàng</span></div></div>
+
+        <section class="admin-card admin-review-detail-card">
+            <h3 class="admin-review-card-title"><i class="bi bi-person-check text-success"></i> Thông tin khách hàng</h3>
+            <div class="admin-review-info-grid">
+                <div class="admin-review-info-item">
+                    <small>Khách hàng</small>
+                    <strong>@(Model.User?.FullName ?? "—")</strong>
+                </div>
+                <div class="admin-review-info-item">
+                    <small>Đơn hàng</small>
+                    <a asp-controller="AdminOrders" asp-action="Detail" asp-route-id="@Model.OrderId">@orderCode</a>
+                </div>
+                <div class="admin-review-info-item">
+                    <small>Ngày mua</small>
+                    <strong>@DateTimeHelper.FormatVietnam(Model.Order?.CreatedAt, "dd/MM/yyyy HH:mm")</strong>
+                </div>
+                <div class="admin-review-info-item">
+                    <small>Xác thực</small>
+                    <span class="badge text-bg-success admin-review-pill">Đã mua hàng</span>
+                </div>
+            </div>
         </section>
-        <section class="admin-card">
-            <h3 class="h5 mb-3"><i class="bi bi-chat-quote text-warning"></i> Nội dung đánh giá</h3>
-            <div class="text-warning fs-4 mb-2">@for(var i=1;i<=5;i++){<i class="bi @(i<=Model.Rating?"bi-star-fill":"bi-star")"></i>}</div>
-            <p class="p-3 bg-light rounded-3 mb-3" style="white-space:pre-wrap">@Model.Comment</p>
-            <div class="d-flex justify-content-between"><span>Ngày đánh giá: <strong>@DateTimeHelper.FormatVietnam(Model.CreatedAt,"dd/MM/yyyy HH:mm")</strong></span><span class="badge @ReviewStatusHelper.BadgeClass(Model.Status)">@ReviewStatusHelper.Label(Model.Status)</span></div>
+
+        <section class="admin-card admin-review-detail-card admin-review-comment-card">
+            <div class="admin-review-comment-head">
+                <h3 class="admin-review-card-title"><i class="bi bi-chat-quote text-warning"></i> Nội dung đánh giá</h3>
+                <span class="badge @ReviewStatusHelper.BadgeClass(Model.Status) admin-review-pill">@ReviewStatusHelper.Label(Model.Status)</span>
+            </div>
+            <div class="admin-review-rating" aria-label="@Model.Rating sao">
+                @for (var i = 1; i <= 5; i++)
+                {
+                    <i class="bi @(i <= Model.Rating ? "bi-star-fill" : "bi-star")"></i>
+                }
+                <span>@Model.Rating/5</span>
+            </div>
+            <div class="admin-review-comment-box">@Model.Comment</div>
+            <div class="admin-review-comment-meta">
+                <span>Ngày đánh giá</span>
+                <strong>@DateTimeHelper.FormatVietnam(Model.CreatedAt, "dd/MM/yyyy HH:mm")</strong>
+            </div>
         </section>
     </div>
-    <div class="col-xl-5">
-        <section class="admin-card position-sticky" style="top:1rem">
-            <h3 class="h5 mb-3"><i class="bi bi-shield-check text-primary"></i> Xử lý của quản trị viên</h3>
-            <form asp-action="Update" method="post">
-                <input type="hidden" name="id" value="@Model.Id"/>
-                <label class="form-label fw-semibold">Trạng thái</label>
-                <select class="form-select mb-3" name="status">@foreach(var s in Enum.GetValues<ReviewStatus>()){<option value="@s" selected="@(Model.Status==s)">@ReviewStatusHelper.Label(s)</option>}</select>
-                <label class="form-label fw-semibold">Phản hồi của shop</label>
-                <textarea class="form-control mb-3" name="adminReply" maxlength="1000" rows="8" placeholder="Nhập phản hồi công khai tới khách hàng...">@Model.AdminReply</textarea>
-                <div class="p-3 bg-light rounded-3 mb-3">
-                    <div><small class="text-muted">Người xử lý</small><strong class="d-block">@(Model.HandledByStaffName ?? "Chưa phân công")</strong></div>
-                    @if(Model.HandledAt.HasValue){<div class="mt-2"><small class="text-muted">Thời gian xử lý</small><strong class="d-block">@DateTimeHelper.FormatVietnam(Model.HandledAt,"dd/MM/yyyy HH:mm")</strong></div>}
-                    @if(Model.AdminRepliedAt.HasValue){<div class="mt-2"><small class="text-muted">Thời gian phản hồi</small><strong class="d-block">@DateTimeHelper.FormatVietnam(Model.AdminRepliedAt,"dd/MM/yyyy HH:mm")</strong></div>}
+
+    <aside class="admin-review-detail-side">
+        <section class="admin-card admin-review-detail-card admin-review-action-card">
+            <h3 class="admin-review-card-title"><i class="bi bi-shield-check text-primary"></i> Xử lý của quản trị viên</h3>
+            <form asp-action="Update" method="post" class="admin-review-action-form">
+                <input type="hidden" name="id" value="@Model.Id" />
+                <div>
+                    <label class="form-label fw-semibold">Trạng thái</label>
+                    <select class="form-select" name="status">
+                        @foreach (var s in Enum.GetValues<ReviewStatus>())
+                        {
+                            <option value="@s" selected="@(Model.Status == s)">@ReviewStatusHelper.Label(s)</option>
+                        }
+                    </select>
                 </div>
-                <div class="d-grid gap-2"><button class="btn btn-primary"><i class="bi bi-save"></i> Lưu cập nhật</button><a class="btn btn-outline-secondary" asp-action="Index"><i class="bi bi-arrow-left"></i> Quay lại danh sách</a></div>
+                <div>
+                    <label class="form-label fw-semibold">Phản hồi của shop</label>
+                    <textarea class="form-control" name="adminReply" maxlength="1000" rows="4" placeholder="Nhập phản hồi công khai tới khách hàng...">@Model.AdminReply</textarea>
+                </div>
+                <div class="admin-review-handler-box">
+                    <div>
+                        <small>Người xử lý</small>
+                        <strong>@(Model.HandledByStaffName ?? "Chưa phân công")</strong>
+                    </div>
+                    @if (Model.HandledAt.HasValue)
+                    {
+                        <div>
+                            <small>Thời gian xử lý</small>
+                            <strong>@DateTimeHelper.FormatVietnam(Model.HandledAt, "dd/MM/yyyy HH:mm")</strong>
+                        </div>
+                    }
+                    @if (Model.AdminRepliedAt.HasValue)
+                    {
+                        <div>
+                            <small>Thời gian phản hồi</small>
+                            <strong>@DateTimeHelper.FormatVietnam(Model.AdminRepliedAt, "dd/MM/yyyy HH:mm")</strong>
+                        </div>
+                    }
+                </div>
+                <div class="admin-review-form-actions">
+                    <button class="btn btn-primary" type="submit"><i class="bi bi-save"></i> Lưu cập nhật</button>
+                    <a class="btn btn-outline-secondary" asp-action="Index"><i class="bi bi-arrow-left"></i> Quay lại danh sách</a>
+                </div>
             </form>
         </section>
-    </div>
+    </aside>
 </div>
+
+<style>
+    .admin-review-detail-heading { align-items: center; gap: 16px; margin-bottom: 18px; }
+    .admin-review-heading-text { min-width: 0; }
+    .admin-review-heading-text h2 { margin-bottom: 4px; }
+    .admin-review-heading-text p { margin-bottom: 0; }
+    .admin-review-detail-status { flex: 0 0 auto; border-radius: 999px; padding: 8px 12px; font-size: .9rem; }
+    .admin-review-detail-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 390px); gap: 20px; align-items: start; }
+    .admin-review-detail-main, .admin-review-detail-side { min-width: 0; }
+    .admin-review-detail-main { display: grid; gap: 18px; }
+    .admin-review-detail-card { box-sizing: border-box; min-width: 0; padding: 20px !important; border-radius: 20px; overflow: hidden; }
+    .admin-review-card-title { display: flex; align-items: center; gap: 8px; margin: 0 0 16px; color: #172033; font-size: 1.02rem; font-weight: 800; line-height: 1.35; }
+    .admin-review-product-detail { display: flex; gap: 16px; align-items: center; min-width: 0; }
+    .admin-review-product-detail img { width: 104px; height: 104px; flex: 0 0 104px; object-fit: contain; padding: 8px; border: 1px solid #e2e8f0; border-radius: 16px; background: #f8fafc; }
+    .admin-review-product-info { min-width: 0; }
+    .admin-review-product-info h4 { margin: 0 0 8px; color: #172033; font-size: 1.05rem; font-weight: 800; line-height: 1.4; word-break: break-word; overflow-wrap: anywhere; }
+    .admin-review-product-info p { margin: 0 0 8px; color: #64748b; word-break: break-word; overflow-wrap: anywhere; }
+    .admin-review-info-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    .admin-review-info-item { min-width: 0; padding: 14px; border: 1px solid #edf2f7; border-radius: 14px; background: #fbfdff; box-sizing: border-box; }
+    .admin-review-info-item small, .admin-review-handler-box small { display: block; margin-bottom: 4px; color: #64748b; font-size: .78rem; font-weight: 700; }
+    .admin-review-info-item strong, .admin-review-info-item a, .admin-review-handler-box strong { display: inline-block; max-width: 100%; color: #172033; font-weight: 800; word-break: break-word; overflow-wrap: anywhere; }
+    .admin-review-comment-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+    .admin-review-comment-head .admin-review-card-title { margin-bottom: 0; }
+    .admin-review-pill { max-width: 100%; border-radius: 999px; padding: 7px 10px; line-height: 1.15; white-space: normal; text-align: center; word-break: break-word; overflow-wrap: anywhere; }
+    .admin-review-rating { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; margin-bottom: 12px; color: #f59e0b; font-size: 1.25rem; line-height: 1; }
+    .admin-review-rating span { margin-left: 6px; color: #64748b; font-size: .9rem; font-weight: 800; }
+    .admin-review-comment-box { box-sizing: border-box; min-width: 0; margin-bottom: 14px; padding: 16px; border: 1px solid #e5edf6; border-radius: 16px; background: #f8fafc; color: #334155; line-height: 1.6; white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere; }
+    .admin-review-comment-meta { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-top: 2px; color: #64748b; flex-wrap: wrap; }
+    .admin-review-comment-meta strong { color: #172033; word-break: break-word; overflow-wrap: anywhere; }
+    .admin-review-action-card { position: sticky; top: 96px; }
+    .admin-review-action-form { display: grid; gap: 14px; min-width: 0; }
+    .admin-review-action-form .form-select { width: 100%; min-height: 42px; border-radius: 12px; }
+    .admin-review-action-form textarea.form-control { min-height: 118px; max-height: 260px; resize: vertical; border-radius: 12px; }
+    .admin-review-handler-box { display: grid; gap: 12px; min-width: 0; padding: 14px; border: 1px solid #edf2f7; border-radius: 16px; background: #f8fafc; }
+    .admin-review-form-actions { display: grid; grid-template-columns: 1fr; gap: 10px; }
+    .admin-review-form-actions .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 42px; border-radius: 12px; font-weight: 800; }
+    @@media (max-width: 1199.98px) { .admin-review-detail-layout { grid-template-columns: 1fr; } .admin-review-action-card { position: static; } }
+    @@media (max-width: 767.98px) { .admin-review-detail-heading { align-items: flex-start; } .admin-review-detail-layout { gap: 16px; } .admin-review-info-grid { grid-template-columns: 1fr; } .admin-review-detail-card { padding: 16px !important; } .admin-review-product-detail { align-items: flex-start; } .admin-review-product-detail img { width: 84px; height: 84px; flex-basis: 84px; } }
+    @@media (max-width: 575.98px) { .admin-review-detail-heading { display: block; } .admin-review-detail-status { display: inline-flex; margin-top: 10px; } .admin-review-product-detail { flex-direction: column; } .admin-review-product-detail img { width: 100%; height: 150px; flex-basis: auto; } .admin-review-comment-head { display: grid; } }
+</style>
