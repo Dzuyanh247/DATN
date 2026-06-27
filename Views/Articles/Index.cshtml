@@ -6,6 +6,7 @@
     var articles = featured == null ? Model : Model.Where(a => a.Id != featured.Id).ToList();
     var latest = ViewBag.LatestArticles as List<Article> ?? new List<Article>();
     var categories = ViewBag.Categories as List<ArticleCategorySummary> ?? new List<ArticleCategorySummary>();
+    var totalPublishedArticles = ViewBag.TotalPublishedArticles as int? ?? Model.Count;
     string Label(string? type) => type != null && ArticleTypes.Labels.TryGetValue(type, out var label) ? label : (type ?? "Tin tức");
     string Image(Article article) => string.IsNullOrWhiteSpace(article.CoverImageUrl) ? "https://placehold.co/900x520/002b36/14d9ff?text=KKSHOP+News" : article.CoverImageUrl!;
 }
@@ -26,8 +27,16 @@
     {
         <div class="kk-article-empty">
             <i class="bi bi-journal-richtext"></i>
-            <h3>Chưa có bài viết phù hợp</h3>
-            <p>KKSHOP đang chuẩn bị nội dung mới. Vui lòng quay lại sau hoặc chọn chuyên mục khác.</p>
+            @if (totalPublishedArticles == 0)
+            {
+                <h3>Chưa có bài viết phù hợp</h3>
+                <p>KKSHOP đang chuẩn bị nội dung mới. Vui lòng quay lại sau.</p>
+            }
+            else
+            {
+                <h3>Chưa có bài viết trong chuyên mục này</h3>
+                <p>Vui lòng chọn Trang tin công nghệ hoặc một chuyên mục khác để xem thêm nội dung từ KKSHOP.</p>
+            }
         </div>
     }
     else
@@ -67,8 +76,8 @@
             <aside class="col-lg-4">
                 <div class="kk-sidebar-box">
                     <h5>Chuyên mục</h5>
-                    <a class="kk-side-link @(string.IsNullOrWhiteSpace(selectedType) ? "active" : "")" asp-action="Index">Tất cả bài viết</a>
-                    @foreach (var c in categories)
+                    <a class="kk-side-link @(string.IsNullOrWhiteSpace(selectedType) ? "active" : "")" asp-action="Index" asp-route-type="TinCongNghe">Trang tin công nghệ</a>
+                    @foreach (var c in categories.Where(c => c.Type != ArticleTypes.TechNews))
                     {
                         <a class="kk-side-link @(selectedType == c.Type ? "active" : "")" asp-action="Index" asp-route-type="@c.Type"><span>@Label(c.Type)</span><small>@c.Count</small></a>
                     }
