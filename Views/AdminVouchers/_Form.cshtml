@@ -82,8 +82,8 @@
                 <div class="voucher-field field-sm">
                     <label class="form-label" for="Quantity">Số lượng voucher</label>
                     <input asp-for="Quantity" class="form-control" type="number" min="1" placeholder="100" disabled="@(unlimitedQuantity)" />
-                    <div class="voucher-check voucher-boolean-control form-check form-switch">
-                        <input class="form-check-input" type="checkbox" role="switch" id="UnlimitedQuantity" name="UnlimitedQuantity" value="true" checked="@(unlimitedQuantity)" />
+                    <div class="voucher-check voucher-checkbox-control form-check">
+                        <input class="form-check-input" type="checkbox" id="UnlimitedQuantity" name="UnlimitedQuantity" value="true" checked="@(unlimitedQuantity)" />
                         <label class="form-check-label" for="UnlimitedQuantity">Không giới hạn số lượng</label>
                     </div>
                     <span asp-validation-for="Quantity" class="text-danger"></span>
@@ -115,8 +115,8 @@
                     <span asp-validation-for="EndDate" class="text-danger"></span>
                 </div>
                 <div class="voucher-field voucher-status-field">
-                    <div class="voucher-toggle-card voucher-boolean-control form-check form-switch">
-                        <input asp-for="IsActive" class="form-check-input" role="switch" />
+                    <div class="voucher-checkbox-control form-check">
+                        <input asp-for="IsActive" class="form-check-input" />
                         <label asp-for="IsActive" class="form-check-label">Đang hoạt động</label>
                     </div>
                 </div>
