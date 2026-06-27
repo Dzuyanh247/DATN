@@ -336,3 +336,10 @@
     .admin-order-search { grid-column: 1 / -1; }
     .admin-orders-table { table-layout: auto; }
 }
+
+/* Keep admin orders below the single layout header; table header must not become a second sticky layer. */
+.admin-orders-table thead th {
+    position: static !important;
+    top: auto !important;
+    z-index: auto !important;
+}
