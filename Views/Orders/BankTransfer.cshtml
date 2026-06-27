@@ -4,7 +4,9 @@
     const string bankName = "Ngân hàng TMCP Quân đội (MBBank)";
     const string accountNumber = "0375570025";
     const string accountName = "CONG TY TNHH KKSHOP";
-    var qrData = $"https://img.vietqr.io/image/970422-{accountNumber}-compact2.png?amount={(long)Model.TotalAmount}&addInfo={Model.TransferContent}&accountName={Uri.EscapeDataString(accountName)}";
+    var orderCode = $"DH{Model.Id:D6}";
+    var transferContent = orderCode;
+    var qrData = $"https://img.vietqr.io/image/970422-{accountNumber}-compact2.png?amount={(long)Model.TotalAmount}&addInfo={Uri.EscapeDataString(transferContent)}&accountName={Uri.EscapeDataString(accountName)}";
     var nowUtc = DateTimeHelper.UtcNow();
     var canPayNow = OrderStatusHelper.CanPayNow(Model, nowUtc);
     var remainingSeconds = ViewBag.PaymentRemainingSeconds is int serverRemainingSeconds
@@ -23,7 +25,7 @@
                     <div>
                         <h1 id="bank-transfer-title">Thanh toán chuyển khoản</h1>
                         <div class="payment-order-meta">
-                            <span>Đơn hàng <strong>#@($"DH{Model.Id:D6}")</strong></span>
+                            <span>Đơn hàng <strong>#@orderCode</strong></span>
                             <span class="payment-status @(canPayNow ? string.Empty : "payment-status--expired")" id="payment-status">
                                 <span class="payment-status-dot" aria-hidden="true"></span>
                                 <span id="payment-status-label">@(canPayNow ? "Đang chờ thanh toán" : "Đã hết hạn thanh toán")</span>
@@ -80,8 +82,8 @@
                     <div class="payment-transfer-content">
                         <span class="payment-info-label">Nội dung chuyển khoản</span>
                         <div class="payment-transfer-content-box">
-                            <strong>@Model.TransferContent</strong>
-                            <button type="button" class="payment-copy-btn payment-copy-btn--content" data-copy-value="@Model.TransferContent" aria-label="Sao chép nội dung chuyển khoản">
+                            <strong>@transferContent</strong>
+                            <button type="button" class="payment-copy-btn payment-copy-btn--content" data-copy-value="@transferContent" aria-label="Sao chép nội dung chuyển khoản">
                                 <i class="bi bi-copy" aria-hidden="true"></i>
                                 <span>Sao chép</span>
                             </button>
@@ -103,7 +105,7 @@
                         @if (!string.IsNullOrWhiteSpace(qrData))
                         {
                             <img src="@qrData"
-                                 alt="Mã QR thanh toán đơn hàng @($"DH{Model.Id:D6}")"
+                                 alt="Mã QR thanh toán đơn hàng @orderCode"
                                  id="payment-qr-image"
                                  loading="eager" />
                         }

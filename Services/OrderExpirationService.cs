@@ -87,6 +87,7 @@ public class OrderExpirationService : IOrderExpirationService
         var now = utcNow ?? DateTimeHelper.UtcNow();
         order.Status = OrderStatus.PendingPayment;
         order.PaymentStatus = PaymentStatuses.Pending;
+        order.TransferContent = $"DH{order.Id:D6}";
         order.PaidAt = null;
 
         if (!order.PaymentExpireAt.HasValue || order.PaymentExpireAt.Value <= now || resetExpiredDeadline)
