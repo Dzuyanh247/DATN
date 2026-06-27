@@ -3,58 +3,264 @@
     ViewData["Title"] = "Từ khóa tìm kiếm";
 }
 
-<section class="admin-card mb-3">
-    <form method="get" class="row g-2 align-items-end">
-        <div class="col-md-8"><label class="form-label small text-muted">Tìm từ khóa</label><input name="keyword" value="@ViewBag.Keyword" class="form-control" placeholder="Nhập từ khóa cần lọc" /></div>
-        <div class="col-md-4"><button class="btn btn-danger w-100"><i class="bi bi-search"></i> Lọc</button></div>
-    </form>
-</section>
+<style>
+    .admin-search-keywords {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+    }
 
-<section class="admin-card mb-3">
-    <h5 class="mb-3">Thêm từ khóa thủ công</h5>
-    <form asp-action="Create" method="post" class="row g-2 align-items-end">
-        @Html.AntiForgeryToken()
-        <div class="col-md-6"><label class="form-label small text-muted">Từ khóa</label><input name="keyword" class="form-control" maxlength="120" required /></div>
-        <div class="col-md-2 form-check"><input class="form-check-input" type="checkbox" name="isVisible" value="true" checked id="createVisible"><label class="form-check-label" for="createVisible">Hiển thị</label></div>
-        <div class="col-md-2 form-check"><input class="form-check-input" type="checkbox" name="isPinned" value="true" id="createPinned"><label class="form-check-label" for="createPinned">Ghim</label></div>
-        <div class="col-md-2"><button class="btn btn-danger w-100"><i class="bi bi-plus-circle"></i> Thêm</button></div>
-    </form>
-</section>
+    .admin-search-keywords .ask-card {
+        padding: 16px;
+        overflow: visible;
+    }
 
-<section class="admin-card">
-    <div class="table-responsive">
-        <table class="table align-middle">
-            <thead><tr><th>Từ khóa</th><th>Lượt tìm</th><th>Lần tìm gần nhất</th><th>Hiển thị</th><th>Ghim</th><th class="text-end">Thao tác</th></tr></thead>
-            <tbody>
-            @if (!Model.Any())
-            {
-                <tr><td colspan="6" class="text-center text-muted py-4">Chưa có từ khóa tìm kiếm thật.</td></tr>
-            }
-            @foreach (var item in Model)
-            {
-                var formId = $"keyword-edit-{item.Id}";
-                <tr>
-                    <td>
-                        <form id="@formId" asp-action="Edit" method="post">
-                            @Html.AntiForgeryToken()
-                            <input type="hidden" name="id" value="@item.Id" />
-                            <input name="keyword" value="@item.Keyword" class="form-control" maxlength="120" required />
-                        </form>
-                    </td>
-                    <td style="max-width:120px"><input form="@formId" name="searchCount" value="@item.SearchCount" type="number" min="0" class="form-control" /></td>
-                    <td>@item.LastSearchedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
-                    <td><input form="@formId" class="form-check-input" type="checkbox" name="isVisible" value="true" checked="@item.IsVisible" /></td>
-                    <td><input form="@formId" class="form-check-input" type="checkbox" name="isPinned" value="true" checked="@item.IsPinned" /></td>
-                    <td class="text-end">
-                        <button form="@formId" class="btn btn-sm btn-outline-primary">Lưu</button>
-                        <form asp-action="ToggleVisible" method="post" class="d-inline">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@item.Id" /><button class="btn btn-sm btn-outline-secondary">@(item.IsVisible ? "Ẩn" : "Hiện")</button></form>
-                        <form asp-action="TogglePinned" method="post" class="d-inline">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@item.Id" /><button class="btn btn-sm btn-outline-secondary">@(item.IsPinned ? "Bỏ ghim" : "Ghim")</button></form>
-                        <form asp-action="ResetCount" method="post" class="d-inline">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@item.Id" /><button class="btn btn-sm btn-outline-warning">Reset</button></form>
-                        <form asp-action="Delete" method="post" class="d-inline" onsubmit="return confirm('Xóa từ khóa này?')">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@item.Id" /><button class="btn btn-sm btn-outline-danger">Xóa</button></form>
-                    </td>
-                </tr>
-            }
-            </tbody>
-        </table>
-    </div>
-</section>
+    .admin-search-keywords .ask-filter-form {
+        display: grid;
+        grid-template-columns: minmax(240px, 1fr) auto;
+        gap: 10px;
+        align-items: end;
+    }
+
+    .admin-search-keywords .ask-create-form {
+        display: grid;
+        grid-template-columns: minmax(260px, 1fr) minmax(104px, auto) minmax(90px, auto) auto;
+        gap: 12px;
+        align-items: end;
+    }
+
+    .admin-search-keywords .form-label {
+        margin-bottom: 6px;
+        font-weight: 700;
+        color: #64748b !important;
+    }
+
+    .admin-search-keywords .form-control {
+        min-height: 40px;
+        border-radius: 10px;
+    }
+
+    .admin-search-keywords .ask-btn {
+        min-height: 40px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        white-space: nowrap;
+    }
+
+    .admin-search-keywords .ask-check-field {
+        min-height: 40px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 9px 10px;
+        border: 1px solid rgba(148, 163, 184, .28);
+        border-radius: 10px;
+        background: rgba(255, 255, 255, .55);
+    }
+
+    .admin-search-keywords .form-check-input {
+        width: 18px;
+        height: 18px;
+        margin: 0;
+        flex: 0 0 18px;
+        border: 1.5px solid #94a3b8;
+        background-color: #fff;
+        cursor: pointer;
+    }
+
+    .admin-search-keywords .form-check-input:checked {
+        background-color: #2563eb;
+        border-color: #2563eb;
+    }
+
+    .admin-search-keywords .form-check-label {
+        margin: 0;
+        color: #334155;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    .admin-search-keywords .ask-table-wrap {
+        width: 100%;
+        overflow-x: auto;
+        padding-bottom: 2px;
+    }
+
+    .admin-search-keywords .ask-table {
+        min-width: 980px;
+        table-layout: fixed;
+        margin-bottom: 0;
+    }
+
+    .admin-search-keywords .ask-col-keyword { width: 38%; }
+    .admin-search-keywords .ask-col-count { width: 105px; }
+    .admin-search-keywords .ask-col-date { width: 170px; }
+    .admin-search-keywords .ask-col-check { width: 86px; text-align: center; }
+    .admin-search-keywords .ask-col-actions { width: 178px; }
+
+    .admin-search-keywords .ask-keyword-input {
+        width: 100%;
+        min-width: 0;
+        text-overflow: ellipsis;
+    }
+
+    .admin-search-keywords .ask-count-input {
+        max-width: 86px;
+        margin: 0 auto;
+        text-align: center;
+    }
+
+    .admin-search-keywords .ask-date-text {
+        display: block;
+        white-space: nowrap;
+        color: #475569;
+    }
+
+    .admin-search-keywords .ask-check-cell {
+        text-align: center;
+    }
+
+    .admin-search-keywords .ask-check-cell .form-check-input {
+        vertical-align: middle;
+    }
+
+    .admin-search-keywords .ask-actions {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 6px;
+        white-space: nowrap;
+    }
+
+    .admin-search-keywords .ask-actions .btn {
+        min-height: 34px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+    }
+
+    .admin-search-keywords .ask-actions .dropdown-menu {
+        min-width: 160px;
+        padding: 6px;
+        border-radius: 12px;
+    }
+
+    .admin-search-keywords .ask-actions .dropdown-item {
+        border: 0;
+        border-radius: 9px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 10px;
+        font-weight: 600;
+    }
+
+    .admin-search-keywords .ask-actions form {
+        margin: 0;
+    }
+
+    @@media (max-width: 767.98px) {
+        .admin-search-keywords .ask-card {
+            padding: 14px;
+        }
+
+        .admin-search-keywords .ask-filter-form,
+        .admin-search-keywords .ask-create-form {
+            grid-template-columns: 1fr;
+        }
+
+        .admin-search-keywords .ask-btn,
+        .admin-search-keywords .ask-create-form .btn {
+            width: 100%;
+        }
+    }
+</style>
+
+<div class="admin-search-keywords">
+    <section class="admin-card ask-card">
+        <form method="get" class="ask-filter-form">
+            <div>
+                <label class="form-label small" for="keywordFilter">Tìm từ khóa</label>
+                <input id="keywordFilter" name="keyword" value="@ViewBag.Keyword" class="form-control" placeholder="Nhập từ khóa cần lọc" />
+            </div>
+            <button class="btn btn-danger ask-btn" type="submit"><i class="bi bi-search"></i> Lọc</button>
+        </form>
+    </section>
+
+    <section class="admin-card ask-card">
+        <h5 class="mb-3">Thêm từ khóa thủ công</h5>
+        <form asp-action="Create" method="post" class="ask-create-form">
+            @Html.AntiForgeryToken()
+            <div>
+                <label class="form-label small" for="createKeyword">Từ khóa</label>
+                <input id="createKeyword" name="keyword" class="form-control" maxlength="120" required />
+            </div>
+            <div class="ask-check-field">
+                <input class="form-check-input" type="checkbox" name="isVisible" value="true" checked id="createVisible">
+                <label class="form-check-label" for="createVisible">Hiển thị</label>
+            </div>
+            <div class="ask-check-field">
+                <input class="form-check-input" type="checkbox" name="isPinned" value="true" id="createPinned">
+                <label class="form-check-label" for="createPinned">Ghim</label>
+            </div>
+            <button class="btn btn-danger ask-btn" type="submit"><i class="bi bi-plus-circle"></i> Thêm</button>
+        </form>
+    </section>
+
+    <section class="admin-card ask-card">
+        <div class="table-responsive ask-table-wrap">
+            <table class="table align-middle ask-table">
+                <thead>
+                    <tr>
+                        <th class="ask-col-keyword">Từ khóa</th>
+                        <th class="ask-col-count text-center">Lượt tìm</th>
+                        <th class="ask-col-date">Lần tìm gần nhất</th>
+                        <th class="ask-col-check">Hiển thị</th>
+                        <th class="ask-col-check">Ghim</th>
+                        <th class="ask-col-actions text-end">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @if (!Model.Any())
+                {
+                    <tr><td colspan="6" class="text-center text-muted py-4">Chưa có từ khóa tìm kiếm thật.</td></tr>
+                }
+                @foreach (var item in Model)
+                {
+                    var formId = $"keyword-edit-{item.Id}";
+                    <tr>
+                        <td>
+                            <form id="@formId" asp-action="Edit" method="post">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@item.Id" />
+                                <input name="keyword" value="@item.Keyword" class="form-control ask-keyword-input" maxlength="120" required title="@item.Keyword" />
+                            </form>
+                        </td>
+                        <td class="text-center"><input form="@formId" name="searchCount" value="@item.SearchCount" type="number" min="0" class="form-control ask-count-input" /></td>
+                        <td><span class="ask-date-text">@item.LastSearchedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span></td>
+                        <td class="ask-check-cell"><input form="@formId" class="form-check-input" type="checkbox" name="isVisible" value="true" checked="@item.IsVisible" aria-label="Hiển thị @item.Keyword" /></td>
+                        <td class="ask-check-cell"><input form="@formId" class="form-check-input" type="checkbox" name="isPinned" value="true" checked="@item.IsPinned" aria-label="Ghim @item.Keyword" /></td>
+                        <td>
+                            <div class="ask-actions">
+                                <button form="@formId" class="btn btn-sm btn-primary" type="submit"><i class="bi bi-save"></i> Lưu</button>
+                                <div class="dropdown">
+                                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-boundary="viewport" aria-expanded="false">Thao tác</button>
+                                    <div class="dropdown-menu dropdown-menu-end">
+                                        <form asp-action="ToggleVisible" method="post">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@item.Id" /><button class="dropdown-item" type="submit"><i class="bi bi-eye-slash"></i>@(item.IsVisible ? "Ẩn" : "Hiện")</button></form>
+                                        <form asp-action="TogglePinned" method="post">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@item.Id" /><button class="dropdown-item" type="submit"><i class="bi bi-pin-angle"></i>@(item.IsPinned ? "Bỏ ghim" : "Ghim")</button></form>
+                                        <form asp-action="ResetCount" method="post">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@item.Id" /><button class="dropdown-item" type="submit"><i class="bi bi-arrow-counterclockwise"></i>Reset</button></form>
+                                        <form asp-action="Delete" method="post" onsubmit="return confirm('Xóa từ khóa này?')">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@item.Id" /><button class="dropdown-item text-danger" type="submit"><i class="bi bi-trash"></i>Xóa</button></form>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
