@@ -5,6 +5,7 @@
     var hasAlerts = Model.PendingOrderCount + Model.BankTransferConfirmationCount + Model.NewWarrantyCount + Model.UnreadSupportCount + Model.LowStockCount > 0;
     var canManageProducts = User.CanManageProducts();
     var canManageOrders = User.CanManageOrders();
+    var canManageUsers = User.CanManageUsers();
     var canManageSupport = User.CanManageSupport();
     var canManageSettings = User.CanManageSettings();
 }
@@ -19,12 +20,23 @@
 
 <div class="dashboard-stat-grid">
 @foreach (var stat in new[] {
-    ("Tổng sản phẩm", Model.ProductCount.ToString("N0"), "bi-box-seam", "blue"), ("Tổng đơn hàng", Model.OrderCount.ToString("N0"), "bi-bag-check", "indigo"),
-    ("Người dùng", Model.UserCount.ToString("N0"), "bi-people", "cyan"), ("Yêu cầu bảo hành", Model.WarrantyRequestCount.ToString("N0"), "bi-shield-check", "purple"),
-    ("Đơn chờ xử lý", Model.PendingOrderCount.ToString("N0"), "bi-hourglass-split", "orange"), ("Chờ thanh toán", Model.PendingPaymentCount.ToString("N0"), "bi-credit-card", "amber"),
-    ("Doanh thu hôm nay", Model.TodayRevenue.ToString("N0") + " đ", "bi-graph-up-arrow", "green"), ("Doanh thu tháng này", Model.MonthRevenue.ToString("N0") + " đ", "bi-cash-stack", "emerald") })
+    new { Title = "Tổng sản phẩm", Value = Model.ProductCount.ToString("N0"), Icon = "bi-box-seam", Color = "blue", Controller = "AdminProducts", Action = "Index", Status = (string?)null, PaymentStatus = (string?)null, Period = (string?)null, Enabled = canManageProducts },
+    new { Title = "Tổng đơn hàng", Value = Model.OrderCount.ToString("N0"), Icon = "bi-bag-check", Color = "indigo", Controller = "AdminOrders", Action = "Index", Status = (string?)null, PaymentStatus = (string?)null, Period = (string?)null, Enabled = canManageOrders },
+    new { Title = "Người dùng", Value = Model.UserCount.ToString("N0"), Icon = "bi-people", Color = "cyan", Controller = "AdminUsers", Action = "Index", Status = (string?)null, PaymentStatus = (string?)null, Period = (string?)null, Enabled = canManageUsers },
+    new { Title = "Yêu cầu bảo hành", Value = Model.WarrantyRequestCount.ToString("N0"), Icon = "bi-shield-check", Color = "purple", Controller = "AdminWarranty", Action = "Index", Status = (string?)null, PaymentStatus = (string?)null, Period = (string?)null, Enabled = canManageSupport },
+    new { Title = "Đơn chờ xử lý", Value = Model.PendingOrderCount.ToString("N0"), Icon = "bi-hourglass-split", Color = "orange", Controller = "AdminOrders", Action = "Index", Status = OrderStatus.PendingConfirmation.ToString(), PaymentStatus = (string?)null, Period = (string?)null, Enabled = canManageOrders },
+    new { Title = "Chờ thanh toán", Value = Model.PendingPaymentCount.ToString("N0"), Icon = "bi-credit-card", Color = "amber", Controller = "AdminOrders", Action = "Index", Status = (string?)null, PaymentStatus = PaymentStatuses.Pending, Period = (string?)null, Enabled = canManageOrders },
+    new { Title = "Doanh thu hôm nay", Value = Model.TodayRevenue.ToString("N0") + " đ", Icon = "bi-graph-up-arrow", Color = "green", Controller = "AdminReports", Action = "Revenue", Status = (string?)null, PaymentStatus = (string?)null, Period = "today", Enabled = canManageOrders },
+    new { Title = "Doanh thu tháng này", Value = Model.MonthRevenue.ToString("N0") + " đ", Icon = "bi-cash-stack", Color = "emerald", Controller = "AdminReports", Action = "Revenue", Status = (string?)null, PaymentStatus = (string?)null, Period = "this-month", Enabled = canManageOrders } })
 {
-    <article class="dashboard-stat-card"><span class="dashboard-stat-icon is-@stat.Item4"><i class="bi @stat.Item3"></i></span><div><small>@stat.Item1</small><strong class="@(stat.Item1.StartsWith("Doanh") ? "is-money" : "")">@stat.Item2</strong></div></article>
+    if (stat.Enabled)
+    {
+        <a class="dashboard-stat-card dashboard-stat-link" asp-controller="@stat.Controller" asp-action="@stat.Action" asp-route-status="@stat.Status" asp-route-paymentStatus="@stat.PaymentStatus" asp-route-period="@stat.Period" aria-label="Xem chi tiết @stat.Title"><span class="dashboard-stat-icon is-@stat.Color"><i class="bi @stat.Icon"></i></span><div><small>@stat.Title</small><strong class="@(stat.Title.StartsWith("Doanh") ? "is-money" : "")">@stat.Value</strong></div></a>
+    }
+    else
+    {
+        <article class="dashboard-stat-card"><span class="dashboard-stat-icon is-@stat.Color"><i class="bi @stat.Icon"></i></span><div><small>@stat.Title</small><strong class="@(stat.Title.StartsWith("Doanh") ? "is-money" : "")">@stat.Value</strong></div></article>
+    }
 }
 </div>
 
