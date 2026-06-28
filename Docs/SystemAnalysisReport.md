@@ -824,7 +824,7 @@ Ghi chú: PK mặc định là `Id` đối với các entity. Các FK được x
   1. Trang build PC hiển thị các nhóm linh kiện theo `ComponentOrder`.
   2. API `GET /buildpc/products` lọc sản phẩm active, còn hàng theo loại linh kiện.
   3. Người dùng chọn sản phẩm cho từng loại; controller lưu vào session `buildpc_selected`.
-  4. `BuildCompatibilityService` trả về cảnh báo kiểm tra socket CPU/mainboard, chuẩn RAM/mainboard hoặc công suất PSU.
+  4. `BuildCompatibilityService` trả về cảnh báo tham khảo về socket CPU/mainboard, chuẩn RAM/mainboard hoặc công suất PSU.
   5. Có thể xóa linh kiện, reset cấu hình.
   6. Có thể thêm toàn bộ cấu hình vào giỏ hàng.
   7. Có thể xuất CSV cấu hình.
@@ -1171,7 +1171,7 @@ Các hướng phát triển phù hợp với code hiện có:
 
 4. **Hoàn thiện build PC**
    - Lưu cấu hình vào `BuildPcConfigs` và `BuildPcItems` cho user đăng nhập.
-   - Kiểm tra tương thích thật dựa trên `CpuSocket`, `RamType`, công suất PSU.
+   - Cảnh báo tham khảo dựa trên dữ liệu `CpuSocket`, `RamType`, công suất PSU; chưa thay thế kiểm tra kỹ thuật chuyên sâu.
    - Cho phép chia sẻ cấu hình bằng link.
 
 5. **Nâng cấp thanh toán**
@@ -1198,7 +1198,7 @@ Các hướng phát triển phù hợp với code hiện có:
 
 Dựa trên source code đã phân tích, PC Store/KKSHOP là một hệ thống web bán PC, laptop và linh kiện được xây dựng bằng ASP.NET Core MVC, Razor Views, Entity Framework Core và SQL Server. Hệ thống có đầy đủ các module chính của một website thương mại điện tử: tài khoản, sản phẩm, danh mục, tìm kiếm/lọc, giỏ hàng, đặt hàng, thanh toán COD/chuyển khoản, theo dõi đơn, admin quản lý, bảo hành, bài viết, banner và cấu hình website.
 
-Điểm nổi bật của dự án là có các chức năng phù hợp đặc thù cửa hàng PC như build PC, cảnh báo tương thích linh kiện và so sánh sản phẩm theo thông số. Ngoài ra, hệ thống có tích hợp vận chuyển qua GHN/OpenRouteService và gửi email OTP qua SMTP, giúp đồ án có tính thực tế cao hơn.
+Điểm nổi bật của dự án là có các chức năng phù hợp đặc thù cửa hàng PC như build PC, cảnh báo tham khảo khi chọn linh kiện và so sánh sản phẩm theo thông số. Ngoài ra, hệ thống có tích hợp vận chuyển qua GHN/OpenRouteService và gửi email OTP qua SMTP, giúp đồ án có tính thực tế cao hơn.
 
 Các hạn chế chính nằm ở bảo mật mật khẩu chưa thống nhất, secrets còn nằm trong appsettings, thiếu phân trang, một phần schema repair chạy lúc startup và thanh toán chuyển khoản chưa tự động hóa qua gateway. Đây là các hướng cải thiện rõ ràng nếu phát triển tiếp sau đồ án.
 

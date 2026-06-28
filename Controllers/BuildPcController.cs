@@ -46,7 +46,7 @@ public class BuildPcController : Controller
         if (!string.IsNullOrWhiteSpace(aiBuild))
         {
             await ApplyAiBuildSelection(aiBuild);
-            TempData["SuccessMessage"] = "Đã chọn sẵn cấu hình AI đề xuất. Bạn có thể kiểm tra tương thích và điều chỉnh linh kiện trước khi mua.";
+            TempData["SuccessMessage"] = "Đã chọn sẵn cấu hình AI đề xuất. Hệ thống hỗ trợ gợi ý cấu hình; nhân viên KKSHOP sẽ kiểm tra tính tương thích trước khi xác nhận đơn.";
         }
         var vm = BuildViewModel();
         return View(vm);
