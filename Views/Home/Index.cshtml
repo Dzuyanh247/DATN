@@ -11,7 +11,7 @@
         .Concat(Model.HotSaleProducts)
         .GroupBy(p => p.Id)
         .Select(g => g.First())
-        .Take(6)
+        .Take(20)
         .ToList();
 }
 
