@@ -1,6 +1,8 @@
 (() => {
     const initializedRails = new WeakSet();
-    const dragThreshold = 6;
+    const mouseDragThreshold = 6;
+    const touchDragThreshold = 10;
+    const interactiveSelector = 'a[href], button, input, select, textarea, label, .add-to-cart, .compare, .ttg-add-btn, .ttg-compare-btn, .ttg-card-actions, [role="button"]';
 
     const getPageX = (event) => {
         if (event.touches && event.touches.length) return event.touches[0].pageX;
@@ -17,11 +19,19 @@
         let suppressClick = false;
         let startX = 0;
         let startScrollLeft = 0;
+        let activeThreshold = mouseDragThreshold;
         let frame = 0;
         let pendingScrollLeft = 0;
         let activePointerId = null;
 
         const hasHorizontalOverflow = () => rail.scrollWidth > rail.clientWidth + 1;
+
+        const isInteractiveTarget = (target) => target?.closest?.(interactiveSelector);
+
+        const getDragThreshold = (event) => {
+            if (event.pointerType === 'touch' || event.type?.startsWith('touch')) return touchDragThreshold;
+            return mouseDragThreshold;
+        };
 
         const setScrollLeft = (value) => {
             pendingScrollLeft = value;
@@ -35,11 +45,13 @@
         const beginDrag = (event) => {
             if (!hasHorizontalOverflow()) return;
             if (event.type === 'mousedown' && event.button !== 0) return;
+            if (isInteractiveTarget(event.target) && !event.target.closest?.('.ttg-product-image-wrap, .ttg-product-title')) return;
 
             isDown = true;
             hasDragged = false;
             startX = getPageX(event);
             startScrollLeft = rail.scrollLeft;
+            activeThreshold = getDragThreshold(event);
             activePointerId = event.pointerId ?? null;
 
             if (event.pointerId != null && rail.setPointerCapture) {
@@ -56,7 +68,7 @@
             }
 
             const deltaX = getPageX(event) - startX;
-            if (Math.abs(deltaX) > dragThreshold) {
+            if (Math.abs(deltaX) > activeThreshold) {
                 hasDragged = true;
                 rail.classList.add('is-dragging');
             }
@@ -78,7 +90,7 @@
 
             if (hasDragged) {
                 suppressClick = true;
-                window.setTimeout(() => { suppressClick = false; }, 80);
+                window.setTimeout(() => { suppressClick = false; }, 100);
             }
         };
 
@@ -114,9 +126,9 @@
 
         rail.addEventListener('click', (event) => {
             if (!suppressClick) return;
-            event.preventDefault();
-            event.stopPropagation();
             suppressClick = false;
+            if (isInteractiveTarget(event.target)) return;
+            event.preventDefault();
         }, true);
 
         rail.addEventListener('dragstart', (event) => {
