@@ -7,6 +7,12 @@
 @inject Microsoft.Extensions.Configuration.IConfiguration Configuration
 @{
     var menuCategories = await DbContext.Categories.OrderBy(c => c.CreatedAt).ToListAsync();
+    var menuCategoryIds = menuCategories.Select(c => c.Id).ToHashSet();
+    var topMenuCategories = menuCategories.Where(c => c.ParentCategoryId is null || !menuCategoryIds.Contains(c.ParentCategoryId.Value)).ToList();
+    var childMenuCategories = menuCategories
+        .Where(c => c.ParentCategoryId.HasValue && menuCategoryIds.Contains(c.ParentCategoryId.Value))
+        .GroupBy(c => c.ParentCategoryId!.Value)
+        .ToDictionary(g => g.Key, g => g.ToList());
     var categoryIdByName = menuCategories.ToDictionary(c => c.Name, c => c.Id, StringComparer.OrdinalIgnoreCase);
     var siteLogoUrl = ImageUrlHelper.ResolveImageUrl(await DbContext.SiteSettings.OrderBy(x => x.Id).Select(x => x.LogoUrl).FirstOrDefaultAsync(), string.Empty);
     var configuredZaloUrl = Configuration["ShopContact:ZaloUrl"];
@@ -274,12 +280,29 @@ else
                     <i class="bi bi-chevron-down ttg-cat-chevron" aria-hidden="true"></i>
                 </button>
                 <div id="headerCategoryMenu" class="ttg-category-menu" hidden data-category-menu>
-                    @foreach (var category in menuCategories)
+                    @foreach (var category in topMenuCategories)
                     {
-                        <a asp-controller="Products" asp-action="Index" asp-route-categoryId="@category.Id">
-                            <i class="bi bi-chevron-right" aria-hidden="true"></i>
-                            <span>@category.Name</span>
-                        </a>
+                        var hasChildren = childMenuCategories.TryGetValue(category.Id, out var childCategories) && childCategories.Any();
+                        <div class="ttg-category-menu-item @(hasChildren ? "has-submenu" : string.Empty)">
+                            <a class="ttg-category-link" asp-controller="Products" asp-action="Index" asp-route-categoryId="@category.Id">
+                                <span>@category.Name</span>
+                                @if (hasChildren)
+                                {
+                                    <i class="bi bi-chevron-right ttg-category-arrow" aria-hidden="true"></i>
+                                }
+                            </a>
+                            @if (hasChildren)
+                            {
+                                <div class="ttg-category-submenu" role="menu" aria-label="Danh mục con của @category.Name">
+                                    @foreach (var childCategory in childCategories!)
+                                    {
+                                        <a class="ttg-category-submenu-link" asp-controller="Products" asp-action="Index" asp-route-categoryId="@childCategory.Id">
+                                            <span>@childCategory.Name</span>
+                                        </a>
+                                    }
+                                </div>
+                            }
+                        </div>
                     }
                 </div>
             </div>
