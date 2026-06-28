@@ -132,12 +132,14 @@ public partial class GeminiChatService : IAiChatService
 
         if (intent == AiChatIntent.ProductExtremeQuery || intent == AiChatIntent.PcBuildAdvice || intent == AiChatIntent.ComponentAdvice)
         {
+            var salesPlan = BuildSalesSearchPlan(message, analysis, conversation);
             var productsByRule = LimitProductCards(intent == AiChatIntent.ProductExtremeQuery
                 ? await _productSearch.QueryByIntentAsync(IntentName(intent), analysis.ProductType, analysis.PriceMode, analysis.BudgetTarget, cancellationToken)
-                : await _productSearch.SearchAsync(message, cancellationToken));
+                : await _productSearch.SearchByPlanAsync(salesPlan, cancellationToken));
             var reply = BuildRulePipelineReply(analysis, productsByRule);
             if (productsByRule.Count > 0) SaveRecentSuggestedProducts(conversation, productsByRule);
             UpdateConversationAfterRule(conversation, message, analysis, productsByRule);
+            LogPlanner(requestId, sessionId, message, salesPlan, productsByRule);
             LogPipelineDebug(requestId, sessionId, message, analysis, conversation, productsByRule, true, false, IntentName(intent), lastIntentBefore, null);
             return new(true, reply, productsByRule, productsByRule.Count > 0, requestId);
         }
@@ -277,7 +279,9 @@ public partial class GeminiChatService : IAiChatService
         var hasSpecificProductSignal = HasConcreteProductSignal(message);
         var hasProductQuestion = IsProductQuestion(n);
         AiChatIntent intent;
-        if ((hasContextProductReference || hasSpecificProductSignal) && hasProductQuestion) intent = AiChatIntent.ProductQuestion;
+        if (ContainsAny(n, "con mau khac", "mau khac", "san pham khac", "xem them", "goi y them") && conversation?.RecentSuggestedProducts.Count > 0)
+            intent = conversation.LastIntent is AiChatIntent.ComponentAdvice ? AiChatIntent.ComponentAdvice : AiChatIntent.PcBuildAdvice;
+        else if ((hasContextProductReference || hasSpecificProductSignal) && hasProductQuestion) intent = AiChatIntent.ProductQuestion;
         else if (priceMode != "normal" && ContainsAny(n, "san pham", "pc", "ram", "vga", "gpu", "cpu", "linh kien", "chuot", "ban phim", "man hinh", "tai nghe")) intent = AiChatIntent.ProductExtremeQuery;
         else if (ContainsAny(n, "cai nao dang mua", "san pham ban de xuat", "trong may cai", "nen chon cai nao", "con nao ngon", "tot nhat trong danh sach", "mau nao dang mua") || (ContainsAny(n, "loi ich cua no", "loi ich") && ContainsAny(n, "cai nao", "san pham ban de xuat", "may cai tren"))) intent = AiChatIntent.CompareRecommendation;
         else if (productType != null || ContainsAny(n, "linh kien ma", "khong phai pc", "thanh ram")) intent = AiChatIntent.ComponentAdvice;
@@ -302,6 +306,34 @@ public partial class GeminiChatService : IAiChatService
         if (ContainsAny(n, "tai nghe", "headset", "headphone")) return "Headphone";
         return null;
     }
+
+    private static AiSalesSearchPlan BuildSalesSearchPlan(string message, ChatTurnAnalysis analysis, AiConversationContext conversation)
+    {
+        var budget = analysis.BudgetTarget ?? conversation.LastBudgetTarget;
+        var purpose = analysis.Purpose ?? conversation.LastPurpose ?? InferPurpose(analysis.NormalizedMessage);
+        var game = analysis.Game ?? conversation.LastGame;
+        var productType = analysis.ProductType ?? (analysis.Intent == AiChatIntent.ComponentAdvice ? conversation.LastProductType : null);
+        var scope = analysis.Intent == AiChatIntent.ComponentAdvice ? "COMPONENT" : "PC";
+        var signals = new List<string>();
+        if (!string.IsNullOrWhiteSpace(game)) signals.Add(game);
+        if (!string.IsNullOrWhiteSpace(productType)) signals.Add(productType);
+        if (string.Equals(purpose, "Gaming", StringComparison.OrdinalIgnoreCase)) signals.AddRange(["rtx", "16gb", "ssd", "gaming"]);
+        if (ContainsAny(analysis.NormalizedMessage, "rgb", "led")) signals.AddRange(["rgb", "led", "argb"]);
+        foreach (Match match in Regex.Matches(message, @"\b(?:rtx|gtx|rx|ddr4|ddr5|b650|x670|h610|b760|z790|g304|g502|akko|logitech|razer|asus|msi|gigabyte)\w*\b", RegexOptions.IgnoreCase))
+            signals.Add(match.Value);
+        return new AiSalesSearchPlan(IntentName(analysis.Intent), scope, productType, budget, null, budget, purpose, game, signals.Distinct(StringComparer.OrdinalIgnoreCase).ToList(), scope == "PC", analysis.PriceMode);
+    }
+
+    private static string? InferPurpose(string normalized)
+        => ContainsAny(normalized, "ai", "machine learning", "hoc ai") ? "AI / GPU VRAM lớn"
+        : ContainsAny(normalized, "render", "do hoa", "edit", "video") ? "Đồ họa / render"
+        : ContainsAny(normalized, "van phong", "office", "hoc tap") ? "Văn phòng"
+        : ContainsAny(normalized, "game", "gaming", "choi", "valorant", "gta", "cs2", "pubg") ? "Gaming"
+        : null;
+
+    private void LogPlanner(string requestId, string? sessionId, string message, AiSalesSearchPlan plan, IReadOnlyList<AiProductContext> products)
+        => _logger.LogInformation("[KKSHOP_AI_PLANNER] requestId={RequestId}; sessionId={SessionId}; userMessage={Message}; intent={Intent}; scope={Scope}; component={Component}; budgetTarget={BudgetTarget}; purpose={Purpose}; game={Game}; signals={Signals}; allowBuildFallback={BuildFallback}; productsFound={Count}; finalProducts={Products}",
+            requestId, sessionId ?? "none", TrimForLog(message), plan.Intent, plan.CategoryScope, plan.ComponentType ?? "none", plan.BudgetTarget, plan.Purpose ?? "none", plan.Game ?? "none", string.Join(",", plan.SearchSignals), plan.AllowBuildFallback, products.Count, string.Join(" | ", products.Select(p => $"{p.Id}:{p.Name}:{p.Price:N0}")));
 
     private static bool TryChatMoney(string value, out decimal result)
     {
@@ -354,8 +386,8 @@ public partial class GeminiChatService : IAiChatService
         if (a.Intent == AiChatIntent.ProductExtremeQuery)
             return products.Count == 0 ? "Hiện KKSHOP chưa có sản phẩm phù hợp để xếp theo giá." : $"Sản phẩm có giá {(a.PriceMode == "lowest" ? "thấp nhất" : "cao nhất")} hiện tại tại KKSHOP là:";
         if (a.Intent == AiChatIntent.ComponentAdvice)
-            return $"✓ Đã nhận nhu cầu\n\nLoại sản phẩm: {ProductTypeDisplay(a.ProductType)}\nMục đích: {a.Purpose ?? "Chưa nêu rõ"}\nGame: {a.Game ?? "Chưa nêu rõ"}\n\nGợi ý nhanh:\n- Chỉ lọc đúng nhóm {ProductTypeDisplay(a.ProductType)}, không đề xuất PC nguyên bộ.\n- Nếu là RAM chơi game, tối thiểu nên có 8GB và khuyến nghị 16GB để mở thêm Discord/Chrome.\n- Chuẩn DDR4/DDR5 cần phụ thuộc mainboard đang dùng.\n\n{(products.Count == 0 ? "Hiện KKSHOP chưa tìm thấy linh kiện đúng loại phù hợp." : $"{ProductTypeDisplay(a.ProductType)} đề xuất từ dữ liệu KKSHOP:")}";
-        return $"✓ Đã nhận nhu cầu\n\nNgân sách: {(a.BudgetTarget.HasValue ? a.BudgetTarget.Value.ToString("N0") + " đ" : "Chưa nêu rõ")}\nMục đích: {a.Purpose ?? "Tư vấn cấu hình"}\nGame: {a.Game ?? "Chưa nêu rõ"}\n\n{(products.Count == 0 ? "Hiện KKSHOP chưa tìm thấy PC nguyên bộ phù hợp." : "PC đề xuất từ dữ liệu KKSHOP:")}";
+            return $"✓ Đã nhận nhu cầu\n\nLoại sản phẩm: {ProductTypeDisplay(a.ProductType)}\nMục đích: {a.Purpose ?? "Chưa nêu rõ"}\nGame: {a.Game ?? "Chưa nêu rõ"}\n\nGợi ý nhanh:\n- Chỉ lọc đúng nhóm {ProductTypeDisplay(a.ProductType)}, không đề xuất PC nguyên bộ.\n- Nếu là RAM chơi game, tối thiểu nên có 8GB và khuyến nghị 16GB để mở thêm Discord/Chrome.\n- Chuẩn DDR4/DDR5 cần phụ thuộc mainboard đang dùng.\n\n{(products.Count == 0 ? "Mình chưa thấy mẫu khớp tuyệt đối; dưới đây là các lựa chọn gần nhất nếu hệ thống tìm được." : $"{ProductTypeDisplay(a.ProductType)} đề xuất từ dữ liệu KKSHOP:")}";
+        return $"✓ Đã nhận nhu cầu\n\nNgân sách: {(a.BudgetTarget.HasValue ? a.BudgetTarget.Value.ToString("N0") + " đ" : "Chưa nêu rõ")}\nMục đích: {a.Purpose ?? "Tư vấn cấu hình"}\nGame: {a.Game ?? "Chưa nêu rõ"}\n\n{(products.Count == 0 ? "Hiện chưa có PC nguyên bộ đúng ngân sách; mình sẽ ưu tiên cấu hình gần nhất hoặc chuyển sang build từ linh kiện KKSHOP nếu có đủ." : "PC đề xuất từ dữ liệu KKSHOP:")}";
     }
 
     private static bool TryExtractChatBudget(string normalized, out decimal money)
