@@ -19,9 +19,9 @@ public class HomeController : Controller
             Categories = categories,
             SiteSettings = await _db.SiteSettings.OrderBy(x => x.Id).FirstOrDefaultAsync(),
             Banners = await _db.Banners.Where(b => b.IsActive).OrderBy(b => b.SortOrder).ToListAsync(),
-            HotSaleProducts = await _db.Products.Include(p => p.ProductImages).Where(p => p.IsActive && p.IsHotSale && (!p.PromotionStartDate.HasValue || p.PromotionStartDate <= utcNow) && (!p.PromotionEndDate.HasValue || p.PromotionEndDate >= utcNow)).OrderByDescending(p => p.CreatedAt).Take(6).ToListAsync(),
-            DailyDealProducts = await _db.Products.Include(p => p.ProductImages).Where(p => p.IsActive && p.IsDailyDeal && (!p.PromotionStartDate.HasValue || p.PromotionStartDate <= utcNow) && (!p.PromotionEndDate.HasValue || p.PromotionEndDate >= utcNow)).OrderByDescending(p => p.CreatedAt).Take(6).ToListAsync(),
-            PromotionProducts = await _db.Products.Include(p => p.ProductImages).Where(p => p.IsActive && p.IsPromotion && (!p.PromotionStartDate.HasValue || p.PromotionStartDate <= utcNow) && (!p.PromotionEndDate.HasValue || p.PromotionEndDate >= utcNow)).OrderByDescending(p => p.CreatedAt).Take(6).ToListAsync(),
+            HotSaleProducts = await _db.Products.Include(p => p.ProductImages).Where(p => p.IsActive && p.IsHotSale && (!p.PromotionStartDate.HasValue || p.PromotionStartDate <= utcNow) && (!p.PromotionEndDate.HasValue || p.PromotionEndDate >= utcNow)).OrderByDescending(p => p.CreatedAt).Take(20).ToListAsync(),
+            DailyDealProducts = await _db.Products.Include(p => p.ProductImages).Where(p => p.IsActive && p.IsDailyDeal && (!p.PromotionStartDate.HasValue || p.PromotionStartDate <= utcNow) && (!p.PromotionEndDate.HasValue || p.PromotionEndDate >= utcNow)).OrderByDescending(p => p.CreatedAt).Take(20).ToListAsync(),
+            PromotionProducts = await _db.Products.Include(p => p.ProductImages).Where(p => p.IsActive && p.IsPromotion && (!p.PromotionStartDate.HasValue || p.PromotionStartDate <= utcNow) && (!p.PromotionEndDate.HasValue || p.PromotionEndDate >= utcNow)).OrderByDescending(p => p.CreatedAt).Take(20).ToListAsync(),
             PcGamingProducts = await GetByCategoryNameAsync("PC Gaming"),
             LaptopProducts = await GetByCategoryNameAsync("Laptop"),
             MonitorProducts = await GetByCategoryNameAsync("Màn hình"),
@@ -47,7 +47,7 @@ public class HomeController : Controller
         return await _db.Products.Include(p => p.ProductImages)
             .Where(p => p.IsActive && p.CategoryId == categoryId)
             .OrderByDescending(p => p.CreatedAt)
-            .Take(6)
+            .Take(20)
             .ToListAsync();
     }
 
