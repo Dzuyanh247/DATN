@@ -96,7 +96,7 @@ public partial class GeminiChatService : IAiChatService
         var lastIntentBefore = conversation.LastIntent;
         var analysis = AnalyzeChatTurn(message, conversation);
         var intent = analysis.Intent;
-        if (lastIntentBefore == AiChatIntent.PcBuildAdvice && intent == AiChatIntent.ComponentAdvice)
+        if ((analysis.BudgetTarget.HasValue && analysis.BudgetTarget != conversation.LastBudgetTarget) || (lastIntentBefore == AiChatIntent.PcBuildAdvice && intent == AiChatIntent.ComponentAdvice))
         {
             conversation.LastRenderedCards.Clear();
             conversation.RecentSuggestedProducts.Clear();
@@ -354,13 +354,14 @@ public partial class GeminiChatService : IAiChatService
         var productType = analysis.ProductType ?? (analysis.Intent == AiChatIntent.ComponentAdvice ? conversation.LastProductType : null);
         var scope = analysis.Intent == AiChatIntent.ComponentAdvice ? "COMPONENT" : "PC";
         var signals = new List<string>();
+        var excludePrevious = ContainsAny(analysis.NormalizedMessage, "con mau khac", "mau khac", "san pham khac", "xem them", "goi y them");
         if (!string.IsNullOrWhiteSpace(game)) signals.Add(game);
         if (!string.IsNullOrWhiteSpace(productType)) signals.Add(productType);
         if (string.Equals(purpose, "Gaming", StringComparison.OrdinalIgnoreCase)) signals.AddRange(["rtx", "16gb", "ssd", "gaming"]);
         if (ContainsAny(analysis.NormalizedMessage, "rgb", "led")) signals.AddRange(["rgb", "led", "argb"]);
         foreach (Match match in Regex.Matches(message, @"\b(?:rtx|gtx|rx|ddr4|ddr5|b650|x670|h610|b760|z790|g304|g502|akko|logitech|razer|asus|msi|gigabyte)\w*\b", RegexOptions.IgnoreCase))
             signals.Add(match.Value);
-        return new AiSalesSearchPlan(IntentName(analysis.Intent), scope, productType, budget, null, budget, purpose, game, signals.Distinct(StringComparer.OrdinalIgnoreCase).ToList(), scope == "PC", analysis.PriceMode);
+        return new AiSalesSearchPlan(IntentName(analysis.Intent), scope, productType, budget, null, budget, purpose, game, signals.Distinct(StringComparer.OrdinalIgnoreCase).ToList(), scope == "PC", analysis.PriceMode, excludePrevious ? conversation.RecentSuggestedProducts.Select(p => p.Id).ToList() : null);
     }
 
     private static string? InferPurpose(string normalized)
@@ -426,7 +427,23 @@ public partial class GeminiChatService : IAiChatService
             return products.Count == 0 ? "Hiện KKSHOP chưa có sản phẩm phù hợp để xếp theo giá." : $"Sản phẩm có giá {(a.PriceMode == "lowest" ? "thấp nhất" : "cao nhất")} hiện tại tại KKSHOP là:";
         if (a.Intent == AiChatIntent.ComponentAdvice)
             return $"✓ Đã nhận nhu cầu\n\nLoại sản phẩm: {ProductTypeDisplay(a.ProductType)}\nMục đích: {a.Purpose ?? "Chưa nêu rõ"}\nGame: {a.Game ?? "Chưa nêu rõ"}\n\nGợi ý nhanh:\n- Chỉ lọc đúng nhóm {ProductTypeDisplay(a.ProductType)}, không đề xuất PC nguyên bộ.\n- Nếu là RAM chơi game, tối thiểu nên có 8GB và khuyến nghị 16GB để mở thêm Discord/Chrome.\n- Chuẩn DDR4/DDR5 cần phụ thuộc mainboard đang dùng.\n\n{(products.Count == 0 ? "Mình chưa thấy mẫu khớp tuyệt đối; dưới đây là các lựa chọn gần nhất nếu hệ thống tìm được." : $"{ProductTypeDisplay(a.ProductType)} đề xuất từ dữ liệu KKSHOP:")}";
-        return $"✓ Đã nhận nhu cầu\n\nNgân sách: {(a.BudgetTarget.HasValue ? a.BudgetTarget.Value.ToString("N0") + " đ" : "Chưa nêu rõ")}\nMục đích: {a.Purpose ?? "Tư vấn cấu hình"}\nGame: {a.Game ?? "Chưa nêu rõ"}\n\n{(products.Count == 0 ? "Hiện chưa có PC nguyên bộ đúng ngân sách; mình sẽ ưu tiên cấu hình gần nhất hoặc chuyển sang build từ linh kiện KKSHOP nếu có đủ." : "PC đề xuất từ dữ liệu KKSHOP:")}";
+        if (products.Count == 0)
+            return $"✓ Đã nhận nhu cầu\n\nNgân sách: {(a.BudgetTarget.HasValue ? a.BudgetTarget.Value.ToString("N0") + " đ" : "Chưa nêu rõ")}\nMục đích: {a.Purpose ?? "Tư vấn cấu hình"}\nGame: {a.Game ?? "Chưa nêu rõ"}\n\n{BuildAdvisorFallback(a.BudgetTarget, a.Purpose, a.Game)}";
+        return $"✓ Đã nhận nhu cầu\n\nNgân sách: {(a.BudgetTarget.HasValue ? a.BudgetTarget.Value.ToString("N0") + " đ" : "Chưa nêu rõ")}\nMục đích: {a.Purpose ?? "Tư vấn cấu hình"}\nGame: {a.Game ?? "Chưa nêu rõ"}\n\nPC đề xuất từ dữ liệu KKSHOP:";
+    }
+
+    private static string BuildAdvisorFallback(decimal? budget, string? purpose, string? game)
+    {
+        var label = budget.HasValue ? budget.Value.ToString("N0") : "mức bạn yêu cầu";
+        var intro = $"Hiện KKSHOP chưa có PC nguyên bộ đúng khoảng {label} đ trong dữ liệu. Mình có thể gợi ý cấu hình build theo ngân sách này và ưu tiên linh kiện đang có trong shop.";
+        if (!budget.HasValue) return intro;
+        if (budget.Value >= 45_000_000m)
+            return intro + "\n\nGợi ý build 50 triệu gaming" + (string.IsNullOrWhiteSpace(game) ? string.Empty : $"/{game}") + ":\n- CPU i7/Ryzen 7\n- VGA RTX 4070 Super/4070 Ti Super hoặc tương đương\n- RAM 32GB\n- SSD 1TB NVMe\n- PSU 750W Gold\n- Mainboard B760/B650 hoặc phù hợp CPU";
+        if (budget.Value >= 28_000_000m)
+            return intro + "\n\nGợi ý build 30 triệu gaming:\n- CPU i5/Ryzen 5 hoặc i7/Ryzen 7\n- VGA RTX 4060 Ti/4070 hoặc tương đương\n- RAM 32GB\n- SSD 1TB\n- PSU 650W-750W";
+        if (budget.Value >= 18_000_000m)
+            return intro + "\n\nGợi ý build 20 triệu gaming:\n- CPU i5/Ryzen 5\n- VGA RTX 3060/4060 hoặc tương đương\n- RAM 16GB\n- SSD 512GB/1TB\n- PSU 550W-650W";
+        return intro;
     }
 
     private static bool TryExtractChatBudget(string normalized, out decimal money)
@@ -463,7 +480,13 @@ public partial class GeminiChatService : IAiChatService
     private static void UpdateConversationAfterRule(AiConversationContext c, string message, ChatTurnAnalysis a, IReadOnlyList<AiProductContext> products)
     {
         c.LastIntent = a.Intent; c.LastUserMessage = message; c.LastSearchKeyword = message; c.LastBudgetTarget = a.BudgetTarget ?? c.LastBudgetTarget; c.LastPurpose = a.Purpose ?? c.LastPurpose; c.LastGame = a.Game ?? c.LastGame; c.LastProductType = a.ProductType ?? c.LastProductType; c.CurrentTopic = a.ProductType ?? a.Purpose ?? a.Game ?? a.Intent.ToString(); c.LastComponent = a.ProductType ?? c.LastComponent; c.LastRenderedCards.Clear(); c.LastRenderedCards.AddRange(products.Take(3));
-        if (products.Count > 0) { c.CurrentProductContext = products[0]; c.LastReferencedProduct = products[0]; }
+        if (a.BudgetTarget.HasValue && products.Any(p => p.Price < a.BudgetTarget.Value * 0.50m))
+        {
+            c.CurrentProductContext = null;
+            c.LastReferencedProduct = null;
+            c.RecentSuggestedProducts.Clear();
+        }
+        else if (products.Count > 0) { c.CurrentProductContext = products[0]; c.LastReferencedProduct = products[0]; }
     }
 
     private void LogPipelineDebug(string requestId, string? sessionId, string rawMessage, ChatTurnAnalysis a, AiConversationContext c, IReadOnlyList<AiProductContext> products, bool usedDb, bool usedGemini, string queryType, AiChatIntent? lastBefore, string? error)
@@ -547,6 +570,8 @@ public partial class GeminiChatService : IAiChatService
         if (analysis.Intent == AiChatIntent.PcBuildAdvice || analysis.BudgetTarget.HasValue || conversation.LastBudgetTarget.HasValue)
         {
             var budget = analysis.BudgetTarget ?? conversation.LastBudgetTarget;
+            if (IsPowerQuestion(message) && budget.HasValue)
+                return $"Bạn đang hỏi máy khoảng {budget.Value:N0} đ, hiện mình chưa có PC nguyên bộ phù hợp trong dữ liệu để đánh giá điện năng chính xác. Với cấu hình {budget.Value:N0} đ gaming, điện năng sẽ phụ thuộc chủ yếu vào VGA, thường cần PSU khoảng {(budget.Value >= 30_000_000m ? "650W-750W" : "550W-650W")}.";
             return $"Mình đã nhận nhu cầu PC{(budget.HasValue ? $" khoảng {budget.Value:N0} đ" : string.Empty)}. Nguyên tắc tư vấn của KKSHOP là ưu tiên cấu hình còn hàng, cân bằng CPU/GPU/RAM/SSD, sau đó mới xét RGB hoặc nâng cấp. Nếu không có đúng mức giá, mình sẽ ưu tiên mẫu gần nhất thay vì kết thúc cuộc tư vấn.";
         }
         return "Mình vẫn hỗ trợ bạn theo hướng tư vấn bán hàng của KKSHOP nhé. Bạn có thể gửi loại sản phẩm, ngân sách hoặc nhu cầu như gaming, văn phòng, học AI để mình lọc theo dữ liệu shop trước rồi mới diễn giải thêm.";
