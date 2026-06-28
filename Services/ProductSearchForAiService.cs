@@ -47,6 +47,7 @@ public partial class ProductSearchForAiService : IProductSearchForAiService
     }
     public async Task<IReadOnlyList<AiProductContext>> SearchByPlanAsync(AiSalesSearchPlan plan, CancellationToken cancellationToken = default)
     {
+        Console.WriteLine($"AI_TRACE SearchByPlanAsync ENTER intent={plan.Intent} category={plan.CategoryScope} budget={plan.BudgetTarget} keyword={string.Join(",", plan.SearchSignals)}");
         var max = Math.Clamp(_options.MaxProductsContext, 1, 3);
         var inStockActiveQuery = _db.Products.AsNoTracking().Include(x => x.Category)
             .Where(x => x.IsActive && (x.StockQuantity > 0 || x.IsInStock));
@@ -75,25 +76,44 @@ public partial class ProductSearchForAiService : IProductSearchForAiService
         if (plan.BudgetTarget.HasValue && plan.PriceMode == "normal")
         {
             var target = plan.BudgetTarget.Value;
-            candidates = await LoadBudgetWindow(target * 0.85m, target * 1.10m);
-            budgetStep = "target_85_110";
-            if (candidates.Count == 0)
+            var range1Min = target * 0.85m;
+            var range1Max = target * 1.10m;
+            var range1 = await LoadBudgetWindow(range1Min, range1Max);
+            Console.WriteLine($"AI_TRACE SearchByPlanAsync RANGE1 min={range1Min} max={range1Max} count={range1.Count}");
+
+            var range2Min = target * 0.75m;
+            var range2Max = target * 1.15m;
+            var range2 = await LoadBudgetWindow(range2Min, range2Max);
+            Console.WriteLine($"AI_TRACE SearchByPlanAsync RANGE2 min={range2Min} max={range2Max} count={range2.Count}");
+
+            var range3Min = target * 0.60m;
+            var range3Max = target * 1.20m;
+            var range3 = await LoadBudgetWindow(range3Min, range3Max);
+            Console.WriteLine($"AI_TRACE SearchByPlanAsync RANGE3 min={range3Min} max={range3Max} count={range3.Count}");
+
+            if (range1.Count > 0)
             {
-                candidates = await LoadBudgetWindow(target * 0.75m, target * 1.15m);
+                candidates = range1;
+                budgetStep = "target_85_110";
+            }
+            else if (range2.Count > 0)
+            {
+                candidates = range2;
                 budgetStep = "target_75_115";
             }
-            if (candidates.Count == 0)
+            else if (range3.Count > 0)
             {
-                candidates = await LoadBudgetWindow(target * 0.60m, target * 1.20m);
+                candidates = range3;
                 budgetStep = "target_60_120";
             }
-            if (candidates.Count == 0)
+            else
             {
                 candidates = await baseQuery
                     .OrderBy(x => Math.Abs((x.SalePrice.HasValue && x.SalePrice.Value > 0 ? x.SalePrice.Value : x.Price) - target))
                     .Take(240)
                     .ToListAsync(cancellationToken);
                 budgetStep = "nearest_price";
+                Console.WriteLine($"AI_TRACE SearchByPlanAsync NEAREST count={candidates.Count}");
                 _logger.LogInformation("AI_SEARCH nearest candidates={Candidates}", string.Join(" | ", candidates.Take(10).Select(x => $"{x.Id}:{x.Name}:{(x.SalePrice.HasValue && x.SalePrice.Value > 0 ? x.SalePrice.Value : x.Price):N0}")));
             }
         }
@@ -111,29 +131,38 @@ public partial class ProductSearchForAiService : IProductSearchForAiService
         }
 
         var excludedIds = (plan.ExcludedProductIds ?? []).ToHashSet();
+        Console.WriteLine("AI_TRACE SearchByPlanAsync CANDIDATES_BEFORE_RANKING " + string.Join(" | ", candidates.Select(x => $"{x.Id}:{x.Name}:{EffectivePrice(x)}")));
         var rankedCandidates = candidates
             .Where(x => !excludedIds.Contains(x.Id))
             .Where(x => scope == "PC" ? IsPcProduct(x) && !IsAccessoryProduct(x) : ProductAllowedForIntent(x, new AiSearchAnalysis(plan.Intent, "COMPONENT", plan.BudgetMin, plan.BudgetMax, plan.Game, null, plan.ComponentType, false)))
             .Select(x => new { Product = x, Score = ScoreSalesPlan(x, plan, normalizedSignals) })
             .ToList();
-        if (scope == "PC" && plan.BudgetTarget.HasValue && plan.BudgetTarget.Value >= 20_000_000m && rankedCandidates.Any(x => EffectivePrice(x.Product) >= plan.BudgetTarget.Value * 0.50m))
+        if (scope == "PC" && plan.BudgetTarget.HasValue && plan.BudgetTarget.Value >= 20_000_000m)
             rankedCandidates = rankedCandidates.Where(x => EffectivePrice(x.Product) >= plan.BudgetTarget.Value * 0.50m).ToList();
         _logger.LogInformation("AI_SEARCH candidatesBeforeRanking={Products}", string.Join(" | ", rankedCandidates.Select(x => $"{x.Product.Id}:{x.Product.Name}:{EffectivePrice(x.Product):N0}:score={x.Score:N1}")));
+        Console.WriteLine("AI_TRACE SearchByPlanAsync RANKING_INPUT " + string.Join(" | ", rankedCandidates.Select(x => $"{x.Product.Id}:{x.Product.Name}:{EffectivePrice(x.Product)}:score={x.Score:N1}")));
         var orderedRows = rankedCandidates
             .OrderByDescending(x => x.Score)
             .ThenBy(x => plan.BudgetTarget.HasValue ? Math.Abs(EffectivePrice(x.Product) - plan.BudgetTarget.Value) : EffectivePrice(x.Product))
             .Take(max)
             .ToList();
         _logger.LogInformation("AI_SEARCH selectedTop3={Products}; reasons=stock(+30)/range1(+40)/range2(+25)/range3(+10)/price_distance/gaming/gpu/ram/ssd/game/sale/low_budget_penalty(-80)", string.Join(" | ", orderedRows.Select(x => $"{x.Product.Id}:{x.Product.Name}:{EffectivePrice(x.Product):N0}:score={x.Score:N1}")));
+        Console.WriteLine("AI_TRACE SearchByPlanAsync TOP_AFTER_RANKING " + string.Join(" | ", orderedRows.Select(x => $"{x.Product.Id}:{x.Product.Name}:{EffectivePrice(x.Product)}:score={x.Score:N1}")));
         var ordered = orderedRows
             .Select(x => ToContext(x.Product, scope == "PC" ? "PC" : ComponentTypes.Normalize(plan.ComponentType)))
             .ToList();
 
         if (ordered.Count == 0 && scope == "PC" && plan.AllowBuildFallback)
+        {
             _logger.LogInformation("AI_SEARCH fallback=BuildAdvisor");
+            var fallbackAnalysis = new AiSearchAnalysis(plan.Intent, "PC", plan.BudgetTarget, plan.BudgetTarget, plan.Game, null, plan.ComponentType, false);
+            ordered = await BuildComponentFallbackAsync(inStockActiveQuery, fallbackAnalysis, max, cancellationToken);
+            Console.WriteLine($"AI_TRACE SearchByPlanAsync BUILD_FALLBACK count={ordered.Count}");
+        }
 
         _logger.LogInformation("[AI_PLANNER_SEARCH] intent={Intent}; scope={Scope}; component={Component}; budgetTarget={BudgetTarget}; budgetMin={BudgetMin}; budgetMax={BudgetMax}; purpose={Purpose}; game={Game}; signals={Signals}; budgetStep={BudgetStep}; active={Active}; scoped={Scoped}; products={Products}; topProducts={TopProducts}",
             plan.Intent, plan.CategoryScope, plan.ComponentType ?? "none", plan.BudgetTarget, plan.BudgetMin, plan.BudgetMax, plan.Purpose ?? "none", plan.Game ?? "none", string.Join(",", normalizedSignals), budgetStep, activeCount, scopedCount, ordered.Count, string.Join(" | ", ordered.Select(p => $"{p.Id}:{p.Name}:{p.Price:N0}:{p.StockStatus}")));
+        Console.WriteLine("AI_TRACE SearchByPlanAsync RETURN " + string.Join(" | ", ordered.Select(x => $"{x.Id}:{x.Name}:{x.Price}")));
         return ordered;
     }
 
