@@ -261,6 +261,7 @@ else
             </div>
         </form>
         <div class="ttg-header-actions">
+            <a class="mobile-account-action" asp-controller="Account" asp-action="Profile" aria-label="Tài khoản"><i class="bi bi-person"></i></a>
             <a class="ttg-cta d-inline-flex align-items-center gap-2" href="tel:0375570025"><span class="icon"><i class="bi bi-telephone"></i></span><span>Hotline<br><b>0375 570 025</b></span></a>
             <a class="ttg-cta d-inline-flex align-items-center gap-2" asp-controller="BuildPc" asp-action="Index"><span class="icon"><i class="bi bi-tools"></i></span><span>Xây dựng<br><b>Cấu hình PC</b></span></a>
             <a class="ttg-cta d-inline-flex align-items-center gap-2" asp-controller="Warranty" asp-action="Check"><span class="icon"><i class="bi bi-shield-check"></i></span><span>Kiểm tra<br><b>Bảo hành</b></span></a>
@@ -308,6 +309,10 @@ else
                 <a class="ttg-cat-link" asp-controller="Products" asp-action="Index" asp-route-categoryId="@(categoryIdByName.GetValueOrDefault("PC Mini"))" asp-route-categorySlug="pc-mini"><i class="bi bi-device-ssd"></i>PC Mini</a>
                 <a class="ttg-cat-link" asp-controller="Products" asp-action="Index" asp-route-categoryId="@(categoryIdByName.GetValueOrDefault("PC Văn Phòng"))" asp-route-categorySlug="pc-van-phong"><i class="bi bi-briefcase"></i>PC Văn Phòng</a>
                 <a class="ttg-cat-link" asp-controller="Products" asp-action="Index" asp-route-categoryId="@(categoryIdByName.GetValueOrDefault("Linh kiện"))" asp-route-categorySlug="linh-kien"><i class="bi bi-memory"></i>Linh kiện</a>
+                <a class="ttg-cat-link" asp-controller="Products" asp-action="Index" asp-route-categoryId="@(categoryIdByName.GetValueOrDefault("Màn hình"))" asp-route-categorySlug="man-hinh"><i class="bi bi-display"></i>Màn hình</a>
+                <a class="ttg-cat-link" asp-controller="Products" asp-action="Index" asp-route-categoryId="@(categoryIdByName.GetValueOrDefault("Bàn phím"))" asp-route-categorySlug="ban-phim"><i class="bi bi-keyboard"></i>Bàn phím</a>
+                <a class="ttg-cat-link" asp-controller="Products" asp-action="Index" asp-route-categoryId="@(categoryIdByName.GetValueOrDefault("Chuột"))" asp-route-categorySlug="chuot"><i class="bi bi-mouse"></i>Chuột</a>
+                <a class="ttg-cat-link" asp-controller="Products" asp-action="Index" asp-route-categoryId="@(categoryIdByName.GetValueOrDefault("Tai nghe"))" asp-route-categorySlug="tai-nghe"><i class="bi bi-headphones"></i>Tai nghe</a>
             </div>
         </div>
     </div>
