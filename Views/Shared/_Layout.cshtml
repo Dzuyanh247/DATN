@@ -271,13 +271,12 @@ else
                         data-category-menu-toggle>
                     <i class="bi bi-list" aria-hidden="true"></i>
                     <span>DANH MỤC SẢN PHẨM</span>
-                    <i class="bi bi-chevron-down ttg-cat-chevron" aria-hidden="true"></i>
                 </button>
                 <div id="headerCategoryMenu" class="ttg-category-menu" hidden data-category-menu>
                     @foreach (var category in menuCategories)
                     {
-                        <a asp-controller="Products" asp-action="Index" asp-route-categoryId="@category.Id">
-                            <i class="bi bi-chevron-right" aria-hidden="true"></i>
+                        var hasChildren = menuCategories.Any(child => child.ParentCategoryId == category.Id);
+                        <a class="@(hasChildren ? "has-children" : null)" asp-controller="Products" asp-action="Index" asp-route-categoryId="@category.Id">
                             <span>@category.Name</span>
                         </a>
                     }
