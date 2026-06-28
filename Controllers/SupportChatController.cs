@@ -210,6 +210,23 @@ public class SupportChatController : Controller
     }
 
 
+    private static bool IsQuickActionLabel(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return false;
+
+        var quickActions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "Tư vấn cấu hình PC",
+            "Kiểm tra bảo hành",
+            "Hỏi tình trạng đơn hàng",
+            "Hỗ trợ thanh toán",
+            "Gặp nhân viên"
+        };
+
+        return quickActions.Contains(value.Trim());
+    }
+
     private static string? QuickActionLabel(string actionType) => SupportChatDefaults.QuickQuestions.Select(x => new { ActionType = (string?)x.GetType().GetProperty("actionType")?.GetValue(x), Label = (string?)x.GetType().GetProperty("label")?.GetValue(x) }).FirstOrDefault(x => string.Equals(x.ActionType, actionType, StringComparison.OrdinalIgnoreCase))?.Label;
     private ChatMessage AddAiMessage(ChatConversation conversation, string reply, IReadOnlyList<AiProductContext> products, bool attachProductCards, string? requestId)
     {
