@@ -174,7 +174,7 @@
                             }
                         </td>
                         <td class="admin-order-update-cell">
-                            <form method="post" asp-action="UpdateStatus" class="admin-order-update-form">
+                            <form method="post" asp-action="UpdateStatus" class="admin-order-update-form order-update-group">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="id" value="@order.Id" />
                                 <input type="hidden" name="returnUrl" value="@returnUrl" />
@@ -184,15 +184,19 @@
                                         <option value="@item" selected="@(item == order.Status)">@OrderStatusHelper.Label(item)</option>
                                     }
                                 </select>
-                                <button class="btn btn-sm btn-primary" type="submit" title="Lưu trạng thái"><i class="bi bi-check2"></i><span>Lưu</span></button>
+                                <button class="btn btn-sm btn-primary admin-order-btn admin-order-save-btn" type="submit" title="Lưu trạng thái"><i class="bi bi-check2"></i><span>Lưu</span></button>
                             </form>
                         </td>
                         <td class="admin-order-actions-cell">
                             <div class="admin-order-actions">
-                                <a class="btn btn-sm btn-outline-primary admin-order-action-button" asp-action="Detail" asp-route-id="@order.Id"><i class="bi bi-eye"></i> Chi tiết</a>
+                                <a class="btn btn-sm btn-outline-primary admin-order-btn admin-order-action-button admin-order-detail-button" asp-action="Detail" asp-route-id="@order.Id"><i class="bi bi-eye"></i> Chi tiết</a>
                                 @if (order.Status is not OrderStatus.Cancelled and not OrderStatus.Expired)
                                 {
-                                    <a class="btn btn-sm btn-outline-secondary admin-order-action-button" asp-controller="Orders" asp-action="Quotation" asp-route-orderId="@order.Id" target="_blank"><i class="bi bi-printer"></i> In hóa đơn</a>
+                                    <a class="btn btn-sm btn-outline-secondary admin-order-btn admin-order-action-button admin-order-print-button" asp-controller="Orders" asp-action="Quotation" asp-route-orderId="@order.Id" target="_blank"><i class="bi bi-printer"></i> In hóa đơn</a>
+                                }
+                                else
+                                {
+                                    <span class="admin-order-btn admin-order-action-button admin-order-action-placeholder" aria-hidden="true">In hóa đơn</span>
                                 }
                             </div>
                         </td>
