@@ -9,4 +9,5 @@ public class ProductDetailViewModel
     public List<Product> Keyboards { get; set; } = new();
     public List<Product> Mice { get; set; } = new();
     public List<Product> Headsets { get; set; } = new();
+    public List<Product> RelatedProducts { get; set; } = new();
 }

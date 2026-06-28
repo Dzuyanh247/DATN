@@ -211,11 +211,23 @@ public class ProductsController : Controller
             .FirstOrDefaultAsync(p => p.Id == id);
         if (product == null) return NotFound();
 
-        ViewBag.UpgradeSuggestions = await _db.Products
+        var relatedTypeAliases = !string.IsNullOrWhiteSpace(product.ComponentType)
+            ? ComponentTypes.GetAliases(product.ComponentType)
+            : Array.Empty<string>();
+
+        var relatedProducts = await _db.Products
             .Include(p => p.ProductImages)
-            .Where(p => p.CategoryId == product.CategoryId && p.Id != product.Id && p.Price > product.Price)
-            .OrderBy(p => p.Price)
-            .Take(4)
+            .AsNoTracking()
+            .Where(p => p.IsActive
+                && p.CategoryId == product.CategoryId
+                && p.Id != product.Id)
+            .OrderByDescending(p => p.IsInStock && p.StockQuantity > 0)
+            .ThenByDescending(p => !string.IsNullOrWhiteSpace(product.ComponentType)
+                && p.ComponentType != null
+                && relatedTypeAliases.Contains(p.ComponentType))
+            .ThenByDescending(p => product.ProductType != null && p.ProductType == product.ProductType)
+            .ThenByDescending(p => p.CreatedAt)
+            .Take(12)
             .ToListAsync();
         var userId = User.Identity?.IsAuthenticated == true
             ? int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!)
@@ -246,7 +258,8 @@ public class ProductsController : Controller
             Monitors = accessoryProducts.Where(p => ComponentTypes.Normalize(p.ComponentType) == ComponentTypes.Monitor).ToList(),
             Keyboards = accessoryProducts.Where(p => ComponentTypes.Normalize(p.ComponentType) == ComponentTypes.Keyboard).ToList(),
             Mice = accessoryProducts.Where(p => ComponentTypes.Normalize(p.ComponentType) == ComponentTypes.Mouse).ToList(),
-            Headsets = accessoryProducts.Where(p => ComponentTypes.Normalize(p.ComponentType) == ComponentTypes.Headphone).ToList()
+            Headsets = accessoryProducts.Where(p => ComponentTypes.Normalize(p.ComponentType) == ComponentTypes.Headphone).ToList(),
+            RelatedProducts = relatedProducts
         };
 
         return View(vm);

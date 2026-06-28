@@ -4,7 +4,7 @@
     var product = Model.Product;
     ViewData["Title"] = product.Name;
 
-    var suggestions = ViewBag.UpgradeSuggestions as List<Product> ?? new();
+    var suggestions = Model.RelatedProducts;
     var galleryImages = product.ProductImages.OrderBy(x => x.SortOrder).ToList();
     var mainImage = ImageUrlHelper.ResolveImageUrl(galleryImages.FirstOrDefault()?.ImageUrl
         ?? product.ThumbnailImage, "/images/no-image.png");
@@ -109,7 +109,7 @@
 
                     @if (isPcProduct)
                     {
-                    <section class="bundle-section" aria-labelledby="bundle-title" data-accessory-picker data-pc-price="@finalPrice">
+                    <section class="bundle-section" aria-labelledby="bundle-title" data-accessory-picker data-pc-price="@Convert.ToInt64(finalPrice)">
                         <div class="bundle-heading">
                             <h2 id="bundle-title"><i class="bi bi-plus-circle-fill" aria-hidden="true"></i>Sản phẩm mua kèm</h2>
                             <span>Chọn màn hình, bàn phím, chuột, tai nghe từ kho linh kiện hiện có</span>
@@ -286,9 +286,10 @@
                     <div><span class="product-section-kicker">Có thể bạn quan tâm</span><h2 id="related-products-title">Sản phẩm liên quan</h2></div>
                     <a asp-controller="Products" asp-action="Index" class="product-view-all">Xem tất cả <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
                 </div>
-                <div class="product-related-grid">
+                <div class="product-related-grid" aria-label="Danh sách sản phẩm liên quan">
                     @foreach (var suggestedProduct in suggestions)
                     {
+                        ViewData["CompactProductCard"] = true;
                         <partial name="_ProductCard" model="suggestedProduct" />
                     }
                 </div>
@@ -372,7 +373,7 @@
             const sharedQuantityInputs = page.querySelectorAll('[data-shared-quantity]');
             const bundleSection = page.querySelector('[data-accessory-picker]');
             const bundleTotal = document.getElementById('bundle-total');
-            const pcPrice = Number(bundleSection?.dataset.pcPrice || 0);
+            const pcPrice = parseVndNumber(bundleSection?.dataset.pcPrice);
             const currency = new Intl.NumberFormat('vi-VN');
             const filters = {
                 keyword: document.getElementById('accessory-keyword'),
@@ -437,10 +438,11 @@
                     </article>`).join('');
             }
             function chooseAccessory(product) {
+                product.price = parseVndNumber(product.price);
                 selected.set(activeType, product);
                 activeSlot.querySelector('img').src = product.image;
                 activeSlot.querySelector('.bundle-name').textContent = product.name;
-                activeSlot.querySelector('.bundle-price').textContent = currency.format(product.price) + ' đ';
+                activeSlot.querySelector('.bundle-price').textContent = formatVnd(product.price);
                 activeSlot.querySelector('[data-open-accessory]').textContent = 'Đổi sản phẩm';
                 activeSlot.querySelector('[data-remove-accessory]').classList.remove('d-none');
                 refreshAccessoryInputs(); updateBundleTotal(); closeAccessory();
@@ -464,8 +466,25 @@
             function updateBundleTotal() {
                 if (!bundleTotal) return;
                 let total = pcPrice;
-                selected.forEach(product => { total += Number(product.price || 0); });
-                bundleTotal.textContent = currency.format(total) + ' đ';
+                selected.forEach(product => { total += parseVndNumber(product?.price); });
+                bundleTotal.textContent = formatVnd(total);
+            }
+            function parseVndNumber(value) {
+                if (value === null || value === undefined || value === '') return 0;
+                if (typeof value === 'number') {
+                    if (Number.isFinite(value)) return Math.max(0, Math.round(value));
+                    console.warn('[ProductDetail] Giá không hợp lệ, dùng 0:', value);
+                    return 0;
+                }
+                const normalized = String(value).trim().replace(/[^\d]/g, '');
+                if (!normalized) return 0;
+                const parsed = Number.parseInt(normalized, 10);
+                if (Number.isFinite(parsed)) return Math.max(0, parsed);
+                console.warn('[ProductDetail] Giá không hợp lệ, dùng 0:', value);
+                return 0;
+            }
+            function formatVnd(value) {
+                return currency.format(parseVndNumber(value)) + ' đ';
             }
             if (quantity) {
                 quantity.addEventListener('change', syncQuantityInputs);
