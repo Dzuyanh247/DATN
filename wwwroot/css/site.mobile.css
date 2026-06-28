@@ -514,6 +514,17 @@
         grid-auto-columns: minmax(148px, 46vw);
     }
 
+    body:not(.admin-page) .standard-product-section .ttg-products-grid[data-product-rail] {
+        display: flex;
+        flex-wrap: nowrap;
+    }
+
+    body:not(.admin-page) .standard-product-section .ttg-products-grid[data-product-rail] > .ttg-product-card {
+        flex: 0 0 46vw;
+        width: 46vw;
+        min-width: 148px;
+    }
+
     body:not(.admin-page) .standard-product-section .ttg-product-image-wrap,
     body:not(.admin-page) .ttg-product-image-wrap {
         flex-basis: 110px;
