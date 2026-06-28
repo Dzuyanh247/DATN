@@ -82,6 +82,10 @@
         <link rel="stylesheet" href="~/css/site.mobile.css" asp-append-version="true" />
     }
     <link rel="stylesheet" href="~/css/laptop.css" asp-append-version="true" />
+    @if (!isAdminPage)
+    {
+        <link rel="stylesheet" href="~/css/site.mobile-home.css" asp-append-version="true" />
+    }
 </head>
 <body class="@(isAdminPage ? "admin-page" : (!isComparePage && compareCount > 0 ? "has-compare-tray" : string.Empty))">
 @if (isAdminPage)
@@ -209,6 +213,9 @@ else
 </div>
 <header class="ttg-main-header shadow-sm sticky-top">
     <div class="container ttg-shell ttg-main-header-row">
+        <button class="mobile-menu-button" type="button" aria-label="Mở danh mục" aria-controls="headerCategoryMenu" data-category-menu-toggle>
+            <i class="bi bi-list"></i>
+        </button>
         <a asp-controller="Home" asp-action="Index" class="site-logo" aria-label="KKSHOP">
             @if (!string.IsNullOrWhiteSpace(siteLogoUrl))
             {
@@ -259,6 +266,18 @@ else
             <a class="ttg-cta d-inline-flex align-items-center gap-2" asp-controller="Warranty" asp-action="Check"><span class="icon"><i class="bi bi-shield-check"></i></span><span>Kiểm tra<br><b>Bảo hành</b></span></a>
             <a class="ttg-cta d-inline-flex align-items-center gap-2 position-relative" asp-controller="Compare" asp-action="Index"><span class="icon"><i class="bi bi-columns-gap"></i></span><span>So sánh<br><b data-compare-count>(@compareCount)</b></span></a>
             <a class="ttg-cta d-inline-flex align-items-center gap-2 position-relative" asp-controller="Cart" asp-action="Index"><span class="icon"><i class="bi bi-cart3"></i></span><span>Giỏ hàng</span><span id="cart-count-badge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill text-bg-danger">@await Component.InvokeAsync("CartCount")</span></a>
+        </div>
+    </div>
+    <div class="mobile-quick-actions" aria-label="Chức năng nhanh KKSHOP">
+        <div class="container ttg-shell mobile-quick-grid">
+            <a class="mobile-quick-item" asp-controller="Contact" asp-action="Index"><span><i class="bi bi-shop"></i></span><em>Showroom</em></a>
+            <a class="mobile-quick-item" href="@onlineSalesZaloUrl" target="_blank" rel="noopener noreferrer"><span><i class="bi bi-telephone-outbound"></i></span><em>Bán hàng</em></a>
+            <a class="mobile-quick-item" asp-controller="BuildPc" asp-action="Index"><span><i class="bi bi-cpu"></i></span><em>Build PC</em></a>
+            <a class="mobile-quick-item" asp-controller="Warranty" asp-action="Check"><span><i class="bi bi-shield-check"></i></span><em>Bảo hành</em></a>
+            <button class="mobile-quick-item" type="button" data-mobile-open-chat><span><i class="bi bi-robot"></i></span><em>AI tư vấn</em></button>
+            <a class="mobile-quick-item" asp-controller="Compare" asp-action="Index"><span><i class="bi bi-columns-gap"></i></span><em>So sánh</em></a>
+            <a class="mobile-quick-item" asp-controller="Orders" asp-action="MyOrders"><span><i class="bi bi-receipt"></i></span><em>Đơn hàng</em></a>
+            <a class="mobile-quick-item" asp-controller="Articles" asp-action="Index" asp-route-type="TinCongNghe"><span><i class="bi bi-newspaper"></i></span><em>Tin công nghệ</em></a>
         </div>
     </div>
     <div class="ttg-cat-nav-wrap">
@@ -323,6 +342,13 @@ else
 {
     @await Html.PartialAsync("_CompareTray", compareProducts)
 }
+<nav class="mobile-bottom-nav" aria-label="Điều hướng nhanh mobile">
+    <a class="@(controllerName == "Home" ? "active" : "")" asp-controller="Home" asp-action="Index"><i class="bi bi-house-fill"></i><span>Trang chủ</span></a>
+    <a href="#headerCategoryMenu" data-category-menu-toggle><i class="bi bi-grid"></i><span>Danh mục</span></a>
+    <a href="#" data-mobile-focus-search><i class="bi bi-search"></i><span>Tìm kiếm</span></a>
+    <a class="@(controllerName == "Orders" ? "active" : "")" asp-controller="Orders" asp-action="MyOrders"><i class="bi bi-receipt"></i><span>Đơn hàng</span></a>
+    <a class="@(controllerName == "Account" ? "active" : "")" asp-controller="Account" asp-action="Profile"><i class="bi bi-person"></i><span>Tài khoản</span></a>
+</nav>
 @await Html.PartialAsync("_SupportChatBox")
 <div id="ttg-product-preview" class="product-hover-card" aria-hidden="true"></div>
 }
@@ -430,6 +456,9 @@ if(window.__infoToastMessage){window.showGlobalToast(window.__infoToastMessage,'
 if(window.__errorToastMessage){window.showGlobalToast(window.__errorToastMessage,'danger');}
 if(window.__warningToastMessage){window.showGlobalToast(window.__warningToastMessage,'warning');}
 document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el){new bootstrap.Tooltip(el);});
+document.querySelectorAll('[data-mobile-focus-search]').forEach(function(el){el.addEventListener('click',function(e){e.preventDefault();document.querySelector('[data-search-input]')?.focus();});});
+document.querySelectorAll('.mobile-bottom-nav [data-category-menu-toggle]').forEach(function(el){el.addEventListener('click',function(e){e.preventDefault();document.querySelector('.mobile-menu-button')?.click();});});
+document.querySelectorAll('[data-mobile-open-chat]').forEach(function(el){el.addEventListener('click',function(){document.querySelector('.kk-chat-launcher')?.click();});});
 const productHoverPopup=document.getElementById('ttg-product-preview');
 const esc=(s)=>(s||'').toString().replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const hasRawJson=(s)=>{const value=(s||'').toString().trim();return value.startsWith('[')||value.startsWith('{')||/"(description|stt|quantity)"/i.test(value);};
