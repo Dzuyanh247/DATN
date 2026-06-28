@@ -96,15 +96,24 @@
     {
         <div class="table-responsive admin-orders-table-wrap">
             <table class="table align-middle admin-orders-table">
+                <colgroup>
+                    <col class="admin-order-col-code" />
+                    <col class="admin-order-col-customer" />
+                    <col class="admin-order-col-products" />
+                    <col class="admin-order-col-total" />
+                    <col class="admin-order-col-status" />
+                    <col class="admin-order-col-update" />
+                    <col class="admin-order-col-actions" />
+                </colgroup>
                 <thead>
                     <tr>
                         <th>Đơn hàng</th>
                         <th>Khách hàng</th>
                         <th>Sản phẩm</th>
-                        <th class="text-end">Tổng tiền</th>
-                        <th>Trạng thái</th>
+                        <th class="text-end admin-order-total-heading">Tổng tiền</th>
+                        <th class="admin-order-status-heading">Trạng thái</th>
                         <th>Cập nhật</th>
-                        <th class="text-end">Thao tác</th>
+                        <th class="text-center">Thao tác</th>
                     </tr>
                 </thead>
                 <tbody>

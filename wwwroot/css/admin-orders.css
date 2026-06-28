@@ -359,3 +359,164 @@
 @media (max-width: 576px) {
     .admin-order-stats { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* AdminOrders table balance pass: keep update/action controls inside the row. */
+.admin-orders-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.admin-orders-table {
+    min-width: 1280px;
+    table-layout: fixed;
+}
+
+.admin-orders-table col.admin-order-col-code { width: 12%; }
+.admin-orders-table col.admin-order-col-customer { width: 13%; }
+.admin-orders-table col.admin-order-col-products { width: 27%; }
+.admin-orders-table col.admin-order-col-total { width: 11%; }
+.admin-orders-table col.admin-order-col-status { width: 10%; }
+.admin-orders-table col.admin-order-col-update { width: 14%; }
+.admin-orders-table col.admin-order-col-actions { width: 13%; }
+
+.admin-orders-table thead th,
+.admin-orders-table tbody td {
+    vertical-align: middle;
+}
+
+.admin-orders-table thead th.admin-order-total-heading,
+.admin-order-total {
+    text-align: right;
+}
+
+.admin-orders-table thead th.admin-order-status-heading,
+.admin-order-status-cell {
+    text-align: center;
+}
+
+.admin-order-products-cell {
+    width: auto;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.admin-order-product-mini {
+    width: 100%;
+    min-width: 0;
+    align-items: center;
+}
+
+.admin-order-product-copy {
+    min-width: 0;
+    flex: 1 1 auto;
+    overflow: hidden;
+}
+
+.admin-order-product-name {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    -webkit-line-clamp: unset;
+}
+
+.admin-order-product-mini small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.admin-order-status-cell .order-status-badge,
+.admin-order-status-cell .admin-order-countdown {
+    justify-content: center;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.admin-order-update-form {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    min-width: 0;
+    flex-wrap: nowrap;
+}
+
+.admin-order-update-form .form-select {
+    flex: 1 1 128px;
+    width: 128px;
+    min-width: 112px;
+    max-width: 150px;
+    min-height: 34px;
+    font-size: .76rem;
+}
+
+.admin-order-update-form .btn,
+.admin-order-action-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 34px;
+    padding: .36rem .68rem;
+    border-radius: 11px;
+    font-size: .78rem;
+    line-height: 1.1;
+    white-space: nowrap;
+}
+
+.admin-order-update-form .btn {
+    flex: 0 0 auto;
+    min-width: 58px;
+}
+
+.admin-order-actions-cell {
+    text-align: center;
+}
+
+.admin-order-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    flex-direction: row;
+    flex-wrap: nowrap;
+}
+
+.admin-order-action-button {
+    flex: 0 1 auto;
+    width: auto;
+    min-width: 82px;
+    max-width: 100%;
+}
+
+.admin-order-action-button.btn-outline-secondary {
+    color: #475569;
+    border-color: #cbd5e1;
+    background: rgba(248, 250, 252, .82);
+}
+
+.admin-order-action-button.btn-outline-secondary:hover {
+    color: #1f2937;
+    border-color: #94a3b8;
+    background: #f1f5f9;
+}
+
+@media (max-width: 1360px) {
+    .admin-orders-table { min-width: 1220px; }
+    .admin-order-update-form .form-select { width: 120px; min-width: 108px; }
+    .admin-order-update-form .btn,
+    .admin-order-action-button { padding-inline: .55rem; }
+    .admin-order-actions { gap: 6px; }
+}
+
+@media (max-width: 768px) {
+    .admin-orders-table { min-width: 1120px; }
+    .admin-order-actions { flex-wrap: wrap; justify-content: center; }
+    .admin-order-action-button { flex: 1 1 94px; }
+}
