@@ -97,6 +97,24 @@ public class AdminChatController : Controller
         return Ok(Api(true, data: new { staff }));
     }
 
+
+    [HttpDelete("conversations/{id:int}")]
+    [Authorize(Roles = "Admin")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeleteConversation(int id)
+    {
+        var conversation = await _db.ChatConversations.FirstOrDefaultAsync(x => x.Id == id);
+        if (conversation == null) return NotFound(Api(false, "Không tìm thấy cuộc trò chuyện."));
+
+        var messages = await _db.ChatMessages.Where(x => x.ConversationId == id).ToListAsync();
+        if (messages.Count > 0) _db.ChatMessages.RemoveRange(messages);
+        _db.ChatConversations.Remove(conversation);
+        await _db.SaveChangesAsync();
+
+        await Notify(() => _hub.Clients.Group(ChatHub.StaffGroup).SendAsync("ConversationDeleted", id), id);
+        return Ok(Api(true, "Đã xóa hội thoại và toàn bộ tin nhắn liên quan."));
+    }
+
     [HttpPost("conversations/{id:int}/close")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Close(int id)

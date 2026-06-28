@@ -28,11 +28,13 @@
         const topicLabels = { PCConsultation: 'Tư vấn cấu hình PC', Order: 'Đơn hàng', Warranty: 'Bảo hành', Payment: 'Thanh toán', StaffSupport: 'Gặp nhân viên' };
         const systemMessages = ['đã đóng', 'đã được đóng', 'hội thoại đã', 'conversation closed', 'đã kết thúc', 'đã nhận xử lý', 'đổi người phụ trách', 'phân công', 'tiếp nhận', 'sẽ hỗ trợ bạn từ bây giờ'];
         const currentUserId = Number(root.dataset.currentUserId || 0);
+        const canDeleteConversations = root.dataset.canDeleteConversations === 'true';
         let conversations = [], activeId = null, activeConversation = null, filter = 'all', polling;
 
         const setText = (id, text) => { const el = $(id); if (el) el.textContent = text; };
         const toggleClass = (el, className, force) => { if (el) el.classList.toggle(className, force); };
         const showError = message => window.showGlobalToast?.(message || 'Đã xảy ra lỗi. Vui lòng thử lại.', 'danger');
+        const showSuccess = message => window.showGlobalToast?.(message || 'Thao tác thành công.', 'success');
         const isNearBottom = () => !messages || messages.scrollHeight - messages.scrollTop - messages.clientHeight < 96;
         const scrollToBottom = (force = false) => requestAnimationFrame(() => { if (messages && (force || isNearBottom())) messages.scrollTop = messages.scrollHeight; });
         const statusValue = value => String(value || '').toLowerCase();
@@ -101,9 +103,49 @@
                 const status = document.createElement('span'); const closed = statusValue(item.status) === 'closed'; const unread = (item.unreadCount || 0) > 0; const needs = item.needsStaff || (item.priority || 0) > 0; status.className = `admin-chat-item-status${closed ? ' closed' : unread ? ' unread' : needs ? ' needs' : ''}`; status.textContent = closed ? 'Đã đóng' : unread ? 'Chưa đọc' : needs ? 'Cần xử lý' : 'Đang mở';
                 row.append(name, time); meta.append(assigned, status); main.append(row, topic, preview, meta); button.append(avatar, main);
                 if ((item.unreadCount || 0) > 0) { const badge = document.createElement('span'); badge.className = 'admin-chat-unread'; badge.textContent = item.unreadCount > 99 ? '99+' : item.unreadCount; button.append(badge); }
+                if (canDeleteConversations) {
+                    const del = document.createElement('span');
+                    del.className = 'admin-chat-delete-conversation';
+                    del.setAttribute('role', 'button');
+                    del.setAttribute('tabindex', '0');
+                    del.setAttribute('aria-label', `Xóa hội thoại của ${item.name || 'khách hàng'}`);
+                    del.title = 'Xóa hội thoại';
+                    del.innerHTML = '<i class="bi bi-trash"></i>';
+                    const onDelete = event => { event.preventDefault(); event.stopPropagation(); confirmDeleteConversation(item.id); };
+                    del.addEventListener('click', onDelete);
+                    del.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') onDelete(event); });
+                    button.append(del);
+                }
                 button.addEventListener('click', () => openConversation(item.id)); list.append(button);
             });
         }
+
+        function confirmDeleteConversation(id) {
+            if (!canDeleteConversations || !id) return;
+            const run = () => deleteConversation(id);
+            if (window.kkConfirm) {
+                window.kkConfirm({
+                    title: 'Xóa hội thoại',
+                    message: 'Bạn có chắc muốn xóa hội thoại này? Toàn bộ tin nhắn trong cuộc trò chuyện sẽ bị xóa.',
+                    confirmText: 'Xóa hội thoại',
+                    cancelText: 'Hủy',
+                    type: 'danger',
+                    onConfirm: run
+                });
+                return;
+            }
+            if (window.confirm('Bạn có chắc muốn xóa hội thoại này? Toàn bộ tin nhắn trong cuộc trò chuyện sẽ bị xóa.')) run();
+        }
+        async function deleteConversation(id) {
+            try {
+                const data = await request(`/AdminChat/conversations/${id}`, { method: 'DELETE' });
+                conversations = conversations.filter(x => Number(x.id) !== Number(id));
+                if (Number(activeId) === Number(id)) resetEmptyState();
+                renderList();
+                showSuccess(data.message || 'Đã xóa hội thoại.');
+            } catch (error) { showError(error.message || 'Không thể xóa hội thoại.'); }
+        }
+
         async function loadConversations() {
             try { conversations = (await request('/AdminChat/conversations')).conversations || []; renderList(); }
             catch (error) { list.innerHTML = ''; const empty = document.createElement('div'); empty.className = 'admin-chat-empty'; empty.textContent = error.message; list.append(empty); }
@@ -214,7 +256,7 @@
         root.querySelectorAll('[data-filter]').forEach(button => button.addEventListener('click', () => { root.querySelectorAll('[data-filter]').forEach(item => item.classList.remove('active')); button.classList.add('active'); filter = button.dataset.filter || 'all'; renderList(); }));
         async function loadStaff() { if (!staffSelect) return; const data = await request('/AdminChat/staff'); (data.staff || []).forEach(item => { const option = document.createElement('option'); option.value = item.id; option.textContent = item.fullName; staffSelect.append(option); }); }
         function fallbackPolling() { if (!polling) polling = setInterval(loadConversations, 7000); }
-        if (window.signalR) { const connection = new signalR.HubConnectionBuilder().withUrl('/hubs/support-chat').withAutomaticReconnect().build(); connection.on('MessageReceived', async (id, message) => { if (Number(id) === Number(activeId)) addMessage(message); await loadConversations(); }); connection.on('ConversationUpdated', loadConversations); connection.onreconnected(() => connection.invoke('JoinStaff')); connection.start().then(() => connection.invoke('JoinStaff')).catch(fallbackPolling); } else fallbackPolling();
+        if (window.signalR) { const connection = new signalR.HubConnectionBuilder().withUrl('/hubs/support-chat').withAutomaticReconnect().build(); connection.on('MessageReceived', async (id, message) => { if (Number(id) === Number(activeId)) addMessage(message); await loadConversations(); }); connection.on('ConversationUpdated', loadConversations); connection.on('ConversationDeleted', id => { conversations = conversations.filter(x => Number(x.id) !== Number(id)); if (Number(activeId) === Number(id)) resetEmptyState(); renderList(); }); connection.onreconnected(() => connection.invoke('JoinStaff')); connection.start().then(() => connection.invoke('JoinStaff')).catch(fallbackPolling); } else fallbackPolling();
         resetEmptyState(); loadStaff().catch(error => showError(error.message)); loadConversations();
     });
 })();
