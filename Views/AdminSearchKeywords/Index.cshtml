@@ -252,7 +252,7 @@
                                         <form asp-action="ToggleVisible" method="post">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@item.Id" /><button class="dropdown-item" type="submit"><i class="bi bi-eye-slash"></i>@(item.IsVisible ? "Ẩn" : "Hiện")</button></form>
                                         <form asp-action="TogglePinned" method="post">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@item.Id" /><button class="dropdown-item" type="submit"><i class="bi bi-pin-angle"></i>@(item.IsPinned ? "Bỏ ghim" : "Ghim")</button></form>
                                         <form asp-action="ResetCount" method="post">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@item.Id" /><button class="dropdown-item" type="submit"><i class="bi bi-arrow-counterclockwise"></i>Reset</button></form>
-                                        <form asp-action="Delete" method="post" onsubmit="return confirm('Xóa từ khóa này?')">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@item.Id" /><button class="dropdown-item text-danger" type="submit"><i class="bi bi-trash"></i>Xóa</button></form>
+                                        <form asp-action="Delete" method="post" data-confirm-message="Bạn có chắc muốn xóa từ khóa này không?" data-confirm-title="Xóa từ khóa" data-confirm-text="Xóa" data-cancel-text="Hủy" data-confirm-type="danger">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@item.Id" /><button class="dropdown-item text-danger" type="submit"><i class="bi bi-trash"></i>Xóa</button></form>
                                     </div>
                                 </div>
                             </div>

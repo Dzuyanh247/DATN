@@ -88,7 +88,7 @@
                 <div class="admin-action-buttons">
                     <a class="btn btn-sm btn-outline-info" asp-controller="Products" asp-action="Detail" asp-route-id="@p.Id">Xem</a>
                     <a class="btn btn-sm btn-outline-primary" asp-action="Edit" asp-route-id="@p.Id">Sửa</a>
-                    <form method="post" asp-action="Delete" onsubmit="return confirm('Xác nhận xóa sản phẩm?');">
+                    <form method="post" asp-action="Delete" data-confirm-message="Bạn có chắc muốn xóa sản phẩm này không?" data-confirm-title="Xóa sản phẩm" data-confirm-text="Xóa" data-cancel-text="Hủy" data-confirm-type="danger">
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="id" value="@p.Id" />
                     <button class="btn btn-sm btn-outline-danger">Xóa</button>

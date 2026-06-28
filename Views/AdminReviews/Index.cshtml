@@ -28,7 +28,7 @@
                     <td><strong>@(r.HandledByStaffName ?? "Chưa phân công")</strong>@if(r.HandledAt.HasValue){<small class="d-block text-muted">@DateTimeHelper.FormatVietnam(r.HandledAt,"dd/MM HH:mm")</small>}</td>
                     <td class="admin-review-actions text-end">
                         <a class="btn btn-sm btn-outline-primary" asp-action="Detail" asp-route-id="@r.Id"><i class="bi bi-eye"></i> Chi tiết</a>
-                        <form asp-action="Delete" method="post" class="d-inline" onsubmit="return confirm('Bạn có chắc muốn xoá đánh giá này không? Hành động này không thể hoàn tác.');">
+                        <form asp-action="Delete" method="post" class="d-inline" data-confirm-message="Bạn có chắc muốn xoá đánh giá này không? Hành động này không thể hoàn tác." data-confirm-title="Xóa đánh giá" data-confirm-text="Xóa" data-cancel-text="Hủy" data-confirm-type="danger">
                             <input type="hidden" name="id" value="@r.Id"/>
                             <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i> Xoá</button>
                         </form>
