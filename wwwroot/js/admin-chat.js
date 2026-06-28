@@ -89,7 +89,7 @@
         }
         function renderList() {
             const rows = visible();
-            summary.textContent = `${conversations.filter(x => statusValue(x.status) === 'open').length} đang mở • ${conversations.reduce((n, x) => n + (x.unreadCount || 0), 0)} chưa đọc`;
+            if (summary) summary.textContent = '';
             list.replaceChildren();
             if (!rows.length) { const empty = document.createElement('div'); empty.className = 'admin-chat-empty'; empty.textContent = 'Chưa có hội thoại phù hợp.'; list.append(empty); return; }
             rows.forEach(item => {
