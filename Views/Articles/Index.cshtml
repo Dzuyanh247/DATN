@@ -77,7 +77,7 @@
                 <div class="kk-sidebar-box">
                     <h5>Chuyên mục</h5>
                     <a class="kk-side-link @(string.IsNullOrWhiteSpace(selectedType) ? "active" : "")" asp-action="Index" asp-route-type="TinCongNghe">Trang tin công nghệ</a>
-                    @foreach (var c in categories.Where(c => c.Type != ArticleTypes.TechNews))
+                    @foreach (var c in categories.Where(c => c.Type != ArticleTypes.TechNews && c.Type != ArticleTypes.Software))
                     {
                         <a class="kk-side-link @(selectedType == c.Type ? "active" : "")" asp-action="Index" asp-route-type="@c.Type"><span>@Label(c.Type)</span><small>@c.Count</small></a>
                     }
