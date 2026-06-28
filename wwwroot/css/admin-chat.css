@@ -122,3 +122,44 @@
 @media(max-width:1280px){.admin-chat-page{grid-template-columns:300px minmax(0,1fr) 286px}.admin-chat-header-actions{gap:6px}.admin-chat-header-actions .btn,.admin-chat-staff{font-size:.7rem}.admin-chat-staff{width:140px}.admin-chat-bubble{max-width:68%}.admin-chat-message-metadata{width:min(370px,68%)}}
 @media(max-width:1100px){.admin-chat-page{grid-template-columns:286px minmax(0,1fr)}.admin-chat-info-panel{display:none}.admin-chat-bubble{max-width:76%}.admin-chat-message-metadata{width:min(380px,76%)}}
 @media(max-width:768px){.admin-content:has(.admin-chat-page){margin-top:12px!important}.admin-chat-page{grid-template-columns:1fr;height:calc(100vh - 92px);min-height:520px}.admin-chat-detail{display:none}.admin-chat-page.room-open .admin-chat-list-panel{display:none}.admin-chat-page.room-open .admin-chat-detail{display:flex}.admin-chat-back{display:inline-flex}.admin-chat-customer{align-items:flex-start;gap:10px}.admin-chat-header-actions{width:100%;justify-content:flex-start}.admin-chat-header-actions .btn span{display:none}.admin-chat-bubble,.admin-chat-message-metadata{max-width:88%;width:auto}.admin-chat-compose button span{display:none}.admin-chat-list-head{padding-top:18px}}
+
+/* Modern AdminChat message layout */
+.admin-chat-page{grid-template-columns:minmax(300px,330px) minmax(500px,1fr) minmax(260px,300px)}
+.admin-chat-customer{align-items:flex-start;padding:12px 18px;gap:12px}
+.admin-chat-customer-info{display:grid;gap:4px}
+.admin-chat-customer-name-row{align-items:center;gap:8px}
+.admin-chat-customer-name-row h3{flex-basis:100%;font-size:1.06rem}
+.admin-chat-customer-info>div:not(.admin-chat-customer-name-row){font-size:.75rem;color:#64748b}
+.admin-chat-assignment{margin-top:0;color:#475569!important}
+.admin-chat-status,.admin-chat-priority,.admin-chat-topic{padding:4px 9px;font-size:.65rem}
+.admin-chat-messages{gap:0;padding:18px clamp(18px,3.2vw,42px);background:linear-gradient(180deg,#f8fafc 0,#f3f6fb 100%)}
+.admin-chat-message{position:relative;width:100%;display:grid;grid-template-columns:32px minmax(0,max-content);grid-template-areas:"avatar bubble" ". time";column-gap:8px;align-items:end;margin:10px 0 0}
+.admin-chat-message.grouped{margin-top:3px}
+.admin-chat-message.new-cluster{margin-top:14px}
+.admin-chat-message.mine{grid-template-columns:minmax(0,max-content) 32px;grid-template-areas:"bubble avatar" "time .";justify-content:end}
+.admin-chat-message.theirs,.admin-chat-message.bot{justify-content:start}
+.admin-chat-message-avatar{grid-area:avatar;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:#e2e8f0;color:#475569;font-weight:850;font-size:.76rem;box-shadow:0 2px 7px rgba(15,23,42,.06)}
+.admin-chat-message.mine .admin-chat-message-avatar{background:linear-gradient(135deg,var(--kk-red),var(--kk-red-dark));color:#fff}
+.admin-chat-message.grouped .admin-chat-message-avatar{visibility:hidden}
+.admin-chat-bubble{grid-area:bubble;max-width:min(62vw,560px);padding:10px 13px;border:1px solid #e2e8f0;border-radius:18px 18px 18px 6px;background:#fff;color:#1f2937;box-shadow:0 3px 10px rgba(15,23,42,.045);font-size:.88rem;line-height:1.48;white-space:pre-line;overflow-wrap:anywhere}
+.admin-chat-message.mine .admin-chat-bubble{background:linear-gradient(135deg,var(--kk-red),var(--kk-red-dark));border-color:transparent;color:#fff;border-radius:18px 18px 6px 18px;box-shadow:0 8px 18px rgba(220,38,38,.16)}
+.admin-chat-message.bot .admin-chat-bubble,.admin-chat-message.theirs .admin-chat-bubble{background:#fff;color:#243244;border-color:#e5eaf0}
+.admin-chat-message-time{grid-area:time;margin:4px 8px 0;font-size:.62rem;color:#94a3b8;font-weight:700}
+.admin-chat-message.mine .admin-chat-message-time{text-align:right}
+.admin-chat-message.grouped .admin-chat-message-time{display:none}
+.admin-chat-message.system{display:flex;width:100%;justify-content:center;align-items:center;margin:12px 0 10px}
+.admin-chat-message.system .admin-chat-bubble{max-width:min(78%,620px);padding:6px 12px;border:1px solid #edf1f5;background:#eef2f7;color:#64748b;border-radius:999px;box-shadow:none;font-size:.72rem;font-weight:750;text-align:center}
+.admin-chat-message.system .admin-chat-bubble:before{content:'';margin:0}
+.admin-chat-message.system .admin-chat-message-time{display:none}
+.admin-chat-message-metadata{grid-column:1/-1;width:min(420px,70%);margin-top:8px}
+.admin-chat-message.mine .admin-chat-message-metadata{justify-self:end}
+.admin-chat-compose-area{padding:10px 18px 12px}
+.admin-chat-compose textarea{min-height:50px;max-height:126px;border-radius:18px;padding:13px 15px;font-size:.9rem;background:#f8fafc}
+.admin-chat-compose textarea::placeholder{color:#7b8794}
+.admin-chat-compose button{width:50px;height:50px;border-radius:17px;padding:0;justify-content:center;font-size:1rem}
+.admin-chat-compose button span{display:none}
+.admin-chat-compose-hint{margin:7px 4px 0}
+.admin-chat-info-panel{padding:12px 12px 16px;gap:12px}
+.admin-chat-info-content{gap:12px}
+@media (max-width: 1180px){.admin-chat-page{grid-template-columns:minmax(285px,320px) minmax(420px,1fr)}.admin-chat-info-panel{display:none}}
+@media (max-width: 760px){.admin-chat-bubble{max-width:74vw}.admin-chat-message-metadata{width:min(88%,420px)}}

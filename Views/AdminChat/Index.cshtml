@@ -3,7 +3,7 @@
 }
 <form id="admin-chat-antiforgery" class="d-none">@Html.AntiForgeryToken()</form>
 
-<div class="admin-chat admin-chat-page" id="admin-chat">
+<div class="admin-chat admin-chat-page" id="admin-chat" data-current-user-id="@User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value">
     <aside class="admin-chat-list-panel">
         <div class="admin-chat-list-head">
             <div>
@@ -79,17 +79,6 @@
         </div>
     </section>
 
-    <div class="admin-chat-drawer-backdrop d-none" id="admin-chat-drawer-backdrop"></div>
-    <aside class="admin-chat-drawer d-none" id="admin-chat-drawer" aria-live="polite">
-        <div class="admin-chat-drawer-head">
-            <div>
-                <span>Thao tác nhanh</span>
-                <h3 id="admin-chat-drawer-title">Ngữ cảnh</h3>
-            </div>
-            <button type="button" id="admin-chat-drawer-close" aria-label="Đóng"><i class="bi bi-x-lg"></i></button>
-        </div>
-        <div class="admin-chat-drawer-body" id="admin-chat-drawer-body">Chọn hội thoại để xem thông tin.</div>
-    </aside>
 
     <aside class="admin-chat-info-panel" id="admin-chat-info-panel">
         <div class="admin-chat-info-empty" id="admin-chat-info-empty">
@@ -118,15 +107,6 @@
             <section class="admin-chat-info-card">
                 <h3><i class="bi bi-clock-history"></i> Lịch sử gần đây</h3>
                 <div class="admin-chat-history" id="admin-chat-history">Chưa có thông tin</div>
-            </section>
-            <section class="admin-chat-info-card">
-                <h3><i class="bi bi-lightning-charge"></i> Thao tác nhanh</h3>
-                <div class="admin-chat-info-actions">
-                    <a asp-controller="AdminOrder" asp-action="Index">Xem đơn hàng</a>
-                    <a asp-controller="AdminProduct" asp-action="Index">Xem sản phẩm</a>
-                    <a asp-controller="AdminWarranty" asp-action="Index">Tạo bảo hành</a>
-                    <button type="button" id="admin-open-profile">Hồ sơ khách</button>
-                </div>
             </section>
         </div>
     </aside>
