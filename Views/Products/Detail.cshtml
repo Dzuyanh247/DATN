@@ -286,7 +286,7 @@
                     <div><span class="product-section-kicker">Có thể bạn quan tâm</span><h2 id="related-products-title">Sản phẩm liên quan</h2></div>
                     <a asp-controller="Products" asp-action="Index" class="product-view-all">Xem tất cả <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
                 </div>
-                <div class="product-related-grid" aria-label="Danh sách sản phẩm liên quan">
+                <div class="product-related-grid" data-product-rail aria-label="Danh sách sản phẩm liên quan">
                     @foreach (var suggestedProduct in suggestions)
                     {
                         ViewData["CompactProductCard"] = true;

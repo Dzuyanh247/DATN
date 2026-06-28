@@ -530,3 +530,30 @@ body { max-width: 100%; overflow-x: hidden; background: var(--ttg-bg) !important
     line-height: 1.7;
   }
 }
+
+/* Product rails: Shopee-style drag/trackpad/touch scrolling without visible scrollbars. */
+[data-product-rail] {
+  cursor: grab;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  touch-action: pan-y;
+}
+[data-product-rail]::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+[data-product-rail].is-dragging {
+  cursor: grabbing;
+  user-select: none;
+  scroll-behavior: auto;
+}
+[data-product-rail].is-dragging * {
+  user-select: none;
+}
+[data-product-rail].is-dragging img {
+  pointer-events: none;
+}

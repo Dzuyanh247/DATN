@@ -1,105 +1,136 @@
 (() => {
-    const dragThreshold = 5;
-    const rails = document.querySelectorAll('[data-product-rail]');
+    const initializedRails = new WeakSet();
+    const dragThreshold = 6;
 
-    rails.forEach((rail) => {
-        let isPointerDown = false;
+    const getPageX = (event) => {
+        if (event.touches && event.touches.length) return event.touches[0].pageX;
+        if (event.changedTouches && event.changedTouches.length) return event.changedTouches[0].pageX;
+        return event.pageX;
+    };
+
+    const initRail = (rail) => {
+        if (!rail || initializedRails.has(rail)) return;
+        initializedRails.add(rail);
+
+        let isDown = false;
         let hasDragged = false;
         let suppressClick = false;
         let startX = 0;
         let startScrollLeft = 0;
+        let frame = 0;
+        let pendingScrollLeft = 0;
+        let activePointerId = null;
 
-        // Drag only works when this exact element is the horizontal scroller.
-        // In DevTools, the active rail must satisfy: scrollWidth > clientWidth.
         const hasHorizontalOverflow = () => rail.scrollWidth > rail.clientWidth + 1;
 
-        const stopDragging = () => {
-            if (!isPointerDown) {
-                return;
-            }
+        const setScrollLeft = (value) => {
+            pendingScrollLeft = value;
+            if (frame) return;
+            frame = window.requestAnimationFrame(() => {
+                rail.scrollLeft = pendingScrollLeft;
+                frame = 0;
+            });
+        };
 
-            isPointerDown = false;
-            rail.classList.remove('is-dragging');
+        const beginDrag = (event) => {
+            if (!hasHorizontalOverflow()) return;
+            if (event.type === 'mousedown' && event.button !== 0) return;
 
-            if (hasDragged) {
-                suppressClick = true;
-                window.setTimeout(() => {
-                    suppressClick = false;
-                }, 0);
+            isDown = true;
+            hasDragged = false;
+            startX = getPageX(event);
+            startScrollLeft = rail.scrollLeft;
+            activePointerId = event.pointerId ?? null;
+
+            if (event.pointerId != null && rail.setPointerCapture) {
+                try { rail.setPointerCapture(event.pointerId); } catch { /* no-op */ }
             }
         };
 
-        rail.addEventListener('mousedown', (event) => {
-            if (event.button !== 0 || !hasHorizontalOverflow()) {
+        const moveDrag = (event) => {
+            if (!isDown) return;
+            if (event.pointerId != null && activePointerId != null && event.pointerId !== activePointerId) return;
+            if (event.type === 'mousemove' && (event.buttons & 1) !== 1) {
+                endDrag(event);
                 return;
             }
 
-            isPointerDown = true;
-            hasDragged = false;
-            startX = event.pageX;
-            startScrollLeft = rail.scrollLeft;
-            rail.dataset.dragStartScrollLeft = String(startScrollLeft);
-        });
-
-        rail.addEventListener('mousemove', (event) => {
-            if (!isPointerDown) {
-                return;
-            }
-
-            // If the left button is no longer held (for example after releasing
-            // outside the rail), end the drag without treating hover movement as scroll.
-            if ((event.buttons & 1) !== 1) {
-                stopDragging();
-                return;
-            }
-
-            const deltaX = event.pageX - startX;
-
+            const deltaX = getPageX(event) - startX;
             if (Math.abs(deltaX) > dragThreshold) {
                 hasDragged = true;
                 rail.classList.add('is-dragging');
             }
+            if (!hasDragged) return;
 
-            if (!hasDragged) {
-                return;
+            if (event.cancelable) event.preventDefault();
+            setScrollLeft(startScrollLeft - deltaX);
+        };
+
+        const endDrag = (event) => {
+            if (!isDown) return;
+            isDown = false;
+            rail.classList.remove('is-dragging');
+
+            if (event?.pointerId != null && rail.releasePointerCapture) {
+                try { rail.releasePointerCapture(event.pointerId); } catch { /* no-op */ }
             }
+            activePointerId = null;
 
-            event.preventDefault();
-            rail.scrollLeft = startScrollLeft - deltaX;
-        });
+            if (hasDragged) {
+                suppressClick = true;
+                window.setTimeout(() => { suppressClick = false; }, 80);
+            }
+        };
 
-        rail.addEventListener('mouseup', stopDragging);
-        rail.addEventListener('mouseleave', stopDragging);
-        document.addEventListener('mouseup', stopDragging);
+        if (window.PointerEvent) {
+            rail.addEventListener('pointerdown', beginDrag);
+            rail.addEventListener('pointermove', moveDrag);
+            rail.addEventListener('pointerup', endDrag);
+            rail.addEventListener('pointercancel', endDrag);
+            rail.addEventListener('pointerleave', endDrag);
+        } else {
+            rail.addEventListener('mousedown', beginDrag);
+            rail.addEventListener('mousemove', moveDrag);
+            rail.addEventListener('mouseup', endDrag);
+            rail.addEventListener('mouseleave', endDrag);
+            document.addEventListener('mouseup', endDrag);
+
+            rail.addEventListener('touchstart', beginDrag, { passive: true });
+            rail.addEventListener('touchmove', moveDrag, { passive: false });
+            rail.addEventListener('touchend', endDrag);
+            rail.addEventListener('touchcancel', endDrag);
+        }
+
+        rail.addEventListener('wheel', (event) => {
+            if (!hasHorizontalOverflow()) return;
+            const useHorizontalWheel = Math.abs(event.deltaX) > Math.abs(event.deltaY);
+            const useShiftWheel = event.shiftKey && Math.abs(event.deltaY) > 0;
+            if (!useHorizontalWheel && !useShiftWheel) return;
+
+            const delta = useHorizontalWheel ? event.deltaX : event.deltaY;
+            if (event.cancelable) event.preventDefault();
+            setScrollLeft(rail.scrollLeft + delta);
+        }, { passive: false });
 
         rail.addEventListener('click', (event) => {
-            if (!suppressClick) {
-                return;
-            }
-
+            if (!suppressClick) return;
             event.preventDefault();
             event.stopPropagation();
             suppressClick = false;
         }, true);
 
         rail.addEventListener('dragstart', (event) => {
-            if (isPointerDown) {
-                event.preventDefault();
-            }
+            if (isDown || hasDragged) event.preventDefault();
         });
+    };
 
-        if (new URLSearchParams(window.location.search).has('debugRails')) {
-            // Required manual checks: the page must not overflow horizontally,
-            // this exact rail must overflow horizontally, and dragging must
-            // change this element's scrollLeft.
-            // eslint-disable-next-line no-console
-            console.debug('KKSHOP rail debug', {
-                bodyFits: document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1,
-                railOverflows: hasHorizontalOverflow(),
-                scrollWidth: rail.scrollWidth,
-                clientWidth: rail.clientWidth,
-                scrollLeft: rail.scrollLeft,
-            });
-        }
-    });
+    const initAllRails = () => document.querySelectorAll('[data-product-rail]').forEach(initRail);
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initAllRails, { once: true });
+    } else {
+        initAllRails();
+    }
+
+    window.KKSHOPProductRails = { init: initAllRails, initRail };
 })();
