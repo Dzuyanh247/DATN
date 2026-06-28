@@ -68,8 +68,9 @@ public partial class GeminiChatService : IAiChatService
     private readonly IShopPolicyService _shopPolicy;
     private readonly AiChatOptions _options;
     private readonly ILogger<GeminiChatService> _logger;
+    private readonly IWebHostEnvironment _environment;
 
-    public GeminiChatService(HttpClient httpClient, IProductSearchForAiService productSearch, IMemoryCache cache, IShopPolicyService shopPolicy, IOptions<AiChatOptions> options, ILogger<GeminiChatService> logger)
+    public GeminiChatService(HttpClient httpClient, IProductSearchForAiService productSearch, IMemoryCache cache, IShopPolicyService shopPolicy, IOptions<AiChatOptions> options, ILogger<GeminiChatService> logger, IWebHostEnvironment environment)
     {
         _httpClient = httpClient;
         _productSearch = productSearch;
@@ -77,6 +78,7 @@ public partial class GeminiChatService : IAiChatService
         _shopPolicy = shopPolicy;
         _options = options.Value;
         _logger = logger;
+        _environment = environment;
     }
 
     public async Task<AiChatResponse> AskAsync(string message, string? sessionId, string? ipAddress, CancellationToken cancellationToken = default)
@@ -85,10 +87,23 @@ public partial class GeminiChatService : IAiChatService
         var startedAt = Stopwatch.GetTimestamp();
         var rawMessage = (message ?? string.Empty).Trim();
         message = NormalizeUserMessage(rawMessage);
-        if (message.Length == 0) return new(false, "Bạn vui lòng nhập câu hỏi cần tư vấn.", [], false, requestId);
+        Console.WriteLine($"AI_TRACE GeminiChatService.AskAsync ENTER requestId={requestId} sessionId={sessionId ?? "none"} raw={TrimForLog(rawMessage)} normalized={TrimForLog(message)}");
+        if (message.Length == 0)
+        {
+            Console.WriteLine($"AI_TRACE GeminiChatService.AskAsync RETURN_BEFORE_PLAN requestId={requestId} reason=EMPTY_MESSAGE");
+            return new(false, "Bạn vui lòng nhập câu hỏi cần tư vấn.", [], false, requestId);
+        }
         _logger.LogInformation("[KKSHOP_AI_NORMALIZE] requestId={RequestId}; rawMessage={RawMessage}; normalizedMessage={NormalizedMessage}", requestId, TrimForLog(rawMessage), TrimForLog(message));
-        if (message.Length > 500) return new(false, "Câu hỏi quá dài, bạn vui lòng rút gọn dưới 500 ký tự.", [], false, requestId);
-        if (!IsAllowed(sessionId, ipAddress)) return new(false, "Bạn đang gửi quá nhanh, vui lòng thử lại sau vài giây.", [], false, requestId);
+        if (message.Length > 500)
+        {
+            Console.WriteLine($"AI_TRACE GeminiChatService.AskAsync RETURN_BEFORE_PLAN requestId={requestId} reason=MESSAGE_TOO_LONG");
+            return new(false, "Câu hỏi quá dài, bạn vui lòng rút gọn dưới 500 ký tự.", [], false, requestId);
+        }
+        if (!IsAllowed(sessionId, ipAddress))
+        {
+            Console.WriteLine($"AI_TRACE GeminiChatService.AskAsync RETURN_BEFORE_PLAN requestId={requestId} reason=RATE_LIMIT");
+            return new(false, "Bạn đang gửi quá nhanh, vui lòng thử lại sau vài giây.", [], false, requestId);
+        }
         var conversation = GetConversationContext(sessionId, ipAddress);
         conversation.RecentMessages.Add($"User: {message}");
         if (conversation.RecentMessages.Count > 10) conversation.RecentMessages.RemoveRange(0, conversation.RecentMessages.Count - 10);
@@ -96,6 +111,7 @@ public partial class GeminiChatService : IAiChatService
         var lastIntentBefore = conversation.LastIntent;
         var analysis = AnalyzeChatTurn(message, conversation);
         var intent = analysis.Intent;
+        Console.WriteLine($"AI_TRACE GeminiChatService.AskAsync ANALYSIS requestId={requestId} intent={IntentName(intent)} budget={analysis.BudgetTarget?.ToString(CultureInfo.InvariantCulture) ?? "none"} purpose={analysis.Purpose ?? "none"} game={analysis.Game ?? "none"} productType={analysis.ProductType ?? "none"}");
         if ((analysis.BudgetTarget.HasValue && analysis.BudgetTarget != conversation.LastBudgetTarget) || (lastIntentBefore == AiChatIntent.PcBuildAdvice && intent == AiChatIntent.ComponentAdvice))
         {
             conversation.LastRenderedCards.Clear();
@@ -110,15 +126,30 @@ public partial class GeminiChatService : IAiChatService
             conversation.LastReferencedProduct = productFromUrl;
         }
         if (intent == AiChatIntent.Greeting)
+        {
+            Console.WriteLine($"AI_TRACE GeminiChatService.AskAsync RETURN_BEFORE_PLAN requestId={requestId} reason=GREETING");
             return new(true, "Chào bạn! KKSHOP AI có thể hỗ trợ tư vấn PC, linh kiện, cấu hình, đơn hàng, bảo hành và thanh toán. Bạn cần mình hỗ trợ phần nào ạ?", [], false, requestId);
+        }
         if (intent == AiChatIntent.FriendlySmallTalk)
+        {
+            Console.WriteLine($"AI_TRACE GeminiChatService.AskAsync RETURN_BEFORE_PLAN requestId={requestId} reason=FRIENDLY_SMALLTALK");
             return new(true, "Mình vẫn ổn và luôn sẵn sàng hỗ trợ bạn đây ạ 😄 Bạn cần KKSHOP tư vấn PC, linh kiện hay kiểm tra thông tin sản phẩm nào không?", [], false, requestId);
+        }
         if (intent == AiChatIntent.OutOfScope)
+        {
+            Console.WriteLine($"AI_TRACE GeminiChatService.AskAsync RETURN_BEFORE_PLAN requestId={requestId} reason=OUT_OF_SCOPE");
             return new(true, "Nội dung này hơi ngoài phạm vi hỗ trợ của KKSHOP AI rồi ạ. Mình có thể hỗ trợ bạn về PC, linh kiện, cấu hình, đơn hàng, bảo hành hoặc thanh toán nhé.", [], false, requestId);
+        }
         if (intent == AiChatIntent.ProductCompare && !HasContextReference(message, conversation) && !HasConcreteProductSignal(message))
+        {
+            Console.WriteLine($"AI_TRACE GeminiChatService.AskAsync RETURN_BEFORE_PLAN requestId={requestId} reason=COMPARE_NEEDS_PRODUCTS");
             return new(true, "Bạn gửi giúp mình tên hoặc link 2 sản phẩm cần so sánh nhé. Có đủ thông tin, KKSHOP sẽ so sánh giá, cấu hình/thông số, điểm mạnh và nên chọn mẫu nào theo nhu cầu của bạn ạ.", [], false, requestId);
+        }
         if (intent == AiChatIntent.ClarifyProductAdvice && !HasContextReference(message, conversation))
+        {
+            Console.WriteLine($"AI_TRACE GeminiChatService.AskAsync RETURN_BEFORE_PLAN requestId={requestId} reason=CLARIFY_PRODUCT_ADVICE");
             return new(true, "Bạn muốn mình phân tích sản phẩm hoặc dòng sản phẩm nào ạ? Hãy gửi tên đầy đủ, nhu cầu sử dụng hoặc link sản phẩm để mình tư vấn ưu/nhược điểm kỹ hơn nhé.", [], false, requestId);
+        }
 
         if (intent == AiChatIntent.CompareRecommendation)
         {
@@ -132,12 +163,14 @@ public partial class GeminiChatService : IAiChatService
                 LogPipelineDebug(requestId, sessionId, message, analysis, conversation, selectedList, false, false, "BEST_PICK_CONSULT", lastIntentBefore, null);
                 return new(true, reply, [], false, requestId);
             }
+            Console.WriteLine($"AI_TRACE GeminiChatService.AskAsync RETURN_BEFORE_PLAN requestId={requestId} reason=COMPARE_RECOMMENDATION_NO_RECENT_PRODUCTS");
             return new(true, "Mình chưa có danh sách sản phẩm vừa đề xuất trong phiên này. Bạn cho mình biết nhu cầu/ngân sách để mình gợi ý rồi chọn mẫu đáng mua nhất nhé.", [], false, requestId);
         }
 
         if (intent == AiChatIntent.ProductExtremeQuery || intent == AiChatIntent.PcBuildAdvice || intent == AiChatIntent.ComponentAdvice)
         {
             var salesPlan = BuildSalesSearchPlan(message, analysis, conversation);
+            Console.WriteLine($"AI_TRACE GeminiChatService.AskAsync BEFORE_PRODUCT_PLAN_SEARCH requestId={requestId} intent={IntentName(intent)} budget={salesPlan.BudgetTarget?.ToString(CultureInfo.InvariantCulture) ?? "none"} scope={salesPlan.CategoryScope} signals={string.Join(",", salesPlan.SearchSignals)}");
             var productsByRule = LimitProductCards(intent == AiChatIntent.ProductExtremeQuery
                 ? await _productSearch.QueryByIntentAsync(IntentName(intent), analysis.ProductType, analysis.PriceMode, analysis.BudgetTarget, cancellationToken)
                 : await _productSearch.SearchByPlanAsync(salesPlan, cancellationToken));
@@ -208,7 +241,13 @@ public partial class GeminiChatService : IAiChatService
         }
 
         var cacheKey = $"ai-chat:{sessionId ?? ipAddress}:{intent}:{conversation.LastReferencedProduct?.Id}:{NormalizeCacheKey(message)}";
-        if (_cache.TryGetValue<AiChatResponse>(cacheKey, out var cached) && cached != null) return cached;
+        var isPcAdviceCacheDisabled = _environment.IsDevelopment() && (intent == AiChatIntent.PcBuildAdvice || (analysis.BudgetTarget.HasValue && ContainsAny(analysis.NormalizedMessage, "pc", "cau hinh", "build", "gaming", "valorant")));
+        if (!isPcAdviceCacheDisabled && _cache.TryGetValue<AiChatResponse>(cacheKey, out var cached) && cached != null)
+        {
+            Console.WriteLine($"AI_TRACE GeminiChatService.AskAsync CACHE_HIT requestId={requestId} key={cacheKey}");
+            return cached;
+        }
+        if (isPcAdviceCacheDisabled) Console.WriteLine($"AI_TRACE GeminiChatService.AskAsync CACHE_DISABLED_DEV_PC_ADVICE requestId={requestId} key={cacheKey}");
 
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeout.CancelAfter(TimeSpan.FromSeconds(Math.Clamp(_options.TimeoutSeconds, 20, 60)));
@@ -258,7 +297,7 @@ public partial class GeminiChatService : IAiChatService
             LogDebugState(requestId, sessionId, message, intent, conversation, products, shouldAttachProductCards, "ok", reply.Length, outgoingProducts.Count, null);
             LogAiTurnMetrics(requestId, intent, shouldSearchProducts, tokenUsage, Stopwatch.GetElapsedTime(startedAt));
             var result = new AiChatResponse(true, reply, outgoingProducts, shouldAttachProductCards, requestId);
-            _cache.Set(cacheKey, result, TimeSpan.FromMinutes(7));
+            if (!isPcAdviceCacheDisabled) _cache.Set(cacheKey, result, TimeSpan.FromMinutes(7));
             return result;
         }
         catch (OperationCanceledException ex)
@@ -324,7 +363,7 @@ public partial class GeminiChatService : IAiChatService
         else if (priceMode != "normal" && ContainsAny(n, "san pham", "pc", "ram", "vga", "gpu", "cpu", "linh kien", "chuot", "ban phim", "man hinh", "tai nghe")) intent = AiChatIntent.ProductExtremeQuery;
         else if (ContainsAny(n, "cai nao dang mua", "san pham ban de xuat", "trong may cai", "nen chon cai nao", "con nao ngon", "tot nhat trong danh sach", "mau nao dang mua") || (ContainsAny(n, "loi ich cua no", "loi ich") && ContainsAny(n, "cai nao", "san pham ban de xuat", "may cai tren"))) intent = AiChatIntent.CompareRecommendation;
         else if (productType != null || ContainsAny(n, "linh kien ma", "khong phai pc", "thanh ram")) intent = AiChatIntent.ComponentAdvice;
-        else if (!hasContextProductReference && !hasSpecificProductSignal && (ContainsAny(n, "tu van cau hinh", "build pc", "pc choi", "may choi", "may gaming", "cau hinh stream", "cau hinh") || (budget.HasValue && purpose == "Gaming"))) intent = AiChatIntent.PcBuildAdvice;
+        else if (!hasContextProductReference && !hasSpecificProductSignal && (ContainsAny(n, "tu van cau hinh", "build pc", "pc choi", "may choi", "may gaming", "pc ", "cau hinh stream", "cau hinh") || (budget.HasValue && (purpose == "Gaming" || ContainsAny(n, "pc", "may tinh", "cau hinh", "build"))))) intent = AiChatIntent.PcBuildAdvice;
         else intent = DetectIntent(message);
         return new(intent, n, budget, game, purpose, productType, priceMode);
     }

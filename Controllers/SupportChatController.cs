@@ -86,6 +86,7 @@ public class SupportChatController : Controller
         await NotifyStaff(conversation.Id, MessagePayload(customerMessage));
         if (!IsQuickActionLabel(request.Message) && !conversation.NeedsStaff)
         {
+            Console.WriteLine($"AI_TRACE SupportChatController.CreateConversation BEFORE_ASK conversationId={conversation.Id} message={request.Message}");
             var aiResult = await _aiChat.AskAsync(request.Message, conversation.Id.ToString(), HttpContext.Connection.RemoteIpAddress?.ToString());
             var aiMessage = AddAiMessage(conversation, aiResult.Reply, aiResult.SuggestedProducts, aiResult.AttachProductCards, request.RequestId ?? aiResult.RequestId);
             await _db.SaveChangesAsync();
@@ -143,6 +144,7 @@ public class SupportChatController : Controller
         }
         if (!conversation.NeedsStaff)
         {
+            Console.WriteLine($"AI_TRACE SupportChatController.SendMessage BEFORE_ASK conversationId={conversation.Id} message={request.Message}");
             var aiResult = await _aiChat.AskAsync(request.Message, conversation.Id.ToString(), HttpContext.Connection.RemoteIpAddress?.ToString(), HttpContext.RequestAborted);
             var aiMessage = AddAiMessage(conversation, aiResult.Reply, aiResult.SuggestedProducts, aiResult.AttachProductCards, request.RequestId ?? aiResult.RequestId);
             await _db.SaveChangesAsync();
