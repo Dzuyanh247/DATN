@@ -167,18 +167,24 @@ public partial class GeminiChatService : IAiChatService
             return new(true, "Mình chưa có danh sách sản phẩm vừa đề xuất trong phiên này. Bạn cho mình biết nhu cầu/ngân sách để mình gợi ý rồi chọn mẫu đáng mua nhất nhé.", [], false, requestId);
         }
 
-        if (intent == AiChatIntent.ProductExtremeQuery || intent == AiChatIntent.PcBuildAdvice || intent == AiChatIntent.ComponentAdvice)
+        var shouldPromoteProductAdviceToPcPlan = ShouldPromoteProductAdviceToPcPlan(analysis);
+        if (intent == AiChatIntent.ProductExtremeQuery || intent == AiChatIntent.PcBuildAdvice || intent == AiChatIntent.ComponentAdvice || shouldPromoteProductAdviceToPcPlan)
         {
-            var salesPlan = BuildSalesSearchPlan(message, analysis, conversation);
-            Console.WriteLine($"AI_TRACE GeminiChatService.AskAsync BEFORE_PRODUCT_PLAN_SEARCH requestId={requestId} intent={IntentName(intent)} budget={salesPlan.BudgetTarget?.ToString(CultureInfo.InvariantCulture) ?? "none"} scope={salesPlan.CategoryScope} signals={string.Join(",", salesPlan.SearchSignals)}");
-            var productsByRule = LimitProductCards(intent == AiChatIntent.ProductExtremeQuery
-                ? await _productSearch.QueryByIntentAsync(IntentName(intent), analysis.ProductType, analysis.PriceMode, analysis.BudgetTarget, cancellationToken)
+            var effectiveAnalysis = shouldPromoteProductAdviceToPcPlan
+                ? analysis with { Intent = AiChatIntent.PcBuildAdvice, ProductType = null }
+                : analysis;
+            var salesPlan = BuildSalesSearchPlan(message, effectiveAnalysis, conversation);
+            Console.WriteLine($"AI_TRACE GeminiChatService BEFORE_SEARCH intent={IntentName(effectiveAnalysis.Intent)} budget={salesPlan.BudgetTarget?.ToString(CultureInfo.InvariantCulture) ?? "none"} category={salesPlan.CategoryScope}");
+            Console.WriteLine($"AI_TRACE GeminiChatService.AskAsync BEFORE_PRODUCT_PLAN_SEARCH requestId={requestId} intent={IntentName(effectiveAnalysis.Intent)} budget={salesPlan.BudgetTarget?.ToString(CultureInfo.InvariantCulture) ?? "none"} scope={salesPlan.CategoryScope} signals={string.Join(",", salesPlan.SearchSignals)}");
+            var productsByRule = LimitProductCards(effectiveAnalysis.Intent == AiChatIntent.ProductExtremeQuery
+                ? await _productSearch.QueryByIntentAsync(IntentName(effectiveAnalysis.Intent), effectiveAnalysis.ProductType, effectiveAnalysis.PriceMode, effectiveAnalysis.BudgetTarget, cancellationToken)
                 : await _productSearch.SearchByPlanAsync(salesPlan, cancellationToken));
-            var reply = BuildRulePipelineReply(analysis, productsByRule);
+            Console.WriteLine($"AI_TRACE GeminiChatService AFTER_SEARCH products={productsByRule.Count}");
+            var reply = BuildRulePipelineReply(effectiveAnalysis, productsByRule);
             if (productsByRule.Count > 0) SaveRecentSuggestedProducts(conversation, productsByRule);
-            UpdateConversationAfterRule(conversation, message, analysis, productsByRule);
+            UpdateConversationAfterRule(conversation, message, effectiveAnalysis, productsByRule);
             LogPlanner(requestId, sessionId, message, salesPlan, productsByRule);
-            LogPipelineDebug(requestId, sessionId, message, analysis, conversation, productsByRule, true, false, IntentName(intent), lastIntentBefore, null);
+            LogPipelineDebug(requestId, sessionId, message, effectiveAnalysis, conversation, productsByRule, true, false, IntentName(effectiveAnalysis.Intent), lastIntentBefore, null);
             return new(true, reply, productsByRule, productsByRule.Count > 0, requestId);
         }
 
@@ -367,6 +373,15 @@ public partial class GeminiChatService : IAiChatService
         else intent = DetectIntent(message);
         return new(intent, n, budget, game, purpose, productType, priceMode);
     }
+
+
+    private static bool ShouldPromoteProductAdviceToPcPlan(ChatTurnAnalysis analysis)
+        => analysis.Intent == AiChatIntent.ProductAdvice
+            && analysis.BudgetTarget.HasValue
+            && IsPcPlanSignal(analysis.NormalizedMessage);
+
+    private static bool IsPcPlanSignal(string normalized)
+        => ContainsAny(normalized, "pc", "may tinh", "cau hinh", "case", "gaming", "choi game");
 
     private static string? DetectChatProductType(string n)
     {
