@@ -1485,7 +1485,7 @@ body:has(.admin-shell) {
 /* Compact revenue report refinements */
 .revenue-report-heading{margin-bottom:16px}.revenue-summary-grid{gap:12px;margin-bottom:14px}.revenue-summary-card{min-height:92px;padding:15px}.revenue-summary-card strong{font-size:clamp(1.08rem,1.6vw,1.34rem);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.revenue-chart-panel{margin-bottom:14px;padding-bottom:18px}.revenue-chart{height:260px;gap:10px;padding-top:6px}.revenue-chart .chart-column{min-width:44px}.revenue-chart .chart-column>span{height:26px;font-size:12px;color:#475569}.revenue-chart .chart-column>div{height:178px}.revenue-chart .chart-column i{width:min(34px,70%)}.revenue-chart .chart-column small{margin-top:7px;font-size:12px}.revenue-report-grid{gap:14px;margin-bottom:14px}.revenue-report-grid-primary{grid-template-columns:minmax(300px,.78fr) minmax(0,1.22fr)}.revenue-report-grid .dashboard-panel,.revenue-chart-panel,.revenue-orders-panel{padding:18px}.revenue-report-grid .dashboard-panel-heading,.revenue-chart-panel .dashboard-panel-heading,.revenue-orders-panel .dashboard-panel-heading{margin-bottom:12px}.revenue-structure-list{gap:8px}.revenue-structure-list>div{padding:10px 12px;border-radius:14px}.revenue-top-table-wrap{max-height:430px;overflow:auto}.revenue-top-table{min-width:620px}.revenue-top-table th,.revenue-top-table td{padding:.52rem .6rem}.revenue-product-thumb-cell{width:58px}.revenue-product-thumb{width:46px;height:46px;display:block;object-fit:cover;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc}.revenue-product-name{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;max-width:360px;overflow:hidden;color:#1e293b;font-weight:700;line-height:1.28}.revenue-orders-panel .dashboard-table td,.revenue-orders-panel .dashboard-table th{padding-top:.62rem;padding-bottom:.62rem}@media(max-width:992px){.revenue-report-grid-primary{grid-template-columns:1fr}.revenue-chart .chart-column{min-width:50px}}@media(max-width:700px){.revenue-chart{height:250px}.revenue-chart .chart-column{min-width:58px}}
 
-/* Admin product create/edit sidebar display options: keep the Daily Deal option horizontal in the side card. */
+/* Admin product create/edit sidebar display options: keep the Daily Deal option as one full-width plain row. */
 .admin-product-form,
 .admin-product-form .admin-two-column-form,
 .admin-product-form .admin-main-column,
@@ -1515,36 +1515,36 @@ body:has(.admin-shell) {
 .admin-product-form .apf-display-options-grid {
     display: block;
     width: 100%;
-    max-width: 100%;
 }
 
-.admin-content .admin-product-form .apf-display-options-grid .apf-option-row {
+.admin-product-form .apf-display-options-grid .apf-option-row,
+.admin-product-form .apf-display-options-grid .form-check.apf-option-row,
+.admin-product-form .apf-display-options-grid .feature-checkbox.apf-option-row {
     display: flex;
-    align-items: center !important;
+    align-items: center;
     gap: 10px;
     width: 100%;
     max-width: 100%;
     min-width: 0;
     justify-self: stretch;
     flex-wrap: nowrap;
-    padding: .75rem .85rem !important;
+    padding: 10px 0;
     margin: 0;
-}
-
-.admin-content .admin-product-form .apf-option-row .form-check-input[type="checkbox"] {
-    flex-shrink: 0;
-    margin: 0 !important;
-}
-
-.admin-content .admin-product-form .apf-option-row .form-check-label {
-    display: block;
-    flex: 0 1 auto;
-    min-width: 0;
-    max-width: 100%;
-    margin: 0;
-    line-height: 1.4;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    border-radius: 0;
     white-space: nowrap;
-    overflow-wrap: normal;
-    word-break: normal;
-    font-weight: 500;
+}
+
+.admin-product-form .apf-display-options-grid .apf-option-row input[type="checkbox"] {
+    flex: 0 0 auto;
+    margin: 0;
+}
+
+.admin-product-form .apf-display-options-grid .apf-option-row label,
+.admin-product-form .apf-display-options-grid .apf-option-row span {
+    white-space: nowrap;
+    min-width: 0;
+    margin: 0;
 }

@@ -61,6 +61,41 @@
         color: #111827;
     }
 
+
+    .admin-product-form .apf-display-options-grid {
+        display: block;
+        width: 100%;
+    }
+
+    .admin-product-form .apf-display-options-grid .apf-option-row,
+    .admin-product-form .apf-display-options-grid .form-check.apf-option-row,
+    .admin-product-form .apf-display-options-grid .feature-checkbox.apf-option-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        padding: 10px 0;
+        border: 0;
+        background: transparent;
+        box-shadow: none;
+        border-radius: 0;
+        white-space: nowrap;
+    }
+
+    .admin-product-form .apf-display-options-grid .apf-option-row input[type="checkbox"] {
+        flex: 0 0 auto;
+        margin: 0;
+    }
+
+    .admin-product-form .apf-display-options-grid .apf-option-row label,
+    .admin-product-form .apf-display-options-grid .apf-option-row span {
+        white-space: nowrap;
+        min-width: 0;
+        margin: 0;
+    }
+
     .promotion-preset-grid {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
