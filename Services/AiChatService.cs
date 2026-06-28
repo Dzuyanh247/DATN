@@ -25,6 +25,11 @@ internal sealed class AiConversationContext
     public string? LastProductType { get; set; }
     public List<AiProductContext> LastRenderedCards { get; } = [];
     public AiProductContext? LastSelectedProduct { get; set; }
+    public string? CurrentTopic { get; set; }
+    public string? LastComponent { get; set; }
+    public string LastSearchKeyword { get; set; } = string.Empty;
+    public string LastAIResponse { get; set; } = string.Empty;
+    public List<AiProductContext> LastComparedProducts { get; } = [];
 }
 
 
@@ -57,8 +62,6 @@ public interface IAiChatService
 
 public partial class GeminiChatService : IAiChatService
 {
-    private const string FriendlyErrorMessage = "Xin lỗi, hệ thống gặp lỗi khi tạo phản hồi. Vui lòng thử lại.";
-    private const string ProviderBusyMessage = "AI đang bận, bạn vui lòng thử lại sau hoặc chọn Gặp nhân viên.";
     private readonly HttpClient _httpClient;
     private readonly IProductSearchForAiService _productSearch;
     private readonly IMemoryCache _cache;
@@ -80,8 +83,10 @@ public partial class GeminiChatService : IAiChatService
     {
         var requestId = Guid.NewGuid().ToString("N");
         var startedAt = Stopwatch.GetTimestamp();
-        message = (message ?? string.Empty).Trim();
+        var rawMessage = (message ?? string.Empty).Trim();
+        message = NormalizeUserMessage(rawMessage);
         if (message.Length == 0) return new(false, "Bạn vui lòng nhập câu hỏi cần tư vấn.", [], false, requestId);
+        _logger.LogInformation("[KKSHOP_AI_NORMALIZE] requestId={RequestId}; rawMessage={RawMessage}; normalizedMessage={NormalizedMessage}", requestId, TrimForLog(rawMessage), TrimForLog(message));
         if (message.Length > 500) return new(false, "Câu hỏi quá dài, bạn vui lòng rút gọn dưới 500 ký tự.", [], false, requestId);
         if (!IsAllowed(sessionId, ipAddress)) return new(false, "Bạn đang gửi quá nhanh, vui lòng thử lại sau vài giây.", [], false, requestId);
         var conversation = GetConversationContext(sessionId, ipAddress);
@@ -164,7 +169,15 @@ public partial class GeminiChatService : IAiChatService
             return new(true, reply, productsForConfig, productsForConfig.Count > 0, requestId);
         }
 
-        if (!_options.Enabled || string.IsNullOrWhiteSpace(_options.ApiKey)) return new(false, FriendlyErrorMessage, [], false, requestId);
+        if (!_options.Enabled || string.IsNullOrWhiteSpace(_options.ApiKey))
+        {
+            var noProviderFallback = BuildFallbackReply(message, intent, conversation);
+            if (string.IsNullOrWhiteSpace(noProviderFallback))
+                noProviderFallback = BuildGenericSalesFallback(message, analysis, conversation);
+            LogDebugState(requestId, sessionId, message, intent, conversation, [], false, "provider-disabled-fallback", noProviderFallback.Length, 0, null);
+            conversation.LastAIResponse = noProviderFallback;
+            return new(true, noProviderFallback, [], false, requestId);
+        }
 
         var contextProduct = ResolveContextProduct(message, conversation);
         var isAnalysisIntent = intent is AiChatIntent.ProductQuestion or AiChatIntent.ProductAnalysis or AiChatIntent.ProductBenefits or AiChatIntent.ProductProsCons or AiChatIntent.ProductRecommendation or AiChatIntent.ProductAdvice or AiChatIntent.ProductCompare;
@@ -214,9 +227,10 @@ public partial class GeminiChatService : IAiChatService
             if (!response.IsSuccessStatusCode)
             {
                 var body = await response.Content.ReadAsStringAsync(timeout.Token);
-                var isProviderBusy = response.StatusCode == HttpStatusCode.ServiceUnavailable;
-                var fallback = isProviderBusy ? ProviderBusyMessage : BuildFallbackReply(message, intent, conversation);
-                var fallbackReply = string.IsNullOrWhiteSpace(fallback) ? FriendlyErrorMessage : fallback;
+                var isProviderBusy = response.StatusCode == HttpStatusCode.ServiceUnavailable || response.StatusCode == HttpStatusCode.TooManyRequests;
+                var fallback = BuildFallbackReply(message, intent, conversation);
+                if (string.IsNullOrWhiteSpace(fallback)) fallback = BuildGenericSalesFallback(message, analysis, conversation);
+                var fallbackReply = fallback;
                 var logBody = TrimForLog(body, isProviderBusy ? 120 : 180);
 
                 if (isProviderBusy)
@@ -235,7 +249,8 @@ public partial class GeminiChatService : IAiChatService
             var tokenUsage = ExtractTokenUsage(document.RootElement);
             var reply = ExtractReply(document.RootElement);
             if (string.IsNullOrWhiteSpace(reply)) reply = BuildFallbackReply(message, intent, conversation);
-            if (string.IsNullOrWhiteSpace(reply) || !IsCompleteReply(reply)) reply = FriendlyErrorMessage;
+            if (string.IsNullOrWhiteSpace(reply)) reply = BuildGenericSalesFallback(message, analysis, conversation);
+            if (!IsCompleteReply(reply)) reply = CompleteSentence(reply.Trim());
             else reply = CompleteSentence(reply.Trim());
             IReadOnlyList<AiProductContext> outgoingProducts = shouldAttachProductCards ? products : [];
             if (outgoingProducts.Count > 0) SaveRecentSuggestedProducts(conversation, outgoingProducts);
@@ -251,14 +266,18 @@ public partial class GeminiChatService : IAiChatService
             var fallback = BuildFallbackReply(message, intent, conversation);
             LogDebugState(requestId, sessionId, message, intent, conversation, products, false, "timeout", fallback.Length, 0, ex.ToString());
             _logger.LogError(ex, "[KKSHOP_AI_ERROR] requestId={RequestId}; sessionId={SessionId}; userMessage={UserMessage}; intent={Intent}; productContext={ProductContext}", requestId, sessionId, TrimForLog(message), intent, conversation.CurrentProductContext?.Name ?? "none");
-            return new(!string.IsNullOrWhiteSpace(fallback), string.IsNullOrWhiteSpace(fallback) ? FriendlyErrorMessage : fallback, [], false, requestId);
+            if (string.IsNullOrWhiteSpace(fallback)) fallback = BuildGenericSalesFallback(message, analysis, conversation);
+            conversation.LastAIResponse = fallback;
+            return new(true, fallback, [], false, requestId);
         }
         catch (Exception ex)
         {
             var fallback = BuildFallbackReply(message, intent, conversation);
             LogDebugState(requestId, sessionId, message, intent, conversation, products, false, "exception", fallback.Length, 0, ex.ToString());
             _logger.LogError(ex, "[KKSHOP_AI_ERROR] requestId={RequestId}; sessionId={SessionId}; exceptionType={ExceptionType}; exceptionMessage={ExceptionMessage}; userMessage={UserMessage}; intent={Intent}; productContext={ProductContext}", requestId, sessionId, ex.GetType().FullName, ex.Message, TrimForLog(message), intent, conversation.CurrentProductContext?.Name ?? "none");
-            return new(!string.IsNullOrWhiteSpace(fallback), string.IsNullOrWhiteSpace(fallback) ? FriendlyErrorMessage : fallback, [], false, requestId);
+            if (string.IsNullOrWhiteSpace(fallback)) fallback = BuildGenericSalesFallback(message, analysis, conversation);
+            conversation.LastAIResponse = fallback;
+            return new(true, fallback, [], false, requestId);
         }
     }
 
@@ -266,6 +285,26 @@ public partial class GeminiChatService : IAiChatService
 
 
     private sealed record ChatTurnAnalysis(AiChatIntent Intent, string NormalizedMessage, decimal? BudgetTarget, string? Game, string? Purpose, string? ProductType, string PriceMode);
+
+    private static string NormalizeUserMessage(string message)
+    {
+        var value = (message ?? string.Empty).Trim();
+        if (value.Length == 0) return string.Empty;
+        value = Regex.Replace(value, @"\s+", " ");
+        var replacements = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["pc20tr"] = "pc 20 triệu", ["pc30tr"] = "pc 30 triệu", ["pc50tr"] = "pc 50 triệu",
+            ["chuot"] = "chuột", ["chuot re"] = "chuột rẻ", ["mouse"] = "chuột",
+            ["ban phim"] = "bàn phím", ["keyboard"] = "bàn phím", ["ban phim co"] = "bàn phím cơ",
+            ["man hinh"] = "màn hình", ["tai nghe"] = "tai nghe", ["bao hanh"] = "bảo hành",
+            ["con hang"] = "còn hàng", ["ton dien"] = "tốn điện", ["loi ich"] = "lợi ích"
+        };
+        foreach (var item in replacements)
+            value = Regex.Replace(value, $@"(?<!\p{{L}}){Regex.Escape(item.Key)}(?!\p{{L}})", item.Value, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        value = Regex.Replace(value, @"\b(pc)\s*(\d{1,3})\s*(tr|trieu|m)\b", "$1 $2 triệu", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        value = Regex.Replace(value, @"\b(\d{1,3})\s*(tr|trieu|m)\b", "$1 triệu", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        return value.Trim();
+    }
 
     private static ChatTurnAnalysis AnalyzeChatTurn(string message, AiConversationContext? conversation = null)
     {
@@ -417,13 +456,13 @@ public partial class GeminiChatService : IAiChatService
     private static bool IsThermalQuestion(string message) => ContainsAny(RemoveDiacritics((message ?? string.Empty).ToLowerInvariant()), "nong khong", "nhiet do", "co nong", "mat khong");
 
     private static bool IsProductQuestion(string normalized)
-        => ContainsAny(normalized, "ton dien", "hao dien", "an dien", "dien nang", "cong suat", "nguon bao nhieu", "psu bao nhieu", "nong khong", "on khong", "co tot khong", "tot khong", "co nen mua", "uu diem", "nhuoc diem", "danh gia", "phan tich", "bao hanh", "con hang", "gia bao nhieu", "gia", "choi duoc khong", "choi game duoc khong", "nang cap duoc khong");
+        => ContainsAny(normalized, "ton dien", "hao dien", "an dien", "dien nang", "cong suat", "nguon bao nhieu", "psu bao nhieu", "nong khong", "on khong", "co tot khong", "tot khong", "co nen mua", "dang mua khong", "uu diem", "nhuoc diem", "loi ich", "danh gia", "phan tich", "bao hanh", "bao lau", "con hang", "ton kho", "gia bao nhieu", "gia", "rgb", "led", "choi duoc khong", "choi game duoc khong", "nang cap duoc khong", "phu hop sinh vien");
 
     private static string ProductTypeDisplay(string? t) => t switch { "RAM" => "RAM", "VGA" => "VGA", "CPU" => "CPU", "Mainboard" => "Mainboard", "Storage" => "SSD/HDD", "PSU" => "Nguồn", "Case" => "Vỏ case", "Cooler" => "Tản nhiệt", "Monitor" => "Màn hình", "Mouse" => "Chuột", "Keyboard" => "Bàn phím", "Headphone" => "Tai nghe", _ => "Linh kiện" };
 
     private static void UpdateConversationAfterRule(AiConversationContext c, string message, ChatTurnAnalysis a, IReadOnlyList<AiProductContext> products)
     {
-        c.LastIntent = a.Intent; c.LastUserMessage = message; c.LastBudgetTarget = a.BudgetTarget ?? c.LastBudgetTarget; c.LastPurpose = a.Purpose ?? c.LastPurpose; c.LastGame = a.Game ?? c.LastGame; c.LastProductType = a.ProductType ?? c.LastProductType; c.LastRenderedCards.Clear(); c.LastRenderedCards.AddRange(products.Take(3));
+        c.LastIntent = a.Intent; c.LastUserMessage = message; c.LastSearchKeyword = message; c.LastBudgetTarget = a.BudgetTarget ?? c.LastBudgetTarget; c.LastPurpose = a.Purpose ?? c.LastPurpose; c.LastGame = a.Game ?? c.LastGame; c.LastProductType = a.ProductType ?? c.LastProductType; c.CurrentTopic = a.ProductType ?? a.Purpose ?? a.Game ?? a.Intent.ToString(); c.LastComponent = a.ProductType ?? c.LastComponent; c.LastRenderedCards.Clear(); c.LastRenderedCards.AddRange(products.Take(3));
         if (products.Count > 0) { c.CurrentProductContext = products[0]; c.LastReferencedProduct = products[0]; }
     }
 
@@ -491,9 +530,26 @@ public partial class GeminiChatService : IAiChatService
     private static string BuildFallbackReply(string message, AiChatIntent intent, AiConversationContext conversation)
     {
         var product = ResolveContextProduct(message, conversation) ?? conversation.RecentSuggestedProducts.FirstOrDefault();
-        return product != null && intent is (AiChatIntent.ProductQuestion or AiChatIntent.ProductAnalysis or AiChatIntent.ProductBenefits or AiChatIntent.ProductProsCons or AiChatIntent.ProductRecommendation or AiChatIntent.ClarifyProductAdvice)
-            ? BuildRuleBasedProductAnalysis(message, product, conversation.RecentSuggestedProducts)
-            : string.Empty;
+        if (product == null) return string.Empty;
+        var n = RemoveDiacritics(message.ToLowerInvariant());
+        if (ContainsAny(n, "gia", "bao nhieu")) return $"Mẫu {product.Name} hiện có giá {product.Price:N0} đ. {product.StockStatus}, bảo hành {product.Warranty}.";
+        if (ContainsAny(n, "bao hanh", "bao lau")) return $"Mẫu {product.Name} đang được KKSHOP ghi nhận bảo hành {product.Warranty}. Khi mua bạn nên giữ thông tin đơn hàng để shop hỗ trợ nhanh hơn nhé.";
+        if (ContainsAny(n, "con hang", "ton kho", "co hang")) return $"Mẫu {product.Name}: {product.StockStatus}. Nếu bạn muốn chốt mẫu này, mình khuyên đặt sớm vì tồn kho có thể thay đổi theo thời gian.";
+        if (ContainsAny(n, "thong so", "cau hinh", "spec", "rgb", "led")) return $"Thông tin chính của {product.Name}: {product.Specifications}. Giá {product.Price:N0} đ, {product.StockStatus}, bảo hành {product.Warranty}.";
+        return BuildRuleBasedProductAnalysis(message, product, conversation.RecentSuggestedProducts);
+    }
+
+    private static string BuildGenericSalesFallback(string message, ChatTurnAnalysis analysis, AiConversationContext conversation)
+    {
+        var topic = ProductTypeDisplay(analysis.ProductType ?? conversation.LastProductType);
+        if (analysis.Intent == AiChatIntent.ComponentAdvice)
+            return $"Mình đã hiểu bạn đang cần {topic.ToLowerInvariant()}. Nếu ưu tiên giá tốt, KKSHOP sẽ lọc mẫu còn hàng theo giá tăng dần; nếu ưu tiên gaming thì nên chọn mẫu bền, phản hồi tốt và đúng nhu cầu sử dụng. Bạn có thể cho mình thêm ngân sách để mình gợi ý sát hơn nhé.";
+        if (analysis.Intent == AiChatIntent.PcBuildAdvice || analysis.BudgetTarget.HasValue || conversation.LastBudgetTarget.HasValue)
+        {
+            var budget = analysis.BudgetTarget ?? conversation.LastBudgetTarget;
+            return $"Mình đã nhận nhu cầu PC{(budget.HasValue ? $" khoảng {budget.Value:N0} đ" : string.Empty)}. Nguyên tắc tư vấn của KKSHOP là ưu tiên cấu hình còn hàng, cân bằng CPU/GPU/RAM/SSD, sau đó mới xét RGB hoặc nâng cấp. Nếu không có đúng mức giá, mình sẽ ưu tiên mẫu gần nhất thay vì kết thúc cuộc tư vấn.";
+        }
+        return "Mình vẫn hỗ trợ bạn theo hướng tư vấn bán hàng của KKSHOP nhé. Bạn có thể gửi loại sản phẩm, ngân sách hoặc nhu cầu như gaming, văn phòng, học AI để mình lọc theo dữ liệu shop trước rồi mới diễn giải thêm.";
     }
 
     private static string BuildRuleBasedProductAnalysis(string message, AiProductContext product, IReadOnlyList<AiProductContext> recentProducts)
