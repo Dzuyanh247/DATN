@@ -38,6 +38,7 @@
             hasDragged = false;
             startX = event.pageX;
             startScrollLeft = rail.scrollLeft;
+            rail.dataset.dragStartScrollLeft = String(startScrollLeft);
         });
 
         rail.addEventListener('mousemove', (event) => {
@@ -86,5 +87,19 @@
                 event.preventDefault();
             }
         });
+
+        if (new URLSearchParams(window.location.search).has('debugRails')) {
+            // Required manual checks: the page must not overflow horizontally,
+            // this exact rail must overflow horizontally, and dragging must
+            // change this element's scrollLeft.
+            // eslint-disable-next-line no-console
+            console.debug('KKSHOP rail debug', {
+                bodyFits: document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1,
+                railOverflows: hasHorizontalOverflow(),
+                scrollWidth: rail.scrollWidth,
+                clientWidth: rail.clientWidth,
+                scrollLeft: rail.scrollLeft,
+            });
+        }
     });
 })();
