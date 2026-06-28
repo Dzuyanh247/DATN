@@ -236,46 +236,44 @@
                     <p>@Model.Details.Count sản phẩm đã đặt</p>
                 </div>
             </div>
-            <div class="order-products-table-wrap">
-                <table class="order-products-table">
-                    <thead>
-                        <tr><th class="col-product">Sản phẩm</th><th class="col-price">Đơn giá</th><th class="col-quantity">Số lượng</th><th class="col-total">Thành tiền</th></tr>
-                    </thead>
-                    <tbody>
+            <div class="order-products-layout">
+                <div class="order-products-list" aria-label="Danh sách sản phẩm trong đơn hàng">
                     @foreach (var d in Model.Details)
                     {
                         var img = ImageUrlHelper.ResolveImageUrl(d.ProductImage, "/images/placeholders/product-placeholder.png");
-                        <tr>
-                            <td data-label="Sản phẩm">
-                                <div class="order-product-info">
-                                    <img src="@img" alt="@d.ProductName" onerror="this.onerror=null;this.src='/images/placeholders/product-placeholder.png';" />
-                                    <div>
-                                        <strong>@d.ProductName</strong>
-                                        <small class="d-block text-muted mt-1">Mã bảo hành: @WarrantyCodeHelper.BuildWarrantyCode(Model.Id, d.Id)</small>
-                                        <a class="d-block small mt-1 text-danger text-decoration-none" asp-controller="Warranty" asp-action="Check" asp-route-query="@(WarrantyCodeHelper.BuildWarrantyCode(Model.Id, d.Id))"><i class="bi bi-shield-check"></i> Kiểm tra bảo hành</a>
-                                        @if (Model.Status == OrderStatus.Completed)
-                                        {
-                                            if (reviewedProductIds.Contains(d.ProductId))
-                                            {
-                                                <span class="badge text-bg-success mt-2"><i class="bi bi-check-circle"></i> Đã đánh giá</span>
-                                            }
-                                            else
-                                            {
-                                                <a class="btn btn-sm btn-outline-danger mt-2" asp-controller="ProductReviews" asp-action="Create" asp-route-orderId="@Model.Id" asp-route-productId="@d.ProductId"><i class="bi bi-star"></i> Đánh giá ngay</a>
-                                            }
-                                        }
-                                    </div>
+                        var warrantyCode = WarrantyCodeHelper.BuildWarrantyCode(Model.Id, d.Id);
+                        <article class="order-product-card">
+                            <img class="order-product-thumb" src="@img" alt="@d.ProductName" onerror="this.onerror=null;this.src='/images/placeholders/product-placeholder.png';" />
+                            <div class="order-product-body">
+                                <div class="order-product-main">
+                                    <h3>@d.ProductName</h3>
+                                    <p class="order-product-warranty">Mã bảo hành: @warrantyCode</p>
+                                    <a class="order-product-warranty-link" asp-controller="Warranty" asp-action="Check" asp-route-query="@warrantyCode"><i class="bi bi-shield-check"></i> Kiểm tra bảo hành</a>
                                 </div>
-                            </td>
-                            <td class="order-product-price" data-label="Đơn giá">@d.UnitPrice.ToString("N0") đ</td>
-                            <td class="order-product-quantity-cell" data-label="Số lượng"><span class="order-product-quantity">@d.Quantity</span></td>
-                            <td class="order-product-total" data-label="Thành tiền">@d.TotalPrice.ToString("N0") đ</td>
-                        </tr>
+                                <div class="order-product-meta" aria-label="Thông tin giá và số lượng">
+                                    <span><em>Đơn giá</em><strong>@d.UnitPrice.ToString("N0") đ</strong></span>
+                                    <span><em>Số lượng</em><strong>@d.Quantity</strong></span>
+                                    <span><em>Thành tiền</em><strong>@d.TotalPrice.ToString("N0") đ</strong></span>
+                                </div>
+                                @if (Model.Status == OrderStatus.Completed)
+                                {
+                                    <div class="order-product-review">
+                                    @if (reviewedProductIds.Contains(d.ProductId))
+                                    {
+                                        <span class="badge text-bg-success"><i class="bi bi-check-circle"></i> Đã đánh giá</span>
+                                    }
+                                    else
+                                    {
+                                        <a class="btn btn-sm btn-outline-danger" asp-controller="ProductReviews" asp-action="Create" asp-route-orderId="@Model.Id" asp-route-productId="@d.ProductId"><i class="bi bi-star"></i> Đánh giá ngay</a>
+                                    }
+                                    </div>
+                                }
+                            </div>
+                        </article>
                     }
-                    </tbody>
-                </table>
-            </div>
-            <div class="order-total-breakdown" aria-label="Tổng kết thanh toán">
+                </div>
+                <aside class="order-total-breakdown order-payment-summary" aria-label="Tổng kết thanh toán">
+                    <h3>Tóm tắt thanh toán</h3>
                 <div class="order-total-row">
                     <span>Tạm tính</span>
                     <strong>@((Model.SubtotalAmount > 0 ? Model.SubtotalAmount : Model.Details.Sum(x => x.TotalPrice)).ToString("N0")) đ</strong>
@@ -295,6 +293,7 @@
                     <span>Thành tiền</span>
                     <strong>@Model.TotalAmount.ToString("N0") đ</strong>
                 </div>
+                </aside>
             </div>
         </section>
 
