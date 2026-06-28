@@ -9,6 +9,8 @@
         let startX = 0;
         let startScrollLeft = 0;
 
+        // Drag only works when the rail itself is the overflowing element; if
+        // scrollWidth <= clientWidth, every card already fits so there is nothing to drag.
         const hasHorizontalOverflow = () => rail.scrollWidth > rail.clientWidth + 1;
 
         const stopDragging = () => {
