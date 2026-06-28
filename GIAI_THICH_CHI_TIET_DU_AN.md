@@ -24,7 +24,7 @@
 - Thêm vào giỏ hàng, cập nhật giỏ, checkout tạo đơn.
 - Theo dõi đơn hàng.
 - Quản trị sản phẩm, danh mục, đơn hàng, người dùng, bảo hành, banner, cài đặt site.
-- Build cấu hình PC theo linh kiện, kiểm tra tương thích cơ bản.
+- Build cấu hình PC theo linh kiện, kèm cảnh báo tham khảo khi chọn cấu hình.
 
 ### Có những loại người dùng nào?
 1. **Guest** (chưa đăng nhập).
@@ -374,7 +374,7 @@ Vì sao transaction quan trọng?
 
 - Build PC = chức năng chọn linh kiện theo nhóm (CPU/Mainboard/RAM/SSD/GPU/PSU/Case).
 - Chọn linh kiện trên trang Build PC, hệ thống tính tổng tiền.
-- Kiểm tra tương thích cơ bản CPU socket và RAM type.
+- Cảnh báo tham khảo về socket CPU/Mainboard và chuẩn RAM/Mainboard; chưa thay thế kiểm tra kỹ thuật chuyên sâu.
 - Dữ liệu lưu ở `BuildPcConfigs` và `BuildPcItems`.
 - Có thể thêm toàn bộ cấu hình vào giỏ (`AddConfigToCart`).
 
@@ -391,7 +391,7 @@ Vì sao transaction quan trọng?
 ## 14) Nội dung thuyết trình
 
 ### 14.1 Bản ngắn ~3 phút
-“Đây là website bán linh kiện PC viết bằng ASP.NET Core MVC. Người dùng có thể xem sản phẩm, lọc/tìm kiếm, thêm vào giỏ, đặt hàng và theo dõi đơn. Hệ thống hỗ trợ cả khách chưa đăng nhập bằng session cart và tự động merge giỏ khi đăng nhập. Bên admin quản lý sản phẩm, đơn hàng, danh mục, người dùng, banner và cấu hình website. Ngoài ra còn có Build PC để chọn linh kiện tương thích cơ bản và module bảo hành để gửi yêu cầu sau mua. Dữ liệu lưu SQL Server qua Entity Framework Core, authentication dùng cookie và phân quyền role Admin/Customer bằng Authorize.”
+“Đây là website bán linh kiện PC viết bằng ASP.NET Core MVC. Người dùng có thể xem sản phẩm, lọc/tìm kiếm, thêm vào giỏ, đặt hàng và theo dõi đơn. Hệ thống hỗ trợ cả khách chưa đăng nhập bằng session cart và tự động merge giỏ khi đăng nhập. Bên admin quản lý sản phẩm, đơn hàng, danh mục, người dùng, banner và cấu hình website. Ngoài ra còn có Build PC để hỗ trợ lựa chọn cấu hình, kèm cảnh báo tham khảo, và module bảo hành để gửi yêu cầu sau mua. Dữ liệu lưu SQL Server qua Entity Framework Core, authentication dùng cookie và phân quyền role Admin/Customer bằng Authorize.”
 
 ### 14.2 Bản chi tiết 7–10 phút (dàn ý)
 1. Mục tiêu dự án và đối tượng người dùng.
@@ -418,8 +418,8 @@ Vì sao transaction quan trọng?
    - Validate dữ liệu + check tồn kho + transaction rollback khi lỗi.
 4. **Phân quyền admin bằng gì?**
    - `[Authorize(Roles="Admin")]` + claim role trong cookie.
-5. **Build PC kiểm tra tương thích gì?**
-   - Socket CPU-mainboard và RAM type-mainboard (mức cơ bản).
+5. **Build PC hỗ trợ cảnh báo cấu hình gì?**
+   - Cảnh báo tham khảo về socket CPU-mainboard và RAM type-mainboard; chưa thay thế kiểm tra kỹ thuật chuyên sâu.
 
 ---
 
