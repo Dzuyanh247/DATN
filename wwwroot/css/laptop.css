@@ -1,0 +1,389 @@
+/* Laptop-only responsive layer. Desktop >=1440px and mobile <=991px are intentionally untouched. */
+@media (min-width: 992px) and (max-width: 1439px) {
+    html,
+    body {
+        max-width: 100%;
+        overflow-x: clip;
+    }
+
+    body:not(.admin-page) .ttg-shell,
+    body:not(.admin-page) .container {
+        max-width: min(100% - 32px, 1180px);
+    }
+
+    /* Header / sticky navigation */
+    body:not(.admin-page) .ttg-topbar {
+        padding-top: .35rem !important;
+        padding-bottom: .35rem !important;
+    }
+
+    body:not(.admin-page) .ttg-topbar-inner,
+    body:not(.admin-page) .ttg-topbar-left,
+    body:not(.admin-page) .ttg-topbar-right {
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    body:not(.admin-page) .ttg-pill {
+        padding: 5px 9px;
+        font-size: .78rem;
+        white-space: nowrap;
+    }
+
+    body:not(.admin-page) .ttg-main-header {
+        z-index: 1030;
+    }
+
+    body:not(.admin-page) .ttg-main-header-row {
+        min-height: 72px;
+        padding-top: 8px;
+        padding-bottom: 8px;
+        gap: 12px;
+        display: grid;
+        grid-template-columns: minmax(108px, 140px) minmax(320px, 1fr) minmax(360px, auto);
+        align-items: center;
+    }
+
+    body:not(.admin-page) .site-logo,
+    body:not(.admin-page) .site-logo-image {
+        max-width: 140px;
+        max-height: 56px;
+    }
+
+    body:not(.admin-page) .ttg-search {
+        min-width: 0;
+    }
+
+    body:not(.admin-page) .ttg-search-group {
+        min-width: 0;
+        height: 42px;
+    }
+
+    body:not(.admin-page) .ttg-search-category-toggle {
+        max-width: 152px;
+        padding-inline: 10px;
+        font-size: .82rem;
+    }
+
+    body:not(.admin-page) .ttg-search .form-control {
+        min-width: 0;
+        font-size: .9rem;
+    }
+
+    body:not(.admin-page) .ttg-header-actions {
+        gap: 7px;
+        justify-content: flex-end;
+        min-width: 0;
+    }
+
+    body:not(.admin-page) .ttg-cta {
+        min-width: 0;
+        padding: 7px 8px;
+        gap: 6px !important;
+        font-size: .78rem;
+        line-height: 1.15;
+        white-space: nowrap;
+    }
+
+    body:not(.admin-page) .ttg-cta .icon {
+        width: 30px;
+        height: 30px;
+        min-width: 30px;
+        font-size: .95rem;
+    }
+
+    body:not(.admin-page) .ttg-cat-row {
+        min-height: 42px;
+        gap: 10px;
+    }
+
+    body:not(.admin-page) .ttg-cat-btn,
+    body:not(.admin-page) .ttg-cat-link {
+        padding: 9px 10px;
+        font-size: .84rem;
+        white-space: nowrap;
+    }
+
+    body:not(.admin-page) .ttg-cat-nav {
+        gap: 6px;
+        overflow-x: auto;
+        scrollbar-width: thin;
+    }
+
+    body:not(.admin-page) .ttg-category-menu,
+    body:not(.admin-page) .ttg-showroom-dropdown,
+    body:not(.admin-page) .dropdown-menu,
+    body:not(.admin-page) .ttg-search-suggest {
+        z-index: 1045;
+        max-width: calc(100vw - 32px);
+    }
+
+    body:not(.admin-page) .ttg-showroom-dropdown {
+        left: 0;
+        right: auto;
+    }
+
+    body:not(.admin-page) .ttg-showroom-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        max-height: min(70vh, 620px);
+        overflow: auto;
+    }
+
+    /* Banner / hero images */
+    body:not(.admin-page) .hero-banner,
+    body:not(.admin-page) .home-hero,
+    body:not(.admin-page) .banner,
+    body:not(.admin-page) .carousel,
+    body:not(.admin-page) .carousel-inner {
+        max-width: 100%;
+        overflow: hidden;
+    }
+
+    body:not(.admin-page) .hero-banner img,
+    body:not(.admin-page) .home-hero img,
+    body:not(.admin-page) .banner img,
+    body:not(.admin-page) .carousel-item img {
+        width: 100%;
+        height: auto;
+        max-height: 460px;
+        object-fit: contain;
+    }
+
+    /* Product listing, cards and detail */
+    body:not(.admin-page) .ttg-products-grid,
+    body:not(.admin-page) .products-grid {
+        grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+        gap: 14px;
+    }
+
+    body:not(.admin-page) .products-layout {
+        grid-template-columns: minmax(240px, 280px) minmax(0, 1fr);
+        gap: 18px;
+        align-items: start;
+    }
+
+    body:not(.admin-page) .products-filter-sidebar,
+    body:not(.admin-page) .products-results,
+    body:not(.admin-page) .product-detail-page,
+    body:not(.admin-page) .product-detail-layout,
+    body:not(.admin-page) .product-info-panel {
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    body:not(.admin-page) .ttg-product-card,
+    body:not(.admin-page) .product-card {
+        min-width: 0;
+    }
+
+    body:not(.admin-page) .ttg-product-actions,
+    body:not(.admin-page) .product-actions,
+    body:not(.admin-page) .product-detail-actions {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    body:not(.admin-page) .ttg-product-actions .btn,
+    body:not(.admin-page) .product-actions .btn,
+    body:not(.admin-page) .product-detail-actions .btn {
+        min-width: 0;
+        white-space: normal;
+    }
+
+    body:not(.admin-page) .product-hover-card {
+        max-width: min(360px, calc(100vw - 32px));
+        z-index: 1040;
+    }
+
+    /* Forms, checkout, cart, orders, warranty, compare, build PC, search */
+    body:not(.admin-page) form,
+    body:not(.admin-page) .form-control,
+    body:not(.admin-page) .form-select,
+    body:not(.admin-page) textarea,
+    body:not(.admin-page) input,
+    body:not(.admin-page) select,
+    body:not(.admin-page) .input-group,
+    body:not(.admin-page) .checkout-page,
+    body:not(.admin-page) .cart-page,
+    body:not(.admin-page) .orders-page,
+    body:not(.admin-page) .warranty-page,
+    body:not(.admin-page) .compare-page,
+    body:not(.admin-page) .buildpc-wrap {
+        max-width: 100%;
+        min-width: 0;
+    }
+
+    body:not(.admin-page) .checkout-layout,
+    body:not(.admin-page) .cart-layout,
+    body:not(.admin-page) .order-detail-layout,
+    body:not(.admin-page) .warranty-layout,
+    body:not(.admin-page) .compare-layout {
+        grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+        gap: 18px;
+        align-items: start;
+    }
+
+    body:not(.admin-page) .buildpc-table,
+    body:not(.admin-page) .table-responsive,
+    body:not(.admin-page) .compare-table-wrap,
+    body:not(.admin-page) .orders-table-wrap {
+        overflow-x: auto;
+        max-width: 100%;
+    }
+
+    body:not(.admin-page) .buildpc-actions,
+    body:not(.admin-page) .checkout-actions,
+    body:not(.admin-page) .cart-actions,
+    body:not(.admin-page) .warranty-actions,
+    body:not(.admin-page) .compare-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        justify-content: flex-end;
+    }
+
+    /* Popup / modal */
+    body:not(.admin-page) .modal-dialog {
+        max-width: min(92vw, 880px);
+        margin: 1.75rem auto;
+    }
+
+    body:not(.admin-page) .modal-content,
+    body:not(.admin-page) .popup,
+    body:not(.admin-page) .product-hover-card,
+    body:not(.admin-page) .toast-container {
+        max-height: calc(100vh - 32px);
+    }
+
+    body:not(.admin-page) .modal-body,
+    body:not(.admin-page) .popup-body {
+        overflow: auto;
+    }
+
+    body:not(.admin-page) .global-toast-container {
+        top: 104px;
+        z-index: 1060;
+    }
+
+    /* Chat AI: keep above sticky header and always inside laptop viewport. */
+    body:not(.admin-page) .kk-chat {
+        z-index: 1080;
+        right: max(16px, env(safe-area-inset-right));
+        bottom: max(16px, env(safe-area-inset-bottom));
+        max-width: calc(100vw - 32px);
+    }
+
+    body:not(.admin-page) .kk-chat-panel {
+        z-index: 1081;
+        right: max(16px, env(safe-area-inset-right));
+        bottom: max(16px, env(safe-area-inset-bottom));
+        width: min(380px, calc(100vw - 32px));
+        height: min(560px, calc(100vh - 132px));
+        max-height: calc(100vh - 132px);
+        transform-origin: bottom right;
+    }
+
+    body:not(.admin-page) .kk-chat-header {
+        min-height: 56px;
+        padding: 10px 12px;
+    }
+
+    body:not(.admin-page) .kk-chat-close {
+        position: relative;
+        z-index: 2;
+        width: 38px;
+        height: 38px;
+        flex: 0 0 38px;
+    }
+
+    body:not(.admin-page) .kk-chat-start-form,
+    body:not(.admin-page) .kk-chat-messages {
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+
+    body:not(.admin-page) .kk-chat-footer,
+    body:not(.admin-page) .kk-chat-composer {
+        flex-shrink: 0;
+    }
+
+    body:not(.admin-page).has-compare-tray .kk-chat,
+    body:not(.admin-page).has-compare-tray .kk-chat-panel {
+        bottom: 104px;
+    }
+
+    body:not(.admin-page) .compare-tray,
+    body:not(.admin-page) .compare-floating-bar {
+        z-index: 1040;
+        max-width: calc(100vw - 32px);
+    }
+
+    /* Footer */
+    body:not(.admin-page) footer,
+    body:not(.admin-page) .footer,
+    body:not(.admin-page) .site-footer {
+        max-width: 100%;
+        overflow: hidden;
+    }
+
+    /* Admin laptop layout */
+    body.admin-page .admin-shell {
+        overflow-x: clip;
+    }
+
+    body.admin-page .admin-sidebar {
+        flex-basis: 238px;
+        width: 238px;
+    }
+
+    body.admin-page .admin-main {
+        max-width: calc(100vw - 238px);
+        padding: 16px;
+    }
+
+    body.admin-page .admin-topbar {
+        top: 10px;
+        padding: 14px 16px;
+        gap: 12px;
+    }
+
+    body.admin-page .admin-content {
+        padding: 18px;
+        max-width: 100%;
+        overflow: visible;
+    }
+
+    body.admin-page .admin-form-grid,
+    body.admin-page .admin-inline-filters,
+    body.admin-page .admin-order-filters {
+        gap: 12px;
+    }
+
+    body.admin-page .admin-two-column-form {
+        grid-template-columns: minmax(0, 1fr) minmax(280px, .42fr);
+        gap: 14px;
+    }
+
+    body.admin-page .dashboard-stat-grid,
+    body.admin-page .admin-order-stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    body.admin-page .admin-data-panel,
+    body.admin-page .table-responsive,
+    body.admin-page .admin-orders-table-wrap {
+        max-width: 100%;
+        overflow-x: auto;
+    }
+
+    body.admin-page .admin-content .form-control,
+    body.admin-page .admin-content .form-select,
+    body.admin-page .admin-content .btn {
+        max-width: 100%;
+    }
+
+    body.admin-page .admin-topbar-actions,
+    body.admin-page .admin-page-heading {
+        flex-wrap: wrap;
+    }
+}
