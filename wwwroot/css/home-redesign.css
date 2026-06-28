@@ -11,7 +11,7 @@
 }
 
 body { background: var(--ttg-bg) !important; color: var(--ttg-text); font-family: Inter, "Be Vietnam Pro", system-ui, sans-serif; }
-.ttg-shell { max-width: 1280px; }
+.ttg-shell { max-width: 1400px; }
 .ttg-home { display: grid; gap: 16px; }
 
 .ttg-topbar { background: linear-gradient(90deg, var(--ttg-dark-2), var(--ttg-dark)); }
