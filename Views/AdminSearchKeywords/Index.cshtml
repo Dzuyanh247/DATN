@@ -15,6 +15,11 @@
         overflow: visible;
     }
 
+    .admin-search-keywords .ask-table-card {
+        position: relative;
+        z-index: 1;
+    }
+
     .admin-search-keywords .ask-filter-form {
         display: grid;
         grid-template-columns: minmax(240px, 1fr) auto;
@@ -85,25 +90,53 @@
     .admin-search-keywords .ask-table-wrap {
         width: 100%;
         overflow-x: auto;
+        overflow-y: visible;
         padding-bottom: 2px;
     }
 
     .admin-search-keywords .ask-table {
-        min-width: 980px;
+        min-width: 1040px;
         table-layout: fixed;
         margin-bottom: 0;
+        border-collapse: separate;
+        border-spacing: 0;
     }
 
-    .admin-search-keywords .ask-col-keyword { width: 38%; }
-    .admin-search-keywords .ask-col-count { width: 105px; }
-    .admin-search-keywords .ask-col-date { width: 170px; }
-    .admin-search-keywords .ask-col-check { width: 86px; text-align: center; }
-    .admin-search-keywords .ask-col-actions { width: 178px; }
+    .admin-search-keywords .ask-table thead th {
+        background: #f8fafc;
+        color: #475569;
+        font-size: .78rem;
+        font-weight: 700;
+        letter-spacing: .02em;
+        text-transform: uppercase;
+        border-bottom: 1px solid #e2e8f0;
+        padding: 12px 14px;
+    }
+
+    .admin-search-keywords .ask-table tbody td {
+        padding: 10px 14px;
+        border-bottom: 1px solid #eef2f7;
+    }
+
+    .admin-search-keywords .ask-table tbody tr {
+        transition: background-color .16s ease;
+    }
+
+    .admin-search-keywords .ask-table tbody tr:hover {
+        background: #f8fafc;
+    }
+
+    .admin-search-keywords .ask-col-keyword { width: 36%; }
+    .admin-search-keywords .ask-col-count { width: 96px; text-align: center; }
+    .admin-search-keywords .ask-col-date { width: 168px; }
+    .admin-search-keywords .ask-col-check { width: 84px; text-align: center; }
+    .admin-search-keywords .ask-col-actions { width: 214px; }
 
     .admin-search-keywords .ask-keyword-input {
         width: 100%;
         min-width: 0;
         text-overflow: ellipsis;
+        background: #fff;
     }
 
     .admin-search-keywords .ask-count-input {
@@ -130,8 +163,9 @@
         display: flex;
         justify-content: flex-end;
         align-items: center;
-        gap: 6px;
+        gap: 8px;
         white-space: nowrap;
+        min-width: 184px;
     }
 
     .admin-search-keywords .ask-actions .btn {
@@ -140,22 +174,74 @@
         align-items: center;
         justify-content: center;
         gap: 5px;
+        border-radius: 9px;
+        font-weight: 700;
     }
 
-    .admin-search-keywords .ask-actions .dropdown-menu {
-        min-width: 160px;
+    .admin-search-keywords .ask-actions .btn-primary {
+        background: #16a34a;
+        border-color: #16a34a;
+        box-shadow: 0 6px 14px rgba(22, 163, 74, .13);
+    }
+
+    .admin-search-keywords .ask-actions .btn-primary:hover,
+    .admin-search-keywords .ask-actions .btn-primary:focus {
+        background: #15803d;
+        border-color: #15803d;
+    }
+
+    .admin-search-keywords .ask-actions .ask-action-toggle {
+        color: #334155;
+        background: #f8fafc;
+        border-color: #cbd5e1;
+    }
+
+    .admin-search-keywords .ask-actions .ask-action-toggle:hover,
+    .admin-search-keywords .ask-actions .ask-action-toggle:focus,
+    .admin-search-keywords .ask-actions .ask-action-toggle[aria-expanded="true"] {
+        color: #0f172a;
+        background: #e2e8f0;
+        border-color: #94a3b8;
+    }
+
+    .admin-search-keywords .ask-action-menu {
+        position: fixed;
+        z-index: 1085;
+        min-width: 168px;
         padding: 6px;
+        border: 1px solid rgba(148, 163, 184, .25);
         border-radius: 12px;
+        background: #fff;
+        box-shadow: 0 16px 36px rgba(15, 23, 42, .16);
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(4px);
+        transition: opacity .14s ease, transform .14s ease, visibility .14s ease;
     }
 
-    .admin-search-keywords .ask-actions .dropdown-item {
+    .admin-search-keywords .ask-action-menu.is-open {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+    }
+
+    .admin-search-keywords .ask-action-menu .dropdown-item {
         border: 0;
         border-radius: 9px;
         display: flex;
         align-items: center;
         gap: 8px;
+        width: 100%;
         padding: 8px 10px;
+        color: #334155;
         font-weight: 600;
+        text-align: left;
+    }
+
+    .admin-search-keywords .ask-action-menu .dropdown-item:hover,
+    .admin-search-keywords .ask-action-menu .dropdown-item:focus {
+        background: #f1f5f9;
+        color: #0f172a;
     }
 
     .admin-search-keywords .ask-actions form {
@@ -210,7 +296,7 @@
         </form>
     </section>
 
-    <section class="admin-card ask-card">
+    <section class="admin-card ask-card ask-table-card">
         <div class="table-responsive ask-table-wrap">
             <table class="table align-middle ask-table">
                 <thead>
@@ -246,9 +332,9 @@
                         <td>
                             <div class="ask-actions">
                                 <button form="@formId" class="btn btn-sm btn-primary" type="submit"><i class="bi bi-save"></i> Lưu</button>
-                                <div class="dropdown">
-                                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-boundary="viewport" aria-expanded="false">Thao tác</button>
-                                    <div class="dropdown-menu dropdown-menu-end">
+                                <div class="ask-action-dropdown">
+                                    <button class="btn btn-sm ask-action-toggle dropdown-toggle" type="button" aria-expanded="false">Thao tác</button>
+                                    <div class="ask-action-menu" role="menu">
                                         <form asp-action="ToggleVisible" method="post">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@item.Id" /><button class="dropdown-item" type="submit"><i class="bi bi-eye-slash"></i>@(item.IsVisible ? "Ẩn" : "Hiện")</button></form>
                                         <form asp-action="TogglePinned" method="post">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@item.Id" /><button class="dropdown-item" type="submit"><i class="bi bi-pin-angle"></i>@(item.IsPinned ? "Bỏ ghim" : "Ghim")</button></form>
                                         <form asp-action="ResetCount" method="post">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@item.Id" /><button class="dropdown-item" type="submit"><i class="bi bi-arrow-counterclockwise"></i>Reset</button></form>
@@ -264,3 +350,94 @@
         </div>
     </section>
 </div>
+
+
+<script>
+(() => {
+    const root = document.querySelector('.admin-search-keywords');
+    if (!root) return;
+
+    const dropdowns = Array.from(root.querySelectorAll('.ask-action-dropdown'));
+    let activeDropdown = null;
+    let closeTimer = null;
+
+    const closeDropdown = (dropdown = activeDropdown) => {
+        if (!dropdown) return;
+        const toggle = dropdown.querySelector('.ask-action-toggle');
+        const menu = dropdown.querySelector('.ask-action-menu');
+        toggle?.setAttribute('aria-expanded', 'false');
+        menu?.classList.remove('is-open');
+        if (activeDropdown === dropdown) activeDropdown = null;
+    };
+
+    const positionMenu = (dropdown) => {
+        const toggle = dropdown.querySelector('.ask-action-toggle');
+        const menu = dropdown.querySelector('.ask-action-menu');
+        if (!toggle || !menu) return;
+
+        const gap = 6;
+        const edge = 12;
+        const toggleRect = toggle.getBoundingClientRect();
+        const menuRect = menu.getBoundingClientRect();
+        const menuWidth = menuRect.width || 168;
+        const menuHeight = menuRect.height || 170;
+
+        let left = toggleRect.left;
+        if (left + menuWidth > window.innerWidth - edge) {
+            left = toggleRect.right - menuWidth;
+        }
+        left = Math.max(edge, Math.min(left, window.innerWidth - menuWidth - edge));
+
+        let top = toggleRect.bottom + gap;
+        if (top + menuHeight > window.innerHeight - edge && toggleRect.top > menuHeight + gap + edge) {
+            top = toggleRect.top - menuHeight - gap;
+        }
+        top = Math.max(edge, top);
+
+        menu.style.left = `${left}px`;
+        menu.style.top = `${top}px`;
+    };
+
+    const openDropdown = (dropdown) => {
+        if (activeDropdown && activeDropdown !== dropdown) closeDropdown(activeDropdown);
+        activeDropdown = dropdown;
+        const toggle = dropdown.querySelector('.ask-action-toggle');
+        const menu = dropdown.querySelector('.ask-action-menu');
+        toggle?.setAttribute('aria-expanded', 'true');
+        menu?.classList.add('is-open');
+        positionMenu(dropdown);
+    };
+
+    const scheduleClose = (dropdown) => {
+        window.clearTimeout(closeTimer);
+        closeTimer = window.setTimeout(() => closeDropdown(dropdown), 160);
+    };
+
+    dropdowns.forEach((dropdown) => {
+        const toggle = dropdown.querySelector('.ask-action-toggle');
+        const menu = dropdown.querySelector('.ask-action-menu');
+        if (!toggle || !menu) return;
+
+        dropdown.addEventListener('mouseenter', () => {
+            window.clearTimeout(closeTimer);
+            openDropdown(dropdown);
+        });
+        dropdown.addEventListener('mouseleave', () => scheduleClose(dropdown));
+        menu.addEventListener('mouseenter', () => window.clearTimeout(closeTimer));
+        menu.addEventListener('mouseleave', () => scheduleClose(dropdown));
+        toggle.addEventListener('click', (event) => {
+            event.stopPropagation();
+            activeDropdown === dropdown ? closeDropdown(dropdown) : openDropdown(dropdown);
+        });
+    });
+
+    document.addEventListener('click', (event) => {
+        if (activeDropdown && !activeDropdown.contains(event.target)) closeDropdown(activeDropdown);
+    });
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') closeDropdown();
+    });
+    window.addEventListener('resize', () => activeDropdown && positionMenu(activeDropdown));
+    window.addEventListener('scroll', () => activeDropdown && positionMenu(activeDropdown), true);
+})();
+</script>
