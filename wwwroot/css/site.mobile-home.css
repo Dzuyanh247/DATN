@@ -1,51 +1,119 @@
 @media (max-width: 767.98px) {
-    body:not(.admin-page) { padding-bottom: 72px; }
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { max-width: 100%; overflow-x: hidden; }
+    body:not(.admin-page) { padding-bottom: calc(96px + env(safe-area-inset-bottom)); background: #f5f6f8; }
     body:not(.admin-page) .ttg-topbar { display: none; }
-    body:not(.admin-page) .ttg-main-header { background: linear-gradient(135deg, #df0000, #ff3b16); }
-    body:not(.admin-page) .ttg-main-header-row { grid-template-columns: 42px minmax(0, 1fr) auto; grid-template-areas: "menu logo actions" "search search search"; padding: 10px 12px 12px; gap: 10px; }
-    body:not(.admin-page) .mobile-menu-button { grid-area: menu; display: grid; place-items: center; width: 40px; height: 40px; border: 0; border-radius: 12px; background: rgba(255,255,255,.14); color: #fff; font-size: 1.65rem; }
-    body:not(.admin-page) .site-logo { justify-content: flex-start; }
-    body:not(.admin-page) .site-logo img, body:not(.admin-page) .site-logo-image { max-width: 130px; max-height: 44px; filter: drop-shadow(0 3px 6px rgba(0,0,0,.16)); }
-    body:not(.admin-page) .ttg-header-actions { overflow: visible; gap: 8px; justify-content: flex-end; }
+    body:not(.admin-page) .ttg-shell,
+    body:not(.admin-page) .container { max-width: 100%; min-width: 0; }
+
+    body:not(.admin-page) .ttg-main-header {
+        background: #fffdfa;
+        border-bottom: 1px solid #f1f2f4;
+        box-shadow: 0 6px 18px rgba(15, 23, 42, .08) !important;
+    }
+    body:not(.admin-page) .ttg-main-header-row {
+        display: grid;
+        grid-template-columns: 42px minmax(0, 1fr) auto;
+        grid-template-areas: "menu logo actions" "search search search";
+        gap: 8px;
+        align-items: center;
+        padding: 8px 12px 10px;
+    }
+    body:not(.admin-page) .mobile-menu-button,
+    body:not(.admin-page) .mobile-account-action,
+    body:not(.admin-page) .ttg-header-actions .ttg-cta[href*="/Cart"] {
+        display: grid !important;
+        place-items: center;
+        width: 40px;
+        height: 40px;
+        min-height: 40px;
+        padding: 0;
+        border: 1px solid #ffe0d2;
+        border-radius: 50%;
+        background: #fff;
+        color: #e63900;
+        box-shadow: 0 4px 12px rgba(15, 23, 42, .06);
+        text-decoration: none;
+    }
+    body:not(.admin-page) .mobile-menu-button { grid-area: menu; font-size: 1.55rem; }
+    body:not(.admin-page) .site-logo { grid-area: logo; justify-content: flex-start; min-width: 0; }
+    body:not(.admin-page) .site-logo img,
+    body:not(.admin-page) .site-logo-image { max-width: 124px; max-height: 42px; object-fit: contain; filter: none; }
+    body:not(.admin-page) .ttg-header-actions { grid-area: actions; display: flex; justify-content: flex-end; gap: 8px; overflow: visible; min-width: 0; }
+    body:not(.admin-page) .ttg-header-actions::before { content: none; }
     body:not(.admin-page) .ttg-header-actions .ttg-cta { display: none !important; }
-    body:not(.admin-page) .ttg-header-actions .ttg-cta[href*="/Cart"] { display: inline-grid !important; width: 40px; height: 40px; min-height: 40px; padding: 0; place-items: center; border-radius: 12px; background: rgba(255,255,255,.16); color: #fff; border: 0; }
-    body:not(.admin-page) .ttg-header-actions .ttg-cta[href*="/Cart"] .icon { width: auto; height: auto; font-size: 1.35rem; background: transparent; color: inherit; }
+    body:not(.admin-page) .ttg-header-actions .ttg-cta[href*="/Cart"] .icon { width: auto; height: auto; background: transparent; color: inherit; font-size: 1.2rem; }
     body:not(.admin-page) .ttg-header-actions .ttg-cta[href*="/Cart"] span:not(.icon):not(.badge) { display: none; }
-    body:not(.admin-page) .ttg-header-actions::before { content: "\F4D7"; font-family: "bootstrap-icons"; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: rgba(255,255,255,.16); color: #fff; font-size: 1.28rem; }
-    body:not(.admin-page) .ttg-search-group { height: 52px; border: 0; border-radius: 12px; box-shadow: 0 8px 20px rgba(96,0,0,.18); overflow: hidden; }
+    body:not(.admin-page) #cart-count-badge { top: 2px !important; right: -2px; left: auto !important; transform: none !important; font-size: .58rem; min-width: 17px; }
+    body:not(.admin-page) .ttg-search { grid-area: search; width: 100%; min-width: 0; }
+    body:not(.admin-page) .ttg-search-group { height: 44px; border: 1px solid #ffe0d2; border-radius: 14px; overflow: hidden; box-shadow: 0 8px 18px rgba(234, 88, 12, .10); background: #fff; }
     body:not(.admin-page) .ttg-search-category { display: none; }
-    body:not(.admin-page) .ttg-search .form-control { font-size: .95rem; padding-left: 14px; }
-    body:not(.admin-page) .ttg-search-submit { flex: 0 0 58px; border-radius: 0; background: #ff7a00; font-size: 1.35rem; }
-    body:not(.admin-page) .mobile-quick-actions { display: block; padding: 0 12px 12px; background: linear-gradient(180deg, #ff3b16 0, #fff 12px); }
-    body:not(.admin-page) .mobile-quick-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px 8px; padding: 12px 8px; border-radius: 0 0 14px 14px; background: #fff; box-shadow: 0 8px 22px rgba(15,23,42,.08); }
+    body:not(.admin-page) .ttg-search .form-control { min-width: 0; padding-left: 14px; font-size: .9rem; }
+    body:not(.admin-page) .ttg-search-submit { flex: 0 0 50px; border-radius: 0; background: linear-gradient(135deg, #ff7a00, #df0000); font-size: 1.2rem; }
+
+    body:not(.admin-page) .mobile-quick-actions { display: block; padding: 0 12px 10px; background: #fffdfa; }
+    body:not(.admin-page) .mobile-quick-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px 8px; padding: 12px 8px; border: 1px solid #f0f2f5; border-radius: 18px; background: #fff; box-shadow: 0 8px 20px rgba(15, 23, 42, .06); }
     body:not(.admin-page) .mobile-quick-item { min-width: 0; border: 0; background: transparent; color: #111827; text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 6px; font: inherit; }
-    body:not(.admin-page) .mobile-quick-item span { width: 50px; height: 50px; border-radius: 50%; border: 1px solid #eef0f3; display: grid; place-items: center; color: #df0000; background: #fff; box-shadow: 0 4px 12px rgba(15,23,42,.07); font-size: 1.28rem; }
-    body:not(.admin-page) .mobile-quick-item em { font-style: normal; font-size: .76rem; line-height: 1.2; text-align: center; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    body:not(.admin-page) .mobile-quick-item span,
+    body:not(.admin-page) .ttg-cat-link i { width: 48px; height: 48px; border-radius: 50%; border: 1px solid #edf0f3; display: grid; place-items: center; color: #e63900; background: #fff; box-shadow: 0 3px 10px rgba(15, 23, 42, .06); font-size: 1.2rem; }
+    body:not(.admin-page) .mobile-quick-item em { font-style: normal; font-size: .72rem; line-height: 1.18; text-align: center; overflow-wrap: anywhere; }
+
     body:not(.admin-page) .ttg-cat-nav-wrap { background: #fff; border: 0; }
-    body:not(.admin-page) .ttg-cat-row { padding: 12px; }
-    body:not(.admin-page) .ttg-all-categories { position: static; width: 100%; }
+    body:not(.admin-page) .ttg-cat-row { display: block; padding: 10px 12px; }
     body:not(.admin-page) .ttg-all-categories .ttg-cat-btn { display: none; }
-    body:not(.admin-page) .ttg-all-categories .ttg-category-menu { position: static; width: 100%; max-height: 55vh; margin: 0 0 12px; border-radius: 12px; }
-    body:not(.admin-page) .ttg-cat-nav { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px 8px; overflow: visible; white-space: normal; }
-    body:not(.admin-page) .ttg-cat-link { flex-direction: column; gap: 6px; border: 0; padding: 0; background: transparent; color: #111827; text-align: center; font-size: .76rem; line-height: 1.2; }
-    body:not(.admin-page) .ttg-cat-link i { width: 54px; height: 54px; border-radius: 50%; border: 1px solid #eef0f3; background: #fff; box-shadow: 0 4px 12px rgba(15,23,42,.07); color: #df0000; font-size: 1.28rem; }
-    body:not(.admin-page) .ttg-main-banner { margin: 0 12px; width: calc(100% - 24px); aspect-ratio: 16 / 8.8; border-radius: 12px; box-shadow: 0 8px 18px rgba(15,23,42,.1); }
-    body:not(.admin-page) .home-banner-stack { margin-left: -12px; margin-right: -12px; }
+    body:not(.admin-page) .ttg-all-categories .ttg-category-menu { position: static; width: 100%; max-height: 55vh; margin: 0 0 10px; border-radius: 14px; }
+    body:not(.admin-page) .ttg-cat-nav { display: grid; grid-auto-flow: column; grid-template-rows: repeat(2, auto); grid-auto-columns: calc((100vw - 48px) / 4); gap: 12px 8px; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scroll-snap-type: x proximity; padding: 2px 0 8px; white-space: normal; scrollbar-width: none; }
+    body:not(.admin-page) .ttg-cat-nav::-webkit-scrollbar { display: none; }
+    body:not(.admin-page) .ttg-cat-link { scroll-snap-align: start; min-width: 0; padding: 0; border: 0; background: transparent; color: #111827; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; font-size: .72rem; line-height: 1.15; text-decoration: none; }
+
+    body:not(.admin-page) .home-banner-stack { margin: 0 -12px; gap: 8px; overflow: hidden; }
+    body:not(.admin-page) .ttg-main-banner { width: calc(100% - 24px); height: auto; aspect-ratio: 16 / 8.7; margin: 0 12px; border-radius: 14px; box-shadow: 0 8px 18px rgba(15, 23, 42, .1); background: #fff; }
+    body:not(.admin-page) .ttg-main-banner .banner-image { width: 100%; height: 100%; object-fit: contain; object-position: center center; background: #fff; }
+    body:not(.admin-page) .ttg-banner-dots { bottom: 7px; padding: 4px 6px; }
     body:not(.admin-page) .home-secondary-banners { display: none; }
-    body:not(.admin-page) .ttg-products-grid, body:not(.admin-page) .promo-product-grid, body:not(.admin-page) .standard-product-section .ttg-products-grid, body:not(.admin-page) .standard-product-section .ttg-products-grid[data-product-rail] { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-flow: row; grid-auto-columns: auto; overflow: visible; gap: 8px; }
-    body:not(.admin-page) .standard-product-section .ttg-products-grid[data-product-rail] > .ttg-product-card { width: auto; min-width: 0; max-width: none; flex: initial; }
-    body:not(.admin-page) .ttg-product-card, body:not(.admin-page) .standard-product-section .ttg-product-card { min-height: 0; height: auto; padding: 8px; }
-    body:not(.admin-page) .ttg-card-actions .ttg-compare-btn { display: none; }
-    body:not(.admin-page) .mobile-bottom-nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 1030; display: grid; grid-template-columns: repeat(5, 1fr); min-height: 62px; padding: 6px 6px calc(6px + env(safe-area-inset-bottom)); background: rgba(255,255,255,.96); border-top: 1px solid #e5e7eb; box-shadow: 0 -8px 24px rgba(15,23,42,.10); }
-    body:not(.admin-page) .mobile-bottom-nav a { color: #6b7280; text-decoration: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: .68rem; }
-    body:not(.admin-page) .mobile-bottom-nav i { font-size: 1.25rem; line-height: 1; }
-    body:not(.admin-page) .mobile-bottom-nav a.active { color: #df0000; font-weight: 700; }
-    body:not(.admin-page) .kk-chat { right: 12px; bottom: 82px; }
-    body:not(.admin-page) .kk-chat-panel { right: 10px; bottom: 82px; width: calc(100vw - 20px); max-width: calc(100vw - 20px); height: min(75vh, 610px); max-height: 75vh; }
+
+    body:not(.admin-page) .standard-product-section,
+    body:not(.admin-page) .standard-product-section.promo-section { margin: 10px 0 12px; padding: 10px 0 12px; border-radius: 14px; overflow: hidden; background-color: #fff; }
+    body:not(.admin-page) .standard-product-section.promo-section { background-color: #fff7ed; background-size: cover; background-position: center; }
+    body:not(.admin-page) .standard-product-section .ttg-section-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 12px; margin-bottom: 9px; }
+    body:not(.admin-page) .standard-product-section .ttg-section-title { margin: 0; padding: 0; background: transparent; color: #111827; font-size: .98rem; line-height: 1.25; font-weight: 850; }
+    body:not(.admin-page) .standard-product-section.promo-section .ttg-section-title { color: #df0000; }
+    body:not(.admin-page) .ttg-hot-badge { padding: 2px 6px; font-size: .62rem; }
+    body:not(.admin-page) .standard-product-section .ttg-view-all { flex: 0 0 auto; padding: 0; background: transparent; color: #ea580c; font-size: .78rem; font-weight: 800; }
+    body:not(.admin-page) .standard-product-section .ttg-products-grid[data-product-rail],
+    body:not(.admin-page) .ttg-products-grid,
+    body:not(.admin-page) .promo-product-grid { display: flex !important; flex-wrap: nowrap !important; grid-template-columns: none !important; gap: 10px; overflow-x: auto !important; overflow-y: hidden; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; padding: 0 12px 4px; scrollbar-width: none; }
+    body:not(.admin-page) .standard-product-section .ttg-products-grid[data-product-rail]::-webkit-scrollbar,
+    body:not(.admin-page) .ttg-products-grid::-webkit-scrollbar,
+    body:not(.admin-page) .promo-product-grid::-webkit-scrollbar { display: none; }
+    body:not(.admin-page) .standard-product-section .ttg-products-grid[data-product-rail] > .ttg-product-card,
+    body:not(.admin-page) .ttg-products-grid > .ttg-product-card,
+    body:not(.admin-page) .promo-product-grid > .ttg-product-card { flex: 0 0 clamp(148px, 44vw, 178px) !important; width: clamp(148px, 44vw, 178px) !important; min-width: 0 !important; max-width: none !important; scroll-snap-align: start; }
+    body:not(.admin-page) .standard-product-section .ttg-product-card { height: auto; min-height: 0; padding: 8px; border-radius: 12px; border: 1px solid #eef0f3; box-shadow: 0 4px 12px rgba(15,23,42,.05); }
+    body:not(.admin-page) .standard-product-section .ttg-product-image-wrap { height: auto; aspect-ratio: 1 / 1; flex: 0 0 auto; margin-bottom: 7px; }
+    body:not(.admin-page) .standard-product-section .ttg-product-title { height: 34px; min-height: 34px; margin-bottom: 5px; font-size: .78rem; line-height: 1.35; -webkit-line-clamp: 2; }
+    body:not(.admin-page) .standard-product-section .ttg-price { font-size: .86rem; line-height: 1.15; white-space: normal; }
+    body:not(.admin-page) .standard-product-section .ttg-old-price { font-size: .68rem; min-height: 13px; }
+    body:not(.admin-page) .standard-product-section .ttg-price-discount { padding: 1px 4px; font-size: .62rem; border-radius: 999px; }
+    body:not(.admin-page) .standard-product-section .ttg-card-actions { gap: 5px; padding-top: 6px; }
+    body:not(.admin-page) .standard-product-section .ttg-add-btn { height: 30px; min-height: 30px; border-radius: 8px; background: linear-gradient(135deg, #ff7a00, #df0000); font-size: .7rem; }
+    body:not(.admin-page) .standard-product-section .ttg-secondary-actions { grid-template-columns: 1fr; }
+    body:not(.admin-page) .standard-product-section .ttg-card-actions .ttg-compare-btn { display: none; }
+    body:not(.admin-page) .standard-product-section .ttg-action-stock { height: 22px; line-height: 22px; font-size: .66rem; }
+
+    body:not(.admin-page) .mobile-bottom-nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 1030; display: grid; grid-template-columns: repeat(5, 1fr); min-height: 64px; padding: 6px 6px calc(7px + env(safe-area-inset-bottom)); background: rgba(255,255,255,.98); border-top: 1px solid #e5e7eb; box-shadow: 0 -8px 24px rgba(15,23,42,.10); }
+    body:not(.admin-page) .mobile-bottom-nav a { color: #6b7280; text-decoration: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: .67rem; }
+    body:not(.admin-page) .mobile-bottom-nav i { font-size: 1.22rem; line-height: 1; }
+    body:not(.admin-page) .mobile-bottom-nav a.active { color: #df0000; font-weight: 800; }
+    body:not(.admin-page) .kk-chat { right: 12px; bottom: calc(82px + env(safe-area-inset-bottom)); z-index: 1040; }
+    body:not(.admin-page) .kk-chat-launcher { max-width: 56px; width: 56px; height: 56px; border-radius: 50%; padding: 0; }
+    body:not(.admin-page) .kk-chat-launcher-text { display: none; }
+    body:not(.admin-page) .kk-chat-panel { position: fixed; left: 10px; right: 10px; bottom: calc(82px + env(safe-area-inset-bottom)); width: auto; max-width: none; height: min(70vh, 560px); max-height: 70vh; border-radius: 18px; overflow: hidden; }
+    body:not(.admin-page) .kk-chat-body { overflow-y: auto; }
 }
 @media (min-width: 768px) {
-    .mobile-menu-button, .mobile-quick-actions, .mobile-bottom-nav { display: none; }
+    .mobile-menu-button, .mobile-quick-actions, .mobile-bottom-nav, .mobile-account-action { display: none; }
 }
 @media (min-width: 768px) and (max-width: 991.98px) {
-    body:not(.admin-page) .ttg-products-grid, body:not(.admin-page) .standard-product-section .ttg-products-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    body:not(.admin-page) .standard-product-section .ttg-products-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
