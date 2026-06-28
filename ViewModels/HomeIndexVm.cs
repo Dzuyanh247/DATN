@@ -18,4 +18,15 @@ public class HomeIndexVm
     public List<Product> AmdGamingProducts { get; set; } = new();
     public List<Product> PcMiniProducts { get; set; } = new();
     public List<Product> OfficePcProducts { get; set; } = new();
+    public List<Product> CpuProducts { get; set; } = new();
+    public List<Product> MainboardProducts { get; set; } = new();
+    public List<Product> RamProducts { get; set; } = new();
+    public List<Product> VgaProducts { get; set; } = new();
+    public List<Product> StorageProducts { get; set; } = new();
+    public List<Product> PsuProducts { get; set; } = new();
+    public List<Product> CaseProducts { get; set; } = new();
+    public List<Product> CoolerProducts { get; set; } = new();
+    public List<Product> KeyboardProducts { get; set; } = new();
+    public List<Product> MouseProducts { get; set; } = new();
+    public List<Product> HeadphoneProducts { get; set; } = new();
 }

@@ -1,4 +1,5 @@
 using Datn.PcStore.Data;
+using Datn.PcStore.Models;
 using Datn.PcStore.ViewModels;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -24,12 +25,23 @@ public class HomeController : Controller
             PromotionProducts = await _db.Products.Include(p => p.ProductImages).Where(p => p.IsActive && p.IsPromotion && (!p.PromotionStartDate.HasValue || p.PromotionStartDate <= utcNow) && (!p.PromotionEndDate.HasValue || p.PromotionEndDate >= utcNow)).OrderByDescending(p => p.CreatedAt).Take(20).ToListAsync(),
             PcGamingProducts = await GetByCategoryNameAsync("PC Gaming"),
             LaptopProducts = await GetByCategoryNameAsync("Laptop"),
-            MonitorProducts = await GetByCategoryNameAsync("Màn hình"),
             ComponentProducts = await GetByCategoryNameAsync("Linh kiện"),
             WorkstationProducts = await GetByCategoryNameAsync("Workstation"),
             AmdGamingProducts = await GetByCategoryNameAsync("AMD Gaming"),
             PcMiniProducts = await GetByCategoryNameAsync("PC Mini"),
-            OfficePcProducts = await GetByCategoryNameAsync("PC Văn Phòng")
+            OfficePcProducts = await GetByCategoryNameAsync("PC Văn Phòng"),
+            CpuProducts = await GetByComponentTypeAsync(ComponentTypes.CPU),
+            MainboardProducts = await GetByComponentTypeAsync(ComponentTypes.Mainboard),
+            RamProducts = await GetByComponentTypeAsync(ComponentTypes.RAM),
+            VgaProducts = await GetByComponentTypeAsync(ComponentTypes.VGA),
+            StorageProducts = await GetByComponentTypeAsync(ComponentTypes.Storage),
+            PsuProducts = await GetByComponentTypeAsync(ComponentTypes.PSU),
+            CaseProducts = await GetByComponentTypeAsync(ComponentTypes.Case),
+            CoolerProducts = await GetByComponentTypeAsync(ComponentTypes.Cooler),
+            MonitorProducts = await GetByComponentTypeAsync(ComponentTypes.Monitor),
+            KeyboardProducts = await GetByComponentTypeAsync(ComponentTypes.Keyboard),
+            MouseProducts = await GetByComponentTypeAsync(ComponentTypes.Mouse),
+            HeadphoneProducts = await GetByComponentTypeAsync(ComponentTypes.Headphone)
         };
 
         ViewBag.Categories = categories;
@@ -46,6 +58,19 @@ public class HomeController : Controller
 
         return await _db.Products.Include(p => p.ProductImages)
             .Where(p => p.IsActive && p.CategoryId == categoryId)
+            .OrderByDescending(p => p.CreatedAt)
+            .Take(20)
+            .ToListAsync();
+    }
+
+    private async Task<List<Product>> GetByComponentTypeAsync(string componentType)
+    {
+        var componentTypeAliases = ComponentTypes.GetAliases(componentType);
+
+        return await _db.Products.Include(p => p.ProductImages)
+            .Where(p => p.IsActive
+                && p.ProductType == ProductKinds.Component
+                && componentTypeAliases.Contains(p.ComponentType))
             .OrderByDescending(p => p.CreatedAt)
             .Take(20)
             .ToListAsync();
