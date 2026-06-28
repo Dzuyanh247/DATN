@@ -9,8 +9,8 @@
         let startX = 0;
         let startScrollLeft = 0;
 
-        // Drag only works when the rail itself is the overflowing element; if
-        // scrollWidth <= clientWidth, every card already fits so there is nothing to drag.
+        // Drag only works when this exact element is the horizontal scroller.
+        // In DevTools, the active rail must satisfy: scrollWidth > clientWidth.
         const hasHorizontalOverflow = () => rail.scrollWidth > rail.clientWidth + 1;
 
         const stopDragging = () => {
@@ -45,6 +45,13 @@
                 return;
             }
 
+            // If the left button is no longer held (for example after releasing
+            // outside the rail), end the drag without treating hover movement as scroll.
+            if ((event.buttons & 1) !== 1) {
+                stopDragging();
+                return;
+            }
+
             const deltaX = event.pageX - startX;
 
             if (Math.abs(deltaX) > dragThreshold) {
@@ -62,6 +69,7 @@
 
         rail.addEventListener('mouseup', stopDragging);
         rail.addEventListener('mouseleave', stopDragging);
+        document.addEventListener('mouseup', stopDragging);
 
         rail.addEventListener('click', (event) => {
             if (!suppressClick) {
