@@ -311,10 +311,9 @@ else
 
     @if (TempData["ErrorMessage"] != null)
     {
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            @TempData["ErrorMessage"]
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
+        <script>
+            window.__errorToastMessage = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(TempData["ErrorMessage"]?.ToString()));
+        </script>
     }
 
     @await Html.PartialAsync("_GlobalNotifications")
@@ -338,23 +337,14 @@ else
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="~/js/kk-notifications.js" asp-append-version="true"></script>
 <script>
 (function(){
 const toastEl=document.getElementById('globalToast');
 const toastMsg=document.getElementById('globalToastMessage');
 const toastInstance=toastEl?new bootstrap.Toast(toastEl,{delay:2500}):null;
-window.showToast=function(message,type){
-    if(!toastEl||!toastMsg||!toastInstance||!message) return;
-    const tone=(type||'success').toLowerCase();
-    toastEl.classList.remove('bg-success','bg-danger','bg-warning','bg-info');
-    if(tone==='danger'||tone==='error') toastEl.classList.add('bg-danger');
-    else if(tone==='warning') toastEl.classList.add('bg-warning');
-    else if(tone==='info') toastEl.classList.add('bg-info');
-    else toastEl.classList.add('bg-success');
-    toastMsg.textContent=message;
-    toastInstance.show();
-};
-window.showGlobalToast=function(message,type){window.showToast(message,type||'success');};
+window.showToast=function(message,type){window.kkToast?.show(message,type||'success');};
+window.showGlobalToast=function(message,type){window.kkToast?.show(message,type||'success');};
 function u(c){const b=document.getElementById('cart-count-badge');if(!b)return;b.textContent=c;}
 
 function setCompareCount(count){
@@ -437,6 +427,8 @@ document.querySelectorAll('form[action*="/Cart/Add"]').forEach(function(f){f.add
 }
 if(window.__successToastMessage){window.showGlobalToast(window.__successToastMessage,'success');}
 if(window.__infoToastMessage){window.showGlobalToast(window.__infoToastMessage,'info');}
+if(window.__errorToastMessage){window.showGlobalToast(window.__errorToastMessage,'danger');}
+if(window.__warningToastMessage){window.showGlobalToast(window.__warningToastMessage,'warning');}
 document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el){new bootstrap.Tooltip(el);});
 const productHoverPopup=document.getElementById('ttg-product-preview');
 const esc=(s)=>(s||'').toString().replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));

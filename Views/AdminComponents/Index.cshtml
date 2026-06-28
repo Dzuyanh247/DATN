@@ -49,7 +49,7 @@
             <td class="text-end fw-semibold">@((p.DiscountPrice ?? p.SalePrice ?? p.Price).ToString("N0")) đ</td>
             <td class="text-center">@p.StockQuantity</td>
             <td class="text-center">@(p.IsActive ? Html.Raw("<span class='badge bg-success'>Đang KD</span>") : Html.Raw("<span class='badge bg-secondary'>Ẩn</span>"))</td>
-            <td><div class="admin-action-buttons"><a class="btn btn-sm btn-outline-info" asp-controller="Products" asp-action="Detail" asp-route-id="@p.Id">Xem</a><a class="btn btn-sm btn-outline-primary" asp-action="Edit" asp-route-id="@p.Id">Sửa</a><form method="post" asp-action="Delete" onsubmit="return confirm('Xác nhận xóa linh kiện?');">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@p.Id" /><button class="btn btn-sm btn-outline-danger">Xóa</button></form></div></td>
+            <td><div class="admin-action-buttons"><a class="btn btn-sm btn-outline-info" asp-controller="Products" asp-action="Detail" asp-route-id="@p.Id">Xem</a><a class="btn btn-sm btn-outline-primary" asp-action="Edit" asp-route-id="@p.Id">Sửa</a><form method="post" asp-action="Delete" data-confirm-message="Bạn có chắc muốn xóa linh kiện này không?" data-confirm-title="Xóa linh kiện" data-confirm-text="Xóa" data-cancel-text="Hủy" data-confirm-type="danger">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@p.Id" /><button class="btn btn-sm btn-outline-danger">Xóa</button></form></div></td>
         </tr>
     }
     </tbody>

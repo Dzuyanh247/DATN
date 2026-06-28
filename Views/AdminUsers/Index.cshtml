@@ -40,7 +40,7 @@
                     <input type="hidden" name="id" value="@u.Id" />
                     <button class="btn btn-sm btn-outline-warning">@(u.IsActive ? "Khóa" : "Mở khóa")</button>
                 </form>
-                <form method="post" asp-action="Delete" onsubmit="return confirm('Xác nhận xóa user?');">
+                <form method="post" asp-action="Delete" data-confirm-message="Bạn có chắc muốn xóa người dùng này không?" data-confirm-title="Xóa người dùng" data-confirm-text="Xóa" data-cancel-text="Hủy" data-confirm-type="danger">
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="id" value="@u.Id" />
                     <button class="btn btn-sm btn-outline-danger">Xóa</button>
