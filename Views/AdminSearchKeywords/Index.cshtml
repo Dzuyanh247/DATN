@@ -89,13 +89,13 @@
 
     .admin-search-keywords .ask-table-wrap {
         width: 100%;
-        overflow-x: auto;
-        overflow-y: visible;
-        padding-bottom: 2px;
+        overflow: visible;
+        padding-bottom: 0;
     }
 
     .admin-search-keywords .ask-table {
-        min-width: 1040px;
+        width: 100%;
+        min-width: 0;
         table-layout: fixed;
         margin-bottom: 0;
         border-collapse: separate;
@@ -119,24 +119,35 @@
     }
 
     .admin-search-keywords .ask-table tbody tr {
-        transition: background-color .16s ease;
+        transition: none;
     }
 
     .admin-search-keywords .ask-table tbody tr:hover {
-        background: #f8fafc;
+        background: #fbfdff;
     }
 
-    .admin-search-keywords .ask-col-keyword { width: 36%; }
-    .admin-search-keywords .ask-col-count { width: 96px; text-align: center; }
-    .admin-search-keywords .ask-col-date { width: 168px; }
-    .admin-search-keywords .ask-col-check { width: 84px; text-align: center; }
-    .admin-search-keywords .ask-col-actions { width: 214px; }
+    .admin-search-keywords .ask-col-keyword { width: 42%; }
+    .admin-search-keywords .ask-col-count { width: 92px; text-align: center; }
+    .admin-search-keywords .ask-col-date { width: 166px; }
+    .admin-search-keywords .ask-col-check { width: 78px; text-align: center; }
+    .admin-search-keywords .ask-col-actions { width: 224px; }
 
     .admin-search-keywords .ask-keyword-input {
         width: 100%;
+        max-width: 100%;
         min-width: 0;
         text-overflow: ellipsis;
         background: #fff;
+        transition: none !important;
+        box-shadow: none !important;
+    }
+
+    .admin-search-keywords .ask-keyword-input:hover,
+    .admin-search-keywords .ask-keyword-input:focus {
+        background: #fff !important;
+        border-color: #ced4da !important;
+        box-shadow: none !important;
+        transform: none !important;
     }
 
     .admin-search-keywords .ask-count-input {
@@ -161,11 +172,17 @@
 
     .admin-search-keywords .ask-actions {
         display: flex;
-        justify-content: flex-end;
+        justify-content: center;
         align-items: center;
         gap: 8px;
         white-space: nowrap;
-        min-width: 184px;
+        min-width: 0;
+        padding-right: 4px;
+    }
+
+    .admin-search-keywords .ask-action-dropdown {
+        position: relative;
+        display: inline-flex;
     }
 
     .admin-search-keywords .ask-actions .btn {
@@ -206,23 +223,20 @@
 
     .admin-search-keywords .ask-action-menu {
         position: fixed;
-        z-index: 1085;
+        z-index: 3000;
+        display: none;
         min-width: 168px;
         padding: 6px;
         border: 1px solid rgba(148, 163, 184, .25);
         border-radius: 12px;
         background: #fff;
         box-shadow: 0 16px 36px rgba(15, 23, 42, .16);
-        opacity: 0;
-        visibility: hidden;
-        transform: translateY(4px);
-        transition: opacity .14s ease, transform .14s ease, visibility .14s ease;
+        transform: none;
+        transition: none;
     }
 
     .admin-search-keywords .ask-action-menu.is-open {
-        opacity: 1;
-        visibility: visible;
-        transform: translateY(0);
+        display: block;
     }
 
     .admin-search-keywords .ask-action-menu .dropdown-item {
@@ -263,6 +277,17 @@
             width: 100%;
         }
     }
+
+    @@media (max-width: 1199.98px) {
+        .admin-search-keywords .ask-table-wrap {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .admin-search-keywords .ask-table {
+            min-width: 980px;
+        }
+    }
 </style>
 
 <div class="admin-search-keywords">
@@ -297,7 +322,7 @@
     </section>
 
     <section class="admin-card ask-card ask-table-card">
-        <div class="table-responsive ask-table-wrap">
+        <div class="ask-table-wrap">
             <table class="table align-middle ask-table">
                 <thead>
                     <tr>
@@ -306,7 +331,7 @@
                         <th class="ask-col-date">Lần tìm gần nhất</th>
                         <th class="ask-col-check">Hiển thị</th>
                         <th class="ask-col-check">Ghim</th>
-                        <th class="ask-col-actions text-end">Thao tác</th>
+                        <th class="ask-col-actions text-center">Thao tác</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -359,7 +384,6 @@
 
     const dropdowns = Array.from(root.querySelectorAll('.ask-action-dropdown'));
     let activeDropdown = null;
-    let closeTimer = null;
 
     const closeDropdown = (dropdown = activeDropdown) => {
         if (!dropdown) return;
@@ -408,26 +432,19 @@
         positionMenu(dropdown);
     };
 
-    const scheduleClose = (dropdown) => {
-        window.clearTimeout(closeTimer);
-        closeTimer = window.setTimeout(() => closeDropdown(dropdown), 160);
-    };
-
     dropdowns.forEach((dropdown) => {
         const toggle = dropdown.querySelector('.ask-action-toggle');
         const menu = dropdown.querySelector('.ask-action-menu');
         if (!toggle || !menu) return;
 
-        dropdown.addEventListener('mouseenter', () => {
-            window.clearTimeout(closeTimer);
-            openDropdown(dropdown);
-        });
-        dropdown.addEventListener('mouseleave', () => scheduleClose(dropdown));
-        menu.addEventListener('mouseenter', () => window.clearTimeout(closeTimer));
-        menu.addEventListener('mouseleave', () => scheduleClose(dropdown));
         toggle.addEventListener('click', (event) => {
+            event.preventDefault();
             event.stopPropagation();
             activeDropdown === dropdown ? closeDropdown(dropdown) : openDropdown(dropdown);
+        });
+
+        menu.addEventListener('click', (event) => {
+            event.stopPropagation();
         });
     });
 
