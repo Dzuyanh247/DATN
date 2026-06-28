@@ -23,7 +23,7 @@ public record AiProductContext(
     string ImageUrl = "",
     bool CanAddToBuild = false);
 
-public record AiSalesSearchPlan(string Intent, string CategoryScope, string? ComponentType, decimal? BudgetTarget, decimal? BudgetMin, decimal? BudgetMax, string? Purpose, string? Game, IReadOnlyList<string> SearchSignals, bool AllowBuildFallback, string PriceMode = "normal");
+public record AiSalesSearchPlan(string Intent, string CategoryScope, string? ComponentType, decimal? BudgetTarget, decimal? BudgetMin, decimal? BudgetMax, string? Purpose, string? Game, IReadOnlyList<string> SearchSignals, bool AllowBuildFallback, string PriceMode = "normal", IReadOnlyList<int>? ExcludedProductIds = null);
 
 public interface IProductSearchForAiService
 {
@@ -56,26 +56,37 @@ public partial class ProductSearchForAiService : IProductSearchForAiService
         var scopedCount = await baseQuery.CountAsync(cancellationToken);
         var normalizedSignals = plan.SearchSignals.Select(NormalizeText).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
 
-        async Task<List<Product>> LoadBudgetWindow(decimal min, decimal maxPrice) => await baseQuery
-            .Where(x => (x.DiscountPrice ?? x.SalePrice ?? x.Price) >= min && (x.DiscountPrice ?? x.SalePrice ?? x.Price) <= maxPrice)
-            .Take(240).ToListAsync(cancellationToken);
+        async Task<List<Product>> LoadBudgetWindow(decimal min, decimal maxPrice)
+        {
+            var rows = await baseQuery
+                .Where(x => (x.DiscountPrice ?? x.SalePrice ?? x.Price) >= min && (x.DiscountPrice ?? x.SalePrice ?? x.Price) <= maxPrice)
+                .Take(240).ToListAsync(cancellationToken);
+            _logger.LogInformation("AI_SEARCH budget={Budget} range={Min}-{Max} candidates={Count}", plan.BudgetTarget, min, maxPrice, rows.Count);
+            return rows;
+        }
 
         List<Product> candidates;
         var budgetStep = "none";
         if (plan.BudgetTarget.HasValue && plan.PriceMode == "normal")
         {
             var target = plan.BudgetTarget.Value;
-            candidates = await LoadBudgetWindow(target * 0.90m, target * 1.10m);
-            budgetStep = "target_90_110";
+            candidates = await LoadBudgetWindow(target * 0.85m, target * 1.10m);
+            budgetStep = "target_85_110";
             if (candidates.Count == 0)
             {
-                candidates = await LoadBudgetWindow(target * 0.85m, target * 1.15m);
-                budgetStep = "target_85_115";
+                candidates = await LoadBudgetWindow(target * 0.75m, target * 1.15m);
+                budgetStep = "target_75_115";
+            }
+            if (candidates.Count == 0)
+            {
+                candidates = await LoadBudgetWindow(target * 0.60m, target * 1.20m);
+                budgetStep = "target_60_120";
             }
             if (candidates.Count == 0)
             {
                 candidates = await baseQuery.Take(240).ToListAsync(cancellationToken);
                 budgetStep = "nearest_price";
+                _logger.LogInformation("AI_SEARCH nearest candidates={Candidates}", string.Join(" | ", candidates.Take(10).Select(x => $"{x.Id}:{x.Name}:{(x.DiscountPrice ?? x.SalePrice ?? x.Price):N0}")));
             }
         }
         else
@@ -86,17 +97,27 @@ public partial class ProductSearchForAiService : IProductSearchForAiService
             candidates = await q.Take(240).ToListAsync(cancellationToken);
         }
 
-        var ordered = candidates
+        var excludedIds = (plan.ExcludedProductIds ?? []).ToHashSet();
+        var rankedCandidates = candidates
+            .Where(x => !excludedIds.Contains(x.Id))
             .Where(x => scope == "PC" ? IsPcProduct(x) && !IsAccessoryProduct(x) : ProductAllowedForIntent(x, new AiSearchAnalysis(plan.Intent, "COMPONENT", plan.BudgetMin, plan.BudgetMax, plan.Game, null, plan.ComponentType, false)))
             .Select(x => new { Product = x, Score = ScoreSalesPlan(x, plan, normalizedSignals) })
+            .ToList();
+        if (scope == "PC" && plan.BudgetTarget.HasValue && plan.BudgetTarget.Value >= 20_000_000m && rankedCandidates.Any(x => EffectivePrice(x.Product) >= plan.BudgetTarget.Value * 0.50m))
+            rankedCandidates = rankedCandidates.Where(x => EffectivePrice(x.Product) >= plan.BudgetTarget.Value * 0.50m).ToList();
+        _logger.LogInformation("AI_SEARCH topBeforeRanking={Products}", string.Join(" | ", rankedCandidates.Take(8).Select(x => $"{x.Product.Id}:{x.Product.Name}:{EffectivePrice(x.Product):N0}:score={x.Score:N1}")));
+        var orderedRows = rankedCandidates
             .OrderByDescending(x => x.Score)
-            .ThenBy(x => plan.BudgetTarget.HasValue ? Math.Abs((x.Product.DiscountPrice ?? x.Product.SalePrice ?? x.Product.Price) - plan.BudgetTarget.Value) : (x.Product.DiscountPrice ?? x.Product.SalePrice ?? x.Product.Price))
+            .ThenBy(x => plan.BudgetTarget.HasValue ? Math.Abs(EffectivePrice(x.Product) - plan.BudgetTarget.Value) : EffectivePrice(x.Product))
             .Take(max)
+            .ToList();
+        _logger.LogInformation("AI_SEARCH topAfterRanking={Products}; reasons=stock/range/price_distance/gaming/gpu/ram/ssd/game/discount/low_budget_penalty", string.Join(" | ", orderedRows.Select(x => $"{x.Product.Id}:{x.Product.Name}:{EffectivePrice(x.Product):N0}:score={x.Score:N1}")));
+        var ordered = orderedRows
             .Select(x => ToContext(x.Product, scope == "PC" ? "PC" : ComponentTypes.Normalize(plan.ComponentType)))
             .ToList();
 
         if (ordered.Count == 0 && scope == "PC" && plan.AllowBuildFallback)
-            ordered = await BuildComponentFallbackAsync(inStockActiveQuery, new AiSearchAnalysis(plan.Intent, "PC", plan.BudgetMin, plan.BudgetMax ?? plan.BudgetTarget, plan.Game, null, null, false), max, cancellationToken);
+            _logger.LogInformation("AI_SEARCH fallback=BuildAdvisor");
 
         _logger.LogInformation("[AI_PLANNER_SEARCH] intent={Intent}; scope={Scope}; component={Component}; budgetTarget={BudgetTarget}; budgetMin={BudgetMin}; budgetMax={BudgetMax}; purpose={Purpose}; game={Game}; signals={Signals}; budgetStep={BudgetStep}; active={Active}; scoped={Scoped}; products={Products}; topProducts={TopProducts}",
             plan.Intent, plan.CategoryScope, plan.ComponentType ?? "none", plan.BudgetTarget, plan.BudgetMin, plan.BudgetMax, plan.Purpose ?? "none", plan.Game ?? "none", string.Join(",", normalizedSignals), budgetStep, activeCount, scopedCount, ordered.Count, string.Join(" | ", ordered.Select(p => $"{p.Id}:{p.Name}:{p.Price:N0}:{p.StockStatus}")));
@@ -107,18 +128,39 @@ public partial class ProductSearchForAiService : IProductSearchForAiService
     {
         var haystack = NormalizeText($"{product.Name} {product.ShortDescription} {product.Description} {product.Specifications} {product.Category?.Name} {product.ComponentType}");
         decimal score = 0;
-        if (signals.Any(s => haystack.Contains(s))) score += signals.Count(s => haystack.Contains(s)) * 12;
-        if (product.StockQuantity > 0 || product.IsInStock) score += 25;
-        if (product.DiscountPrice.HasValue && product.DiscountPrice.Value < product.Price) score += 8;
-        if (plan.BudgetTarget.HasValue) score += Math.Max(0, 30 - Math.Abs((product.DiscountPrice ?? product.SalePrice ?? product.Price) - plan.BudgetTarget.Value) / Math.Max(1, plan.BudgetTarget.Value) * 30);
+        if (signals.Any(s => haystack.Contains(s))) score += signals.Count(s => haystack.Contains(s)) * 8;
+        if (product.StockQuantity > 0 || product.IsInStock) score += 30;
+        if (product.DiscountPrice.HasValue && product.DiscountPrice.Value < product.Price) score += 5;
+        var price = EffectivePrice(product);
+        if (plan.BudgetTarget.HasValue)
+        {
+            var b = plan.BudgetTarget.Value;
+            if (price >= b * 0.85m && price <= b * 1.10m) score += 40;
+            else if (price >= b * 0.75m && price <= b * 1.15m) score += 25;
+            else if (price >= b * 0.60m && price <= b * 1.20m) score += 10;
+            score += Math.Max(0, 30 - Math.Abs(price - b) / Math.Max(1, b) * 30);
+            if (price < b * 0.50m) score -= 50;
+        }
         if (string.Equals(plan.Purpose, "Gaming", StringComparison.OrdinalIgnoreCase))
         {
-            if (ContainsAny(haystack, "rtx 4060", "rtx 5060", "rtx 4070", "rtx 5070", "rx 7600")) score += 18;
-            if (ContainsAny(haystack, "16gb", "32gb")) score += 10;
-            if (ContainsAny(haystack, "ssd", "512", "1tb")) score += 8;
+            if (haystack.Contains("gaming")) score += 20;
+            if (ContainsAny(haystack, "rtx ", "gtx ", "rx ", "vga", "gpu")) score += 25;
+            if (ContainsAny(haystack, "16gb", "32gb", "64gb")) score += 15;
+            if (ContainsAny(haystack, "ssd 512", "512gb", "1tb", "1000gb")) score += 10;
         }
-        if (!string.IsNullOrWhiteSpace(plan.Game) && haystack.Contains(NormalizeText(plan.Game))) score += 8;
+        if (!string.IsNullOrWhiteSpace(plan.Game) && (haystack.Contains(NormalizeText(plan.Game)) || GameCompatible(haystack, plan.Game))) score += 15;
+        _ = score;
         return score;
+    }
+
+    private static decimal EffectivePrice(Product product) => product.DiscountPrice ?? product.SalePrice ?? product.Price;
+
+    private static bool GameCompatible(string haystack, string game)
+    {
+        var g = NormalizeText(game);
+        if (g.Contains("gta")) return ContainsAny(haystack, "rtx", "gtx 1660", "rx", "16gb");
+        if (g.Contains("valorant")) return ContainsAny(haystack, "gaming", "rtx", "gtx", "rx", "16gb");
+        return false;
     }
 
 
