@@ -236,27 +236,6 @@
                     <p>@Model.Details.Count sản phẩm đã đặt</p>
                 </div>
             </div>
-            <div class="order-total-breakdown" aria-label="Tổng tiền đơn hàng">
-                <div class="order-total-row">
-                    <span>Tạm tính</span>
-                    <strong>@((Model.SubtotalAmount > 0 ? Model.SubtotalAmount : Model.Details.Sum(x => x.TotalPrice)).ToString("N0")) đ</strong>
-                </div>
-                <div class="order-total-row">
-                    <span>Phí vận chuyển</span>
-                    <strong>@Model.ShippingFee.ToString("N0") đ</strong>
-                </div>
-                @if (Model.DiscountAmount > 0)
-                {
-                    <div class="order-total-row">
-                        <span>Giảm giá Voucher@(string.IsNullOrWhiteSpace(Model.VoucherCode) ? "" : $" ({Model.VoucherCode})")</span>
-                        <strong>-@Model.DiscountAmount.ToString("N0") đ</strong>
-                    </div>
-                }
-                <div class="order-total-row order-total-row--final">
-                    <span>Thành tiền</span>
-                    <strong>@Model.TotalAmount.ToString("N0") đ</strong>
-                </div>
-            </div>
             <div class="order-products-table-wrap">
                 <table class="order-products-table">
                     <thead>
@@ -295,6 +274,27 @@
                     }
                     </tbody>
                 </table>
+            </div>
+            <div class="order-total-breakdown" aria-label="Tổng kết thanh toán">
+                <div class="order-total-row">
+                    <span>Tạm tính</span>
+                    <strong>@((Model.SubtotalAmount > 0 ? Model.SubtotalAmount : Model.Details.Sum(x => x.TotalPrice)).ToString("N0")) đ</strong>
+                </div>
+                <div class="order-total-row">
+                    <span>Phí vận chuyển</span>
+                    <strong>@Model.ShippingFee.ToString("N0") đ</strong>
+                </div>
+                @if (Model.DiscountAmount > 0)
+                {
+                    <div class="order-total-row">
+                        <span>Giảm giá Voucher@(string.IsNullOrWhiteSpace(Model.VoucherCode) ? "" : $" ({Model.VoucherCode})")</span>
+                        <strong>-@Model.DiscountAmount.ToString("N0") đ</strong>
+                    </div>
+                }
+                <div class="order-total-row order-total-row--final">
+                    <span>Thành tiền</span>
+                    <strong>@Model.TotalAmount.ToString("N0") đ</strong>
+                </div>
             </div>
         </section>
 
