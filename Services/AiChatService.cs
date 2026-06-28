@@ -371,7 +371,7 @@ public partial class GeminiChatService : IAiChatService
         else if (ContainsAny(n, "cai nao dang mua", "san pham ban de xuat", "trong may cai", "nen chon cai nao", "con nao ngon", "tot nhat trong danh sach", "mau nao dang mua") || (ContainsAny(n, "loi ich cua no", "loi ich") && ContainsAny(n, "cai nao", "san pham ban de xuat", "may cai tren"))) intent = AiChatIntent.CompareRecommendation;
         else if (productType != null || ContainsAny(n, "linh kien ma", "khong phai pc", "thanh ram")) intent = AiChatIntent.ComponentAdvice;
         else if (!hasContextProductReference && !hasSpecificProductSignal && (ContainsAny(n, "tu van cau hinh", "build pc", "pc choi", "may choi", "may gaming", "pc ", "cau hinh stream", "cau hinh") || (budget.HasValue && (purpose == "Gaming" || ContainsAny(n, "pc", "may tinh", "cau hinh", "build"))))) intent = AiChatIntent.PcBuildAdvice;
-        else intent = DetectIntent(message);
+        else intent = DetectIntent(normalizedMessage);
         return new(intent, n, budget, game, purpose, productType, priceMode);
     }
 
