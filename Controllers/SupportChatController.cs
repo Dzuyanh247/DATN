@@ -160,7 +160,30 @@ public class SupportChatController : Controller
         var conversation = await FindOwnedConversation(request.ConversationId, request.AccessToken);
         if (conversation == null) return NotFound(Api(false, "Không tìm thấy cuộc trò chuyện."));
         if (conversation.Status == ChatConversationStatus.Closed) return BadRequest(Api(false, "Cuộc trò chuyện đã đóng."));
-        var result = await _automation.ExecuteAsync(conversation, CurrentUserId(), request.ActionType, request.Payload);
+        var userId = CurrentUserId();
+        var quickLabel = QuickActionLabel(request.ActionType);
+        ChatMessage? customerChoice = null;
+        if (!string.IsNullOrWhiteSpace(quickLabel))
+        {
+            customerChoice = new ChatMessage
+            {
+                ConversationId = conversation.Id,
+                SenderType = ChatSenderType.Customer,
+                SenderUserId = userId,
+                SenderName = conversation.CustomerName ?? conversation.GuestName ?? "Khách hàng",
+                Message = quickLabel
+            };
+            conversation.StaffUnreadCount++;
+            _db.ChatMessages.Add(customerChoice);
+        }
+
+        var result = await _automation.ExecuteAsync(conversation, userId, request.ActionType, request.Payload);
+        if (customerChoice != null)
+        {
+            var customerPayload = MessagePayload(customerChoice);
+            await NotifyConversation(conversation.Id, customerPayload);
+            await NotifyStaff(conversation.Id, customerPayload);
+        }
         foreach (var message in result.Messages)
         {
             var messagePayload = MessagePayload(message);
@@ -187,7 +210,7 @@ public class SupportChatController : Controller
     }
 
 
-    private static bool IsQuickActionLabel(string text) => SupportChatDefaults.QuickQuestions.Any(x => string.Equals((string?)x.GetType().GetProperty("label")?.GetValue(x), text, StringComparison.OrdinalIgnoreCase));
+    private static string? QuickActionLabel(string actionType) => SupportChatDefaults.QuickQuestions.Select(x => new { ActionType = (string?)x.GetType().GetProperty("actionType")?.GetValue(x), Label = (string?)x.GetType().GetProperty("label")?.GetValue(x) }).FirstOrDefault(x => string.Equals(x.ActionType, actionType, StringComparison.OrdinalIgnoreCase))?.Label;
     private ChatMessage AddAiMessage(ChatConversation conversation, string reply, IReadOnlyList<AiProductContext> products, bool attachProductCards, string? requestId)
     {
         var cards = attachProductCards ? products.Take(8).Select(p => (object)new

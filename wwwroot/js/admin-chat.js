@@ -26,7 +26,7 @@
         const composeArea = $('admin-chat-compose-area') || root.querySelector('.admin-chat-compose-area');
         const csrf = document.querySelector('#admin-chat-antiforgery input[name="__RequestVerificationToken"]')?.value || '';
         const topicLabels = { PCConsultation: 'Tư vấn cấu hình PC', Order: 'Đơn hàng', Warranty: 'Bảo hành', Payment: 'Thanh toán', StaffSupport: 'Gặp nhân viên' };
-        const systemMessages = ['đã đóng', 'đã được đóng', 'hội thoại đã', 'conversation closed', 'đã kết thúc', 'đã nhận xử lý', 'nhận xử lý', 'đổi người phụ trách', 'phân công', 'tiếp nhận', 'hỗ trợ bạn'];
+        const systemMessages = ['đã đóng', 'đã được đóng', 'hội thoại đã', 'conversation closed', 'đã kết thúc', 'đã nhận xử lý', 'đổi người phụ trách', 'phân công', 'tiếp nhận', 'sẽ hỗ trợ bạn từ bây giờ'];
         const currentUserId = Number(root.dataset.currentUserId || 0);
         let conversations = [], activeId = null, activeConversation = null, filter = 'all', polling;
 
@@ -125,8 +125,14 @@
             const separator = document.createElement('div'); separator.className = 'admin-chat-date-separator'; separator.dataset.dayLabel = label; separator.textContent = label; messages.append(separator);
         }
         function addDetail(container, label, value, extraClass) { if (!value) return; const row = document.createElement('span'); if (extraClass) row.className = extraClass; const text = document.createElement('span'); text.textContent = label; const strong = document.createElement('b'); strong.textContent = value; row.append(text, strong); container.append(row); }
-        function isTechnicalSystemMessage(item) { const text = String(item.message || '').toLowerCase(); return item.isSystem || String(item.senderType || '').toLowerCase() === 'system' || systemMessages.some(token => text.includes(token)); }
-        function isFromCurrentUser(item) { return currentUserId > 0 && Number(item.senderUserId || 0) === currentUserId; }
+        function metadataType(item) { return String(metadataValue(item?.metadata, 'type') || '').toLowerCase(); }
+        function isTechnicalSystemMessage(item) { const text = String(item.message || '').toLowerCase(); const type = String(item.senderType || '').toLowerCase(); return (item.isSystem || type === 'system') && !metadataType(item) && systemMessages.some(token => text.includes(token)); }
+        function messageSide(item) {
+            if (isTechnicalSystemMessage(item)) return 'system';
+            const type = String(item.senderType || '').toLowerCase();
+            if (type === 'customer' || type === 'user') return 'theirs';
+            return 'mine';
+        }
         function appendSystemMessage(text, key, createdAt = new Date().toISOString()) { addMessage({ id: `system-${key}`, senderType: 'System', senderName: 'Hệ thống', message: text, isSystem: true, createdAt }); }
         function appendAssignmentSystemMessage(c, keyPrefix = 'assignment') { if (c?.assignedStaffName) appendSystemMessage(`🎧 ${c.assignedStaffName} sẽ hỗ trợ bạn từ bây giờ`, `${keyPrefix}-${c.assignedStaffId || c.assignedStaffName}` , c.updatedAt || c.createdAt || new Date().toISOString()); }
         function normalizeCardActions(card) { const actions = (card.actions || []).filter(action => action.url); if (actions.length) return actions; return [card.checkUrl ? { label: 'Kiểm tra', url: card.checkUrl } : null, card.detailUrl || card.url ? { label: 'Xem chi tiết', url: card.detailUrl || card.url } : null, card.reviewUrl ? { label: 'Đánh giá', url: card.reviewUrl } : null, card.warrantyUrl ? { label: 'Tạo yêu cầu bảo hành', url: card.warrantyUrl } : null].filter(Boolean); }
@@ -159,15 +165,16 @@
             if (!item || !messages || messages.querySelector(`[data-message-id="${item.id}"]`)) return;
             appendDateSeparator(item.createdAt);
             const type = String(item.senderType || '').toLowerCase();
+            const metaType = metadataType(item);
             const technicalSystem = isTechnicalSystemMessage(item);
-            const mine = !technicalSystem && isFromCurrentUser(item);
-            const bot = !technicalSystem && (type === 'bot' || type === 'assistant' || type === 'automation');
+            const side = messageSide(item);
+            const mine = side === 'mine';
+            const bot = !technicalSystem && (type === 'bot' || type === 'assistant' || type === 'automation' || metaType === 'ai');
             const previous = messages.lastElementChild?.classList.contains('admin-chat-message') ? messages.lastElementChild : null;
             const previousSide = previous?.dataset.side || '';
-            const side = technicalSystem ? 'system' : mine ? 'mine' : 'theirs';
             const grouped = previousSide === side && side !== 'system';
             const wrapper = document.createElement('div');
-            wrapper.className = `admin-chat-message ${technicalSystem ? 'system' : mine ? 'mine' : bot ? 'bot theirs' : 'theirs'}${grouped ? ' grouped' : ' new-cluster'}`;
+            wrapper.className = `admin-chat-message ${technicalSystem ? 'system' : mine ? 'mine' : 'theirs'}${bot ? ' bot' : ''}${grouped ? ' grouped' : ' new-cluster'}`;
             wrapper.dataset.messageId = item.id;
             wrapper.dataset.side = side;
             const bubble = document.createElement('div');
@@ -175,11 +182,11 @@
             bubble.textContent = item.message || '';
             const time = document.createElement('div');
             time.className = 'admin-chat-message-time';
-            time.textContent = `${technicalSystem ? 'Hệ thống' : bot ? 'KKSHOP' : (item.senderName || (mine ? 'Bạn' : 'Khách hàng'))} • ${formatDate(item.createdAt, true)}`;
+            time.textContent = `${technicalSystem ? 'Hệ thống' : bot ? 'KKSHOP AI' : (item.senderName || (mine ? 'KKSHOP' : 'Khách hàng'))} • ${formatDate(item.createdAt, true)}`;
             if (!technicalSystem) {
                 const avatar = document.createElement('div');
                 avatar.className = 'admin-chat-message-avatar';
-                avatar.textContent = (item.senderName || (mine ? 'B' : activeConversation?.name) || 'K').trim()[0]?.toUpperCase() || 'K';
+                avatar.textContent = (item.senderName || (mine ? 'KKSHOP' : activeConversation?.name) || 'K').trim()[0]?.toUpperCase() || 'K';
                 wrapper.append(avatar);
             }
             wrapper.append(bubble, time);
