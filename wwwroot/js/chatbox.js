@@ -2,6 +2,12 @@
     const root = document.getElementById('kk-support-chat');
     if (!root) return;
 
+    // Keep the fixed chat widget in the body stacking context so parent
+    // overflow/transform/filter/perspective rules cannot clip it or cap z-index.
+    if (root.parentElement !== document.body) {
+        document.body.appendChild(root);
+    }
+
     const launcher = document.getElementById('kk-chat-launcher');
     const panel = document.getElementById('kk-chat-panel');
     const closeButton = document.getElementById('kk-chat-close');
