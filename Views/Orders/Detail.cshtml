@@ -235,25 +235,39 @@
                     <h2><i class="bi bi-box-seam"></i> Sản phẩm trong đơn hàng</h2>
                     <p>@Model.Details.Count sản phẩm đã đặt</p>
                 </div>
-                <strong>@Model.TotalAmount.ToString("N0") đ</strong>
             </div>
-            <div class="order-total-breakdown mb-3 small text-end">
-                <div>Tạm tính: <strong>@((Model.SubtotalAmount > 0 ? Model.SubtotalAmount : Model.Details.Sum(x => x.TotalPrice)).ToString("N0")) đ</strong></div>
-                <div>Phí vận chuyển: <strong>@Model.ShippingFee.ToString("N0") đ</strong></div>
-                @if (Model.DiscountAmount > 0) { <div>Giảm giá Voucher@(string.IsNullOrWhiteSpace(Model.VoucherCode) ? "" : $" ({Model.VoucherCode})"): <strong>-@Model.DiscountAmount.ToString("N0") đ</strong></div> }
-                <div class="text-danger fw-bold">Thành tiền: @Model.TotalAmount.ToString("N0") đ</div>
+            <div class="order-total-breakdown" aria-label="Tổng tiền đơn hàng">
+                <div class="order-total-row">
+                    <span>Tạm tính</span>
+                    <strong>@((Model.SubtotalAmount > 0 ? Model.SubtotalAmount : Model.Details.Sum(x => x.TotalPrice)).ToString("N0")) đ</strong>
+                </div>
+                <div class="order-total-row">
+                    <span>Phí vận chuyển</span>
+                    <strong>@Model.ShippingFee.ToString("N0") đ</strong>
+                </div>
+                @if (Model.DiscountAmount > 0)
+                {
+                    <div class="order-total-row">
+                        <span>Giảm giá Voucher@(string.IsNullOrWhiteSpace(Model.VoucherCode) ? "" : $" ({Model.VoucherCode})")</span>
+                        <strong>-@Model.DiscountAmount.ToString("N0") đ</strong>
+                    </div>
+                }
+                <div class="order-total-row order-total-row--final">
+                    <span>Thành tiền</span>
+                    <strong>@Model.TotalAmount.ToString("N0") đ</strong>
+                </div>
             </div>
             <div class="order-products-table-wrap">
                 <table class="order-products-table">
                     <thead>
-                        <tr><th>Sản phẩm</th><th>Đơn giá</th><th>Số lượng</th><th>Thành tiền</th></tr>
+                        <tr><th class="col-product">Sản phẩm</th><th class="col-price">Đơn giá</th><th class="col-quantity">Số lượng</th><th class="col-total">Thành tiền</th></tr>
                     </thead>
                     <tbody>
                     @foreach (var d in Model.Details)
                     {
                         var img = ImageUrlHelper.ResolveImageUrl(d.ProductImage, "/images/placeholders/product-placeholder.png");
                         <tr>
-                            <td>
+                            <td data-label="Sản phẩm">
                                 <div class="order-product-info">
                                     <img src="@img" alt="@d.ProductName" onerror="this.onerror=null;this.src='/images/placeholders/product-placeholder.png';" />
                                     <div>
@@ -274,9 +288,9 @@
                                     </div>
                                 </div>
                             </td>
-                            <td class="order-product-price">@d.UnitPrice.ToString("N0") đ</td>
-                            <td><span class="order-product-quantity">@d.Quantity</span></td>
-                            <td class="order-product-total">@d.TotalPrice.ToString("N0") đ</td>
+                            <td class="order-product-price" data-label="Đơn giá">@d.UnitPrice.ToString("N0") đ</td>
+                            <td class="order-product-quantity-cell" data-label="Số lượng"><span class="order-product-quantity">@d.Quantity</span></td>
+                            <td class="order-product-total" data-label="Thành tiền">@d.TotalPrice.ToString("N0") đ</td>
                         </tr>
                     }
                     </tbody>

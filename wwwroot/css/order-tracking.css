@@ -214,3 +214,216 @@
 @media (prefers-reduced-motion: reduce) {
     .order-action-btn, .payment-cta { transition: none; }
 }
+
+/* Scoped balance pass for the order tracking product list and money summary. */
+.order-tracking-page .order-products-header {
+    align-items: flex-start;
+    padding: 22px 24px 14px;
+}
+
+.order-tracking-page .order-total-breakdown {
+    width: min(100%, 390px);
+    margin: 0 24px 18px auto;
+    padding: 16px 20px;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    background: #f8fafc;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .72);
+}
+
+.order-tracking-page .order-total-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) max-content;
+    gap: 18px;
+    align-items: baseline;
+    padding: 7px 0;
+    color: #4b5563;
+    font-size: .9rem;
+}
+
+.order-tracking-page .order-total-row + .order-total-row {
+    border-top: 1px dashed #e5e7eb;
+}
+
+.order-tracking-page .order-total-row span {
+    min-width: 0;
+    line-height: 1.35;
+}
+
+.order-tracking-page .order-total-row strong {
+    color: #111827;
+    font-weight: 740;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.order-tracking-page .order-total-row--final {
+    margin-top: 4px;
+    padding-top: 12px;
+    color: #111827;
+    font-weight: 780;
+}
+
+.order-tracking-page .order-total-row--final strong {
+    color: #dc2626;
+    font-size: 1.05rem;
+    font-weight: 850;
+}
+
+.order-tracking-page .order-products-table-wrap {
+    overflow-x: visible;
+}
+
+.order-tracking-page .order-products-table {
+    min-width: 0;
+    table-layout: fixed;
+}
+
+.order-tracking-page .order-products-table .col-product { width: 58%; }
+.order-tracking-page .order-products-table .col-price { width: 16%; }
+.order-tracking-page .order-products-table .col-quantity { width: 10%; }
+.order-tracking-page .order-products-table .col-total { width: 16%; }
+
+.order-tracking-page .order-products-table th,
+.order-tracking-page .order-products-table td {
+    padding-left: 18px;
+    padding-right: 18px;
+}
+
+.order-tracking-page .order-products-table th:not(:first-child),
+.order-tracking-page .order-products-table td:not(:first-child) {
+    text-align: right;
+}
+
+.order-tracking-page .order-products-table th:nth-child(3),
+.order-tracking-page .order-products-table td:nth-child(3) {
+    text-align: center;
+}
+
+.order-tracking-page .order-product-info {
+    min-width: 0;
+    align-items: flex-start;
+}
+
+.order-tracking-page .order-product-info > div {
+    min-width: 0;
+}
+
+.order-tracking-page .order-product-info strong {
+    display: block;
+    overflow-wrap: anywhere;
+    word-break: normal;
+}
+
+.order-tracking-page .order-product-info img {
+    flex-basis: 68px;
+    width: 68px;
+    height: 68px;
+    object-fit: contain;
+}
+
+.order-tracking-page .order-product-price,
+.order-tracking-page .order-product-total {
+    color: #111827 !important;
+    font-variant-numeric: tabular-nums;
+    padding-right: 24px;
+}
+
+.order-tracking-page .order-product-total {
+    font-weight: 800;
+}
+
+.order-tracking-page .order-product-quantity-cell {
+    padding-left: 10px;
+    padding-right: 10px;
+}
+
+@media (max-width: 767.98px) {
+    .order-tracking-page .order-products-header {
+        padding: 18px 18px 12px;
+    }
+
+    .order-tracking-page .order-total-breakdown {
+        width: auto;
+        margin: 0 18px 16px;
+        padding: 14px 16px;
+    }
+
+    .order-tracking-page .order-products-table,
+    .order-tracking-page .order-products-table thead,
+    .order-tracking-page .order-products-table tbody,
+    .order-tracking-page .order-products-table tr,
+    .order-tracking-page .order-products-table td {
+        display: block;
+        width: 100%;
+    }
+
+    .order-tracking-page .order-products-table thead {
+        display: none;
+    }
+
+    .order-tracking-page .order-products-table tbody {
+        padding: 0 14px 16px;
+    }
+
+    .order-tracking-page .order-products-table tr {
+        padding: 14px;
+        border: 1px solid #e5e7eb;
+        border-radius: 14px;
+        background: #fff;
+        box-shadow: 0 6px 18px rgba(15, 23, 42, .05);
+    }
+
+    .order-tracking-page .order-products-table tr + tr {
+        margin-top: 12px;
+    }
+
+    .order-tracking-page .order-products-table td {
+        padding: 9px 0;
+        border-bottom: 0;
+        text-align: left !important;
+    }
+
+    .order-tracking-page .order-products-table td:not(:first-child) {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) max-content;
+        gap: 16px;
+        align-items: center;
+        border-top: 1px solid #f1f5f9;
+    }
+
+    .order-tracking-page .order-products-table td:not(:first-child)::before {
+        content: attr(data-label);
+        color: #6b7280;
+        font-size: .8rem;
+        font-weight: 650;
+    }
+
+    .order-tracking-page .order-product-price,
+    .order-tracking-page .order-product-total,
+    .order-tracking-page .order-product-quantity-cell {
+        padding-right: 0;
+    }
+}
+
+@media (max-width: 479.98px) {
+    .order-tracking-page .order-total-row {
+        grid-template-columns: 1fr;
+        gap: 3px;
+    }
+
+    .order-tracking-page .order-total-row strong {
+        text-align: left;
+    }
+
+    .order-tracking-page .order-product-info {
+        gap: 11px;
+    }
+
+    .order-tracking-page .order-product-info img {
+        flex-basis: 58px;
+        width: 58px;
+        height: 58px;
+    }
+}
