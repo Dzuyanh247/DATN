@@ -25,6 +25,22 @@
     var selectedHeaderCategory = int.TryParse(selectedHeaderCategoryId, out var parsedHeaderCategoryId)
         ? menuCategories.FirstOrDefault(c => c.Id == parsedHeaderCategoryId)
         : null;
+    var desktopHomeCategories = new[]
+    {
+        new { Name = "PC Gaming", Slug = "pc-gaming", Icon = "bi-pc-display" },
+        new { Name = "Workstation", Slug = "workstation", Icon = "bi-cpu" },
+        new { Name = "AMD Gaming", Slug = "amd-gaming", Icon = "bi-gpu-card" },
+        new { Name = "PC Mini", Slug = "pc-mini", Icon = "bi-device-ssd" },
+        new { Name = "PC Văn Phòng", Slug = "pc-van-phong", Icon = "bi-briefcase" },
+        new { Name = "Linh kiện", Slug = "linh-kien", Icon = "bi-memory" }
+    };
+    var mobileHomeCategories = desktopHomeCategories.Concat(new[]
+    {
+        new { Name = "Màn hình", Slug = "man-hinh", Icon = "bi-display" },
+        new { Name = "Bàn phím", Slug = "ban-phim", Icon = "bi-keyboard" },
+        new { Name = "Chuột", Slug = "chuot", Icon = "bi-mouse" },
+        new { Name = "Tai nghe", Slug = "tai-nghe", Icon = "bi-headphones" }
+    }).ToArray();
     var isAdminPage = controllerName.StartsWith("Admin") ||
                       controllerName == "AdminArticles" ||
                       (controllerName == "Articles" && (actionName == "Create" || actionName == "Edit"));
@@ -302,17 +318,17 @@ else
                     }
                 </div>
             </div>
-            <div class="ttg-cat-nav" aria-label="Danh mục nổi bật">
-                <a class="ttg-cat-link" asp-controller="Products" asp-action="Index" asp-route-categoryId="@(categoryIdByName.GetValueOrDefault("PC Gaming"))" asp-route-categorySlug="pc-gaming"><i class="bi bi-pc-display"></i>PC Gaming</a>
-                <a class="ttg-cat-link" asp-controller="Products" asp-action="Index" asp-route-categoryId="@(categoryIdByName.GetValueOrDefault("Workstation"))" asp-route-categorySlug="workstation"><i class="bi bi-cpu"></i>Workstation</a>
-                <a class="ttg-cat-link" asp-controller="Products" asp-action="Index" asp-route-categoryId="@(categoryIdByName.GetValueOrDefault("AMD Gaming"))" asp-route-categorySlug="amd-gaming"><i class="bi bi-gpu-card"></i>AMD Gaming</a>
-                <a class="ttg-cat-link" asp-controller="Products" asp-action="Index" asp-route-categoryId="@(categoryIdByName.GetValueOrDefault("PC Mini"))" asp-route-categorySlug="pc-mini"><i class="bi bi-device-ssd"></i>PC Mini</a>
-                <a class="ttg-cat-link" asp-controller="Products" asp-action="Index" asp-route-categoryId="@(categoryIdByName.GetValueOrDefault("PC Văn Phòng"))" asp-route-categorySlug="pc-van-phong"><i class="bi bi-briefcase"></i>PC Văn Phòng</a>
-                <a class="ttg-cat-link" asp-controller="Products" asp-action="Index" asp-route-categoryId="@(categoryIdByName.GetValueOrDefault("Linh kiện"))" asp-route-categorySlug="linh-kien"><i class="bi bi-memory"></i>Linh kiện</a>
-                <a class="ttg-cat-link" asp-controller="Products" asp-action="Index" asp-route-categoryId="@(categoryIdByName.GetValueOrDefault("Màn hình"))" asp-route-categorySlug="man-hinh"><i class="bi bi-display"></i>Màn hình</a>
-                <a class="ttg-cat-link" asp-controller="Products" asp-action="Index" asp-route-categoryId="@(categoryIdByName.GetValueOrDefault("Bàn phím"))" asp-route-categorySlug="ban-phim"><i class="bi bi-keyboard"></i>Bàn phím</a>
-                <a class="ttg-cat-link" asp-controller="Products" asp-action="Index" asp-route-categoryId="@(categoryIdByName.GetValueOrDefault("Chuột"))" asp-route-categorySlug="chuot"><i class="bi bi-mouse"></i>Chuột</a>
-                <a class="ttg-cat-link" asp-controller="Products" asp-action="Index" asp-route-categoryId="@(categoryIdByName.GetValueOrDefault("Tai nghe"))" asp-route-categorySlug="tai-nghe"><i class="bi bi-headphones"></i>Tai nghe</a>
+            <div class="ttg-cat-nav desktop-category-nav" aria-label="Danh mục nổi bật desktop">
+                @foreach (var category in desktopHomeCategories)
+                {
+                    <a class="ttg-cat-link" asp-controller="Products" asp-action="Index" asp-route-categoryId="@(categoryIdByName.GetValueOrDefault(category.Name))" asp-route-categorySlug="@category.Slug"><i class="bi @category.Icon"></i>@category.Name</a>
+                }
+            </div>
+            <div class="ttg-cat-nav mobile-category-grid" aria-label="Danh mục nổi bật mobile">
+                @foreach (var category in mobileHomeCategories)
+                {
+                    <a class="ttg-cat-link" asp-controller="Products" asp-action="Index" asp-route-categoryId="@(categoryIdByName.GetValueOrDefault(category.Name))" asp-route-categorySlug="@category.Slug"><i class="bi @category.Icon"></i>@category.Name</a>
+                }
             </div>
         </div>
     </div>
