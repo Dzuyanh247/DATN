@@ -107,6 +107,11 @@
     body:not(.admin-page) .ttg-cat-nav {
         gap: 6px;
         overflow-x: auto;
+        overflow-y: hidden;
+        max-width: 100%;
+        min-width: 0;
+        overscroll-behavior-x: contain;
+        -webkit-overflow-scrolling: touch;
         scrollbar-width: thin;
     }
 
@@ -267,19 +272,26 @@
 
     /* Chat AI: keep above sticky header and always inside laptop viewport. */
     body:not(.admin-page) .kk-chat {
-        z-index: 1080;
+        z-index: 1300;
         right: max(16px, env(safe-area-inset-right));
         bottom: max(16px, env(safe-area-inset-bottom));
         max-width: calc(100vw - 32px);
+        isolation: isolate;
+    }
+
+    body:not(.admin-page) .kk-chat-launcher {
+        z-index: 1301;
     }
 
     body:not(.admin-page) .kk-chat-panel {
-        z-index: 1081;
+        z-index: 1302;
         right: max(16px, env(safe-area-inset-right));
         bottom: max(16px, env(safe-area-inset-bottom));
-        width: min(380px, calc(100vw - 32px));
-        height: min(560px, calc(100vh - 132px));
-        max-height: calc(100vh - 132px);
+        width: min(380px, calc(100vw - 40px));
+        max-width: calc(100vw - 40px);
+        height: min(560px, calc(100vh - 120px));
+        max-height: calc(100vh - 120px);
+        overflow-y: auto;
         transform-origin: bottom right;
     }
 
@@ -290,10 +302,16 @@
 
     body:not(.admin-page) .kk-chat-close {
         position: relative;
-        z-index: 2;
+        z-index: 1303;
         width: 38px;
         height: 38px;
         flex: 0 0 38px;
+        pointer-events: auto;
+    }
+
+    body:not(.admin-page) .kk-chat-body {
+        min-height: 0;
+        overflow: hidden;
     }
 
     body:not(.admin-page) .kk-chat-start-form,
@@ -303,13 +321,13 @@
     }
 
     body:not(.admin-page) .kk-chat-footer,
-    body:not(.admin-page) .kk-chat-composer {
+    body:not(.admin-page) .kk-chat-compose {
         flex-shrink: 0;
     }
 
     body:not(.admin-page).has-compare-tray .kk-chat,
     body:not(.admin-page).has-compare-tray .kk-chat-panel {
-        bottom: 104px;
+        bottom: min(104px, calc(100vh - 120px));
     }
 
     body:not(.admin-page) .compare-tray,
