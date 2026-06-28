@@ -1,9 +1,10 @@
 @{
     ViewData["Title"] = "Trung tâm hỗ trợ khách hàng";
+    var canDeleteConversations = User.IsInRole("Admin").ToString().ToLowerInvariant();
 }
 <form id="admin-chat-antiforgery" class="d-none">@Html.AntiForgeryToken()</form>
 
-<div class="admin-chat admin-chat-page" id="admin-chat" data-current-user-id="@User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value">
+<div class="admin-chat admin-chat-page" id="admin-chat" data-current-user-id="@User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value" data-can-delete-conversations="@canDeleteConversations">
     <aside class="admin-chat-list-panel">
         <div class="admin-chat-list-head">
             <div>

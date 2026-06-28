@@ -212,3 +212,10 @@
 .admin-chat-info-card dd{font-size:.84rem;color:#1f2937}
 @media(max-width:1180px){.admin-chat-page{grid-template-columns:minmax(285px,320px) minmax(420px,1fr)}}
 @media(max-width:768px){.admin-main:has(.admin-chat-page){height:auto;min-height:100vh}.admin-content:has(.admin-chat-page)>.admin-chat-page{height:calc(100vh - 92px)}.admin-chat-bubble{max-width:74vw}}
+
+/* Admin-only conversation delete action */
+.admin-chat-delete-conversation{position:absolute;top:9px;right:9px;width:30px;height:30px;border-radius:10px;border:1px solid #fecaca;background:#fff;color:#b91c1c;display:grid;place-items:center;opacity:0;pointer-events:none;transition:opacity .16s,background .16s,border-color .16s,color .16s;z-index:2}
+.admin-chat-item:hover .admin-chat-delete-conversation,.admin-chat-item:focus-within .admin-chat-delete-conversation{opacity:1;pointer-events:auto}
+.admin-chat-delete-conversation:hover,.admin-chat-delete-conversation:focus-visible{background:#fee2e2;border-color:#fca5a5;color:#991b1b;outline:0}
+.admin-chat-item:has(.admin-chat-delete-conversation:hover),.admin-chat-item:has(.admin-chat-delete-conversation:focus-visible){border-color:#fecaca}
+@media (hover:none){.admin-chat-delete-conversation{opacity:1;pointer-events:auto}}
