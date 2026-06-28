@@ -353,14 +353,15 @@ public partial class GeminiChatService : IAiChatService
 
     private static ChatTurnAnalysis AnalyzeChatTurn(string message, AiConversationContext? conversation = null)
     {
-        var n = RemoveDiacritics((message ?? string.Empty).ToLowerInvariant());
+        var normalizedMessage = message ?? string.Empty;
+        var n = RemoveDiacritics(normalizedMessage.ToLowerInvariant());
         var productType = DetectChatProductType(n);
         var priceMode = ContainsAny(n, "dat nhat", "cao nhat", "dat tien nhat", "gia cao nhat") ? "highest" : ContainsAny(n, "re nhat", "thap nhat", "gia thap nhat") ? "lowest" : "normal";
         var budget = TryExtractChatBudget(n, out var money) ? money : (decimal?)null;
         var game = ContainsAny(n, "valorant") ? "Valorant" : ContainsAny(n, "gta") ? "GTA V" : ContainsAny(n, "cs2") ? "CS2" : ContainsAny(n, "pubg") ? "PUBG" : ContainsAny(n, " lol", " lien minh") ? "LOL" : null;
         var purpose = ContainsAny(n, "choi", "game", "gaming", "valorant", "gta", "cs2", "pubg") ? "Gaming" : ContainsAny(n, "stream") ? "Stream" : ContainsAny(n, "do hoa", "render") ? "Đồ họa / render" : null;
-        var hasContextProductReference = conversation != null && HasContextReference(message, conversation);
-        var hasSpecificProductSignal = HasConcreteProductSignal(message);
+        var hasContextProductReference = conversation != null && HasContextReference(normalizedMessage, conversation);
+        var hasSpecificProductSignal = HasConcreteProductSignal(normalizedMessage);
         var hasProductQuestion = IsProductQuestion(n);
         AiChatIntent intent;
         if (ContainsAny(n, "con mau khac", "mau khac", "san pham khac", "xem them", "goi y them") && conversation?.RecentSuggestedProducts.Count > 0)

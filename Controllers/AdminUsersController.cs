@@ -40,7 +40,7 @@ public class AdminUsersController : Controller
                     Username = x.Username ?? string.Empty,
                     FullName = x.FullName ?? string.Empty,
                     Email = x.Email ?? string.Empty,
-                    Role = x.Role != null ? x.Role.Name : string.Empty,
+                    Role = x.Role != null ? x.Role.Name ?? string.Empty : string.Empty,
                     IsActive = x.IsActive,
                     CreatedAt = x.CreatedAt
                 }).ToListAsync()
