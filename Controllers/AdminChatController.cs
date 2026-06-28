@@ -124,7 +124,7 @@ public class AdminChatController : Controller
     private static string? ResolveCustomerPhone(ChatConversation x) => FirstNonBlank(x.CustomerPhone, x.GuestPhone, IsCustomerUser(x.User) ? x.User?.Phone : null);
     private static bool IsCustomerUser(User? user) => user != null && !string.Equals(user.Role?.Name, "Admin", StringComparison.OrdinalIgnoreCase) && !string.Equals(user.Role?.Name, "SupportStaff", StringComparison.OrdinalIgnoreCase) && !string.Equals(user.Role?.Name, "CustomerSupport", StringComparison.OrdinalIgnoreCase);
     private static string? FirstNonBlank(params string?[] values) => values.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value));
-    private static object MessagePayload(ChatMessage x) => new { x.Id, senderType = x.SenderType == ChatSenderType.Staff ? "Staff" : x.SenderType.ToString(), x.SenderName, x.Message, x.IsSystem, x.IsRead, x.ReadAt, x.CreatedAt, metadata = ParseMetadata(x.MetadataJson) };
+    private static object MessagePayload(ChatMessage x) => new { x.Id, senderType = x.SenderType == ChatSenderType.Staff ? "Staff" : x.SenderType.ToString(), x.SenderUserId, x.SenderName, x.Message, x.IsSystem, x.IsRead, x.ReadAt, x.CreatedAt, metadata = ParseMetadata(x.MetadataJson) };
     private static object? ParseMetadata(string? value)
     {
         if (string.IsNullOrWhiteSpace(value)) return null;
